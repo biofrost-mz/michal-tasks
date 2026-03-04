@@ -454,7 +454,7 @@ export default function MichalTasks() {
       >
         <div style={{ textAlign: "center", color: dk ? "#e8ecf4" : "#1a1e2e" }}>
           <div style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-1px", fontFamily: "'Outfit',sans-serif" }}>
-            Michal Tasks
+            Michal Tasks v1
           </div>
           <div style={{ marginTop: 8, opacity: 0.5, animation: "pulse 1.5s infinite", fontSize: 14 }}>
             Načítám data…
