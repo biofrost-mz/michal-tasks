@@ -7,6 +7,109 @@ import React, {
   useRef,
 } from "react";
 
+import { supabase } from "./supabase.js";
+function AuthGate({ children }) {
+  const { t } = useApp();
+  const toast = useToast();
+
+  const [session, setSession] = useState(null);
+  const [email, setEmail] = useState("");
+  const [sending, setSending] = useState(false);
+
+  useEffect(() => {
+    // Get current session
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session ?? null);
+    });
+
+    // Listen for auth changes (magic link, logout, etc.)
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession ?? null);
+    });
+
+    return () => {
+      sub?.subscription?.unsubscribe?.();
+    };
+  }, []);
+
+  const sendMagicLink = async () => {
+    const e = email.trim();
+    if (!e) return;
+
+    setSending(true);
+    const { error } = await supabase.auth.signInWithOtp({
+      email: e,
+      options: {
+        // for local dev; later we'll set to your Vercel URL
+        emailRedirectTo: window.location.origin,
+      },
+    });
+    setSending(false);
+
+    if (error) {
+      toast(error.message || "Nepodařilo se odeslat přihlašovací link", "error");
+      return;
+    }
+    toast("Poslal jsem přihlašovací odkaz na e-mail", "success");
+  };
+
+  const logout = async () => {
+    await supabase.auth.signOut();
+    toast("Odhlášeno", "success");
+  };
+
+  // Not logged in → show login screen
+  if (!session) {
+    return (
+      <div style={{ minHeight: "100vh", background: t.bg, color: t.text, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+        <div style={{ width: 420, maxWidth: "100%", background: t.bg2, border: `1px solid ${t.border}`, borderRadius: 14, padding: 18, boxShadow: t.shadow }}>
+          <div style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 800, fontSize: 22, marginBottom: 6 }}>
+            Michal Tasks
+          </div>
+          <div style={{ color: t.text2, fontSize: 13, marginBottom: 14 }}>
+            Přihlaste se přes e-mail (magic link).
+          </div>
+
+          <input
+            value={email}
+            onChange={(ev) => setEmail(ev.target.value)}
+            placeholder="mich.zich@gmail.com"
+            type="email"
+            style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: `1px solid ${t.border}`, background: t.input, color: t.text, outline: "none", marginBottom: 10 }}
+          />
+
+          <button
+            onClick={sendMagicLink}
+            disabled={!email.trim() || sending}
+            style={{
+              width: "100%",
+              padding: "10px 12px",
+              borderRadius: 10,
+              border: "none",
+              background: t.accent,
+              color: "#fff",
+              fontWeight: 700,
+              opacity: !email.trim() || sending ? 0.6 : 1,
+            }}
+          >
+            {sending ? "Odesílám…" : "Poslat přihlašovací odkaz"}
+          </button>
+
+          <div style={{ marginTop: 12, fontSize: 12, color: t.text3, lineHeight: 1.4 }}>
+            Otevřete e-mail a klikněte na odkaz. Poté vás to vrátí zpět do aplikace.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Logged in → show app
+  return (
+  <div style={{ height: "100%" }}>
+    {children}
+  </div>
+);
+}
 /**
  * Michal Tasks — single-file React app
  * - Storage adapter: window.storage (if exists) -> localStorage
@@ -101,21 +204,161 @@ function useDebouncedEffect(effect, deps, delay = 350) {
   }, deps);
 }
 
+
+
+// UUID v4 (for Supabase primary keys). Uses crypto.randomUUID when available.
+function uuid4() {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+  // fallback
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
+/* ─────────────────────────────────────────────
+   Supabase DB helpers (clean start)
+───────────────────────────────────────────── */
+async function dbSeedIfEmpty(userId) {
+  // Seed default projects if none exist for this user
+  const { count: pCount, error: pCountErr } = await supabase
+    .from("projects")
+    .select("id", { count: "exact", head: true });
+
+  if (pCountErr) throw pCountErr;
+
+  if ((pCount || 0) === 0) {
+    const rows = DEF_PROJECTS.map((p) => ({
+      id: uuid4(),
+      owner: userId,
+      name: p.name,
+      description: p.description || "",
+      status: p.status || "active",
+    }));
+    const { error } = await supabase.from("projects").insert(rows);
+    if (error) throw error;
+  }
+
+  // Seed default tags if none exist for this user
+  const { count: tCount, error: tCountErr } = await supabase
+    .from("tags")
+    .select("id", { count: "exact", head: true });
+
+  if (tCountErr) throw tCountErr;
+
+  if ((tCount || 0) === 0) {
+    const rows = DEF_TAGS.map((t) => ({
+      id: uuid4(),
+      owner: userId,
+      name: t.name,
+      color: t.color,
+    }));
+    const { error } = await supabase.from("tags").insert(rows);
+    if (error) throw error;
+  }
+}
+
+async function dbFetchAll() {
+  const { data: projects, error: pErr } = await supabase
+    .from("projects")
+    .select("*")
+    .order("created_at", { ascending: true });
+  if (pErr) throw pErr;
+
+  const { data: tasks, error: tErr } = await supabase
+    .from("tasks")
+    .select("*")
+    .order("position", { ascending: true });
+  if (tErr) throw tErr;
+
+  const { data: tags, error: gErr } = await supabase
+    .from("tags")
+    .select("*")
+    .order("created_at", { ascending: true });
+  if (gErr) throw gErr;
+
+  const { data: taskTags, error: ttErr } = await supabase
+    .from("task_tags")
+    .select("task_id, tag_id");
+  if (ttErr) throw ttErr;
+
+  const tagMap = new Map();
+  (taskTags || []).forEach((x) => {
+    if (!tagMap.has(x.task_id)) tagMap.set(x.task_id, []);
+    tagMap.get(x.task_id).push(x.tag_id);
+  });
+
+  const tasksNorm = (tasks || []).map((t) => ({
+    id: t.id,
+    title: t.title || "",
+    description: t.description || "",
+    status: t.status || "todo",
+    priority: t.priority ?? null,
+    dueDate: t.due_date ?? null, // YYYY-MM-DD
+    projectId: t.project_id ?? null,
+    tagIds: tagMap.get(t.id) || [],
+    position: t.position ?? Date.now(),
+    createdAt: t.created_at ? new Date(t.created_at).getTime() : Date.now(),
+    updatedAt: t.updated_at ? new Date(t.updated_at).getTime() : Date.now(),
+    completedAt: t.completed_at ? new Date(t.completed_at).getTime() : null,
+    phases: Array.isArray(t.phases) ? t.phases : [],
+    starred: !!t.starred,
+    recurrence: t.recurrence ?? null,
+  }));
+
+  const projectsNorm = (projects || []).map((p) => ({
+    id: p.id,
+    name: p.name,
+    description: p.description || "",
+    status: p.status || "active",
+    tags: [], // not used yet
+    createdAt: p.created_at ? new Date(p.created_at).getTime() : Date.now(),
+    updatedAt: p.updated_at ? new Date(p.updated_at).getTime() : Date.now(),
+  }));
+
+  const tagsNorm = (tags || []).map((tg) => ({
+    id: tg.id,
+    name: tg.name,
+    color: tg.color || "#6366f1",
+  }));
+
+  const { data: notes, error: nErr } = await supabase
+    .from("notes")
+    .select("*")
+    .order("updated_at", { ascending: false });
+  if (nErr) console.warn("notes table:", nErr.message); // table may not exist yet — non-fatal
+
+  const notesNorm = (notes || []).map((n) => ({
+    id: n.id,
+    title: n.title || "",
+    content: n.content || "",
+    primaryProjectId: n.primary_project_id || null,
+    primaryTaskId: n.primary_task_id || null,
+    pinned: !!n.pinned,
+    createdAt: n.created_at ? new Date(n.created_at).getTime() : Date.now(),
+    updatedAt: n.updated_at ? new Date(n.updated_at).getTime() : Date.now(),
+  }));
+
+  return { projects: projectsNorm, tasks: tasksNorm, tags: tagsNorm, notes: notesNorm };
+}
+
 /* ─────────────────────────────────────────────
    Config
 ───────────────────────────────────────────── */
 const STATUSES = {
-  todo: { label: "To do", color: "#8b95a5", icon: "◇", bg: "#8b95a515" },
-  doing: { label: "Rozpracováno", color: "#3b82f6", icon: "▸", bg: "#3b82f615" },
-  waiting: { label: "Waiting / Blocked", color: "#f59e0b", icon: "◷", bg: "#f59e0b15" },
-  done: { label: "Hotovo", color: "#22c55e", icon: "✓", bg: "#22c55e15" },
+  todo:    { label: "To do",         color: "#8b95a5", icon: "circle",       bg: "#8b95a515" },
+  doing:   { label: "Rozpracováno",  color: "#3b82f6", icon: "play-circle",  bg: "#3b82f615" },
+  waiting: { label: "Čekám",         color: "#f59e0b", icon: "pause-circle", bg: "#f59e0b15" },
+  done:    { label: "Hotovo",        color: "#22c55e", icon: "check-circle", bg: "#22c55e15" },
 };
 const STATUS_KEYS = Object.keys(STATUSES);
+const STATUS_SHORT = { todo: "To do", doing: "Začít", waiting: "Čekám", done: "Hotovo" };
 
 const PRIORITIES = {
-  low: { label: "Nízká", color: "#22c55e", bg: "#22c55e18", icon: "▽" },
-  medium: { label: "Střední", color: "#f59e0b", bg: "#f59e0b18", icon: "◇" },
-  high: { label: "Vysoká", color: "#ef4444", bg: "#ef444418", icon: "△" },
+  low:    { label: "Nízká",   color: "#22c55e", bg: "#22c55e18", icon: "minus"    },
+  medium: { label: "Střední", color: "#f59e0b", bg: "#f59e0b18", icon: "minus"    },
+  high:   { label: "Vysoká",  color: "#ef4444", bg: "#ef444418", icon: "arrow-up" },
 };
 
 const PROJ_STATUS = {
@@ -130,6 +373,17 @@ const TAG_COLORS = [
   "#06b6d4", "#0ea5e9", "#3b82f6", "#6366f1", "#8b5cf6", "#a855f7", "#d946ef",
   "#ec4899", "#f43f5e", "#78716c", "#64748b",
 ];
+const PROJECT_COLORS = [
+  "#3b82f6", "#22c55e", "#f59e0b", "#8b5cf6", "#ef4444",
+  "#06b6d4", "#ec4899", "#84cc16", "#6366f1", "#f97316",
+];
+
+function projectColor(projectId) {
+  if (!projectId) return "#64748b";
+  let h = 0;
+  for (let i = 0; i < projectId.length; i++) h = (h * 31 + projectId.charCodeAt(i)) >>> 0;
+  return PROJECT_COLORS[h % PROJECT_COLORS.length];
+}
 
 // Stable IDs for defaults
 const SID = {
@@ -282,6 +536,8 @@ function ToastList({ toasts }) {
    Main App
 ───────────────────────────────────────────── */
 export default function MichalTasks() {
+  const [session, setSession] = useState(null);
+  const userId = session?.user?.id ?? null;
   const [dk, setDk] = useState(true);
   const [page, setPage] = useState("dashboard");
   const [selProject, setSelProject] = useState(null);
@@ -289,6 +545,9 @@ export default function MichalTasks() {
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [tags, setTags] = useState([]);
+  const [notes, setNotes] = useState([]);
+  const [openNoteId, setOpenNoteId] = useState(null);
+  const [cmdOpen, setCmdOpen] = useState(false);
 
   const [loaded, setLoaded] = useState(false);
 
@@ -297,77 +556,107 @@ export default function MichalTasks() {
   const [dashFilter, setDashFilter] = useState(null);
 
   // Load
+  // Auth session (Supabase)
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setSession(data.session ?? null));
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession ?? null);
+    });
+    return () => sub?.subscription?.unsubscribe?.();
+  }, []);
+
+  // Load UI settings (only dk)
   useEffect(() => {
     (async () => {
-      const [p, tk, tg, s] = await Promise.all([
-        load(SK.PROJECTS, DEF_PROJECTS),
-        load(SK.TASKS, []),
-        load(SK.TAGS, DEF_TAGS),
-        load(SK.SETTINGS, { dk: true }),
-      ]);
-
-      const migrated = (tk || []).map((t) => {
-        // old statuses -> new
-        if (t.status === "prep") return { ...t, status: "todo" };
-        if (t.status === "approval") return { ...t, status: "waiting" };
-        if (t.status === "backlog") return { ...t, status: "todo" }; // rename
-        if (!t.status || !STATUSES[t.status]) return { ...t, status: "todo" };
-        return t;
-      });
-
-      setProjects(p || []);
-      setTasks(migrated);
-      setTags(tg || []);
+      const s = await load(SK.SETTINGS, { dk: true });
       setDk(s?.dk ?? true);
-      setLoaded(true);
     })();
   }, []);
 
-  // Debounced saves
-  useDebouncedEffect(() => {
-    if (loaded) save(SK.PROJECTS, projects);
-  }, [projects, loaded], 350);
+  // Load from Supabase (projects/tags/tasks) after login
+  useEffect(() => {
+    if (!userId) return;
 
-  useDebouncedEffect(() => {
-    if (loaded) save(SK.TASKS, tasks);
-  }, [tasks, loaded], 350);
+    (async () => {
+      try {
+        setLoaded(false);
+        await dbSeedIfEmpty(userId);
+        const data = await dbFetchAll();
+        setProjects(data.projects);
+        setTasks(data.tasks);
+        setTags(data.tags);
+        setNotes(data.notes);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoaded(true);
+      }
+    })();
+  }, [userId]);
 
-  useDebouncedEffect(() => {
-    if (loaded) save(SK.TAGS, tags);
-  }, [tags, loaded], 350);
-
+  // Save dk preference
   useDebouncedEffect(() => {
     if (loaded) save(SK.SETTINGS, { dk });
   }, [dk, loaded], 350);
 
-  // CRUD — Projects
+  // CRUD — Projects (Supabase, optimistic)
   const addProject = useCallback((p) => {
     const proj = {
-      id: uid(),
+      id: uuid4(),
+      name: (p?.name || "").trim() || "Nový projekt",
+      description: p?.description || "",
+      status: p?.status || "active",
+      tags: [],
       createdAt: Date.now(),
       updatedAt: Date.now(),
-      tags: [],
-      description: "",
-      status: "active",
-      ...p,
     };
     setProjects((prev) => [...prev, proj]);
-    return proj;
-  }, []);
 
-  const updateProject = useCallback(
-    (id, u) =>
-      setProjects((p) =>
-        p.map((x) => (x.id === id ? { ...x, ...u, updatedAt: Date.now() } : x))
-      ),
-    []
-  );
+    // fire-and-forget
+    (async () => {
+      if (!userId) return;
+      const { error } = await supabase.from("projects").insert({
+        id: proj.id,
+        owner: userId,
+        name: proj.name,
+        description: proj.description,
+        status: proj.status,
+      });
+      if (error) console.error(error);
+    })();
+
+    return proj;
+  }, [userId]);
+
+  const updateProject = useCallback((id, u) => {
+    setProjects((p) => p.map((x) => (x.id === id ? { ...x, ...u, updatedAt: Date.now() } : x)));
+
+    (async () => {
+      const payload = {};
+      if (u.name !== undefined) payload.name = u.name;
+      if (u.description !== undefined) payload.description = u.description;
+      if (u.status !== undefined) payload.status = u.status;
+      if (!Object.keys(payload).length) return;
+
+      const { error } = await supabase.from("projects").update(payload).eq("id", id);
+      if (error) console.error(error);
+    })();
+  }, []);
 
   const deleteProject = useCallback(
     (id) => {
       if (!confirm("Opravdu smazat projekt? Úkoly přejdou do Inboxu.")) return;
+
       setProjects((p) => p.filter((x) => x.id !== id));
       setTasks((p) => p.map((x) => (x.projectId === id ? { ...x, projectId: null } : x)));
+
+      (async () => {
+        // move tasks to inbox
+        await supabase.from("tasks").update({ project_id: null }).eq("project_id", id);
+        const { error } = await supabase.from("projects").delete().eq("id", id);
+        if (error) console.error(error);
+      })();
+
       if (selProject === id) {
         setPage("projects");
         setSelProject(null);
@@ -376,63 +665,288 @@ export default function MichalTasks() {
     [selProject]
   );
 
-  // CRUD — Tasks
+  // CRUD — Tasks (Supabase, optimistic)
   const addTask = useCallback((task) => {
-    const t = {
-      id: uid(),
-      title: "",
-      description: "",
-      status: "todo",
-      priority: null,
-      dueDate: null, // YYYY-MM-DD
-      projectId: null,
-      tagIds: [],
-      position: Date.now(), // used for ordering inside columns
+    const tsk = {
+      id: uuid4(),
+      title: (task?.title || "").trim(),
+      description: task?.description || "",
+      status: task?.status || "todo",
+      priority: task?.priority ?? null,
+      dueDate: task?.dueDate ?? null, // YYYY-MM-DD
+      projectId: task?.projectId ?? null,
+      tagIds: task?.tagIds || [],
+      phases: [],
+      position: Date.now(),
       createdAt: Date.now(),
       updatedAt: Date.now(),
       completedAt: null,
-      starred: false,
-      ...task,
+      starred: !!task?.starred,
+      recurrence: task?.recurrence ?? null,
     };
-    setTasks((p) => [...p, t]);
-    return t;
-  }, []);
+    setTasks((p) => [...p, tsk]);
 
-  const updateTask = useCallback((id, u) => {
-    setTasks((p) =>
-      p.map((x) => {
-        if (x.id !== id) return x;
-        const up = { ...x, ...u, updatedAt: Date.now() };
-        if (u.status === "done" && x.status !== "done") up.completedAt = Date.now();
-        if (u.status && u.status !== "done") up.completedAt = null;
-        return up;
-      })
-    );
-  }, []);
+    (async () => {
+      if (!userId) return;
+      const { error } = await supabase.from("tasks").insert({
+        id: tsk.id,
+        owner: userId,
+        project_id: tsk.projectId,
+        title: tsk.title,
+        description: tsk.description,
+        status: tsk.status,
+        priority: tsk.priority,
+        due_date: tsk.dueDate,
+        position: tsk.position,
+        starred: tsk.starred,
+        phases: tsk.phases,
+        ...(tsk.recurrence != null ? { recurrence: tsk.recurrence } : {}),
+        completed_at: tsk.status === "done" ? new Date().toISOString() : null,
+      });
+      if (error) console.error(error);
+
+      if (tsk.tagIds?.length) {
+        const rows = tsk.tagIds.map((tagId) => ({ owner: userId, task_id: tsk.id, tag_id: tagId }));
+        const { error: e2 } = await supabase.from("task_tags").insert(rows);
+        if (e2) console.error(e2);
+      }
+    })();
+
+    return tsk;
+  }, [userId]);
+
+  const updateTask = useCallback(
+    (id, u) => {
+      let prevTask = null;
+      let nextTask = null;
+
+      setTasks((p) =>
+        p.map((x) => {
+          if (x.id !== id) return x;
+          prevTask = x;
+
+          const up = { ...x, ...u, updatedAt: Date.now() };
+          if (u.status === "done" && x.status !== "done") up.completedAt = Date.now();
+          if (u.status && u.status !== "done") up.completedAt = null;
+
+          // normalize optional fields
+          if (u.projectId !== undefined) up.projectId = u.projectId;
+          if (u.dueDate !== undefined) up.dueDate = u.dueDate;
+          if (u.tagIds !== undefined) up.tagIds = u.tagIds;
+          if (u.phases !== undefined) up.phases = u.phases;
+          if (u.recurrence !== undefined) up.recurrence = u.recurrence;
+
+          nextTask = up;
+          return up;
+        })
+      );
+
+      (async () => {
+        if (!nextTask) return;
+
+        const payload = {};
+        if (u.title !== undefined) payload.title = nextTask.title;
+        if (u.description !== undefined) payload.description = nextTask.description;
+        if (u.status !== undefined) payload.status = nextTask.status;
+        if (u.priority !== undefined) payload.priority = nextTask.priority;
+        if (u.projectId !== undefined) payload.project_id = nextTask.projectId;
+        if (u.dueDate !== undefined) payload.due_date = nextTask.dueDate;
+        if (u.position !== undefined) payload.position = nextTask.position;
+        if (u.starred !== undefined) payload.starred = nextTask.starred;
+        if (u.phases !== undefined) payload.phases = nextTask.phases;
+        if (u.recurrence !== undefined) payload.recurrence = nextTask.recurrence;
+
+        if (u.status !== undefined) {
+          payload.completed_at = nextTask.status === "done" ? new Date().toISOString() : null;
+        }
+
+        if (Object.keys(payload).length) {
+          const { error } = await supabase.from("tasks").update(payload).eq("id", id);
+          if (error) console.error(error);
+        }
+
+        // Auto-create next recurrence when task is marked done
+        if (u.status === "done" && prevTask?.status !== "done" && nextTask.recurrence) {
+          const rec = nextTask.recurrence;
+          let nextDue = null;
+          if (nextTask.dueDate) {
+            const d = new Date(nextTask.dueDate + "T00:00:00");
+            if (rec === "daily") d.setDate(d.getDate() + 1);
+            else if (rec === "weekly") d.setDate(d.getDate() + 7);
+            else if (rec === "monthly") d.setMonth(d.getMonth() + 1);
+            nextDue = d.toISOString().slice(0, 10);
+          }
+          const newId = crypto.randomUUID();
+          const newTask = {
+            id: newId,
+            title: nextTask.title,
+            description: nextTask.description,
+            status: "todo",
+            priority: nextTask.priority,
+            dueDate: nextDue,
+            projectId: nextTask.projectId,
+            tagIds: nextTask.tagIds || [],
+            phases: [],
+            position: Date.now() + 1,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            completedAt: null,
+            starred: false,
+            recurrence: rec,
+          };
+          setTasks((p) => [...p, newTask]);
+          (async () => {
+            if (!userId) return;
+            await supabase.from("tasks").insert({
+              id: newTask.id, owner: userId, title: newTask.title,
+              description: newTask.description, status: newTask.status,
+              priority: newTask.priority, due_date: newTask.dueDate,
+              project_id: newTask.projectId, position: newTask.position,
+              starred: false, phases: [],
+              ...(rec != null ? { recurrence: rec } : {}),
+            });
+            if (newTask.tagIds?.length) {
+              const rows = newTask.tagIds.map((tagId) => ({ owner: userId, task_id: newTask.id, tag_id: tagId }));
+              await supabase.from("task_tags").insert(rows);
+            }
+          })();
+        }
+
+        if (u.tagIds !== undefined) {
+          const prev = prevTask?.tagIds || [];
+          const next = nextTask.tagIds || [];
+          const toAdd = next.filter((x) => !prev.includes(x));
+          const toRemove = prev.filter((x) => !next.includes(x));
+
+          if (toAdd.length) {
+            const rows = toAdd.map((tagId) => ({ owner: userId, task_id: id, tag_id: tagId }));
+            const { error: e1 } = await supabase.from("task_tags").insert(rows);
+            if (e1) console.error(e1);
+          }
+
+          if (toRemove.length) {
+            const { error: e2 } = await supabase.from("task_tags").delete().eq("task_id", id).in("tag_id", toRemove);
+            if (e2) console.error(e2);
+          }
+        }
+      })();
+    },
+    [userId]
+  );
 
   const deleteTask = useCallback(
     (id) => {
       if (!confirm("Smazat úkol?")) return;
       setTasks((p) => p.filter((x) => x.id !== id));
       if (taskDetail === id) setTaskDetail(null);
+
+      (async () => {
+        await supabase.from("task_tags").delete().eq("task_id", id);
+        const { error } = await supabase.from("tasks").delete().eq("id", id);
+        if (error) console.error(error);
+      })();
     },
     [taskDetail]
   );
 
-  // CRUD — Tags
+  // CRUD — Tags (Supabase, optimistic)
   const addTag = useCallback((tag) => {
-    const t = { id: uid(), color: "#6366f1", ...tag };
-    setTags((p) => [...p, t]);
-    return t;
-  }, []);
+    const tg = { id: uuid4(), name: (tag?.name || "").trim() || "tag", color: tag?.color || "#6366f1" };
+    setTags((p) => [...p, tg]);
+
+    (async () => {
+      if (!userId) return;
+      const { error } = await supabase.from("tags").insert({ id: tg.id, owner: userId, name: tg.name, color: tg.color });
+      if (error) console.error(error);
+    })();
+
+    return tg;
+  }, [userId]);
 
   const updateTag = useCallback((id, u) => {
     setTags((p) => p.map((x) => (x.id === id ? { ...x, ...u } : x)));
+
+    (async () => {
+      const payload = {};
+      if (u.name !== undefined) payload.name = u.name;
+      if (u.color !== undefined) payload.color = u.color;
+      if (!Object.keys(payload).length) return;
+      const { error } = await supabase.from("tags").update(payload).eq("id", id);
+      if (error) console.error(error);
+    })();
   }, []);
 
   const deleteTag = useCallback((id) => {
     setTags((p) => p.filter((x) => x.id !== id));
     setTasks((p) => p.map((x) => ({ ...x, tagIds: (x.tagIds || []).filter((tid) => tid !== id) })));
+
+    (async () => {
+      await supabase.from("task_tags").delete().eq("tag_id", id);
+      const { error } = await supabase.from("tags").delete().eq("id", id);
+      if (error) console.error(error);
+    })();
+  }, []);
+
+  // CRUD — Notes (Supabase, optimistic)
+  const addNote = useCallback((opts = {}) => {
+    const note = {
+      id: uuid4(),
+      title: opts.title || "",
+      content: opts.content || "",
+      primaryProjectId: opts.primaryProjectId || null,
+      primaryTaskId: opts.primaryTaskId || null,
+      pinned: false,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    setNotes((prev) => [note, ...prev]);
+
+    (async () => {
+      if (!userId) return;
+      const { error } = await supabase.from("notes").insert({
+        id: note.id,
+        owner: userId,
+        title: note.title,
+        content: note.content,
+        primary_project_id: note.primaryProjectId,
+        primary_task_id: note.primaryTaskId,
+        pinned: note.pinned,
+      });
+      if (error) console.error(error);
+    })();
+
+    return note;
+  }, [userId]);
+
+  const updateNote = useCallback((id, u) => {
+    setNotes((prev) =>
+      prev.map((n) => (n.id !== id ? n : { ...n, ...u, updatedAt: Date.now() }))
+    );
+
+    (async () => {
+      const payload = { updated_at: new Date().toISOString() };
+      if (u.title !== undefined) payload.title = u.title;
+      if (u.content !== undefined) payload.content = u.content;
+      if (u.primaryProjectId !== undefined) payload.primary_project_id = u.primaryProjectId;
+      if (u.primaryTaskId !== undefined) payload.primary_task_id = u.primaryTaskId;
+      if (u.pinned !== undefined) payload.pinned = u.pinned;
+      const { error } = await supabase.from("notes").update(payload).eq("id", id);
+      if (error) console.error(error);
+    })();
+  }, []);
+
+  const deleteNote = useCallback((id) => {
+    setNotes((prev) => prev.filter((n) => n.id !== id));
+    (async () => {
+      const { error } = await supabase.from("notes").delete().eq("id", id);
+      if (error) console.error(error);
+    })();
+  }, []);
+
+  const openNote = useCallback((id) => {
+    setPage("notes");
+    setOpenNoteId(id);
+    setTaskDetail(null);
   }, []);
 
   const t = theme(dk);
@@ -490,11 +1004,21 @@ export default function MichalTasks() {
     setSearch,
     dashFilter,
     setDashFilter,
+    notes,
+    addNote,
+    updateNote,
+    deleteNote,
+    openNote,
+    openNoteId,
+    setOpenNoteId,
+    cmdOpen,
+    setCmdOpen,
   };
 
   return (
     <AppContext.Provider value={ctx}>
       <ToastProvider>
+        <AuthGate>
         <style>{`
           @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
           *{margin:0;padding:0;box-sizing:border-box}
@@ -524,10 +1048,14 @@ export default function MichalTasks() {
             {page === "projects" && <ProjectsPage />}
             {page === "project-detail" && <ProjectDetail />}
             {page === "tasks" && <AllTasksPage />}
+            {page === "timeline" && <TimelinePage />}
             {page === "tags" && <TagsPage />}
+            {page === "notes" && <NotesPage />}
           </main>
           {taskDetail && <TaskDrawer />}
+          {cmdOpen && <CommandPalette onClose={() => setCmdOpen(false)} />}
         </div>
+        </AuthGate>
       </ToastProvider>
     </AppContext.Provider>
   );
@@ -537,32 +1065,42 @@ export default function MichalTasks() {
    Sidebar
 ───────────────────────────────────────────── */
 function Sidebar({ toggleDk }) {
-  const { t, dk, projects, tasks, page, setPage, openProject, search, setSearch } = useApp();
+  const { t, dk, projects, tasks, page, setPage, openProject, search, setSearch, setTaskDetail, setCmdOpen } = useApp();
   const active = projects.filter((p) => p.status === "active");
   const searchRef = useRef(null);
 
-  // Ctrl+K focus
+  // Global keyboard shortcuts
   useEffect(() => {
     const handler = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        searchRef.current?.focus();
+        setCmdOpen(true);
+        return;
+      }
+      // Skip if user is typing in an input/textarea
+      const tag = document.activeElement?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+
+      if (e.key === "n" || e.key === "N") {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent("focusQuickAdd"));
+      } else if (e.key === "Escape") {
+        setTaskDetail(null);
+      } else if (e.key === "k" || e.key === "K") {
+        window.dispatchEvent(new CustomEvent("toggleKanbanView"));
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, []);
+  }, [setTaskDetail, setCmdOpen]);
 
   const nav = [
-    { id: "dashboard", label: "Přehled", icon: "⊞" },
-    { id: "projects", label: "Projekty", icon: "◫" },
-    {
-      id: "tasks",
-      label: "Úkoly",
-      icon: "☰",
-      count: tasks.filter((t) => t.status !== "done").length,
-    },
-    { id: "tags", label: "Tagy", icon: "◉" },
+    { id: "dashboard", label: "Přehled",   icon: "home"         },
+    { id: "projects",  label: "Projekty",  icon: "folder"       },
+    { id: "tasks",     label: "Úkoly",     icon: "check-square", count: tasks.filter((t) => t.status !== "done").length },
+    { id: "timeline",  label: "Plán",      icon: "calendar"     },
+    { id: "tags",      label: "Tagy",      icon: "tag"          },
+    { id: "notes",     label: "Poznámky",  icon: "file-text", count: null },
   ];
 
   return (
@@ -617,7 +1155,7 @@ function Sidebar({ toggleDk }) {
             ref={searchRef}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Hledat… (Ctrl+K)"
+            placeholder="Hledat… (⌘K)"
             style={{
               flex: 1,
               border: "none",
@@ -658,7 +1196,9 @@ function Sidebar({ toggleDk }) {
                 transition: "all .12s",
               }}
             >
-              <span style={{ fontSize: 15, width: 18, textAlign: "center", opacity: 0.85 }}>{n.icon}</span>
+              <span style={{ width: 18, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.85 }}>
+                <Icon name={n.icon} size={15} color={act ? t.accent : t.text2} strokeWidth={act ? 2.25 : 1.75} />
+              </span>
               {n.label}
               {n.count > 0 && (
                 <span
@@ -720,7 +1260,7 @@ function Sidebar({ toggleDk }) {
                       width: 7,
                       height: 7,
                       borderRadius: "50%",
-                      background: PROJ_STATUS[p.status]?.color || t.text3,
+                      background: projectColor(p.id)|| t.text3,
                       flexShrink: 0,
                     }}
                   />
@@ -733,25 +1273,41 @@ function Sidebar({ toggleDk }) {
         )}
       </nav>
 
-      <div style={{ padding: "10px 8px", borderTop: `1px solid ${t.border}` }}>
-        <button
-          onClick={toggleDk}
-          style={{
-            width: "100%",
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "7px 10px",
-            borderRadius: 7,
-            background: "transparent",
-            border: "none",
-            color: t.text2,
-            fontSize: 12.5,
-          }}
-        >
-          <span style={{ fontSize: 14 }}>{dk ? "☀" : "☾"}</span>
-          {dk ? "Světlý režim" : "Tmavý režim"}
-        </button>
+            <div style={{ padding: "10px 12px", borderTop: `1px solid ${t.border}` }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ fontSize: 12.5, color: t.text2, display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 14 }}>{dk ? "🌙" : "☀️"}</span>
+            {dk ? "Tmavý" : "Světlý"}
+          </div>
+
+          <button
+            onClick={toggleDk}
+            style={{
+              width: 44,
+              height: 24,
+              borderRadius: 999,
+              border: `1px solid ${t.border}`,
+              background: dk ? t.accentBg : t.input,
+              position: "relative",
+              padding: 0,
+            }}
+            aria-label="Toggle theme"
+          >
+            <span
+              style={{
+                position: "absolute",
+                top: 2,
+                left: dk ? 22 : 2,
+                width: 20,
+                height: 20,
+                borderRadius: "50%",
+                background: dk ? t.accent : t.card,
+                transition: "left .15s ease",
+                boxShadow: t.shadow,
+              }}
+            />
+          </button>
+        </div>
       </div>
     </aside>
   );
@@ -767,6 +1323,13 @@ function QuickAdd({ defaultProjectId = null }) {
   const [val, setVal] = useState("");
   const [expanded, setExpanded] = useState(false);
   const [lastTaskId, setLastTaskId] = useState(null);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    const handler = () => inputRef.current?.focus();
+    window.addEventListener("focusQuickAdd", handler);
+    return () => window.removeEventListener("focusQuickAdd", handler);
+  }, []);
 
   const handleAdd = () => {
     const title = val.trim();
@@ -803,10 +1366,11 @@ function QuickAdd({ defaultProjectId = null }) {
         </div>
 
         <input
+          ref={inputRef}
           value={val}
           onChange={(e) => setVal(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-          placeholder="Nový úkol… (Enter pro přidání)"
+          placeholder="Nový úkol… (N / Enter)"
           style={{
             flex: 1,
             border: "none",
@@ -835,7 +1399,7 @@ function QuickAdd({ defaultProjectId = null }) {
       </div>
 
       {expanded && task && (
-        <div style={{ borderTop: `1px solid ${t.border}`, padding: "14px 16px", animation: "fadeIn .15s ease-out" }}>
+        <div style={{ borderTop: `1px solid ${t.border}`, padding: "18px 20px", animation: "fadeIn .15s ease-out" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
             <span style={{ fontSize: 12.5, fontWeight: 600, color: t.text }}>
               <span style={{ color: "#22c55e", marginRight: 4 }}>✓</span>„{task.title}“
@@ -863,9 +1427,11 @@ function QuickAdd({ defaultProjectId = null }) {
                     background: task.status === k ? v.bg : "transparent",
                     color: task.status === k ? v.color : t.text2,
                     transition: "all .1s",
+                    display: "inline-flex", alignItems: "center", gap: 5,
                   }}
                 >
-                  {v.icon} {v.label}
+                  <Icon name={v.icon} size={11} color="currentColor" strokeWidth={2} />
+                  {v.label}
                 </button>
               ))}
             </div>
@@ -889,9 +1455,11 @@ function QuickAdd({ defaultProjectId = null }) {
                     background: task.priority === k ? v.bg : "transparent",
                     color: task.priority === k ? v.color : t.text2,
                     transition: "all .1s",
+                    display: "inline-flex", alignItems: "center", gap: 5,
                   }}
                 >
-                  {v.icon} {v.label}
+                  <Icon name={v.icon} size={11} color="currentColor" strokeWidth={2.5} />
+                  {v.label}
                 </button>
               ))}
             </div>
@@ -1018,6 +1586,47 @@ function QuickAdd({ defaultProjectId = null }) {
 /* ─────────────────────────────────────────────
    Dashboard
 ───────────────────────────────────────────── */
+/* ─────────────────────────────────────────────
+   Icon — lightweight inline SVG system
+───────────────────────────────────────────── */
+function Icon({ name, size = 14, color = "currentColor", strokeWidth = 1.75, fill = "none" }) {
+  const p = {
+    home:           ["M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z", "M9 22V12h6v10"],
+    folder:         "M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z",
+    "check-square": ["M9 11l3 3L22 4", "M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"],
+    calendar:       ["M8 2v4", "M16 2v4", "M3 8h18", "M3 6a2 2 0 012-2h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6z"],
+    tag:            ["M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z", "M7 7h.01"],
+    "file-text":    ["M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z", "M14 2v6h6", "M16 13H8", "M16 17H8", "M10 9H8"],
+    circle:         "M12 2a10 10 0 100 20A10 10 0 0012 2z",
+    "play-circle":  ["M12 2a10 10 0 100 20A10 10 0 0012 2z", "M10 8l6 4-6 4V8z"],
+    clock:          ["M12 2a10 10 0 100 20A10 10 0 0012 2z", "M12 6v6l4 2"],
+    "check-circle": ["M22 11.08V12a10 10 0 11-5.93-9.14", "M22 4L12 14.01l-3-3"],
+    "pause-circle": ["M12 2a10 10 0 100 20A10 10 0 0012 2z", "M10 15V9", "M14 15V9"],
+    star:           "M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z",
+    "alert-circle": ["M12 2a10 10 0 100 20A10 10 0 0012 2z", "M12 8v4", "M12 16h.01"],
+    "refresh-cw":   ["M23 4v6h-6", "M1 20v-6h6", "M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"],
+    list:           ["M8 6h13", "M8 12h13", "M8 18h13", "M3 6h.01", "M3 12h.01", "M3 18h.01"],
+    search:         ["M11 2a9 9 0 100 18A9 9 0 0011 2z", "M21 21l-4.35-4.35"],
+    pin:            ["M12 17v5", "M5 4a2 2 0 012-2h10a2 2 0 012 2v6a6 6 0 01-6 6 6 6 0 01-6-6V4z"],
+    trash:          ["M3 6h18", "M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2"],
+    plus:           ["M12 5v14", "M5 12h14"],
+    x:              ["M18 6L6 18", "M6 6l12 12"],
+    "chevron-down": "M6 9l6 6 6-6",
+    "chevron-up":   "M18 15l-6-6-6 6",
+    repeat:         ["M17 1l4 4-4 4", "M3 11V9a4 4 0 014-4h14", "M7 23l-4-4 4-4", "M21 13v2a4 4 0 01-4 4H3"],
+    "arrow-up":     ["M12 19V5", "M5 12l7-7 7 7"],
+    minus:          "M5 12h14",
+  };
+  const d = p[name];
+  if (!d) return null;
+  const ds = Array.isArray(d) ? d : [d];
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, display: "block" }}>
+      {ds.map((path, i) => <path key={i} d={path} />)}
+    </svg>
+  );
+}
+
 function StatCard({ label, value, color, icon, active, onClick }) {
   const { t } = useApp();
   return (
@@ -1036,8 +1645,8 @@ function StatCard({ label, value, color, icon, active, onClick }) {
         overflow: "hidden",
       }}
     >
-      <div style={{ position: "absolute", top: -8, right: -4, fontSize: 52, opacity: 0.06, fontWeight: 800, color, fontFamily: "'Outfit',sans-serif" }}>
-        {icon}
+      <div style={{ position: "absolute", top: 10, right: 10, opacity: 0.1 }}>
+        <Icon name={icon} size={40} color={color} strokeWidth={1.25} />
       </div>
       <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: t.text2, marginBottom: 8 }}>
         {label}
@@ -1051,6 +1660,10 @@ function StatCard({ label, value, color, icon, active, onClick }) {
 
 function Dashboard() {
   const { t, tasks, projects, dashFilter, setDashFilter, search, openProject } = useApp();
+
+  const [doingOpen, setDoingOpen] = useState(false);
+  const [waitingOpen, setWaitingOpen] = useState(false);
+  const [todoOpen, setTodoOpen] = useState(false);
 
   const today = startOfToday();
   const tmrw = new Date(today);
@@ -1073,10 +1686,16 @@ function Dashboard() {
     return d && x.status !== "done" && d < today;
   });
 
+  const dueToday = tasks.filter((x) => {
+    if (!x.dueDate || x.status === "done") return false;
+    const d = parseYMD(x.dueDate);
+    return d && d.getTime() === today.getTime();
+  });
+
   const dueSoon = tasks.filter((x) => {
     if (!x.dueDate || x.status === "done") return false;
     const d = parseYMD(x.dueDate);
-    return d && d >= today && d <= dayAfter;
+    return d && d > today && d <= dayAfter;
   });
 
   const matchesSearch = (task) => {
@@ -1104,7 +1723,7 @@ function Dashboard() {
             <div
               key={p.id}
               onClick={() => openProject(p.id)}
-              style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 10, padding: "14px 16px", marginBottom: 8, cursor: "pointer" }}
+              style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 10, padding: "18px 20px", marginBottom: 8, cursor: "pointer" }}
             >
               <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>{p.name}</div>
               <div style={{ fontSize: 12, color: t.text2 }}>{pt.length} úkolů, {done} hotovo</div>
@@ -1145,7 +1764,7 @@ function Dashboard() {
     filterContent = (
       <div className="fi">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-          <h2 style={{ fontSize: 17, fontWeight: 700, color: "#f59e0b" }}>Waiting / Blocked ({waitingT})</h2>
+          <h2 style={{ fontSize: 17, fontWeight: 700, color: "#f59e0b" }}>Čekám ({waitingT})</h2>
           <button onClick={() => setDashFilter(null)} style={{ background: "none", border: "none", color: t.text3, fontSize: 12 }}>
             ✕ Zavřít
           </button>
@@ -1159,7 +1778,10 @@ function Dashboard() {
     filterContent = (
       <div className="fi">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-          <h2 style={{ fontSize: 17, fontWeight: 700, color: "#eab308" }}>★ TOP úkoly ({starredT.length})</h2>
+          <h2 style={{ fontSize: 17, fontWeight: 700, color: "#eab308", display: "flex", alignItems: "center", gap: 7 }}>
+            <Icon name="star" size={16} color="#eab308" fill="#eab308" strokeWidth={1.5} />
+            TOP úkoly ({starredT.length})
+          </h2>
           <button onClick={() => setDashFilter(null)} style={{ background: "none", border: "none", color: t.text3, fontSize: 12 }}>
             ✕ Zavřít
           </button>
@@ -1175,122 +1797,211 @@ function Dashboard() {
     );
   }
 
-  const sections = [];
-  if (overdue.length > 0) sections.push({ title: "Po termínu", color: "#ef4444", icon: "!", tasks: overdue });
-  sections.push({ title: "Rozpracováno", color: "#3b82f6", icon: "▸", tasks: doing, empty: "Žádné rozpracované úkoly" });
-  sections.push({ title: "Waiting / Blocked", color: "#f59e0b", icon: "◷", tasks: waitingAll, empty: "Nic neblokuje — skvělé!" });
-  sections.push({ title: "Blížící se deadline", color: "#f97316", icon: "⏱", tasks: dueSoon, empty: "Žádné blízké termíny" });
-  sections.push({ title: "To do", color: "#8b95a5", icon: "◇", tasks: todo, empty: "To do je prázdné" });
+  const activeProjects = projects.filter((p) => p.status === "active");
+
+  // Helper: section header
+  const SectionHead = ({ icon, title, color, count, action }) => (
+    <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 8 }}>
+      <span style={{ width: 22, height: 22, borderRadius: 6, background: color + "18", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <Icon name={icon} size={12} color={color} strokeWidth={2} />
+      </span>
+      <span style={{ fontSize: 13, fontWeight: 700, color }}>{title}</span>
+      <span className="mono" style={{ fontSize: 10, color: t.text3, background: t.input, padding: "1px 7px", borderRadius: 6 }}>{count}</span>
+      {action && <span style={{ marginLeft: "auto" }}>{action}</span>}
+    </div>
+  );
 
   return (
-    <div style={{ padding: "24px 28px", maxWidth: 900 }} className="fi">
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.8px", marginBottom: 3 }}>Přehled</h1>
-        <p style={{ color: t.text2, fontSize: 13.5 }}>
-          {new Date().toLocaleDateString("cs-CZ", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
-        </p>
+    <div style={{ padding: "20px 20px" }} className="fi">
+
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 20, gap: 12 }}>
+        <div>
+          <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.8px", marginBottom: 2 }}>Přehled</h1>
+          <p style={{ color: t.text2, fontSize: 13 }}>
+            {new Date().toLocaleDateString("cs-CZ", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+          </p>
+        </div>
+        <div style={{ fontSize: 11, color: t.text3, textAlign: "right", lineHeight: 1.7, flexShrink: 0 }}>
+          <span style={{ background: t.input, padding: "2px 7px", borderRadius: 5, marginRight: 4 }}>N</span> nový úkol
+          {"  ·  "}
+          <span style={{ background: t.input, padding: "2px 7px", borderRadius: 5, marginRight: 4 }}>Esc</span> zavřít
+        </div>
       </div>
 
-      <div style={{ marginBottom: 24 }}>
+      <div style={{ marginBottom: 20 }}>
         <QuickAdd />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10, marginBottom: 28 }}>
-        <StatCard
-          label="Celkem úkolů"
-          value={totalT}
-          color="#8b5cf6"
-          icon="☰"
-          active={dashFilter === "total"}
-          onClick={() => setDashFilter(dashFilter === "total" ? null : "total")}
-        />
-        <StatCard
-          label="Aktivní projekty"
-          value={activeP}
-          color="#3b82f6"
-          icon="◫"
-          active={dashFilter === "active-projects"}
-          onClick={() => setDashFilter(dashFilter === "active-projects" ? null : "active-projects")}
-        />
-        <StatCard
-          label="Waiting"
-          value={waitingT}
-          color={waitingT > 0 ? "#f59e0b" : "#22c55e"}
-          icon="◷"
-          active={dashFilter === "waiting"}
-          onClick={() => setDashFilter(dashFilter === "waiting" ? null : "waiting")}
-        />
-        <StatCard
-          label="Hotovo"
-          value={doneT}
-          color="#22c55e"
-          icon="✓"
-          active={dashFilter === "done"}
-          onClick={() => setDashFilter(dashFilter === "done" ? null : "done")}
-        />
-        <StatCard
-          label="TOP úkoly"
-          value={starredT.length}
-          color="#eab308"
-          icon="★"
-          active={dashFilter === "starred"}
-          onClick={() => setDashFilter(dashFilter === "starred" ? null : "starred")}
-        />
-      </div>
+      {/* Two-column layout */}
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(520px, 1fr) 480px", gap: 28, alignItems: "start", minWidth: 1060 }}>
 
-      {filterContent && <div style={{ marginBottom: 24 }}>{filterContent}</div>}
+        {/* ── LEFT: Focus ── */}
+        <div>
+          {/* Filter overlay replaces left column content */}
+          {filterContent && <div className="fi">{filterContent}</div>}
 
-      {!dashFilter && starredT.length > 0 && (
-        <div style={{ marginBottom: 24 }} className="fi">
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-            <span style={{ width: 24, height: 24, borderRadius: 7, background: "#eab30818", display: "flex", alignItems: "center", justifyContent: "center", color: "#eab308", fontSize: 13, fontWeight: 700 }}>
-              ★
-            </span>
-            <h2 style={{ fontSize: 15, fontWeight: 700, color: "#eab308" }}>TOP úkoly</h2>
-            <span className="mono" style={{ fontSize: 11, color: t.text3, background: t.input, padding: "2px 8px", borderRadius: 8 }}>
-              {starredT.length}
-            </span>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-            {starredT.filter(matchesSearch).map((task) => (
-              <DashTaskCard key={task.id} task={task} />
-            ))}
-          </div>
+          {!dashFilter && (
+            <>
+              {tasks.length === 0 && (
+                <div style={{ textAlign: "center", padding: "60px 20px", color: t.text3, background: t.card, borderRadius: 14, border: `1px dashed ${t.border}` }}>
+                  <div style={{ fontSize: 40, marginBottom: 10, opacity: 0.4 }}>◇</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6, fontFamily: "'Outfit',sans-serif" }}>Zatím prázdno</div>
+                  <div style={{ fontSize: 13 }}>Přidej první úkol přes pole nahoře nebo stiskni <kbd style={{ background: t.input, padding: "1px 6px", borderRadius: 4, fontSize: 11 }}>N</kbd></div>
+                </div>
+              )}
+
+              {/* Starred */}
+              {starredT.length > 0 && (
+                <div style={{ background: t.kanban, border: `1px solid ${t.border}`, borderRadius: 12, padding: "12px 12px 8px", marginBottom: 12 }}>
+                  <SectionHead icon="star" title="TOP úkoly" color="#eab308" count={starredT.filter(matchesSearch).length} />
+                  <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                    {starredT.filter(matchesSearch).map((task) => <DashTaskCard key={task.id} task={task} sectionColor="#eab308" />)}
+                  </div>
+                </div>
+              )}
+
+              {/* Overdue */}
+              {overdue.length > 0 && (
+                <div style={{ background: "#ef444408", border: `1px solid #ef444425`, borderRadius: 12, padding: "12px 12px 8px", marginBottom: 12 }}>
+                  <SectionHead icon="alert-circle" title="Po termínu" color="#ef4444" count={overdue.filter(matchesSearch).length} />
+                  <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                    {overdue.filter(matchesSearch).map((task) => <DashTaskCard key={task.id} task={task} sectionColor="#ef4444" />)}
+                  </div>
+                </div>
+              )}
+
+              {/* Due today */}
+              {dueToday.length > 0 && (
+                <div style={{ background: "#a855f708", border: `1px solid #a855f725`, borderRadius: 12, padding: "12px 12px 8px", marginBottom: 12 }}>
+                  <SectionHead icon="calendar" title="Dnes" color="#a855f7" count={dueToday.filter(matchesSearch).length} />
+                  <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                    {dueToday.filter(matchesSearch).map((task) => <DashTaskCard key={task.id} task={task} sectionColor="#a855f7" />)}
+                  </div>
+                </div>
+              )}
+
+              {/* Doing — collapsible */}
+              {(() => {
+                const list = doing.filter(matchesSearch);
+                const shown = doingOpen ? list : list.slice(0, 3);
+                return (
+                  <div style={{ background: "#3b82f608", border: `1px solid #3b82f625`, borderRadius: 12, padding: "12px 12px 8px", marginBottom: 12 }}>
+                    <SectionHead
+                      icon="play-circle" title="Rozpracováno" color="#3b82f6" count={list.length}
+                      action={list.length > 3 && (
+                        <button onClick={() => setDoingOpen(v => !v)} style={{ background: "none", border: "none", color: "#3b82f6", fontSize: 11, cursor: "pointer", padding: "1px 4px" }}>
+                          {doingOpen ? "Sbalit ▴" : `+${list.length - 3} dalších ▾`}
+                        </button>
+                      )}
+                    />
+                    {list.length === 0 ? (
+                      <div style={{ color: t.text3, fontSize: 12.5, padding: "8px 4px 2px", fontStyle: "italic" }}>Žádné rozpracované úkoly</div>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                        {shown.map((task) => <DashTaskCard key={task.id} task={task} sectionColor="#3b82f6" />)}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Due soon */}
+              {dueSoon.length > 0 && (
+                <div style={{ background: "#f9731608", border: `1px solid #f9731625`, borderRadius: 12, padding: "12px 12px 8px", marginBottom: 12 }}>
+                  <SectionHead icon="clock" title="Blíží se deadline" color="#f97316" count={dueSoon.filter(matchesSearch).length} />
+                  <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                    {dueSoon.filter(matchesSearch).map((task) => <DashTaskCard key={task.id} task={task} sectionColor="#f97316" />)}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </div>
-      )}
 
-      {!dashFilter &&
-        sections.map((sec, i) => (
-          <div key={i} style={{ marginBottom: 24 }} className="fi">
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-              <span style={{ width: 24, height: 24, borderRadius: 7, background: sec.color + "18", display: "flex", alignItems: "center", justifyContent: "center", color: sec.color, fontSize: 12, fontWeight: 700 }}>
-                {sec.icon}
-              </span>
-              <h2 style={{ fontSize: 15, fontWeight: 700, color: sec.color }}>{sec.title}</h2>
-              <span className="mono" style={{ fontSize: 11, color: t.text3, background: t.input, padding: "2px 8px", borderRadius: 8 }}>
-                {sec.tasks.length}
-              </span>
-            </div>
+        {/* ── RIGHT: Context ── */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
-            {sec.tasks.length === 0 ? (
-              <div style={{ color: t.text3, fontSize: 12.5, padding: "6px 32px", fontStyle: "italic" }}>{sec.empty}</div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                {sec.tasks.filter(matchesSearch).map((task) => (
-                  <DashTaskCard key={task.id} task={task} />
-                ))}
+          {/* Stat cards 2×2 */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            <StatCard label="Celkem úkolů" value={totalT} color="#8b5cf6" icon="list" active={dashFilter === "total"} onClick={() => setDashFilter(dashFilter === "total" ? null : "total")} />
+            <StatCard label="Aktivní proj." value={activeP} color="#3b82f6" icon="folder" active={dashFilter === "active-projects"} onClick={() => setDashFilter(dashFilter === "active-projects" ? null : "active-projects")} />
+            <StatCard label="Hotovo" value={doneT} color="#22c55e" icon="check-circle" active={dashFilter === "done"} onClick={() => setDashFilter(dashFilter === "done" ? null : "done")} />
+            <StatCard label="TOP úkoly" value={starredT.length} color="#eab308" icon="star" active={dashFilter === "starred"} onClick={() => setDashFilter(dashFilter === "starred" ? null : "starred")} />
+          </div>
+
+          {/* Active projects */}
+          {activeProjects.length > 0 && (
+            <div>
+              <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: t.text3, marginBottom: 8 }}>Aktivní projekty</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                {activeProjects.map((p) => {
+                  const pt = tasks.filter((x) => x.projectId === p.id);
+                  const done = pt.filter((x) => x.status === "done").length;
+                  const pct = pt.length > 0 ? Math.round((done / pt.length) * 100) : 0;
+                  return (
+                    <div key={p.id} onClick={() => openProject(p.id)} style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 9, padding: "10px 12px", cursor: "pointer", borderLeft: `3px solid ${projectColor(p.id)}` }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
+                        <span style={{ fontSize: 12.5, fontWeight: 600 }}>{p.name}</span>
+                        <span className="mono" style={{ fontSize: 10, color: pct === 100 ? "#22c55e" : t.text3, fontWeight: 600 }}>{pct}%</span>
+                      </div>
+                      <div style={{ height: 3, borderRadius: 999, background: t.input }}>
+                        <div style={{ height: "100%", width: `${pct}%`, background: `linear-gradient(90deg, ${projectColor(p.id)}, #22c55e)`, borderRadius: 999 }} />
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            )}
-          </div>
-        ))}
+            </div>
+          )}
 
-      {!dashFilter && tasks.length === 0 && (
-        <div style={{ textAlign: "center", padding: "50px 20px", color: t.text3 }}>
-          <div style={{ fontSize: 42, marginBottom: 10 }}>📋</div>
-          <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4, fontFamily: "'Outfit',sans-serif" }}>Zatím prázdno</div>
-          <div style={{ fontSize: 13 }}>Přidej první úkol přes pole nahoře</div>
+          {/* Waiting — collapsible */}
+          {waitingAll.length > 0 && (() => {
+            const list = waitingAll.filter(matchesSearch);
+            const shown = waitingOpen ? list : list.slice(0, 3);
+            return (
+              <div style={{ background: "#f59e0b08", border: `1px solid #f59e0b25`, borderRadius: 12, padding: "12px 12px 8px" }}>
+                <SectionHead
+                  icon="pause-circle" title="Čekám" color="#f59e0b" count={list.length}
+                  action={list.length > 3 && (
+                    <button onClick={() => setWaitingOpen(v => !v)} style={{ background: "none", border: "none", color: "#f59e0b", fontSize: 11, cursor: "pointer", padding: "1px 4px" }}>
+                      {waitingOpen ? "Sbalit ▴" : `+${list.length - 3} dalších ▾`}
+                    </button>
+                  )}
+                />
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  {shown.map((task) => <DashTaskCard key={task.id} task={task} sectionColor="#f59e0b" />)}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* To do — collapsible */}
+          {(() => {
+            const list = todo.filter(matchesSearch);
+            const shown = todoOpen ? list : list.slice(0, 3);
+            return (
+              <div style={{ background: t.kanban, border: `1px solid ${t.border}`, borderRadius: 12, padding: "12px 12px 8px" }}>
+                <SectionHead
+                  icon="list" title="To do" color="#8b95a5" count={list.length}
+                  action={list.length > 3 && (
+                    <button onClick={() => setTodoOpen(v => !v)} style={{ background: "none", border: "none", color: t.text2, fontSize: 11, cursor: "pointer", padding: "1px 4px" }}>
+                      {todoOpen ? "Sbalit ▴" : `+${list.length - 3} dalších ▾`}
+                    </button>
+                  )}
+                />
+                {list.length === 0 ? (
+                  <div style={{ color: t.text3, fontSize: 12, padding: "6px 4px 2px", fontStyle: "italic" }}>To do je prázdné</div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    {shown.map((task) => <DashTaskCard key={task.id} task={task} sectionColor="#8b95a5" />)}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -1298,7 +2009,7 @@ function Dashboard() {
 /* ─────────────────────────────────────────────
    Task Cards
 ───────────────────────────────────────────── */
-function DashTaskCard({ task }) {
+function DashTaskCard({ task, sectionColor }) {
   const { t, projects, tags, updateTask, setTaskDetail } = useApp();
   const project = projects.find((p) => p.id === task.projectId);
   const taskTags = tags.filter((tg) => (task.tagIds || []).includes(tg.id));
@@ -1309,6 +2020,7 @@ function DashTaskCard({ task }) {
   const today = startOfToday();
   const due = parseYMD(task.dueDate);
   const isOverdue = due && task.status !== "done" && due < today;
+  const projColor = project ? projectColor(project.id) : null;
 
   return (
     <div
@@ -1317,182 +2029,146 @@ function DashTaskCard({ task }) {
         background: t.card,
         border: `1px solid ${t.border}`,
         borderRadius: 10,
-        padding: "12px 14px",
         cursor: "pointer",
-        transition: "all .12s",
-        position: "relative",
-        borderLeft: `3px solid ${st.color}`,
+        transition: "border-color .12s, background .12s",
+        overflow: "hidden",
+        minWidth: 0,
+        width: "100%",
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.background = t.cardH;
-        e.currentTarget.style.borderColor = t.borderH;
+        e.currentTarget.style.background = sectionColor ? sectionColor + "10" : t.cardH;
+        e.currentTarget.style.borderColor = sectionColor ? sectionColor + "50" : t.borderH;
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.background = t.card;
         e.currentTarget.style.borderColor = t.border;
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            const keys = STATUS_KEYS;
-            const idx = keys.indexOf(task.status);
-            updateTask(task.id, { status: keys[(idx + 1) % keys.length] });
-          }}
-          style={{
-            width: 20,
-            height: 20,
-            borderRadius: 5,
-            flexShrink: 0,
-            border: `2px solid ${st.color}`,
-            background: task.status === "done" ? st.color : "transparent",
-            color: task.status === "done" ? "#fff" : st.color,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: 10,
-            fontWeight: 700,
-          }}
-          title={st.label}
-        >
-          {task.status === "done" ? "✓" : ""}
-        </button>
+      {/* Status color strip */}
+      <div style={{ height: 3, background: st.color }} />
 
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            updateTask(task.id, { starred: !task.starred });
-          }}
-          style={{
-            background: "none",
-            border: "none",
-            fontSize: 15,
-            cursor: "pointer",
-            color: task.starred ? "#eab308" : t.text3,
-            opacity: task.starred ? 1 : 0.35,
-            transition: "all .15s",
-            flexShrink: 0,
-            padding: 0,
-            lineHeight: 1,
-          }}
-          title={task.starred ? "Odebrat z TOP" : "Přidat do TOP"}
-        >
-          {task.starred ? "★" : "☆"}
-        </button>
+      <div style={{ padding: "10px 14px 8px" }}>
+        {/* Row 1: status toggle + title + star */}
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 6 }}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              const idx = STATUS_KEYS.indexOf(task.status);
+              updateTask(task.id, { status: STATUS_KEYS[(idx + 1) % STATUS_KEYS.length] });
+            }}
+            title={`Stav: ${st.label} → klikni pro posun`}
+            style={{
+              width: 24, height: 24, borderRadius: 6, flexShrink: 0, marginTop: 1,
+              border: `1.5px solid ${st.color}40`,
+              background: t.input,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              cursor: "pointer",
+            }}
+          >
+            <Icon name={st.icon} size={13} color={st.color} strokeWidth={2} />
+          </button>
 
-        <span
-          style={{
-            flex: 1,
-            fontSize: 14,
-            fontWeight: 600,
-            textDecoration: task.status === "done" ? "line-through" : "none",
-            color: task.status === "done" ? t.text3 : t.text,
-          }}
-        >
-          {task.title || "Bez názvu"}
-        </span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{
+              fontSize: 13.5, fontWeight: 600, lineHeight: 1.35,
+              textDecoration: task.status === "done" ? "line-through" : "none",
+              color: task.status === "done" ? t.text3 : t.text,
+            }}>
+              {task.title || "Bez názvu"}
+            </div>
+            {task.description && (
+              <div style={{ fontSize: 12, color: t.text2, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {task.description}
+              </div>
+            )}
+          </div>
 
-        <div style={{ display: "flex", gap: 3 }} onClick={(e) => e.stopPropagation()}>
-          {STATUS_KEYS.filter((k) => k !== task.status).map((k) => (
-            <button
-              key={k}
-              onClick={() => updateTask(task.id, { status: k })}
-              title={STATUSES[k].label}
-              style={{
-                width: 22,
-                height: 22,
-                borderRadius: 5,
-                fontSize: 10,
-                border: `1px solid ${t.border}`,
-                background: "transparent",
-                color: STATUSES[k].color,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                opacity: 0.6,
-                transition: "opacity .1s",
-              }}
-              onMouseEnter={(e) => (e.target.style.opacity = 1)}
-              onMouseLeave={(e) => (e.target.style.opacity = 0.6)}
-            >
-              {STATUSES[k].icon}
-            </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); updateTask(task.id, { starred: !task.starred }); }}
+            title={task.starred ? "Odebrat z TOP" : "Přidat do TOP"}
+            style={{
+              background: "none", border: "none", cursor: "pointer",
+              opacity: task.starred ? 1 : 0.3,
+              transition: "all .15s", flexShrink: 0, padding: 0, lineHeight: 1,
+              display: "flex", alignItems: "center",
+            }}
+          >
+            <Icon name="star" size={15} color="#eab308" fill={task.starred ? "#eab308" : "none"} strokeWidth={1.75} />
+          </button>
+        </div>
+
+        {/* Row 2: meta pills */}
+        <div style={{ display: "flex", gap: 5, flexWrap: "wrap", alignItems: "center", marginLeft: 30, minWidth: 0, overflow: "hidden" }}>
+          {project && (
+            <span style={{
+              fontSize: 10.5, fontWeight: 700, padding: "2px 9px", borderRadius: 20,
+              border: `1.5px solid ${projColor}55`, background: projColor + "12", color: projColor,
+              letterSpacing: ".01em", display: "inline-flex", alignItems: "center", gap: 4,
+            }}>
+              <Icon name="folder" size={9} color={projColor} strokeWidth={2} />
+              {project.name}
+            </span>
+          )}
+          {pr && (
+            <span style={{ fontSize: 10.5, fontWeight: 600, padding: "2px 8px", borderRadius: 4, background: pr.bg, color: pr.color, display: "inline-flex", alignItems: "center", gap: 3 }}>
+              <Icon name={pr.icon} size={9} color={pr.color} strokeWidth={2.5} />
+              {pr.label}
+            </span>
+          )}
+          {taskTags.length > 0 && (
+            <span style={{ width: 1, height: 12, background: t.border, alignSelf: "center", flexShrink: 0 }} />
+          )}
+          {taskTags.map((tg) => (
+            <span key={tg.id} style={{ fontSize: 10.5, fontWeight: 600, padding: "2px 7px", borderRadius: 4, background: tg.color + "18", color: tg.color }}>
+              # {tg.name}
+            </span>
           ))}
+          {task.dueDate && (
+            <span className="mono" style={{
+              fontSize: 10.5, fontWeight: isOverdue ? 700 : 500,
+              color: isOverdue ? "#ef4444" : t.text2,
+              background: isOverdue ? "#ef444412" : t.input,
+              padding: "2px 7px", borderRadius: 4,
+            }}>
+              {parseYMD(task.dueDate)?.toLocaleDateString("cs-CZ", { day: "numeric", month: "short" }) || task.dueDate}
+            </span>
+          )}
         </div>
       </div>
 
-      {pr && (
-        <div style={{ marginBottom: 5, marginLeft: 28 }}>
-          <span
+      {/* Footer: quick status buttons */}
+      <div
+        style={{ display: "flex", gap: 4, padding: "6px 14px 8px", borderTop: `1px solid ${t.border}`, flexWrap: "wrap" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {STATUS_KEYS.filter((k) => k !== task.status).map((k) => (
+          <button
+            key={k}
+            onClick={() => updateTask(task.id, { status: k })}
+            title={STATUSES[k].label}
             style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 4,
-              fontSize: 11,
-              fontWeight: 600,
-              color: pr.color,
-              background: pr.bg,
-              padding: "2px 8px",
-              borderRadius: 5,
+              display: "inline-flex", alignItems: "center", gap: 4,
+              padding: "3px 10px", height: 26, borderRadius: 6,
+              fontSize: 11, fontWeight: 600,
+              border: `1px solid ${t.border}`,
+              background: "transparent",
+              color: STATUSES[k].color,
+              cursor: "pointer",
+              transition: "background .1s, border-color .1s",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = STATUSES[k].color + "18";
+              e.currentTarget.style.borderColor = STATUSES[k].color + "60";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.borderColor = t.border;
             }}
           >
-            {pr.icon} {pr.label}
-          </span>
-        </div>
-      )}
-
-      {taskTags.length > 0 && (
-        <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 5, marginLeft: 28 }}>
-          {taskTags.map((tg) => (
-            <span key={tg.id} style={{ fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 4, background: tg.color + "18", color: tg.color }}>
-              {tg.name}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {task.description && (
-        <div
-          style={{
-            fontSize: 12,
-            color: t.text2,
-            marginLeft: 28,
-            marginBottom: 5,
-            lineHeight: 1.4,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            maxWidth: 500,
-          }}
-        >
-          {task.description}
-        </div>
-      )}
-
-      <div style={{ display: "flex", gap: 10, alignItems: "center", marginLeft: 28, flexWrap: "wrap" }}>
-        {project && (
-          <span style={{ fontSize: 10.5, color: t.accent, background: t.accentBg, padding: "2px 7px", borderRadius: 4, fontWeight: 600 }}>
-            {project.name}
-          </span>
-        )}
-
-        {task.dueDate && (
-          <span
-            className="mono"
-            style={{
-              fontSize: 10.5,
-              fontWeight: isOverdue ? 700 : 500,
-              color: isOverdue ? "#ef4444" : t.text2,
-              background: isOverdue ? "#ef444412" : t.input,
-              padding: "2px 7px",
-              borderRadius: 4,
-            }}
-          >
-            ⏱{" "}
-            {parseYMD(task.dueDate)?.toLocaleDateString("cs-CZ", { day: "numeric", month: "short", year: "numeric" }) || task.dueDate}
-          </span>
-        )}
+            <Icon name={STATUSES[k].icon} size={10} color="currentColor" strokeWidth={2} />
+            {STATUS_SHORT[k]}
+          </button>
+        ))}
       </div>
     </div>
   );
@@ -1675,16 +2351,15 @@ function ListView({ taskList, showProject = true }) {
                       style={{
                         background: "none",
                         border: "none",
-                        fontSize: 14,
                         cursor: "pointer",
-                        color: task.starred ? "#eab308" : t.text3,
                         opacity: task.starred ? 1 : 0.3,
                         padding: 0,
-                        lineHeight: 1,
+                        display: "flex",
+                        alignItems: "center",
                         flexShrink: 0,
                       }}
                     >
-                      {task.starred ? "★" : "☆"}
+                      <Icon name="star" size={14} color="#eab308" fill={task.starred ? "#eab308" : "none"} strokeWidth={1.75} />
                     </button>
 
                     <span
@@ -1718,7 +2393,7 @@ function ListView({ taskList, showProject = true }) {
                       whiteSpace: "nowrap",
                     }}
                   >
-                    {st.icon} {st.label}
+                    <Icon name={st.icon} size={10} color={st.color} strokeWidth={2} />{st.label}
                   </span>
                 </td>
 
@@ -1737,7 +2412,7 @@ function ListView({ taskList, showProject = true }) {
                         gap: 3,
                       }}
                     >
-                      {pr.icon} {pr.label}
+                      <Icon name={pr.icon} size={10} color={pr.color} strokeWidth={2.5} />{pr.label}
                     </span>
                   ) : (
                     <span style={{ fontSize: 10.5, color: t.text3 }}>—</span>
@@ -1845,7 +2520,7 @@ function AllTasksPage() {
   }
 
   return (
-    <div style={{ padding: "24px 28px", maxWidth: view === "list" ? 1200 : 960 }} className="fi">
+    <div style={{ padding: "24px 28px" }} className="fi">
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 10 }}>
         <div>
           <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.8px", marginBottom: 3 }}>Úkoly</h1>
@@ -1885,9 +2560,8 @@ function AllTasksPage() {
         </span>
       </div>
 
-      {view === "list" ? (
-        <ListView taskList={filtered} showProject={true} />
-      ) : (
+      {filtered.length > 0 && view === "list" && <ListView taskList={filtered} showProject={true} />}
+      {filtered.length > 0 && view !== "list" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
           {filtered.map((task) => (
             <DashTaskCard key={task.id} task={task} />
@@ -1895,7 +2569,17 @@ function AllTasksPage() {
         </div>
       )}
 
-      {filtered.length === 0 && <div style={{ textAlign: "center", padding: "50px", color: t.text3, fontSize: 13 }}>Žádné úkoly neodpovídají filtrům</div>}
+      {filtered.length === 0 && (
+        <div style={{ textAlign: "center", padding: "60px 20px", color: t.text3, background: t.card, borderRadius: 14, border: `1px dashed ${t.border}` }}>
+          <div style={{ fontSize: 36, opacity: 0.3, marginBottom: 10 }}>{search || statusFilter !== "all" || projectFilter !== "all" ? "⌕" : "◇"}</div>
+          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6, color: t.text2 }}>
+            {search || statusFilter !== "all" || projectFilter !== "all" ? "Žádné výsledky" : "Zatím žádné úkoly"}
+          </div>
+          <div style={{ fontSize: 13, marginBottom: 16 }}>
+            {search ? `Zkus jiné hledání než „${search}"` : statusFilter !== "all" || projectFilter !== "all" ? "Zkus upravit filtry" : "Vytvoř svůj první úkol výše"}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1906,12 +2590,12 @@ function AllTasksPage() {
 function ProjectsPage() {
   const { t, projects, tasks, addProject, openProject } = useApp();
   const toast = useToast();
-
   const [filter, setFilter] = useState("active");
   const [showNew, setShowNew] = useState(false);
   const [nName, setNName] = useState("");
   const [nDesc, setNDesc] = useState("");
   const [nStatus, setNStatus] = useState("active");
+  const newInputRef = useRef(null);
 
   const filtered = filter === "all" ? projects : projects.filter((p) => p.status === filter);
 
@@ -1924,93 +2608,135 @@ function ProjectsPage() {
     toast("Projekt vytvořen", "success");
   };
 
+  const openNew = () => {
+    setShowNew(true);
+    setTimeout(() => newInputRef.current?.focus(), 50);
+  };
+
+  const tabs = [
+    { k: "all", l: "Vše", count: projects.length },
+    { k: "active", l: "Aktivní", count: projects.filter((p) => p.status === "active").length },
+    { k: "idea", l: "Nápady", count: projects.filter((p) => p.status === "idea").length },
+    { k: "done", l: "Hotové", count: projects.filter((p) => p.status === "done").length },
+    { k: "archived", l: "Archiv", count: projects.filter((p) => p.status === "archived").length },
+  ];
+
   return (
-    <div style={{ padding: "24px 28px", maxWidth: 900 }} className="fi">
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.8px" }}>Projekty</h1>
-        <button onClick={() => setShowNew(!showNew)} style={{ padding: "8px 18px", borderRadius: 9, border: "none", background: t.accent, color: "#fff", fontSize: 13, fontWeight: 600 }}>
-          + Nový projekt
+    <div style={{ padding: "24px 28px" }} className="fi">
+
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 24, gap: 12 }}>
+        <div>
+          <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.8px", marginBottom: 2 }}>Projekty</h1>
+          <p style={{ color: t.text2, fontSize: 13 }}>{projects.length} projektů celkem · {projects.filter(p => p.status === "active").length} aktivních</p>
+        </div>
+        <button
+          onClick={openNew}
+          style={{ padding: "9px 20px", borderRadius: 10, border: "none", background: t.accent, color: "#fff", fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}
+        >
+          <span style={{ fontSize: 18, fontWeight: 300, lineHeight: 1 }}>+</span> Nový projekt
         </button>
       </div>
 
-      <div style={{ display: "flex", gap: 3, marginBottom: 20 }}>
-        {[
-          { k: "all", l: "Vše" },
-          { k: "active", l: "Aktivní" },
-          { k: "idea", l: "Nápady" },
-          { k: "done", l: "Hotové" },
-          { k: "archived", l: "Archiv" },
-        ].map((f) => (
+      {/* Filter tabs */}
+      <div style={{ display: "flex", gap: 2, marginBottom: 20, borderBottom: `1px solid ${t.border}`, paddingBottom: 0 }}>
+        {tabs.map((tab) => (
           <button
-            key={f.k}
-            onClick={() => setFilter(f.k)}
+            key={tab.k}
+            onClick={() => setFilter(tab.k)}
             style={{
-              padding: "6px 14px",
-              borderRadius: 7,
-              fontSize: 12.5,
-              fontWeight: 500,
-              border: `1px solid ${filter === f.k ? t.accent : t.border}`,
-              background: filter === f.k ? t.accentBg : "transparent",
-              color: filter === f.k ? t.accent : t.text2,
+              padding: "8px 14px",
+              borderRadius: "8px 8px 0 0",
+              fontSize: 13,
+              fontWeight: filter === tab.k ? 600 : 400,
+              border: "none",
+              borderBottom: filter === tab.k ? `2px solid ${t.accent}` : "2px solid transparent",
+              background: "transparent",
+              color: filter === tab.k ? t.accent : t.text2,
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              transition: "color .12s",
             }}
           >
-            {f.l}
+            {tab.l}
+            {tab.count > 0 && (
+              <span className="mono" style={{ fontSize: 10, padding: "1px 6px", borderRadius: 6, background: filter === tab.k ? t.accentBg : t.input, color: filter === tab.k ? t.accent : t.text3 }}>
+                {tab.count}
+              </span>
+            )}
           </button>
         ))}
       </div>
 
+      {/* New project form */}
       {showNew && (
-        <div style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 12, padding: 18, marginBottom: 18, boxShadow: t.shadow }} className="pop">
-          <input
-            value={nName}
-            onChange={(e) => setNName(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && create()}
-            autoFocus
-            placeholder="Název projektu"
-            style={{ width: "100%", padding: "10px 14px", borderRadius: 8, border: `1px solid ${t.border}`, background: t.input, color: t.text, outline: "none", fontSize: 14, marginBottom: 10 }}
-          />
-          <textarea
-            value={nDesc}
-            onChange={(e) => setNDesc(e.target.value)}
-            placeholder="Popis (volitelné)"
-            rows={2}
-            style={{ width: "100%", padding: "10px 14px", borderRadius: 8, border: `1px solid ${t.border}`, background: t.input, color: t.text, outline: "none", fontSize: 13, resize: "vertical", marginBottom: 10 }}
-          />
-          <div style={{ display: "flex", gap: 5, marginBottom: 12 }}>
-            {Object.entries(PROJ_STATUS).map(([k, v]) => (
-              <button
-                key={k}
-                onClick={() => setNStatus(k)}
-                style={{
-                  padding: "4px 10px",
-                  borderRadius: 6,
-                  fontSize: 11.5,
-                  fontWeight: 500,
-                  border: `1px solid ${nStatus === k ? v.color : t.border}`,
-                  background: nStatus === k ? v.color + "18" : "transparent",
-                  color: nStatus === k ? v.color : t.text2,
-                }}
-              >
-                {v.label}
-              </button>
-            ))}
+        <div style={{ background: t.card, border: `1px solid ${t.accent}40`, borderRadius: 14, padding: "20px 22px", marginBottom: 20, boxShadow: `0 0 0 3px ${t.accent}10` }} className="pop">
+          <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 14, fontFamily: "'Outfit',sans-serif" }}>Nový projekt</div>
+          <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
+            <input
+              ref={newInputRef}
+              value={nName}
+              onChange={(e) => setNName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && create()}
+              placeholder="Název projektu…"
+              style={{ flex: 2, padding: "10px 14px", borderRadius: 8, border: `1px solid ${t.border}`, background: t.input, color: t.text, outline: "none", fontSize: 14, fontWeight: 500 }}
+            />
+            <input
+              value={nDesc}
+              onChange={(e) => setNDesc(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && create()}
+              placeholder="Popis (volitelně)…"
+              style={{ flex: 3, padding: "10px 14px", borderRadius: 8, border: `1px solid ${t.border}`, background: t.input, color: t.text, outline: "none", fontSize: 13 }}
+            />
           </div>
-          <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-            <button onClick={() => setShowNew(false)} style={{ padding: "7px 14px", borderRadius: 7, border: `1px solid ${t.border}`, background: "transparent", color: t.text2, fontSize: 12.5 }}>
-              Zrušit
-            </button>
-            <button onClick={create} style={{ padding: "7px 16px", borderRadius: 7, border: "none", background: t.accent, color: "#fff", fontSize: 12.5, fontWeight: 600, opacity: nName.trim() ? 1 : 0.4 }}>
-              Vytvořit
-            </button>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", gap: 4 }}>
+              {Object.entries(PROJ_STATUS).map(([k, v]) => (
+                <button
+                  key={k}
+                  onClick={() => setNStatus(k)}
+                  style={{
+                    padding: "5px 12px",
+                    borderRadius: 7,
+                    fontSize: 11.5,
+                    fontWeight: nStatus === k ? 700 : 400,
+                    border: `1.5px solid ${nStatus === k ? v.color : t.border}`,
+                    background: nStatus === k ? v.color + "18" : "transparent",
+                    color: nStatus === k ? v.color : t.text2,
+                  }}
+                >
+                  {v.label}
+                </button>
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 6 }}>
+              <button onClick={() => { setShowNew(false); setNName(""); setNDesc(""); }} style={{ padding: "7px 14px", borderRadius: 8, border: `1px solid ${t.border}`, background: "transparent", color: t.text2, fontSize: 12.5 }}>
+                Zrušit
+              </button>
+              <button onClick={create} style={{ padding: "7px 18px", borderRadius: 8, border: "none", background: t.accent, color: "#fff", fontSize: 12.5, fontWeight: 600, opacity: nName.trim() ? 1 : 0.4 }}>
+                Vytvořit projekt
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 10 }}>
+      {/* Project grid */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 12 }}>
         {filtered.map((p) => {
           const pt = tasks.filter((x) => x.projectId === p.id);
           const doneC = pt.filter((x) => x.status === "done").length;
+          const doingC = pt.filter((x) => x.status === "doing").length;
+          const todoC = pt.filter((x) => x.status === "todo").length;
+          const waitingC = pt.filter((x) => x.status === "waiting").length;
           const pct = pt.length > 0 ? Math.round((doneC / pt.length) * 100) : 0;
+          const overdueC = pt.filter((x) => {
+            const d = parseYMD(x.dueDate);
+            return d && x.status !== "done" && d < startOfToday();
+          }).length;
+          const statusColor = PROJ_STATUS[p.status]?.color || t.text3;
+          const projCol = projectColor(p.id);
 
           return (
             <div
@@ -2019,58 +2745,88 @@ function ProjectsPage() {
               style={{
                 background: t.card,
                 border: `1px solid ${t.border}`,
-                borderRadius: 12,
-                padding: 18,
+                borderRadius: 14,
+                padding: "20px 22px",
                 cursor: "pointer",
-                transition: "all .15s",
-                boxShadow: t.shadow,
-                borderTop: `3px solid ${PROJ_STATUS[p.status]?.color || t.text3}`,
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "translateY(-2px)";
-                e.currentTarget.style.boxShadow = "0 6px 20px #0002";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "none";
-                e.currentTarget.style.boxShadow = t.shadow;
+                display: "flex",
+                flexDirection: "column",
+                gap: 0,
+                borderLeft: `4px solid ${projCol}`,
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-                <span
-                  style={{
-                    fontSize: 10.5,
-                    fontWeight: 700,
-                    padding: "2px 8px",
-                    borderRadius: 5,
-                    background: (PROJ_STATUS[p.status]?.color || t.text3) + "18",
-                    color: PROJ_STATUS[p.status]?.color || t.text3,
-                    textTransform: "uppercase",
-                    letterSpacing: ".04em",
-                  }}
-                >
+              {/* Top row: status badge + arrow */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                <span style={{ fontSize: 10.5, fontWeight: 700, padding: "3px 9px", borderRadius: 6, background: statusColor + "18", color: statusColor, textTransform: "uppercase", letterSpacing: ".05em" }}>
                   {PROJ_STATUS[p.status]?.label || p.status}
                 </span>
+                <span style={{ color: t.text3, fontSize: 16 }}>›</span>
               </div>
 
-              <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 5, fontFamily: "'Outfit',sans-serif" }}>{p.name}</h3>
-              {p.description && <p style={{ fontSize: 12, color: t.text2, marginBottom: 10, lineHeight: 1.4 }}>{p.description}</p>}
+              {/* Name + description */}
+              <h3 style={{ fontSize: 17, fontWeight: 700, marginBottom: 4, fontFamily: "'Outfit',sans-serif", lineHeight: 1.2 }}>{p.name}</h3>
+              <p style={{ fontSize: 12.5, color: t.text2, marginBottom: 16, lineHeight: 1.45, minHeight: 18, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
+                {p.description || <span style={{ fontStyle: "italic", color: t.text3 }}>Bez popisu</span>}
+              </p>
 
-              <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12, color: t.text3 }}>
-                <span>{pt.length} úkolů</span>
-                {pt.length > 0 && <span className="mono" style={{ color: "#22c55e", fontWeight: 600 }}>{pct}%</span>}
-              </div>
-
-              {pt.length > 0 && (
-                <div style={{ marginTop: 8, height: 4, borderRadius: 2, background: t.input }}>
-                  <div style={{ height: "100%", width: `${pct}%`, background: "linear-gradient(90deg, #3b82f6, #22c55e)", borderRadius: 2, transition: "width .4s" }} />
-                </div>
+              {/* Task status breakdown */}
+              {pt.length > 0 ? (
+                <>
+                  <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
+                    {todoC > 0 && <span style={{ fontSize: 11, color: STATUSES.todo.color, background: STATUSES.todo.bg, padding: "2px 8px", borderRadius: 5, fontWeight: 600 }}>{STATUSES.todo.icon} {todoC}</span>}
+                    {doingC > 0 && <span style={{ fontSize: 11, color: STATUSES.doing.color, background: STATUSES.doing.bg, padding: "2px 8px", borderRadius: 5, fontWeight: 600 }}>{STATUSES.doing.icon} {doingC}</span>}
+                    {waitingC > 0 && <span style={{ fontSize: 11, color: STATUSES.waiting.color, background: STATUSES.waiting.bg, padding: "2px 8px", borderRadius: 5, fontWeight: 600 }}>{STATUSES.waiting.icon} {waitingC}</span>}
+                    {doneC > 0 && <span style={{ fontSize: 11, color: STATUSES.done.color, background: STATUSES.done.bg, padding: "2px 8px", borderRadius: 5, fontWeight: 600 }}>{STATUSES.done.icon} {doneC}</span>}
+                    {overdueC > 0 && <span style={{ fontSize: 11, color: "#ef4444", background: "#ef444412", padding: "2px 8px", borderRadius: 5, fontWeight: 700 }}>⚠ {overdueC} po termínu</span>}
+                  </div>
+                  <div style={{ height: 4, borderRadius: 999, background: t.input, overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${pct}%`, background: `linear-gradient(90deg, ${projCol}, #22c55e)`, borderRadius: 999, transition: "width .4s" }} />
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6 }}>
+                    <span style={{ fontSize: 11, color: t.text3 }}>{pt.length} úkolů celkem</span>
+                    <span className="mono" style={{ fontSize: 11, fontWeight: 700, color: pct === 100 ? "#22c55e" : t.text2 }}>{pct} %</span>
+                  </div>
+                </>
+              ) : (
+                <div style={{ fontSize: 12, color: t.text3, fontStyle: "italic", marginTop: 4 }}>Žádné úkoly</div>
               )}
             </div>
           );
         })}
+
+        {/* Add new project tile */}
+        {!showNew && (
+          <div
+            onClick={openNew}
+            style={{
+              border: `2px dashed ${t.border}`,
+              borderRadius: 14,
+              padding: "20px 22px",
+              cursor: "pointer",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              minHeight: 140,
+              color: t.text3,
+              transition: "border-color .15s, color .15s",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = t.accent; e.currentTarget.style.color = t.accent; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = t.border; e.currentTarget.style.color = t.text3; }}
+          >
+            <span style={{ fontSize: 28, fontWeight: 300, lineHeight: 1 }}>+</span>
+            <span style={{ fontSize: 12.5, fontWeight: 500 }}>Nový projekt</span>
+          </div>
+        )}
       </div>
 
-      {filtered.length === 0 && <div style={{ textAlign: "center", padding: "50px", color: t.text3, fontSize: 13 }}>Žádné projekty v této kategorii</div>}
+      {filtered.length === 0 && (
+        <div style={{ textAlign: "center", padding: "60px 20px", color: t.text3 }}>
+          <div style={{ fontSize: 36, marginBottom: 10 }}>◫</div>
+          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4, fontFamily: "'Outfit',sans-serif" }}>Žádné projekty</div>
+          <div style={{ fontSize: 13 }}>V této kategorii nejsou žádné projekty.</div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2079,7 +2835,7 @@ function ProjectsPage() {
    Project Detail + Kanban
 ───────────────────────────────────────────── */
 function ProjectDetail() {
-  const { t, projects, tasks, updateProject, deleteProject, selProject, setPage } = useApp();
+  const { t, projects, tasks, addTask, updateTask, updateProject, deleteProject, selProject, setPage } = useApp();
   const toast = useToast();
   const project = projects.find((p) => p.id === selProject);
 
@@ -2087,6 +2843,18 @@ function ProjectDetail() {
   const [eName, setEName] = useState("");
   const [eDesc, setEDesc] = useState("");
   const [view, setView] = useState("kanban");
+
+  useEffect(() => {
+    const handler = () => setView((v) => (v === "kanban" ? "list" : "kanban"));
+    window.addEventListener("toggleKanbanView", handler);
+    return () => window.removeEventListener("toggleKanbanView", handler);
+  }, []);
+
+  const [dragOverStatus, setDragOverStatus] = useState(null);
+  const [draggingId, setDraggingId] = useState(null);
+  const [inlineAdd, setInlineAdd] = useState(null);
+  const [inlineVal, setInlineVal] = useState("");
+  const [showAllDone, setShowAllDone] = useState(false);
 
   if (!project) return <div style={{ padding: 40, color: t.text3 }}>Projekt nenalezen</div>;
 
@@ -2191,29 +2959,141 @@ function ProjectDetail() {
       </div>
 
       {view === "kanban" ? (
-        <div style={{ display: "grid", gridTemplateColumns: `repeat(${STATUS_KEYS.length}, 1fr)`, gap: 8, overflowX: "auto", paddingBottom: 4 }}>
+        <div style={{ display: "grid", gridTemplateColumns: `repeat(${STATUS_KEYS.length}, minmax(200px, 1fr))`, gap: 8, overflowX: "auto", paddingBottom: 4 }}>
           {STATUS_KEYS.map((status) => {
-            const col = pTasks.filter((x) => x.status === status).sort((a, b) => (a.position || 0) - (b.position || 0));
             const cfg = STATUSES[status];
+            const allCol = pTasks.filter((x) => x.status === status).sort((a, b) => (a.position || 0) - (b.position || 0));
+            const isDone = status === "done";
+            const col = isDone && !showAllDone ? allCol.slice(0, 5) : allCol;
+            const isDragOver = dragOverStatus === status;
+
             return (
-              <div key={status} style={{ background: t.kanban, borderRadius: 10, padding: 8, minHeight: 160 }}>
+              <div
+                key={status}
+                style={{
+                  background: isDragOver ? cfg.color + "12" : t.kanban,
+                  borderRadius: 10,
+                  padding: 8,
+                  minHeight: 160,
+                  borderTop: `3px solid ${cfg.color}`,
+                  outline: isDragOver ? `2px solid ${cfg.color}50` : "2px solid transparent",
+                  transition: "background .15s, outline .15s",
+                }}
+                onDragOver={(e) => { e.preventDefault(); setDragOverStatus(status); }}
+                onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDragOverStatus(null); }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const taskId = e.dataTransfer.getData("taskId");
+                  if (taskId) updateTask(taskId, { status });
+                  setDragOverStatus(null);
+                  setDraggingId(null);
+                }}
+              >
                 <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 10, padding: "0 4px" }}>
                   <span style={{ width: 20, height: 20, borderRadius: 5, background: cfg.color + "20", display: "flex", alignItems: "center", justifyContent: "center", color: cfg.color, fontSize: 10, fontWeight: 700 }}>
                     {cfg.icon}
                   </span>
                   <span style={{ fontSize: 11, fontWeight: 700, color: cfg.color }}>{cfg.label}</span>
                   <span className="mono" style={{ fontSize: 10, color: t.text3, marginLeft: "auto" }}>
-                    {col.length}
+                    {allCol.length}
                   </span>
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                   {col.map((task) => (
-                    <KanbanCard key={task.id} task={task} />
+                    <KanbanCard
+                      key={task.id}
+                      task={task}
+                      onDragStart={(id) => setDraggingId(id)}
+                    />
                   ))}
                 </div>
 
-                {col.length === 0 && <div style={{ padding: "16px 6px", textAlign: "center", color: t.text3, fontSize: 11, fontStyle: "italic" }}>Prázdné</div>}
+                {isDone && allCol.length > 5 && (
+                  <button
+                    onClick={() => setShowAllDone((v) => !v)}
+                    style={{
+                      width: "100%",
+                      marginTop: 6,
+                      padding: "5px 0",
+                      borderRadius: 6,
+                      border: `1px dashed ${t.border}`,
+                      background: "transparent",
+                      color: t.text3,
+                      fontSize: 11,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {showAllDone ? "Skrýt dokončené" : `+ ${allCol.length - 5} dalších`}
+                  </button>
+                )}
+
+                {col.length === 0 && inlineAdd !== status && (
+                  <div
+                    style={{ padding: "20px 8px", textAlign: "center", color: t.text3, fontSize: 11, border: `1.5px dashed ${cfg.color}30`, borderRadius: 8, cursor: "pointer", transition: "border-color .15s" }}
+                    onClick={() => setInlineAdd(status)}
+                  >
+                    <div style={{ fontSize: 18, opacity: 0.35, marginBottom: 4 }}>+</div>
+                    Přidat úkol
+                  </div>
+                )}
+
+                {inlineAdd === status ? (
+                  <div style={{ marginTop: 6 }}>
+                    <input
+                      autoFocus
+                      value={inlineVal}
+                      onChange={(e) => setInlineVal(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          const title = inlineVal.trim();
+                          if (title) { addTask({ title, status, projectId: project.id }); toast("Úkol přidán", "success"); }
+                          setInlineAdd(null); setInlineVal("");
+                        }
+                        if (e.key === "Escape") { setInlineAdd(null); setInlineVal(""); }
+                      }}
+                      onBlur={() => {
+                        const title = inlineVal.trim();
+                        if (title) { addTask({ title, status, projectId: project.id }); toast("Úkol přidán", "success"); }
+                        setInlineAdd(null); setInlineVal("");
+                      }}
+                      placeholder="Název úkolu… (Enter)"
+                      style={{
+                        width: "100%",
+                        padding: "7px 10px",
+                        borderRadius: 7,
+                        border: `1px solid ${cfg.color}60`,
+                        background: t.card,
+                        color: t.text,
+                        outline: "none",
+                        fontSize: 12.5,
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => { setInlineAdd(status); setInlineVal(""); }}
+                    style={{
+                      width: "100%",
+                      marginTop: 6,
+                      padding: "5px 0",
+                      borderRadius: 6,
+                      border: `1px dashed ${t.border}`,
+                      background: "transparent",
+                      color: t.text3,
+                      fontSize: 11,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 4,
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = cfg.color + "80"; e.currentTarget.style.color = cfg.color; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = t.border; e.currentTarget.style.color = t.text3; }}
+                  >
+                    + Přidat
+                  </button>
+                )}
               </div>
             );
           })}
@@ -2221,11 +3101,19 @@ function ProjectDetail() {
       ) : (
         <ListView taskList={pTasks} showProject={false} />
       )}
+
+      {/* Notes section */}
+      <div style={{ marginTop: 32, borderTop: `1px solid ${t.border}`, paddingTop: 24 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+          <span style={{ fontSize: 15, fontWeight: 700 }}>Poznámky projektu</span>
+        </div>
+        <NotesMiniList projectId={project.id} />
+      </div>
     </div>
   );
 }
 
-function KanbanCard({ task }) {
+function KanbanCard({ task, onDragStart }) {
   const { t, tags, setTaskDetail, updateTask } = useApp();
   const taskTags = tags.filter((tg) => (task.tagIds || []).includes(tg.id));
   const pr = task.priority ? PRIORITIES[task.priority] : null;
@@ -2233,27 +3121,33 @@ function KanbanCard({ task }) {
   const today = startOfToday();
   const due = parseYMD(task.dueDate);
   const isOverdue = due && task.status !== "done" && due < today;
+  const phaseCount = task.phases?.length ?? 0;
 
   return (
     <div
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData("taskId", task.id);
+        e.dataTransfer.effectAllowed = "move";
+        onDragStart?.(task.id);
+      }}
       onClick={() => setTaskDetail(task.id)}
       style={{
         background: t.card,
         border: `1px solid ${t.border}`,
         borderRadius: 8,
         padding: "10px 11px",
-        cursor: "pointer",
-        transition: "all .12s",
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.borderColor = t.borderH;
-        e.currentTarget.style.transform = "translateY(-1px)";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = t.border;
-        e.currentTarget.style.transform = "none";
+        cursor: "grab",
+        position: "relative",
+        userSelect: "none",
       }}
     >
+      {task.starred && (
+        <span style={{ position: "absolute", top: 7, right: 9, lineHeight: 1 }}>
+          <Icon name="star" size={11} color="#eab308" fill="#eab308" strokeWidth={1.5} />
+        </span>
+      )}
+
       <div
         style={{
           fontSize: 12.5,
@@ -2262,6 +3156,7 @@ function KanbanCard({ task }) {
           lineHeight: 1.35,
           textDecoration: task.status === "done" ? "line-through" : "none",
           color: task.status === "done" ? t.text3 : t.text,
+          paddingRight: task.starred ? 18 : 0,
         }}
       >
         {task.title || "Bez názvu"}
@@ -2285,8 +3180,8 @@ function KanbanCard({ task }) {
         </div>
       )}
 
-      {task.dueDate && (
-        <div style={{ marginTop: 6 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
+        {task.dueDate && (
           <span
             className="mono"
             style={{
@@ -2298,12 +3193,17 @@ function KanbanCard({ task }) {
               borderRadius: 3,
             }}
           >
-            📅 {parseYMD(task.dueDate)?.toLocaleDateString("cs-CZ", { day: "numeric", month: "numeric", year: "numeric" }) || task.dueDate}
+            {parseYMD(task.dueDate)?.toLocaleDateString("cs-CZ", { day: "numeric", month: "numeric" }) || task.dueDate}
           </span>
-        </div>
-      )}
+        )}
+        {phaseCount > 0 && (
+          <span style={{ fontSize: 10, color: t.text3, display: "flex", alignItems: "center", gap: 2 }}>
+            ☰ {phaseCount}
+          </span>
+        )}
+      </div>
 
-      <div style={{ display: "flex", gap: 4, marginTop: 8 }} onClick={(e) => e.stopPropagation()}>
+      <div style={{ display: "flex", gap: 3, marginTop: 8 }} onClick={(e) => e.stopPropagation()}>
         {STATUS_KEYS.filter((k) => k !== task.status).map((k) => (
           <button
             key={k}
@@ -2311,29 +3211,21 @@ function KanbanCard({ task }) {
             title={STATUSES[k].label}
             style={{
               flex: 1,
-              padding: "5px 0",
+              padding: "4px 0",
               borderRadius: 5,
-              fontSize: 14,
-              border: `1px solid ${t.border}`,
-              background: STATUSES[k].color + "08",
+              fontSize: 10,
+              border: `1px solid ${STATUSES[k].color}30`,
+              background: STATUSES[k].color + "10",
               color: STATUSES[k].color,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              opacity: 0.55,
-              transition: "all .12s",
-              fontWeight: 700,
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.opacity = 1;
-              e.target.style.background = STATUSES[k].color + "20";
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.opacity = 0.55;
-              e.target.style.background = STATUSES[k].color + "08";
+              gap: 3,
+              fontWeight: 600,
+              cursor: "pointer",
             }}
           >
-            {STATUSES[k].icon}
+            {STATUSES[k].icon} <span style={{ fontSize: 9 }}>{STATUSES[k].label}</span>
           </button>
         ))}
       </div>
@@ -2367,6 +3259,7 @@ function TaskDrawer() {
   const [desc, setDesc] = useState(task.description || "");
   const [showNewProject, setShowNewProject] = useState(false);
   const [npName, setNpName] = useState("");
+   const [newPhase, setNewPhase] = useState("");
 
   useEffect(() => {
     setTitle(task.title);
@@ -2406,7 +3299,7 @@ function TaskDrawer() {
           boxShadow: "-8px 0 32px #0003",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 18px", borderBottom: `1px solid ${t.border}` }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 20px", borderBottom: `1px solid ${t.border}` }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: t.text2, fontFamily: "'Outfit',sans-serif" }}>Detail úkolu</span>
           <div style={{ display: "flex", gap: 6 }}>
             <button onClick={() => deleteTask(task.id)} style={{ background: "transparent", border: "none", color: "#ef4444", fontSize: 11.5, padding: "4px 8px", borderRadius: 5 }}>
@@ -2425,18 +3318,17 @@ function TaskDrawer() {
               style={{
                 background: "none",
                 border: "none",
-                fontSize: 22,
                 cursor: "pointer",
-                color: task.starred ? "#eab308" : t.text3,
                 opacity: task.starred ? 1 : 0.35,
                 transition: "all .15s",
                 padding: 0,
-                lineHeight: 1,
+                display: "flex",
+                alignItems: "center",
                 flexShrink: 0,
               }}
               title={task.starred ? "Odebrat z TOP" : "Přidat do TOP"}
             >
-              {task.starred ? "★" : "☆"}
+              <Icon name="star" size={20} color="#eab308" fill={task.starred ? "#eab308" : "none"} strokeWidth={1.75} />
             </button>
 
             <input
@@ -2462,9 +3354,11 @@ function TaskDrawer() {
                     border: `1.5px solid ${task.status === k ? v.color : t.border}`,
                     background: task.status === k ? v.bg : "transparent",
                     color: task.status === k ? v.color : t.text2,
+                    display: "inline-flex", alignItems: "center", gap: 5,
                   }}
                 >
-                  {v.icon} {v.label}
+                  <Icon name={v.icon} size={11} color="currentColor" strokeWidth={2} />
+                  {v.label}
                 </button>
               ))}
             </div>
@@ -2503,7 +3397,8 @@ function TaskDrawer() {
                     gap: 4,
                   }}
                 >
-                  <span style={{ fontSize: 14 }}>{v.icon}</span> {v.label}
+                  <Icon name={v.icon} size={11} color="currentColor" strokeWidth={2.5} />
+                  {v.label}
                 </button>
               ))}
             </div>
@@ -2604,6 +3499,136 @@ function TaskDrawer() {
               style={{ width: "100%", padding: "10px 14px", borderRadius: 8, border: `1px solid ${t.border}`, background: t.input, color: t.text, outline: "none", fontSize: 13, resize: "vertical", lineHeight: 1.5 }}
             />
           </Sec>
+          <Sec label="Průběh a fáze">
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 10 }}>
+              {(task.phases || []).slice().reverse().map((ph) => (
+                <div
+                  key={ph.id}
+                  style={{
+                    padding: "10px 12px",
+                    borderRadius: 10,
+                    background: t.input,
+                    border: `1px solid ${t.border}`,
+                    display: "flex",
+                    gap: 10,
+                    alignItems: "flex-start",
+                  }}
+                >
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, lineHeight: 1.4 }}>{ph.text}</div>
+                    <div className="mono" style={{ fontSize: 10.5, color: t.text3, marginTop: 4 }}>
+                      {new Date(ph.date).toLocaleString("cs-CZ")}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const next = (task.phases || []).filter((x) => x.id !== ph.id);
+                      s({ phases: next });
+                    }}
+                    style={{ border: "none", background: "transparent", color: t.text3, fontSize: 14, cursor: "pointer" }}
+                    title="Smazat"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                value={newPhase}
+                onChange={(e) => setNewPhase(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    const text = newPhase.trim();
+                    if (!text) return;
+                    const next = [
+                      ...(task.phases || []),
+                      { id: crypto.randomUUID?.() || String(Date.now()), text, date: Date.now() },
+                    ];
+                    s({ phases: next });
+                    setNewPhase("");
+                  }
+                }}
+                placeholder="Nová fáze / záznam průběhu…"
+                style={{
+                  flex: 1,
+                  padding: "10px 12px",
+                  borderRadius: 10,
+                  border: `1px solid ${t.border}`,
+                  background: t.input,
+                  color: t.text,
+                  outline: "none",
+                  fontSize: 13,
+                }}
+              />
+              <button
+                onClick={() => {
+                  const text = newPhase.trim();
+                  if (!text) return;
+                  const next = [
+                    ...(task.phases || []),
+                    { id: crypto.randomUUID?.() || String(Date.now()), text, date: Date.now() },
+                  ];
+                  s({ phases: next });
+                  setNewPhase("");
+                }}
+                style={{
+                  width: 44,
+                  borderRadius: 10,
+                  border: "none",
+                  background: t.accent,
+                  color: "#fff",
+                  fontWeight: 800,
+                  cursor: "pointer",
+                }}
+                title="Přidat"
+              >
+                +
+              </button>
+            </div>
+          </Sec>
+
+
+          <Sec label="Opakování">
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {[
+                { value: null, label: "Žádné" },
+                { value: "daily", label: "Každý den" },
+                { value: "weekly", label: "Každý týden" },
+                { value: "monthly", label: "Každý měsíc" },
+              ].map(({ value, label }) => {
+                const active = (task.recurrence ?? null) === value;
+                return (
+                  <button
+                    key={String(value)}
+                    onClick={() => updateTask(task.id, { recurrence: value })}
+                    style={{
+                      padding: "4px 10px",
+                      borderRadius: 6,
+                      fontSize: 12,
+                      fontWeight: active ? 600 : 400,
+                      border: `1px solid ${active ? t.accent : t.border}`,
+                      background: active ? t.accentBg : "transparent",
+                      color: active ? t.accent : t.text2,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+            {task.recurrence && (
+              <div style={{ marginTop: 6, fontSize: 11, color: t.text3 }}>
+                Po dokončení se automaticky vytvoří nový úkol.
+              </div>
+            )}
+          </Sec>
+
+          <Sec label="Poznámky">
+            <NotesMiniList taskId={task.id} />
+          </Sec>
 
           <div style={{ borderTop: `1px solid ${t.border}`, paddingTop: 12, marginTop: 8, fontSize: 11, color: t.text3 }}>
             <div>Vytvořeno: {new Date(task.createdAt).toLocaleString("cs-CZ")}</div>
@@ -2613,6 +3638,452 @@ function TaskDrawer() {
         </div>
       </div>
     </>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   Notes – Mini list (used in TaskDrawer + ProjectDetail)
+───────────────────────────────────────────── */
+function NotesMiniList({ taskId, projectId }) {
+  const { t, notes, addNote, openNote } = useApp();
+  const relevant = notes.filter((n) =>
+    (taskId && n.primaryTaskId === taskId) ||
+    (projectId && n.primaryProjectId === projectId)
+  );
+
+  const handleAdd = () => {
+    const n = addNote({ primaryTaskId: taskId || null, primaryProjectId: projectId || null });
+    openNote(n.id);
+  };
+
+  return (
+    <div>
+      {relevant.length === 0 && (
+        <div style={{ color: t.text3, fontSize: 12, fontStyle: "italic", marginBottom: 8 }}>Zatím žádné poznámky</div>
+      )}
+      {relevant.map((n) => (
+        <div
+          key={n.id}
+          onClick={() => openNote(n.id)}
+          style={{ padding: "7px 10px", borderRadius: 7, background: t.input, border: `1px solid ${t.border}`, marginBottom: 5, cursor: "pointer" }}
+          onMouseEnter={(e) => (e.currentTarget.style.borderColor = t.accent + "60")}
+          onMouseLeave={(e) => (e.currentTarget.style.borderColor = t.border)}
+        >
+          <div style={{ fontSize: 12.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+              {n.pinned && <Icon name="pin" size={10} color={t.accent} strokeWidth={2} />}
+              {n.title || <em style={{ fontWeight: 400, color: t.text3 }}>Bez názvu</em>}
+            </span>
+          </div>
+          {n.content && (
+            <div style={{ fontSize: 11, color: t.text3, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {n.content.split("\n")[0]}
+            </div>
+          )}
+        </div>
+      ))}
+      <button
+        onClick={handleAdd}
+        style={{ width: "100%", padding: "6px 12px", borderRadius: 7, border: `1px dashed ${t.border}`, background: "transparent", color: t.text3, fontSize: 12, marginTop: 2 }}
+        onMouseEnter={(e) => (e.currentTarget.style.color = t.accent)}
+        onMouseLeave={(e) => (e.currentTarget.style.color = t.text3)}
+      >
+        + Přidat poznámku
+      </button>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   Notes – Detail editor (right panel)
+───────────────────────────────────────────── */
+function NoteDetail({ note, onDelete }) {
+  const { t, updateNote, projects, tasks } = useApp();
+  const [title, setTitle] = useState(note.title);
+  const [content, setContent] = useState(note.content);
+  const contentRef = useRef(null);
+
+  // Reset on note switch
+  useEffect(() => {
+    setTitle(note.title);
+    setContent(note.content);
+  }, [note.id]);
+
+  // Auto-resize textarea
+  useEffect(() => {
+    if (contentRef.current) {
+      contentRef.current.style.height = "auto";
+      contentRef.current.style.height = contentRef.current.scrollHeight + "px";
+    }
+  }, [content]);
+
+  // Autosave (debounce 600 ms)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useDebouncedEffect(() => { updateNote(note.id, { title, content }); }, [title, content], 600);
+
+  const projColor = note.primaryProjectId ? projectColor(note.primaryProjectId) : null;
+  const linkedProject = note.primaryProjectId ? projects.find((p) => p.id === note.primaryProjectId) : null;
+  const linkedTask = note.primaryTaskId ? tasks.find((tk) => tk.id === note.primaryTaskId) : null;
+
+  return (
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "auto", padding: "32px 40px 48px", maxWidth: 860 }}>
+      {/* Title */}
+      <input
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        placeholder="Název poznámky…"
+        style={{
+          fontSize: 28, fontWeight: 800, letterSpacing: "-0.6px",
+          border: "none", background: "transparent", color: t.text,
+          outline: "none", width: "100%", fontFamily: "'Outfit',sans-serif",
+          marginBottom: 4,
+        }}
+      />
+
+      {/* Binding badge */}
+      {(linkedProject || linkedTask) && (
+        <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
+          {linkedProject && (
+            <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 20, border: `1.5px solid ${projColor}55`, background: projColor + "12", color: projColor, display: "inline-flex", alignItems: "center", gap: 4 }}>
+              <Icon name="folder" size={9} color={projColor} strokeWidth={2} />
+              {linkedProject.name}
+            </span>
+          )}
+          {linkedTask && (
+            <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 20, border: `1.5px solid #3b82f655`, background: "#3b82f612", color: "#3b82f6", display: "inline-flex", alignItems: "center", gap: 4 }}>
+              <Icon name="check-square" size={9} color="#3b82f6" strokeWidth={2} />
+              {linkedTask.title || "Bez názvu"}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Divider */}
+      <div style={{ height: 1, background: t.border, marginBottom: 20 }} />
+
+      {/* Content */}
+      <textarea
+        ref={contentRef}
+        value={content}
+        onChange={(e) => setContent(e.target.value)}
+        placeholder={"Začni psát…\n\n# Nadpis\n- seznam položka\n\n**tučné**  _kurzíva_"}
+        style={{
+          width: "100%", minHeight: 260,
+          border: "none", background: "transparent",
+          color: t.text, outline: "none", resize: "none",
+          fontSize: 14.5, lineHeight: 1.75,
+          fontFamily: "'Figtree',sans-serif",
+          overflow: "hidden",
+        }}
+      />
+
+      {/* Metadata panel */}
+      <div style={{ borderTop: `1px solid ${t.border}`, marginTop: 32, paddingTop: 20, display: "flex", flexDirection: "column", gap: 16 }}>
+
+        {/* Primary binding */}
+        <div>
+          <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: t.text3, marginBottom: 7 }}>Vazba na projekt nebo úkol</div>
+          <select
+            value={
+              note.primaryProjectId ? `project:${note.primaryProjectId}` :
+              note.primaryTaskId ? `task:${note.primaryTaskId}` : ""
+            }
+            onChange={(e) => {
+              const v = e.target.value;
+              if (!v) updateNote(note.id, { primaryProjectId: null, primaryTaskId: null });
+              else if (v.startsWith("project:")) updateNote(note.id, { primaryProjectId: v.slice(8), primaryTaskId: null });
+              else if (v.startsWith("task:")) updateNote(note.id, { primaryProjectId: null, primaryTaskId: v.slice(5) });
+            }}
+            style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: `1px solid ${t.border}`, background: t.input, color: t.text, fontSize: 13, outline: "none" }}
+          >
+            <option value="">— Bez vazby</option>
+            <optgroup label="Projekty">
+              {projects.map((p) => (
+                <option key={p.id} value={`project:${p.id}`}>{p.name}</option>
+              ))}
+            </optgroup>
+            <optgroup label="Úkoly">
+              {tasks.slice(0, 60).map((tk) => (
+                <option key={tk.id} value={`task:${tk.id}`}>{tk.title || "Bez názvu"}</option>
+              ))}
+            </optgroup>
+          </select>
+        </div>
+
+        {/* Pinned + actions */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+          <button
+            onClick={() => updateNote(note.id, { pinned: !note.pinned })}
+            style={{
+              display: "flex", alignItems: "center", gap: 6,
+              padding: "5px 13px", borderRadius: 7,
+              border: `1.5px solid ${note.pinned ? "#f59e0b" : t.border}`,
+              background: note.pinned ? "#f59e0b18" : "transparent",
+              color: note.pinned ? "#f59e0b" : t.text2,
+              fontSize: 12, fontWeight: 600,
+            }}
+          >
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+              <Icon name="pin" size={12} color="currentColor" strokeWidth={2} />
+              {note.pinned ? "Připnuto" : "Připnout"}
+            </span>
+          </button>
+          <button
+            onClick={onDelete}
+            style={{ padding: "5px 13px", borderRadius: 7, border: "none", background: "transparent", color: "#ef4444", fontSize: 12, fontWeight: 600 }}
+          >
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+              <Icon name="trash" size={12} color="currentColor" strokeWidth={2} />
+              Smazat
+            </span>
+          </button>
+        </div>
+
+        {/* Dates */}
+        <div style={{ fontSize: 11, color: t.text3, lineHeight: 1.7 }}>
+          <div>Vytvořeno: {new Date(note.createdAt).toLocaleString("cs-CZ")}</div>
+          <div>Upraveno: {new Date(note.updatedAt).toLocaleString("cs-CZ")}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   Notes Page
+───────────────────────────────────────────── */
+function NotesPage() {
+  const { t, notes, addNote, deleteNote, projects, tasks, openNoteId, setOpenNoteId } = useApp();
+  const toast = useToast();
+  const [selId, setSelId] = useState(null);
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("updated");
+
+  // Auto-select: openNoteId from context (navigated from TaskDrawer/ProjectDetail)
+  useEffect(() => {
+    if (openNoteId) {
+      setSelId(openNoteId);
+      setOpenNoteId(null);
+    } else if (!selId && notes.length > 0) {
+      setSelId(notes[0].id);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openNoteId]);
+
+  // Ctrl+N — new note
+  useEffect(() => {
+    const handler = (e) => {
+      const tag = document.activeElement?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if ((e.ctrlKey || e.metaKey) && e.key === "n") {
+        e.preventDefault();
+        const n = addNote({});
+        setSelId(n.id);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [addNote]);
+
+  const handleCreate = () => {
+    const n = addNote({});
+    setSelId(n.id);
+  };
+
+  const handleDelete = (id) => {
+    if (!confirm("Smazat poznámku?")) return;
+    deleteNote(id);
+    const remaining = sortedNotes.filter((n) => n.id !== id);
+    setSelId(remaining.length > 0 ? remaining[0].id : null);
+    toast("Poznámka smazána", "success");
+  };
+
+  // Filter
+  const s = search.toLowerCase();
+  let filtered = notes.filter((n) =>
+    !search || n.title.toLowerCase().includes(s) || n.content.toLowerCase().includes(s)
+  );
+  if (filter === "pinned") filtered = filtered.filter((n) => n.pinned);
+  else if (filter === "project") filtered = filtered.filter((n) => !!n.primaryProjectId);
+  else if (filter === "task") filtered = filtered.filter((n) => !!n.primaryTaskId);
+  else if (filter === "unlinked") filtered = filtered.filter((n) => !n.primaryProjectId && !n.primaryTaskId);
+
+  // Sort
+  const sortedNotes = [...filtered].sort((a, b) => {
+    if (sortBy === "updated") return b.updatedAt - a.updatedAt;
+    if (sortBy === "created") return b.createdAt - a.createdAt;
+    return a.title.localeCompare(b.title, "cs");
+  });
+
+  const selNote = notes.find((n) => n.id === selId) || null;
+
+  const filterTabs = [
+    { k: "all", l: "Vše" },
+    { k: "pinned", l: "Připnuto" },
+    { k: "project", l: "Projekt" },
+    { k: "task", l: "Úkol" },
+    { k: "unlinked", l: "Volné" },
+  ];
+
+  return (
+    <div style={{ display: "flex", height: "100%", overflow: "hidden" }} className="fi">
+
+      {/* ── LEFT: list ── */}
+      <div style={{ width: 300, minWidth: 260, borderRight: `1px solid ${t.border}`, display: "flex", flexDirection: "column", background: t.bg2, overflow: "hidden" }}>
+
+        {/* Header */}
+        <div style={{ padding: "18px 14px 10px", borderBottom: `1px solid ${t.border}` }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+            <h2 style={{ fontSize: 16, fontWeight: 800, letterSpacing: "-0.4px", display: "flex", alignItems: "center", gap: 7 }}>
+              <Icon name="file-text" size={15} color={t.accent} strokeWidth={2} />
+              Poznámky
+            </h2>
+            <button
+              onClick={handleCreate}
+              style={{ padding: "4px 12px", borderRadius: 7, border: "none", background: t.accent, color: "#fff", fontSize: 12, fontWeight: 600 }}
+            >
+              + Nová
+            </button>
+          </div>
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Hledat v poznámkách…"
+            style={{ width: "100%", padding: "7px 11px", borderRadius: 8, border: `1px solid ${t.border}`, background: t.input, color: t.text, fontSize: 12.5, outline: "none" }}
+          />
+        </div>
+
+        {/* Filters + sort */}
+        <div style={{ display: "flex", gap: 2, padding: "8px 10px 2px", flexWrap: "wrap", alignItems: "center", borderBottom: `1px solid ${t.border}` }}>
+          {filterTabs.map((tab) => (
+            <button
+              key={tab.k}
+              onClick={() => setFilter(tab.k)}
+              style={{
+                padding: "3px 8px", borderRadius: 5, fontSize: 10.5,
+                fontWeight: filter === tab.k ? 700 : 400,
+                border: "none",
+                background: filter === tab.k ? t.accentBg : "transparent",
+                color: filter === tab.k ? t.accent : t.text3,
+              }}
+            >
+              {tab.l}
+            </button>
+          ))}
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            style={{ marginLeft: "auto", padding: "3px 6px", borderRadius: 5, border: `1px solid ${t.border}`, background: t.input, color: t.text2, fontSize: 10.5, outline: "none" }}
+          >
+            <option value="updated">Upravené</option>
+            <option value="created">Vytvořené</option>
+            <option value="title">Název A–Z</option>
+          </select>
+        </div>
+
+        {/* Note list */}
+        <div style={{ flex: 1, overflow: "auto", padding: "6px 8px" }}>
+          {sortedNotes.length === 0 && (
+            <div style={{ textAlign: "center", padding: "44px 16px", color: t.text3 }}>
+              <div style={{ opacity: 0.2, marginBottom: 10, display: "flex", justifyContent: "center" }}>
+                <Icon name="file-text" size={44} color={t.text} strokeWidth={1} />
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 5 }}>Žádné poznámky</div>
+              <div style={{ fontSize: 12, marginBottom: 14 }}>
+                {search || filter !== "all" ? "Zkus upravit filtr nebo hledání" : "Vytvoř první poznámku"}
+              </div>
+              {!search && filter === "all" && (
+                <button
+                  onClick={handleCreate}
+                  style={{ padding: "6px 16px", borderRadius: 8, border: "none", background: t.accent, color: "#fff", fontSize: 12, fontWeight: 600 }}
+                >
+                  + Nová poznámka
+                </button>
+              )}
+            </div>
+          )}
+
+          {sortedNotes.map((n) => {
+            const proj = n.primaryProjectId ? projects.find((p) => p.id === n.primaryProjectId) : null;
+            const task = n.primaryTaskId ? tasks.find((tk) => tk.id === n.primaryTaskId) : null;
+            const isActive = n.id === selId;
+            const pCol = proj ? projectColor(proj.id) : null;
+            return (
+              <div
+                key={n.id}
+                onClick={() => setSelId(n.id)}
+                style={{
+                  padding: "10px 11px", borderRadius: 8, marginBottom: 3, cursor: "pointer",
+                  background: isActive ? t.accentBg : "transparent",
+                  border: `1px solid ${isActive ? t.accent + "40" : "transparent"}`,
+                  transition: "background .1s",
+                }}
+                onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = t.cardH; }}
+                onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = "transparent"; }}
+              >
+                <div style={{ display: "flex", alignItems: "baseline", gap: 5, marginBottom: 2 }}>
+                  {n.pinned && <Icon name="pin" size={11} color={t.accent} strokeWidth={2} />}
+                  <span style={{
+                    flex: 1, fontSize: 13, fontWeight: 600, lineHeight: 1.3,
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                    color: isActive ? t.accent : t.text,
+                  }}>
+                    {n.title || <em style={{ fontWeight: 400, color: t.text3 }}>Bez názvu</em>}
+                  </span>
+                </div>
+                {n.content && (
+                  <div style={{ fontSize: 11.5, color: t.text3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginBottom: 5, paddingLeft: n.pinned ? 18 : 0 }}>
+                    {n.content.split("\n").find((l) => l.trim()) || ""}
+                  </div>
+                )}
+                <div style={{ display: "flex", alignItems: "center", gap: 5, paddingLeft: n.pinned ? 18 : 0 }}>
+                  {proj && (
+                    <span style={{ fontSize: 10, fontWeight: 600, padding: "1px 6px", borderRadius: 4, background: pCol + "20", color: pCol, maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", gap: 3 }}>
+                      <Icon name="folder" size={8} color={pCol} strokeWidth={2} />
+                      {proj.name}
+                    </span>
+                  )}
+                  {task && (
+                    <span style={{ fontSize: 10, fontWeight: 600, padding: "1px 6px", borderRadius: 4, background: t.accentBg, color: t.accent, maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", gap: 3 }}>
+                      <Icon name="check-square" size={8} color={t.accent} strokeWidth={2} />
+                      {task.title}
+                    </span>
+                  )}
+                  <span className="mono" style={{ marginLeft: "auto", fontSize: 10, color: t.text3, flexShrink: 0 }}>
+                    {new Date(n.updatedAt).toLocaleDateString("cs-CZ", { day: "numeric", month: "numeric" })}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Footer count */}
+        <div style={{ padding: "8px 14px", borderTop: `1px solid ${t.border}`, fontSize: 11, color: t.text3 }}>
+          {sortedNotes.length} poznámek
+        </div>
+      </div>
+
+      {/* ── RIGHT: editor ── */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: t.bg }}>
+        {selNote ? (
+          <NoteDetail key={selNote.id} note={selNote} onDelete={() => handleDelete(selNote.id)} />
+        ) : (
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, color: t.text3, padding: 40 }}>
+            <Icon name="file-text" size={52} color={t.text} strokeWidth={0.75} fill="none" />
+            <div style={{ fontSize: 16, fontWeight: 700 }}>Vyber poznámku ze seznamu</div>
+            <div style={{ fontSize: 13 }}>nebo vytvoř novou</div>
+            <button
+              onClick={handleCreate}
+              style={{ padding: "9px 22px", borderRadius: 10, border: "none", background: t.accent, color: "#fff", fontSize: 13, fontWeight: 600, marginTop: 4 }}
+            >
+              + Nová poznámka
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -2636,7 +4107,7 @@ function TagsPage() {
   };
 
   return (
-    <div style={{ padding: "24px 28px", maxWidth: 600 }} className="fi">
+    <div style={{ padding: "24px 28px", maxWidth: 680 }} className="fi">
       <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.8px", marginBottom: 20 }}>Správa tagů</h1>
 
       <div style={{ display: "flex", gap: 8, marginBottom: 12, alignItems: "center" }}>
@@ -2765,6 +4236,391 @@ function TagsPage() {
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   Command Palette (Cmd+K)
+───────────────────────────────────────────── */
+function CommandPalette({ onClose }) {
+  const { t, tasks, projects, notes, addNote, setPage, setTaskDetail, openProject, openNote } = useApp();
+  const [query, setQuery] = useState("");
+  const [cursor, setCursor] = useState(0);
+  const inputRef = useRef(null);
+
+  useEffect(() => { inputRef.current?.focus(); }, []);
+
+  // Fuzzy match: returns score >= 0 or -1 for no match
+  function fuzzy(str, q) {
+    if (!q) return 1;
+    const s = str.toLowerCase();
+    const qq = q.toLowerCase();
+    let si = 0, qi = 0, score = 0;
+    while (si < s.length && qi < qq.length) {
+      if (s[si] === qq[qi]) { score++; qi++; }
+      si++;
+    }
+    return qi === qq.length ? score : -1;
+  }
+
+  const quickActions = [
+    { id: "new-task",      icon: "check-square", label: "Nový úkol",           group: "Akce",     action: () => { onClose(); window.dispatchEvent(new CustomEvent("focusQuickAdd")); } },
+    { id: "new-note",      icon: "file-text",    label: "Nová poznámka",        group: "Akce",     action: () => { const n = addNote({}); openNote(n.id); onClose(); } },
+    { id: "go-dashboard",  icon: "home",         label: "Přejít na Přehled",    group: "Navigace", action: () => { setPage("dashboard"); onClose(); } },
+    { id: "go-tasks",      icon: "check-square", label: "Přejít na Úkoly",      group: "Navigace", action: () => { setPage("tasks"); onClose(); } },
+    { id: "go-timeline",   icon: "calendar",     label: "Přejít na Plán",       group: "Navigace", action: () => { setPage("timeline"); onClose(); } },
+    { id: "go-notes",      icon: "file-text",    label: "Přejít na Poznámky",   group: "Navigace", action: () => { setPage("notes"); onClose(); } },
+  ];
+
+  const taskResults = tasks
+    .filter((task) => task.status !== "done")
+    .map((task) => {
+      const score = fuzzy(task.title, query);
+      if (score < 0) return null;
+      const proj = projects.find((p) => p.id === task.projectId);
+      return {
+        id: "task-" + task.id,
+        icon: "check-square",
+        label: task.title,
+        meta: proj?.name,
+        group: "Úkoly",
+        score,
+        action: () => { setTaskDetail(task.id); onClose(); },
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5);
+
+  const projectResults = projects
+    .filter((p) => p.status === "active")
+    .map((p) => {
+      const score = fuzzy(p.name, query);
+      if (score < 0) return null;
+      return {
+        id: "proj-" + p.id,
+        icon: "folder",
+        label: p.name,
+        group: "Projekty",
+        score,
+        action: () => { openProject(p.id); onClose(); },
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3);
+
+  const noteResults = notes
+    .map((n) => {
+      const score = fuzzy((n.title || "Poznámka bez názvu") + " " + (n.content || ""), query);
+      if (score < 0) return null;
+      return {
+        id: "note-" + n.id,
+        icon: "file-text",
+        label: n.title || "Poznámka bez názvu",
+        group: "Poznámky",
+        score,
+        action: () => { openNote(n.id); onClose(); },
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3);
+
+  const items = query.trim()
+    ? [...taskResults, ...projectResults, ...noteResults]
+    : quickActions;
+
+  const safeCursor = Math.min(cursor, Math.max(0, items.length - 1));
+
+  useEffect(() => { setCursor(0); }, [query]);
+
+  const handleKey = (e) => {
+    if (e.key === "ArrowDown") { e.preventDefault(); setCursor((c) => Math.min(c + 1, items.length - 1)); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setCursor((c) => Math.max(c - 1, 0)); }
+    else if (e.key === "Enter") { e.preventDefault(); items[safeCursor]?.action?.(); }
+    else if (e.key === "Escape") { e.preventDefault(); onClose(); }
+  };
+
+  const groups = [...new Set(items.map((i) => i.group))];
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed", inset: 0, zIndex: 1000,
+        background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)",
+        display: "flex", alignItems: "flex-start", justifyContent: "center",
+        paddingTop: "15vh",
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="pop"
+        style={{
+          width: 580, maxWidth: "90vw",
+          background: t.bg2,
+          border: `1px solid ${t.border}`,
+          borderRadius: 14,
+          boxShadow: "0 24px 80px rgba(0,0,0,0.4)",
+          overflow: "hidden",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", borderBottom: `1px solid ${t.border}` }}>
+          <span style={{ fontSize: 16, opacity: 0.5 }}>⌕</span>
+          <input
+            ref={inputRef}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={handleKey}
+            placeholder="Hledat úkoly, projekty, poznámky…"
+            style={{ flex: 1, border: "none", background: "transparent", outline: "none", color: t.text, fontSize: 15 }}
+          />
+          {query && (
+            <button onClick={() => setQuery("")} style={{ background: "none", border: "none", color: t.text3, fontSize: 12, cursor: "pointer" }}>✕</button>
+          )}
+          <kbd style={{ fontSize: 10, color: t.text3, background: t.input, border: `1px solid ${t.border}`, borderRadius: 4, padding: "2px 6px" }}>Esc</kbd>
+        </div>
+
+        <div style={{ maxHeight: 380, overflowY: "auto", padding: "8px 0" }}>
+          {items.length === 0 ? (
+            <div style={{ padding: "28px 20px", textAlign: "center", color: t.text3, fontSize: 13 }}>
+              Nic nenalezeno
+            </div>
+          ) : (
+            groups.map((group) => (
+              <div key={group}>
+                <div style={{ padding: "6px 16px 2px", fontSize: 10, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                  {group}
+                </div>
+                {items
+                  .filter((i) => i.group === group)
+                  .map((item) => {
+                    const globalIdx = items.indexOf(item);
+                    const isActive = globalIdx === safeCursor;
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={item.action}
+                        onMouseEnter={() => setCursor(globalIdx)}
+                        style={{
+                          width: "100%", display: "flex", alignItems: "center", gap: 10,
+                          padding: "8px 16px", border: "none", textAlign: "left",
+                          background: isActive ? t.accentBg : "transparent",
+                          borderLeft: isActive ? `2px solid ${t.accent}` : "2px solid transparent",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <span style={{ width: 20, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          <Icon name={item.icon} size={14} color={isActive ? t.accent : t.text2} strokeWidth={1.75} />
+                        </span>
+                        <span style={{ flex: 1, fontSize: 13.5, color: isActive ? t.accent : t.text, fontWeight: isActive ? 500 : 400 }}>{item.label}</span>
+                        {item.meta && <span style={{ fontSize: 11, color: t.text3 }}>{item.meta}</span>}
+                        {isActive && <kbd style={{ fontSize: 10, color: t.text3, background: t.input, border: `1px solid ${t.border}`, borderRadius: 4, padding: "1px 5px" }}>↵</kbd>}
+                      </button>
+                    );
+                  })}
+              </div>
+            ))
+          )}
+        </div>
+
+        <div style={{ padding: "8px 16px", borderTop: `1px solid ${t.border}`, display: "flex", gap: 14, fontSize: 11, color: t.text3 }}>
+          <span><kbd style={{ background: t.input, border: `1px solid ${t.border}`, borderRadius: 3, padding: "1px 4px" }}>↑↓</kbd> navigace</span>
+          <span><kbd style={{ background: t.input, border: `1px solid ${t.border}`, borderRadius: 3, padding: "1px 4px" }}>↵</kbd> otevřít</span>
+          <span><kbd style={{ background: t.input, border: `1px solid ${t.border}`, borderRadius: 3, padding: "1px 4px" }}>Esc</kbd> zavřít</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   Timeline / Gantt Page
+───────────────────────────────────────────── */
+function TimelinePage() {
+  const { t, tasks, projects, setTaskDetail } = useApp();
+  const today = startOfToday();
+  const [offsetDays, setOffsetDays] = useState(0);
+
+  const DAYS = 28;
+  const COL_W = 36;
+
+  const startDate = new Date(today);
+  startDate.setDate(startDate.getDate() + offsetDays);
+
+  const days = Array.from({ length: DAYS }, (_, i) => {
+    const d = new Date(startDate);
+    d.setDate(d.getDate() + i);
+    return d;
+  });
+
+  const fmt = (d) => d.toISOString().slice(0, 10);
+  const todayStr = fmt(today);
+
+  const tasksWithDue = tasks.filter((task) => task.dueDate && task.status !== "done");
+
+  const getDayIdx = (dateStr) => {
+    const d = parseYMD(dateStr);
+    return Math.round((d - startDate) / 86400000);
+  };
+
+  const DOW = ["Ne", "Po", "Út", "St", "Čt", "Pá", "So"];
+  const MONTHS = ["Led", "Úno", "Bře", "Dub", "Kvě", "Čvn", "Čvc", "Srp", "Zář", "Říj", "Lis", "Pro"];
+
+  const activeProjects = projects.filter((p) => p.status === "active");
+  const unassigned = tasksWithDue.filter((task) => !task.projectId);
+
+  const rows = [
+    ...activeProjects.map((proj) => ({
+      id: proj.id,
+      label: proj.name,
+      tasks: tasksWithDue.filter((task) => task.projectId === proj.id),
+      color: projectColor(proj.id),
+    })),
+    ...(unassigned.length ? [{ id: "_inbox", label: "Bez projektu", tasks: unassigned, color: "#8b95a5" }] : []),
+  ].filter((row) => row.tasks.length > 0);
+
+  return (
+    <div style={{ padding: "28px 32px", minHeight: "100vh", background: t.bg }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24 }}>
+        <div>
+          <div style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 800, fontSize: 22, display: "flex", alignItems: "center", gap: 9 }}>
+            <Icon name="calendar" size={20} color={t.accent} strokeWidth={2} />
+            Plán
+          </div>
+          <div style={{ color: t.text3, fontSize: 13, marginTop: 2 }}>Přehled termínů úkolů na 28 dní</div>
+        </div>
+        <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+          <button
+            onClick={() => setOffsetDays((o) => o - DAYS)}
+            style={{ padding: "6px 14px", borderRadius: 7, border: `1px solid ${t.border}`, background: t.bg2, color: t.text, fontSize: 13, cursor: "pointer" }}
+          >← Zpět</button>
+          <button
+            onClick={() => setOffsetDays(0)}
+            style={{ padding: "6px 14px", borderRadius: 7, border: `1px solid ${t.accent}`, background: t.accentBg, color: t.accent, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+          >Dnes</button>
+          <button
+            onClick={() => setOffsetDays((o) => o + DAYS)}
+            style={{ padding: "6px 14px", borderRadius: 7, border: `1px solid ${t.border}`, background: t.bg2, color: t.text, fontSize: 13, cursor: "pointer" }}
+          >Vpřed →</button>
+        </div>
+      </div>
+
+      {rows.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "80px 0", color: t.text3 }}>
+          <div style={{ marginBottom: 12, opacity: 0.2, display: "flex", justifyContent: "center" }}>
+            <Icon name="calendar" size={48} color={t.text} strokeWidth={0.75} />
+          </div>
+          <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6, color: t.text2 }}>Žádné úkoly s termínem</div>
+          <div style={{ fontSize: 13 }}>Přidejte termín k úkolům a zobrazí se zde.</div>
+        </div>
+      ) : (
+        <div style={{ overflowX: "auto" }}>
+          <div style={{ minWidth: DAYS * COL_W + 200 }}>
+            {/* Day header */}
+            <div style={{ display: "flex", marginLeft: 200, marginBottom: 6 }}>
+              {days.map((d, i) => {
+                const isToday = fmt(d) === todayStr;
+                const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+                const showMonth = i === 0 || d.getDate() === 1;
+                return (
+                  <div key={i} style={{ width: COL_W, flexShrink: 0, textAlign: "center", fontSize: 10,
+                    color: isToday ? t.accent : isWeekend ? t.text2 : t.text3,
+                    fontWeight: isToday ? 700 : 400,
+                  }}>
+                    {showMonth && <div style={{ fontSize: 9, color: t.text3, marginBottom: 1 }}>{MONTHS[d.getMonth()]}</div>}
+                    <div>{DOW[d.getDay()]}</div>
+                    <div>{d.getDate()}</div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Rows */}
+            {rows.map((row) => (
+              <div key={row.id} style={{ display: "flex", alignItems: "flex-start", marginBottom: 4 }}>
+                <div style={{ width: 200, flexShrink: 0, paddingRight: 12, paddingTop: 6, fontSize: 12, fontWeight: 600, color: t.text2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: row.color, marginRight: 6 }} />
+                  {row.label}
+                </div>
+
+                <div style={{ position: "relative", flex: 1, height: 34, display: "flex" }}>
+                  {/* Background cells */}
+                  {days.map((d, i) => {
+                    const isToday = fmt(d) === todayStr;
+                    const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+                    return (
+                      <div key={i} style={{
+                        width: COL_W, flexShrink: 0, height: "100%",
+                        borderLeft: `1px solid ${isToday ? t.accent + "60" : t.border}`,
+                        background: isToday ? t.accent + "08" : isWeekend ? t.bg2 : "transparent",
+                      }} />
+                    );
+                  })}
+
+                  {/* Task chips */}
+                  {row.tasks.map((task) => {
+                    const idx = getDayIdx(task.dueDate);
+                    if (idx < 0 || idx >= DAYS) return null;
+                    const isOverdue = task.dueDate < todayStr;
+                    const chipColor = isOverdue ? "#ef4444" : row.color;
+                    return (
+                      <div
+                        key={task.id}
+                        title={task.title}
+                        onClick={() => setTaskDetail(task.id)}
+                        style={{
+                          position: "absolute",
+                          left: idx * COL_W + 2,
+                          top: 5,
+                          height: 24,
+                          maxWidth: COL_W * 3 - 4,
+                          minWidth: COL_W - 4,
+                          background: chipColor + "22",
+                          border: `1px solid ${chipColor}55`,
+                          borderLeft: `3px solid ${chipColor}`,
+                          borderRadius: 5,
+                          padding: "0 6px",
+                          fontSize: 10,
+                          fontWeight: 500,
+                          color: chipColor,
+                          display: "flex",
+                          alignItems: "center",
+                          overflow: "hidden",
+                          whiteSpace: "nowrap",
+                          textOverflow: "ellipsis",
+                          cursor: "pointer",
+                          zIndex: 1,
+                        }}
+                      >
+                        {task.recurrence && <span style={{ marginRight: 3, flexShrink: 0, display: "flex" }}><Icon name="repeat" size={9} color="currentColor" strokeWidth={2.5} /></span>}
+                        <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{task.title}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div style={{ marginTop: 28, display: "flex", gap: 20, fontSize: 11, color: t.text3, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <div style={{ width: 12, height: 12, borderRadius: 2, background: "#ef444422", border: "1px solid #ef444455", borderLeft: "3px solid #ef4444" }} />
+          Prošlý termín
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <Icon name="repeat" size={11} color={t.text3} strokeWidth={2} /> Opakující se
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <div style={{ width: 14, height: 12, background: t.accent + "08", borderLeft: `2px solid ${t.accent}` }} />
+          Dnes
+        </div>
+        <div style={{ marginLeft: "auto", color: t.text3 }}>Kliknutím na úkol otevřete detail</div>
       </div>
     </div>
   );
