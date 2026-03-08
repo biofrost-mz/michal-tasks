@@ -273,6 +273,33 @@ async function dbSeedIfEmpty(userId) {
   }
 }
 
+async function dbFetchMembers(wsId) {
+  const { data: members, error } = await supabase
+    .from("workspace_members")
+    .select("user_id, role, joined_at")
+    .eq("workspace_id", wsId);
+  if (error) throw error;
+  const list = members || [];
+  // Enrich with profiles — non-fatal if table doesn't exist yet
+  let profileMap = {};
+  if (list.length > 0) {
+    try {
+      const { data: profiles } = await supabase
+        .from("user_profiles")
+        .select("id, email, display_name")
+        .in("id", list.map((m) => m.user_id));
+      (profiles || []).forEach((p) => { profileMap[p.id] = p; });
+    } catch (_) { /* user_profiles not created yet */ }
+  }
+  return list.map((m) => ({
+    userId: m.user_id,
+    role: m.role,
+    joinedAt: m.joined_at,
+    email: profileMap[m.user_id]?.email ?? null,
+    displayName: profileMap[m.user_id]?.display_name ?? null,
+  }));
+}
+
 async function dbFetchWorkspaces(userId) {
   const { data, error } = await supabase
     .from("workspace_members")
@@ -666,17 +693,8 @@ export default function MichalTasks() {
   const setActiveWorkspaceId = useCallback(async (wsId) => {
     setActiveWorkspaceIdRaw(wsId);
     if (wsId) {
-      const { data: members } = await supabase
-        .from("workspace_members")
-        .select("user_id, role, joined_at, user_profiles(display_name, email)")
-        .eq("workspace_id", wsId);
-      setWorkspaceMembers((members || []).map((m) => ({
-        userId: m.user_id,
-        role: m.role,
-        joinedAt: m.joined_at,
-        email: m.user_profiles?.email ?? null,
-        displayName: m.user_profiles?.display_name ?? null,
-      })));
+      const normalized = await dbFetchMembers(wsId);
+      setWorkspaceMembers(normalized);
     } else {
       setWorkspaceMembers([]);
     }
@@ -730,17 +748,8 @@ export default function MichalTasks() {
         setWorkspaces(wsList);
         setActiveWorkspaceIdRaw(wsId);
         // Fetch members of active workspace
-        const { data: members } = await supabase
-          .from("workspace_members")
-          .select("user_id, role, joined_at, user_profiles(display_name, email)")
-          .eq("workspace_id", wsId);
-        setWorkspaceMembers((members || []).map((m) => ({
-          userId: m.user_id,
-          role: m.role,
-          joinedAt: m.joined_at,
-          email: m.user_profiles?.email ?? null,
-          displayName: m.user_profiles?.display_name ?? null,
-        })));
+        const normalized = await dbFetchMembers(wsId);
+        setWorkspaceMembers(normalized);
         // Seed and fetch data for active workspace
         await dbSeedIfEmpty(userId);
         const data = await dbFetchAll(userId, wsId);
