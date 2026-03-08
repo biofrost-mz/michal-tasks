@@ -273,22 +273,25 @@ async function dbSeedIfEmpty(userId) {
   }
 }
 
-async function dbFetchAll() {
+async function dbFetchAll(userId) {
   const { data: projects, error: pErr } = await supabase
     .from("projects")
     .select("*")
+    .eq("owner", userId)
     .order("created_at", { ascending: true });
   if (pErr) throw pErr;
 
   const { data: tasks, error: tErr } = await supabase
     .from("tasks")
     .select("*")
+    .eq("owner", userId)
     .order("position", { ascending: true });
   if (tErr) throw tErr;
 
   const { data: tags, error: gErr } = await supabase
     .from("tags")
     .select("*")
+    .eq("owner", userId)
     .order("created_at", { ascending: true });
   if (gErr) throw gErr;
 
@@ -340,6 +343,7 @@ async function dbFetchAll() {
   const { data: notes, error: nErr } = await supabase
     .from("notes")
     .select("*")
+    .eq("owner", userId)
     .order("updated_at", { ascending: false });
   if (nErr) console.warn("notes table:", nErr.message); // table may not exist yet — non-fatal
 
@@ -354,7 +358,26 @@ async function dbFetchAll() {
     updatedAt: n.updated_at ? new Date(n.updated_at).getTime() : Date.now(),
   }));
 
-  return { projects: projectsNorm, tasks: tasksNorm, tags: tagsNorm, notes: notesNorm };
+  const { data: atts, error: aErr } = await supabase
+    .from("attachments")
+    .select("*")
+    .eq("owner", userId)
+    .order("created_at", { ascending: false });
+  if (aErr) console.warn("attachments table:", aErr.message);
+
+  const attsNorm = (atts || []).map((a) => ({
+    id: a.id,
+    taskId: a.task_id ?? null,
+    projectId: a.project_id ?? null,
+    noteId: a.note_id ?? null,
+    name: a.name,
+    size: a.size ?? null,
+    mimeType: a.mime_type ?? null,
+    storagePath: a.storage_path,
+    createdAt: a.created_at ? new Date(a.created_at).getTime() : Date.now(),
+  }));
+
+  return { projects: projectsNorm, tasks: tasksNorm, tags: tagsNorm, notes: notesNorm, attachments: attsNorm };
 }
 
 /* ─────────────────────────────────────────────
@@ -594,6 +617,7 @@ export default function MichalTasks() {
   const [tasks, setTasks] = useState([]);
   const [tags, setTags] = useState([]);
   const [notes, setNotes] = useState([]);
+  const [attachments, setAttachments] = useState([]);
   const [openNoteId, setOpenNoteId] = useState(null);
   const [cmdOpen, setCmdOpen] = useState(false);
 
@@ -632,11 +656,12 @@ export default function MichalTasks() {
       try {
         setLoaded(false);
         await dbSeedIfEmpty(userId);
-        const data = await dbFetchAll();
+        const data = await dbFetchAll(userId);
         setProjects(data.projects);
         setTasks(data.tasks);
         setTags(data.tags);
         setNotes(data.notes);
+        setAttachments(data.attachments ?? []);
       } catch (e) {
         console.error("dbFetchAll error:", e);
         setLoadError(e?.message || "Nepodařilo se načíst data");
@@ -832,7 +857,7 @@ export default function MichalTasks() {
               nextDue = d.toISOString().slice(0, 10);
             }
           }
-          const newId = crypto.randomUUID();
+          const newId = uuid4();
           const newTask = {
             id: newId,
             title: nextTask.title,
@@ -998,6 +1023,39 @@ export default function MichalTasks() {
     })();
   }, []);
 
+  const uploadAttachment = useCallback(async (file, { taskId = null, projectId = null, noteId = null } = {}) => {
+    if (!userId) throw new Error("Not logged in");
+    const ext = file.name.includes(".") ? file.name.split(".").pop() : "bin";
+    const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const { error: upErr } = await supabase.storage.from("attachments").upload(path, file);
+    if (upErr) throw upErr;
+    const attId = (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+    const { error: dbErr } = await supabase.from("attachments").insert({
+      id: attId,
+      owner: userId,
+      task_id: taskId,
+      project_id: projectId,
+      note_id: noteId,
+      name: file.name,
+      size: file.size,
+      mime_type: file.type || null,
+      storage_path: path,
+    });
+    if (dbErr) {
+      await supabase.storage.from("attachments").remove([path]); // rollback orphan
+      throw dbErr;
+    }
+    const att = { id: attId, taskId, projectId, noteId, name: file.name, size: file.size, mimeType: file.type || null, storagePath: path, createdAt: Date.now() };
+    setAttachments((prev) => [att, ...prev]);
+    return att;
+  }, [userId]);
+
+  const deleteAttachment = useCallback(async (att) => {
+    setAttachments((prev) => prev.filter((a) => a.id !== att.id));
+    await supabase.storage.from("attachments").remove([att.storagePath]);
+    await supabase.from("attachments").delete().eq("id", att.id);
+  }, []);
+
   const openNote = useCallback((id) => {
     setPage("notes");
     setOpenNoteId(id);
@@ -1011,30 +1069,61 @@ export default function MichalTasks() {
   };
 
   if (!loaded) {
+    const bgColor = dk ? "#0c0e14" : "#f0f4ff";
+    const textColor = dk ? "#e8ecf4" : "#1a1e2e";
+    const subColor = dk ? "#8892a4" : "#64748b";
+    const trackColor = dk ? "#1e2638" : "#e2e8f0";
     return (
-      <div style={{ height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: dk ? "#0c0e14" : "#f5f6fa" }}>
-        <div style={{ textAlign: "center", color: dk ? "#e8ecf4" : "#1a1e2e", maxWidth: 340, padding: 24 }}>
-          <div style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-1px", fontFamily: "'Outfit',sans-serif", marginBottom: 10 }}>
+      <div style={{ height: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: bgColor }}>
+        {/* Logo mark */}
+        <div style={{ animation: "logoIn 0.65s cubic-bezier(0.34,1.56,0.64,1) both", marginBottom: 22 }}>
+          <svg width="76" height="76" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="52" height="52" rx="14" fill="#3b82f6"/>
+            {/* Task 1 – done */}
+            <circle cx="15.5" cy="18" r="5" fill="white" opacity="0.95"/>
+            <path d="M12.8 18 L14.9 20.1 L18.2 15.8" stroke="#3b82f6" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+            <rect x="24" y="15.5" width="14" height="3" rx="1.5" fill="white" opacity="0.95"/>
+            {/* Task 2 – in progress */}
+            <circle cx="15.5" cy="28" r="5" stroke="white" strokeWidth="2" fill="none" opacity="0.75"/>
+            <path d="M13 28 L15 30 L18 26" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" opacity="0.75"/>
+            <rect x="24" y="25.5" width="11" height="3" rx="1.5" fill="white" opacity="0.75"/>
+            {/* Task 3 – todo */}
+            <circle cx="15.5" cy="38" r="5" stroke="white" strokeWidth="2" fill="none" opacity="0.4"/>
+            <rect x="24" y="35.5" width="8" height="3" rx="1.5" fill="white" opacity="0.4"/>
+          </svg>
+        </div>
+        {/* App name */}
+        <div style={{ animation: "textIn 0.5s ease-out 0.15s both", textAlign: "center", marginBottom: 36 }}>
+          <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.5px", fontFamily: "'Outfit',sans-serif", color: textColor, lineHeight: 1 }}>
             Michal Tasks
           </div>
-          {loadError ? (
-            <>
-              <div style={{ color: "#ef4444", fontSize: 14, marginBottom: 16, lineHeight: 1.5 }}>
-                Nepodařilo se načíst data.<br /><span style={{ opacity: 0.7, fontSize: 12 }}>{loadError}</span>
-              </div>
-              <button
-                onClick={() => { setLoadError(null); setLoaded(false); window.location.reload(); }}
-                style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: "#3b82f6", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
-              >
-                Zkusit znovu
-              </button>
-            </>
-          ) : (
-            <div style={{ opacity: 0.5, animation: "pulse 1.5s infinite", fontSize: 14 }}>
-              Načítám data…
-            </div>
-          )}
+          <div style={{ fontSize: 11, color: subColor, marginTop: 5, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase" }}>
+            Task management
+          </div>
         </div>
+        {/* Loader / error */}
+        {loadError ? (
+          <div style={{ animation: "textIn 0.4s ease-out both", textAlign: "center", maxWidth: 280 }}>
+            <div style={{ color: "#ef4444", fontSize: 13, marginBottom: 16, lineHeight: 1.6 }}>
+              Nepodařilo se načíst data.<br />
+              <span style={{ opacity: 0.6, fontSize: 11 }}>{loadError}</span>
+            </div>
+            <button
+              onClick={() => { setLoadError(null); setLoaded(false); window.location.reload(); }}
+              style={{ padding: "9px 24px", borderRadius: 8, border: "none", background: "#3b82f6", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+            >
+              Zkusit znovu
+            </button>
+          </div>
+        ) : (
+          <div style={{ animation: "textIn 0.5s ease-out 0.35s both" }}>
+            <svg width="38" height="38" viewBox="0 0 38 38" style={{ display: "block", animation: "spin 0.9s linear infinite" }}>
+              <circle cx="19" cy="19" r="15" stroke={trackColor} strokeWidth="2.5" fill="none"/>
+              <circle cx="19" cy="19" r="15" stroke="#3b82f6" strokeWidth="2.5" fill="none"
+                strokeDasharray="30 65" strokeLinecap="round"/>
+            </svg>
+          </div>
+        )}
       </div>
     );
   }
@@ -1075,6 +1164,9 @@ export default function MichalTasks() {
     cmdOpen,
     setCmdOpen,
     isMobile,
+    attachments,
+    uploadAttachment,
+    deleteAttachment,
   };
 
   return (
@@ -1103,6 +1195,9 @@ export default function MichalTasks() {
           @keyframes toastIn{from{opacity:0;transform:translateY(12px) scale(.95)}to{opacity:1;transform:translateY(0) scale(1)}}
           @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
           @keyframes pop{0%{transform:scale(.9);opacity:0}100%{transform:scale(1);opacity:1}}
+          @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+          @keyframes logoIn{0%{opacity:0;transform:scale(0.7) translateY(12px)}100%{opacity:1;transform:scale(1) translateY(0)}}
+          @keyframes textIn{0%{opacity:0;transform:translateY(8px)}100%{opacity:1;transform:translateY(0)}}
           .fi{animation:fadeIn .2s ease-out}
           .sr{animation:slideRight .2s ease-out}
           .su{animation:slideUp .28s cubic-bezier(.32,1,.4,1)}
@@ -1832,6 +1927,11 @@ function Icon({ name, size = 14, color = "currentColor", strokeWidth = 1.75, fil
     repeat:         ["M17 1l4 4-4 4", "M3 11V9a4 4 0 014-4h14", "M7 23l-4-4 4-4", "M21 13v2a4 4 0 01-4 4H3"],
     "arrow-up":     ["M12 19V5", "M5 12l7-7 7 7"],
     minus:          "M5 12h14",
+    paperclip:      ["M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"],
+    upload:         ["M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4", "M17 8l-5-5-5 5", "M12 3v12"],
+    file:           ["M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z", "M13 2v7h7"],
+    image:          ["M19 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2z", "M8.5 10a1.5 1.5 0 100-3 1.5 1.5 0 000 3z", "M21 15l-5-5L5 21"],
+    "external-link": ["M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6", "M15 3h6v6", "M10 14L21 3"],
   };
   const d = p[name];
   if (!d) return null;
@@ -3860,6 +3960,10 @@ function TaskDrawer() {
             )}
           </Sec>
 
+          <Sec label="Přílohy">
+            <AttachmentsMiniList taskId={task.id} />
+          </Sec>
+
           <Sec label="Poznámky">
             <NotesMiniList taskId={task.id} />
           </Sec>
@@ -3872,6 +3976,134 @@ function TaskDrawer() {
         </div>
       </div>
     </>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   Attachments – Mini list (TaskDrawer + ProjectDetail)
+───────────────────────────────────────────── */
+function AttachmentsMiniList({ taskId, projectId }) {
+  const { t, attachments, uploadAttachment, deleteAttachment } = useApp();
+  const toast = useToast();
+  const confirm = useConfirm();
+  const [uploading, setUploading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const fileRef = useRef(null);
+
+  const relevant = attachments.filter((a) =>
+    (taskId && a.taskId === taskId) ||
+    (projectId && a.projectId === projectId)
+  );
+
+  const handleFiles = async (files) => {
+    const file = files[0];
+    if (!file) return;
+    if (file.size > 25 * 1024 * 1024) { toast("Max 25 MB na soubor", "error"); return; }
+    setUploading(true);
+    try {
+      await uploadAttachment(file, { taskId: taskId ?? null, projectId: projectId ?? null });
+      toast("Soubor nahrán", "success");
+    } catch (e) {
+      toast(e.message || "Chyba při nahrávání", "error");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDelete = async (att) => {
+    if (!await confirm(`Smazat "${att.name}"?`)) return;
+    try {
+      await deleteAttachment(att);
+      toast("Smazáno", "success");
+    } catch (e) {
+      toast(e.message || "Chyba při mazání", "error");
+    }
+  };
+
+  const getUrl = (att) => {
+    const { data } = supabase.storage.from("attachments").getPublicUrl(att.storagePath);
+    return data.publicUrl;
+  };
+
+  const isImage = (att) => att.mimeType?.startsWith("image/");
+
+  const fmtSize = (bytes) => {
+    if (!bytes) return "";
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  };
+
+  return (
+    <div>
+      <div
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFiles(e.dataTransfer.files); }}
+        onClick={() => fileRef.current?.click()}
+        style={{
+          border: `1.5px dashed ${dragOver ? t.accent : t.border}`,
+          borderRadius: 8,
+          padding: "9px 14px",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          color: dragOver ? t.accent : t.text2,
+          fontSize: 12,
+          marginBottom: relevant.length ? 10 : 0,
+          transition: "border-color .15s, color .15s",
+          background: dragOver ? t.accentBg : "transparent",
+        }}
+      >
+        <Icon name="upload" size={13} color={dragOver ? t.accent : t.text3} strokeWidth={2} />
+        {uploading ? "Nahrávám…" : "Přidat soubor nebo obrázek"}
+        <input
+          ref={fileRef}
+          type="file"
+          style={{ display: "none" }}
+          onChange={(e) => handleFiles(e.target.files)}
+        />
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {relevant.map((att) => {
+          const url = getUrl(att);
+          return (
+            <div key={att.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 6px", borderRadius: 7, background: t.input }}>
+              {isImage(att) ? (
+                <a href={url} target="_blank" rel="noreferrer" style={{ flexShrink: 0 }}>
+                  <img src={url} alt={att.name} style={{ width: 38, height: 38, borderRadius: 5, objectFit: "cover", display: "block" }} />
+                </a>
+              ) : (
+                <div style={{ width: 38, height: 38, borderRadius: 5, background: t.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <Icon name="file" size={16} color={t.text3} strokeWidth={1.5} />
+                </div>
+              )}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <a
+                  href={url}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ color: t.text, fontSize: 12, fontWeight: 500, textDecoration: "none", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                >
+                  {att.name}
+                </a>
+                <div style={{ fontSize: 10, color: t.text3 }}>{fmtSize(att.size)}</div>
+              </div>
+              <a href={url} target="_blank" rel="noreferrer" style={{ color: t.text3, padding: 4, display: "flex", alignItems: "center" }}>
+                <Icon name="external-link" size={12} color={t.text3} strokeWidth={2} />
+              </a>
+              <button
+                onClick={() => handleDelete(att)}
+                style={{ background: "none", border: "none", color: t.text3, padding: 4, cursor: "pointer", borderRadius: 4, display: "flex", alignItems: "center" }}
+              >
+                <Icon name="trash" size={12} color={t.text3} strokeWidth={2} />
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
