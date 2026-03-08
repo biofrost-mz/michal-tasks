@@ -13,44 +13,59 @@ function AuthGate({ children }) {
   const toast = useToast();
 
   const [session, setSession] = useState(null);
+  const [authMode, setAuthMode] = useState("magic"); // "magic" | "password"
+  const [signMode, setSignMode] = useState("signin"); // "signin" | "signup"
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
 
   useEffect(() => {
-    // Get current session
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session ?? null);
-    });
-
-    // Listen for auth changes (magic link, logout, etc.)
+    supabase.auth.getSession().then(({ data }) => setSession(data.session ?? null));
     const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession ?? null);
     });
-
-    return () => {
-      sub?.subscription?.unsubscribe?.();
-    };
+    return () => sub?.subscription?.unsubscribe?.();
   }, []);
 
   const sendMagicLink = async () => {
     const e = email.trim();
     if (!e) return;
-
     setSending(true);
     const { error } = await supabase.auth.signInWithOtp({
       email: e,
-      options: {
-        // for local dev; later we'll set to your Vercel URL
-        emailRedirectTo: window.location.origin,
-      },
+      options: { emailRedirectTo: window.location.origin },
     });
     setSending(false);
+    if (error) { toast(error.message || "Chyba", "error"); return; }
+    setSent(true);
+  };
 
-    if (error) {
-      toast(error.message || "Nepodařilo se odeslat přihlašovací link", "error");
-      return;
+  const handlePassword = async () => {
+    const e = email.trim();
+    if (!e || !password) return;
+    setSending(true);
+    let error;
+    if (signMode === "signup") {
+      ({ error } = await supabase.auth.signUp({ email: e, password }));
+      if (!error) toast("Účet vytvořen! Zkontroluj email pro potvrzení.", "success");
+    } else {
+      ({ error } = await supabase.auth.signInWithPassword({ email: e, password }));
     }
-    toast("Poslal jsem přihlašovací odkaz na e-mail", "success");
+    setSending(false);
+    if (error) toast(error.message || "Chyba přihlášení", "error");
+  };
+
+  const handleForgotPassword = async () => {
+    const e = email.trim();
+    if (!e) { toast("Zadej nejdřív email", "error"); return; }
+    setSending(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(e, {
+      redirectTo: `${window.location.origin}?reset=1`,
+    });
+    setSending(false);
+    if (error) { toast(error.message || "Chyba", "error"); return; }
+    toast("Odkaz pro reset hesla odeslán", "success");
   };
 
   const logout = async () => {
@@ -58,57 +73,73 @@ function AuthGate({ children }) {
     toast("Odhlášeno", "success");
   };
 
-  // Not logged in → show login screen
   if (!session) {
+    const inputStyle = { width: "100%", padding: "10px 12px", borderRadius: 10, border: `1px solid ${t.border}`, background: t.input, color: t.text, outline: "none", fontSize: 14, boxSizing: "border-box" };
+    const btnStyle = { width: "100%", padding: "10px 12px", borderRadius: 10, border: "none", background: t.accent, color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer" };
+
     return (
       <div style={{ minHeight: "100vh", background: t.bg, color: t.text, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-        <div style={{ width: 420, maxWidth: "100%", background: t.bg2, border: `1px solid ${t.border}`, borderRadius: 14, padding: 18, boxShadow: t.shadow }}>
-          <div style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 800, fontSize: 22, marginBottom: 6 }}>
-            Michal Tasks
-          </div>
-          <div style={{ color: t.text2, fontSize: 13, marginBottom: 14 }}>
-            Přihlaste se přes e-mail (magic link).
+        <div style={{ width: 400, maxWidth: "100%", background: t.bg2, border: `1px solid ${t.border}`, borderRadius: 16, padding: "28px 28px 24px", boxShadow: t.shadow }}>
+          {/* Logo */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+            <div style={{ width: 34, height: 34, borderRadius: 9, background: "linear-gradient(135deg,#3b82f6,#8b5cf6)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 16, fontWeight: 800, fontFamily: "'Outfit',sans-serif" }}>M</div>
+            <span style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 800, fontSize: 18, letterSpacing: "-0.5px" }}>Michal Tasks</span>
           </div>
 
-          <input
-            value={email}
-            onChange={(ev) => setEmail(ev.target.value)}
-            placeholder="mich.zich@gmail.com"
-            type="email"
-            style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: `1px solid ${t.border}`, background: t.input, color: t.text, outline: "none", marginBottom: 10 }}
-          />
-
-          <button
-            onClick={sendMagicLink}
-            disabled={!email.trim() || sending}
-            style={{
-              width: "100%",
-              padding: "10px 12px",
-              borderRadius: 10,
-              border: "none",
-              background: t.accent,
-              color: "#fff",
-              fontWeight: 700,
-              opacity: !email.trim() || sending ? 0.6 : 1,
-            }}
-          >
-            {sending ? "Odesílám…" : "Poslat přihlašovací odkaz"}
-          </button>
-
-          <div style={{ marginTop: 12, fontSize: 12, color: t.text3, lineHeight: 1.4 }}>
-            Otevřete e-mail a klikněte na odkaz. Poté vás to vrátí zpět do aplikace.
+          {/* Mode toggle */}
+          <div style={{ display: "flex", background: t.input, borderRadius: 9, padding: 3, marginBottom: 20 }}>
+            {[["magic", "Magic link"], ["password", "Email + heslo"]].map(([m, label]) => (
+              <button key={m} onClick={() => { setAuthMode(m); setSent(false); }} style={{ flex: 1, padding: "6px 0", borderRadius: 7, border: "none", background: authMode === m ? t.bg2 : "transparent", color: authMode === m ? t.text : t.text3, fontSize: 12.5, fontWeight: authMode === m ? 600 : 400, cursor: "pointer", transition: "all .15s" }}>
+                {label}
+              </button>
+            ))}
           </div>
+
+          {authMode === "magic" ? (
+            sent ? (
+              <div style={{ textAlign: "center", padding: "12px 0" }}>
+                <div style={{ fontSize: 28, marginBottom: 10 }}>📬</div>
+                <div style={{ fontWeight: 700, marginBottom: 6 }}>Odkaz odeslán</div>
+                <div style={{ fontSize: 13, color: t.text2, marginBottom: 16 }}>Zkontroluj email <strong>{email}</strong> a klikni na odkaz.</div>
+                <button onClick={() => { setSent(false); setEmail(""); }} style={{ ...btnStyle, background: "transparent", color: t.accent, border: `1px solid ${t.accent}`, width: "auto", padding: "7px 20px" }}>Zpět</button>
+              </div>
+            ) : (
+              <>
+                <div style={{ fontSize: 13, color: t.text2, marginBottom: 12 }}>Zadej email a pošleme ti přihlašovací odkaz.</div>
+                <input value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => e.key === "Enter" && sendMagicLink()} placeholder="email@example.com" type="email" style={{ ...inputStyle, marginBottom: 10 }} />
+                <button onClick={sendMagicLink} disabled={!email.trim() || sending} style={{ ...btnStyle, opacity: !email.trim() || sending ? 0.6 : 1 }}>
+                  {sending ? "Odesílám…" : "Poslat přihlašovací odkaz"}
+                </button>
+              </>
+            )
+          ) : (
+            <>
+              {/* Sign in / Sign up toggle */}
+              <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+                {[["signin", "Přihlásit se"], ["signup", "Registrovat"]].map(([m, label]) => (
+                  <button key={m} onClick={() => setSignMode(m)} style={{ background: "none", border: "none", color: signMode === m ? t.accent : t.text3, fontSize: 13, fontWeight: signMode === m ? 700 : 400, cursor: "pointer", padding: "0 0 4px", borderBottom: signMode === m ? `2px solid ${t.accent}` : "2px solid transparent" }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@example.com" type="email" style={{ ...inputStyle, marginBottom: 8 }} />
+              <input value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handlePassword()} placeholder={signMode === "signup" ? "Nové heslo (min. 6 znaků)" : "Heslo"} type="password" style={{ ...inputStyle, marginBottom: 12 }} />
+              <button onClick={handlePassword} disabled={!email.trim() || !password || sending} style={{ ...btnStyle, opacity: !email.trim() || !password || sending ? 0.6 : 1, marginBottom: 8 }}>
+                {sending ? "Čekejte…" : signMode === "signup" ? "Vytvořit účet" : "Přihlásit se"}
+              </button>
+              {signMode === "signin" && (
+                <button onClick={handleForgotPassword} style={{ background: "none", border: "none", color: t.text3, fontSize: 12, cursor: "pointer", padding: 0, width: "100%", textAlign: "center" }}>
+                  Zapomenuté heslo?
+                </button>
+              )}
+            </>
+          )}
         </div>
       </div>
     );
   }
 
-  // Logged in → show app
-  return (
-  <div style={{ height: "100%" }}>
-    {children}
-  </div>
-);
+  return <div style={{ height: "100%" }}>{children}</div>;
 }
 /**
  * Michal Tasks — single-file React app
@@ -1434,6 +1465,8 @@ export default function MichalTasks() {
     leaveWorkspace,
     fetchWorkspaceInvites,
     revokeInvite,
+    userEmail: session?.user?.email ?? null,
+    logout: () => supabase.auth.signOut(),
   };
 
   return (
@@ -1483,6 +1516,7 @@ export default function MichalTasks() {
             {page === "tags" && <TagsPage />}
             {page === "notes" && <NotesPage />}
             {page === "workspace-settings" && <WorkspaceSettingsPage />}
+            {page === "user-profile" && <UserProfilePage />}
           </main>
           {taskDetail && <TaskDrawer />}
           {cmdOpen && <CommandPalette onClose={() => setCmdOpen(false)} />}
@@ -1492,6 +1526,115 @@ export default function MichalTasks() {
         </ConfirmProvider>
       </ToastProvider>
     </AppContext.Provider>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   User Profile Page
+───────────────────────────────────────────── */
+function UserProfilePage() {
+  const { t, setPage, isMobile, userEmail, userId, workspaceMembers, logout } = useApp();
+  const toast = useToast();
+  const confirm = useConfirm();
+
+  const me = workspaceMembers.find((m) => m.userId === userId);
+  const [displayName, setDisplayName] = useState(me?.displayName || "");
+  const [saving, setSaving] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+
+  const handleSaveName = async () => {
+    if (!displayName.trim()) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase.from("user_profiles").upsert(
+        { id: userId, display_name: displayName.trim(), email: userEmail },
+        { onConflict: "id" }
+      );
+      if (error) throw error;
+      toast("Jméno uloženo", "success");
+    } catch (e) {
+      toast(e.message || "Chyba", "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    const { error } = await supabase.auth.resetPasswordForEmail(userEmail, {
+      redirectTo: `${window.location.origin}?reset=1`,
+    });
+    if (error) { toast(error.message || "Chyba", "error"); return; }
+    setResetSent(true);
+    toast("Odkaz pro reset hesla odeslán na email", "success");
+  };
+
+  const handleLogout = async () => {
+    if (!await confirm("Odhlásit se?")) return;
+    await logout();
+  };
+
+  const initials = (me?.displayName || userEmail || "?").slice(0, 2).toUpperCase();
+
+  return (
+    <div style={{ flex: 1, overflow: "auto", padding: isMobile ? "16px" : "28px 32px", maxWidth: 560 }}>
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 28 }}>
+        <button onClick={() => setPage("dashboard")} style={{ background: "none", border: "none", color: t.text3, cursor: "pointer", padding: 4, borderRadius: 6, display: "flex" }}>
+          <Icon name="chevron-left" size={18} color={t.text3} strokeWidth={2} />
+        </button>
+        <div style={{ fontSize: 20, fontWeight: 800, fontFamily: "'Outfit',sans-serif" }}>Můj profil</div>
+      </div>
+
+      {/* Avatar + email */}
+      <div style={{ background: t.bg2, border: `1px solid ${t.border}`, borderRadius: 12, padding: "20px", marginBottom: 16, display: "flex", alignItems: "center", gap: 16 }}>
+        <div style={{ width: 56, height: 56, borderRadius: "50%", background: "linear-gradient(135deg,#3b82f6,#8b5cf6)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 20, fontWeight: 800, flexShrink: 0 }}>
+          {initials}
+        </div>
+        <div>
+          <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 2 }}>{me?.displayName || "—"}</div>
+          <div style={{ fontSize: 13, color: t.text2 }}>{userEmail}</div>
+          <div style={{ fontSize: 11, color: t.text3, marginTop: 2 }}>{me?.role ?? "owner"} · {workspaceMembers.length} členů</div>
+        </div>
+      </div>
+
+      {/* Display name */}
+      <div style={{ background: t.bg2, border: `1px solid ${t.border}`, borderRadius: 12, padding: "18px 20px", marginBottom: 16 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12 }}>Zobrazované jméno</div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSaveName()}
+            placeholder="Tvoje jméno…"
+            style={{ flex: 1, padding: "8px 12px", borderRadius: 8, border: `1px solid ${t.border}`, background: t.input, color: t.text, fontSize: 14 }}
+          />
+          <button onClick={handleSaveName} disabled={!displayName.trim() || saving} style={{ padding: "8px 18px", borderRadius: 8, border: "none", background: t.accent, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", opacity: !displayName.trim() || saving ? 0.6 : 1 }}>
+            {saving ? "Ukládám…" : "Uložit"}
+          </button>
+        </div>
+        <div style={{ fontSize: 11, color: t.text3, marginTop: 6 }}>Toto jméno vidí ostatní členové workspace.</div>
+      </div>
+
+      {/* Password reset */}
+      <div style={{ background: t.bg2, border: `1px solid ${t.border}`, borderRadius: 12, padding: "18px 20px", marginBottom: 16 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12 }}>Heslo</div>
+        {resetSent ? (
+          <div style={{ fontSize: 13, color: "#22c55e" }}>Odkaz pro reset hesla byl odeslán na {userEmail}</div>
+        ) : (
+          <button onClick={handleResetPassword} style={{ padding: "8px 18px", borderRadius: 8, border: `1px solid ${t.border}`, background: "transparent", color: t.text, fontSize: 13, fontWeight: 500, cursor: "pointer" }}>
+            Odeslat odkaz pro reset hesla
+          </button>
+        )}
+      </div>
+
+      {/* Logout */}
+      <div style={{ background: t.bg2, border: `1px solid #ef444430`, borderRadius: 12, padding: "18px 20px" }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "#ef4444", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12 }}>Odhlášení</div>
+        <button onClick={handleLogout} style={{ padding: "8px 18px", borderRadius: 8, border: "1px solid #ef444440", background: "transparent", color: "#ef4444", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+          Odhlásit se
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -1895,10 +2038,69 @@ function WorkspaceSwitcher() {
 }
 
 /* ─────────────────────────────────────────────
+   User Bar (bottom of sidebar)
+───────────────────────────────────────────── */
+function UserBar({ setPage }) {
+  const { t, userEmail, logout, workspaceMembers, userId } = useApp();
+  const toast = useToast();
+  const confirm = useConfirm();
+  const [open, setOpen] = useState(false);
+
+  const me = workspaceMembers.find((m) => m.userId === userId);
+  const displayName = me?.displayName || me?.email || userEmail || "Uživatel";
+  const initials = displayName.slice(0, 2).toUpperCase();
+
+  const handleLogout = async () => {
+    if (!await confirm("Odhlásit se?")) return;
+    await logout();
+    toast("Odhlášeno", "success");
+  };
+
+  return (
+    <div style={{ position: "relative" }}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 8, border: "none", background: "transparent", color: t.text, cursor: "pointer", textAlign: "left" }}
+      >
+        <div style={{ width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg,#3b82f6,#8b5cf6)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 11, fontWeight: 800, flexShrink: 0 }}>
+          {initials}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{me?.displayName || displayName}</div>
+          {me?.displayName && <div style={{ fontSize: 10, color: t.text3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{userEmail}</div>}
+        </div>
+        <Icon name="chevron-up" size={12} color={t.text3} strokeWidth={2} />
+      </button>
+
+      {open && (
+        <>
+          <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 199 }} />
+          <div className="pop" style={{ position: "absolute", bottom: "calc(100% + 6px)", left: 0, right: 0, background: t.bg2, border: `1px solid ${t.border}`, borderRadius: 10, zIndex: 200, overflow: "hidden", boxShadow: t.shadow }}>
+            <div style={{ padding: "8px 10px 6px", fontSize: 11, color: t.text3, borderBottom: `1px solid ${t.border}` }}>
+              <div style={{ fontWeight: 600, color: t.text, marginBottom: 1 }}>{me?.displayName || "—"}</div>
+              <div>{userEmail}</div>
+            </div>
+            <button onClick={() => { setPage("user-profile"); setOpen(false); }} style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "8px 10px", border: "none", background: "transparent", color: t.text, cursor: "pointer", fontSize: 13 }}>
+              <Icon name="list" size={13} color={t.text3} strokeWidth={2} />
+              Můj profil
+            </button>
+            <div style={{ borderTop: `1px solid ${t.border}` }} />
+            <button onClick={handleLogout} style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "8px 10px", border: "none", background: "transparent", color: "#ef4444", cursor: "pointer", fontSize: 13 }}>
+              <Icon name="x" size={13} color="#ef4444" strokeWidth={2} />
+              Odhlásit se
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
    Sidebar
 ───────────────────────────────────────────── */
 function Sidebar({ toggleDk }) {
-  const { t, dk, projects, tasks, page, setPage, openProject, search, setSearch, setTaskDetail, setCmdOpen } = useApp();
+  const { t, dk, projects, tasks, page, setPage, openProject, search, setSearch, setTaskDetail, setCmdOpen, userEmail, logout } = useApp();
   const active = projects.filter((p) => p.status === "active");
   const searchRef = useRef(null);
 
@@ -2103,39 +2305,21 @@ function Sidebar({ toggleDk }) {
         )}
       </nav>
 
-            <div style={{ padding: "10px 12px", borderTop: `1px solid ${t.border}` }}>
+            <div style={{ padding: "10px 12px", borderTop: `1px solid ${t.border}`, display: "flex", flexDirection: "column", gap: 6 }}>
+        {/* User bar */}
+        <UserBar setPage={setPage} />
+        {/* Theme toggle */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ fontSize: 12.5, color: t.text2, display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ fontSize: 14 }}>{dk ? "🌙" : "☀️"}</span>
             {dk ? "Tmavý" : "Světlý"}
           </div>
-
           <button
             onClick={toggleDk}
-            style={{
-              width: 44,
-              height: 24,
-              borderRadius: 999,
-              border: `1px solid ${t.border}`,
-              background: dk ? t.accentBg : t.input,
-              position: "relative",
-              padding: 0,
-            }}
+            style={{ width: 44, height: 24, borderRadius: 999, border: `1px solid ${t.border}`, background: dk ? t.accentBg : t.input, position: "relative", padding: 0 }}
             aria-label="Toggle theme"
           >
-            <span
-              style={{
-                position: "absolute",
-                top: 2,
-                left: dk ? 22 : 2,
-                width: 20,
-                height: 20,
-                borderRadius: "50%",
-                background: dk ? t.accent : t.card,
-                transition: "left .15s ease",
-                boxShadow: t.shadow,
-              }}
-            />
+            <span style={{ position: "absolute", top: 2, left: dk ? 22 : 2, width: 20, height: 20, borderRadius: "50%", background: dk ? t.accent : t.card, transition: "left .15s ease", boxShadow: t.shadow }} />
           </button>
         </div>
       </div>
