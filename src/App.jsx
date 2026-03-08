@@ -590,7 +590,7 @@ export default function MichalTasks() {
 
   // Load from Supabase (projects/tags/tasks) after login
   useEffect(() => {
-    if (!userId) return;
+    if (!userId) { setLoaded(true); return; }
 
     (async () => {
       // Failsafe: always unblock after 10s even if Supabase hangs
