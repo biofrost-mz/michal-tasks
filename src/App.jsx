@@ -121,6 +121,20 @@ function AuthGate({ children }) {
  */
 
 /* ─────────────────────────────────────────────
+   Mobile detection hook
+───────────────────────────────────────────── */
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const handler = (e) => setIsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  return isMobile;
+}
+
+/* ─────────────────────────────────────────────
    Context
 ───────────────────────────────────────────── */
 const AppContext = createContext(null);
@@ -540,6 +554,7 @@ export default function MichalTasks() {
   const userId = session?.user?.id ?? null;
   const [dk, setDk] = useState(true);
   const [page, setPage] = useState("dashboard");
+  const isMobile = useIsMobile();
   const [selProject, setSelProject] = useState(null);
 
   const [projects, setProjects] = useState([]);
@@ -578,6 +593,8 @@ export default function MichalTasks() {
     if (!userId) return;
 
     (async () => {
+      // Failsafe: always unblock after 10s even if Supabase hangs
+      const timeout = setTimeout(() => setLoaded(true), 10_000);
       try {
         setLoaded(false);
         await dbSeedIfEmpty(userId);
@@ -587,8 +604,9 @@ export default function MichalTasks() {
         setTags(data.tags);
         setNotes(data.notes);
       } catch (e) {
-        console.error(e);
+        console.error("dbFetchAll error:", e);
       } finally {
+        clearTimeout(timeout);
         setLoaded(true);
       }
     })();
@@ -1013,6 +1031,7 @@ export default function MichalTasks() {
     setOpenNoteId,
     cmdOpen,
     setCmdOpen,
+    isMobile,
   };
 
   return (
@@ -1022,28 +1041,33 @@ export default function MichalTasks() {
         <style>{`
           @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
           *{margin:0;padding:0;box-sizing:border-box}
-          html,body,#root{height:100%;font-family:'Figtree',sans-serif;background:${t.bg};color:${t.text}}
+          html,body,#root{width:100%;height:100%;font-family:'Figtree',sans-serif;background:${t.bg};color:${t.text}}
+          html{overscroll-behavior:none;overflow-x:hidden}
+          body{overflow-x:hidden}
           h1,h2,h3{font-family:'Outfit',sans-serif}
           ::-webkit-scrollbar{width:5px;height:5px}
           ::-webkit-scrollbar-track{background:transparent}
           ::-webkit-scrollbar-thumb{background:${t.border};border-radius:3px}
           ::selection{background:${t.accent}33}
-          input,textarea,select{font-family:'Figtree',sans-serif}
+          input,textarea,select{font-family:'Figtree',sans-serif;-webkit-appearance:none;border-radius:0}
           button{font-family:'Figtree',sans-serif;cursor:pointer}
           .mono{font-family:'JetBrains Mono',monospace}
           @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
           @keyframes slideRight{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}
+          @keyframes slideUp{from{opacity:0;transform:translateY(100%)}to{opacity:1;transform:translateY(0)}}
           @keyframes toastIn{from{opacity:0;transform:translateY(12px) scale(.95)}to{opacity:1;transform:translateY(0) scale(1)}}
           @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
           @keyframes pop{0%{transform:scale(.9);opacity:0}100%{transform:scale(1);opacity:1}}
           .fi{animation:fadeIn .2s ease-out}
           .sr{animation:slideRight .2s ease-out}
+          .su{animation:slideUp .28s cubic-bezier(.32,1,.4,1)}
           .pop{animation:pop .2s ease-out}
+          .mobile-nav-bar{padding-bottom:env(safe-area-inset-bottom,0px)}
         `}</style>
 
-        <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
-          <Sidebar toggleDk={() => setDk(!dk)} />
-          <main style={{ flex: 1, overflow: "auto", position: "relative" }}>
+        <div style={{ display: "flex", width: "100%", height: "100vh", overflow: "hidden" }}>
+          {!isMobile && <Sidebar toggleDk={() => setDk(!dk)} />}
+          <main style={{ flex: 1, minWidth: 0, width: isMobile ? "100%" : "auto", overflow: "auto", position: "relative", paddingBottom: isMobile ? 66 : 0 }}>
             {page === "dashboard" && <Dashboard />}
             {page === "projects" && <ProjectsPage />}
             {page === "project-detail" && <ProjectDetail />}
@@ -1054,6 +1078,7 @@ export default function MichalTasks() {
           </main>
           {taskDetail && <TaskDrawer />}
           {cmdOpen && <CommandPalette onClose={() => setCmdOpen(false)} />}
+          {isMobile && <MobileNav toggleDk={() => setDk(!dk)} />}
         </div>
         </AuthGate>
       </ToastProvider>
@@ -1069,7 +1094,7 @@ function Sidebar({ toggleDk }) {
   const active = projects.filter((p) => p.status === "active");
   const searchRef = useRef(null);
 
-  // Global keyboard shortcuts
+  // Global keyboard shortcuts (desktop)
   useEffect(() => {
     const handler = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
@@ -1077,18 +1102,11 @@ function Sidebar({ toggleDk }) {
         setCmdOpen(true);
         return;
       }
-      // Skip if user is typing in an input/textarea
       const tag = document.activeElement?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
-
-      if (e.key === "n" || e.key === "N") {
-        e.preventDefault();
-        window.dispatchEvent(new CustomEvent("focusQuickAdd"));
-      } else if (e.key === "Escape") {
-        setTaskDetail(null);
-      } else if (e.key === "k" || e.key === "K") {
-        window.dispatchEvent(new CustomEvent("toggleKanbanView"));
-      }
+      if (e.key === "n" || e.key === "N") { e.preventDefault(); window.dispatchEvent(new CustomEvent("focusQuickAdd")); }
+      else if (e.key === "Escape") { setTaskDetail(null); }
+      else if (e.key === "k" || e.key === "K") { window.dispatchEvent(new CustomEvent("toggleKanbanView")); }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
@@ -1310,6 +1328,157 @@ function Sidebar({ toggleDk }) {
         </div>
       </div>
     </aside>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   Mobile Nav — bottom tab bar
+───────────────────────────────────────────── */
+function MobileNav({ toggleDk }) {
+  const { t, dk, page, setPage, tasks, setCmdOpen, setTaskDetail } = useApp();
+  const [moreOpen, setMoreOpen] = useState(false);
+
+  const primary = [
+    { id: "dashboard", label: "Přehled",  icon: "home"         },
+    { id: "tasks",     label: "Úkoly",    icon: "check-square", count: tasks.filter((x) => x.status !== "done").length },
+    { id: "projects",  label: "Projekty", icon: "folder"       },
+    { id: "notes",     label: "Poznámky", icon: "file-text"    },
+  ];
+
+  const more = [
+    { id: "timeline",  label: "Plán",     icon: "calendar"     },
+    { id: "tags",      label: "Tagy",     icon: "tag"          },
+  ];
+
+  const handleNav = (id) => {
+    setPage(id);
+    setMoreOpen(false);
+    setTaskDetail(null);
+  };
+
+  return (
+    <>
+      {/* "Více" drawer overlay */}
+      {moreOpen && (
+        <>
+          <div onClick={() => setMoreOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 195 }} />
+          <div
+            className="su"
+            style={{
+              position: "fixed", bottom: 66, left: 0, right: 0, zIndex: 196,
+              background: t.bg2, borderTop: `1px solid ${t.border}`,
+              borderRadius: "14px 14px 0 0",
+              padding: "12px 16px 8px",
+              boxShadow: "0 -8px 32px #0003",
+            }}
+          >
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: t.border, margin: "0 auto 14px" }} />
+
+            {/* Search / Command Palette */}
+            <button
+              onClick={() => { setCmdOpen(true); setMoreOpen(false); }}
+              style={{
+                width: "100%", display: "flex", alignItems: "center", gap: 12,
+                padding: "12px 14px", borderRadius: 10, border: `1px solid ${t.border}`,
+                background: t.input, color: t.text2, fontSize: 14, marginBottom: 8,
+              }}
+            >
+              <Icon name="search" size={16} color={t.text3} />
+              <span>Hledat… (⌘K)</span>
+              <kbd style={{ marginLeft: "auto", fontSize: 10, color: t.text3, background: t.bg2, border: `1px solid ${t.border}`, borderRadius: 4, padding: "2px 6px" }}>⌘K</kbd>
+            </button>
+
+            {/* More nav items */}
+            <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+              {more.map((n) => {
+                const act = page === n.id;
+                return (
+                  <button key={n.id} onClick={() => handleNav(n.id)} style={{
+                    flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+                    padding: "12px 8px", borderRadius: 10, border: `1px solid ${act ? t.accent + "50" : t.border}`,
+                    background: act ? t.accentBg : t.card, color: act ? t.accent : t.text2,
+                  }}>
+                    <Icon name={n.icon} size={20} color={act ? t.accent : t.text2} strokeWidth={act ? 2.25 : 1.75} />
+                    <span style={{ fontSize: 11, fontWeight: act ? 600 : 400 }}>{n.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Dark mode toggle */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: 10, background: t.card, border: `1px solid ${t.border}` }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 16 }}>{dk ? "🌙" : "☀️"}</span>
+                <span style={{ fontSize: 13, color: t.text2 }}>{dk ? "Tmavý režim" : "Světlý režim"}</span>
+              </div>
+              <button onClick={toggleDk} style={{
+                width: 44, height: 24, borderRadius: 999, border: `1px solid ${t.border}`,
+                background: dk ? t.accentBg : t.input, position: "relative", padding: 0, flexShrink: 0,
+              }}>
+                <span style={{
+                  position: "absolute", top: 2, left: dk ? 22 : 2, width: 20, height: 20,
+                  borderRadius: "50%", background: dk ? t.accent : t.card,
+                  transition: "left .15s ease", boxShadow: t.shadow,
+                }} />
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Bottom tab bar */}
+      <nav
+        className="mobile-nav-bar"
+        style={{
+          position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 200,
+          background: t.bg2, borderTop: `1px solid ${t.border}`,
+          display: "flex", alignItems: "stretch",
+          boxShadow: "0 -4px 20px #0002",
+        }}
+      >
+        {primary.map((n) => {
+          const act = page === n.id || (n.id === "projects" && page === "project-detail");
+          return (
+            <button
+              key={n.id}
+              onClick={() => handleNav(n.id)}
+              style={{
+                flex: 1, display: "flex", flexDirection: "column", alignItems: "center",
+                justifyContent: "center", gap: 3, padding: "8px 4px 8px",
+                border: "none", background: "transparent",
+                color: act ? t.accent : t.text3,
+                position: "relative",
+              }}
+            >
+              {n.count > 0 && (
+                <span style={{
+                  position: "absolute", top: 6, right: "50%", transform: "translateX(10px)",
+                  minWidth: 16, height: 16, borderRadius: 8, background: t.accent,
+                  color: "#fff", fontSize: 9, fontWeight: 700, display: "flex",
+                  alignItems: "center", justifyContent: "center", padding: "0 3px",
+                }}>{n.count > 99 ? "99+" : n.count}</span>
+              )}
+              <Icon name={n.icon} size={22} color={act ? t.accent : t.text3} strokeWidth={act ? 2.25 : 1.75} />
+              <span style={{ fontSize: 9.5, fontWeight: act ? 600 : 400, letterSpacing: "0.01em" }}>{n.label}</span>
+            </button>
+          );
+        })}
+
+        {/* Více button */}
+        <button
+          onClick={() => setMoreOpen((v) => !v)}
+          style={{
+            flex: 1, display: "flex", flexDirection: "column", alignItems: "center",
+            justifyContent: "center", gap: 3, padding: "8px 4px 8px",
+            border: "none", background: "transparent",
+            color: moreOpen ? t.accent : t.text3,
+          }}
+        >
+          <Icon name="list" size={22} color={moreOpen ? t.accent : t.text3} strokeWidth={moreOpen ? 2.25 : 1.75} />
+          <span style={{ fontSize: 9.5, fontWeight: moreOpen ? 600 : 400 }}>Více</span>
+        </button>
+      </nav>
+    </>
   );
 }
 
@@ -1613,6 +1782,7 @@ function Icon({ name, size = 14, color = "currentColor", strokeWidth = 1.75, fil
     x:              ["M18 6L6 18", "M6 6l12 12"],
     "chevron-down": "M6 9l6 6 6-6",
     "chevron-up":   "M18 15l-6-6-6 6",
+    "chevron-left": "M15 18l-6-6 6-6",
     repeat:         ["M17 1l4 4-4 4", "M3 11V9a4 4 0 014-4h14", "M7 23l-4-4 4-4", "M21 13v2a4 4 0 01-4 4H3"],
     "arrow-up":     ["M12 19V5", "M5 12l7-7 7 7"],
     minus:          "M5 12h14",
@@ -1659,7 +1829,7 @@ function StatCard({ label, value, color, icon, active, onClick }) {
 }
 
 function Dashboard() {
-  const { t, tasks, projects, dashFilter, setDashFilter, search, openProject } = useApp();
+  const { t, tasks, projects, dashFilter, setDashFilter, search, openProject, isMobile } = useApp();
 
   const [doingOpen, setDoingOpen] = useState(false);
   const [waitingOpen, setWaitingOpen] = useState(false);
@@ -1812,29 +1982,31 @@ function Dashboard() {
   );
 
   return (
-    <div style={{ padding: "20px 20px" }} className="fi">
+    <div style={{ padding: isMobile ? "16px 14px" : "20px 20px" }} className="fi">
 
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 20, gap: 12 }}>
+      <div style={{ display: "flex", alignItems: isMobile ? "center" : "flex-end", justifyContent: "space-between", marginBottom: isMobile ? 14 : 20, gap: 12 }}>
         <div>
-          <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.8px", marginBottom: 2 }}>Přehled</h1>
-          <p style={{ color: t.text2, fontSize: 13 }}>
-            {new Date().toLocaleDateString("cs-CZ", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+          <h1 style={{ fontSize: isMobile ? 22 : 28, fontWeight: 800, letterSpacing: "-0.8px", marginBottom: 2 }}>Přehled</h1>
+          <p style={{ color: t.text2, fontSize: 12 }}>
+            {new Date().toLocaleDateString("cs-CZ", { weekday: isMobile ? "short" : "long", day: "numeric", month: isMobile ? "numeric" : "long", year: isMobile ? undefined : "numeric" })}
           </p>
         </div>
-        <div style={{ fontSize: 11, color: t.text3, textAlign: "right", lineHeight: 1.7, flexShrink: 0 }}>
-          <span style={{ background: t.input, padding: "2px 7px", borderRadius: 5, marginRight: 4 }}>N</span> nový úkol
-          {"  ·  "}
-          <span style={{ background: t.input, padding: "2px 7px", borderRadius: 5, marginRight: 4 }}>Esc</span> zavřít
-        </div>
+        {!isMobile && (
+          <div style={{ fontSize: 11, color: t.text3, textAlign: "right", lineHeight: 1.7, flexShrink: 0 }}>
+            <span style={{ background: t.input, padding: "2px 7px", borderRadius: 5, marginRight: 4 }}>N</span> nový úkol
+            {"  ·  "}
+            <span style={{ background: t.input, padding: "2px 7px", borderRadius: 5, marginRight: 4 }}>Esc</span> zavřít
+          </div>
+        )}
       </div>
 
-      <div style={{ marginBottom: 20 }}>
+      <div style={{ marginBottom: isMobile ? 14 : 20 }}>
         <QuickAdd />
       </div>
 
-      {/* Two-column layout */}
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(520px, 1fr) 480px", gap: 28, alignItems: "start", minWidth: 1060 }}>
+      {/* Layout: two-column on desktop, single on mobile */}
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "minmax(520px, 1fr) 480px", gap: isMobile ? 12 : 28, alignItems: "start", minWidth: isMobile ? 0 : 1060 }}>
 
         {/* ── LEFT: Focus ── */}
         <div>
@@ -1920,10 +2092,10 @@ function Dashboard() {
         </div>
 
         {/* ── RIGHT: Context ── */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: isMobile ? 10 : 20, order: isMobile ? -1 : 0, minWidth: 0 }}>
 
           {/* Stat cards 2×2 */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: isMobile ? 6 : 8 }}>
             <StatCard label="Celkem úkolů" value={totalT} color="#8b5cf6" icon="list" active={dashFilter === "total"} onClick={() => setDashFilter(dashFilter === "total" ? null : "total")} />
             <StatCard label="Aktivní proj." value={activeP} color="#3b82f6" icon="folder" active={dashFilter === "active-projects"} onClick={() => setDashFilter(dashFilter === "active-projects" ? null : "active-projects")} />
             <StatCard label="Hotovo" value={doneT} color="#22c55e" icon="check-circle" active={dashFilter === "done"} onClick={() => setDashFilter(dashFilter === "done" ? null : "done")} />
@@ -2501,7 +2673,7 @@ function FilterBtn({ label, active, color, onClick }) {
 }
 
 function AllTasksPage() {
-  const { t, tasks, projects, search } = useApp();
+  const { t, tasks, projects, search, isMobile } = useApp();
   const [statusFilter, setStatusFilter] = useState("all");
   const [projectFilter, setProjectFilter] = useState("all");
   const [view, setView] = useState("list");
@@ -2520,21 +2692,21 @@ function AllTasksPage() {
   }
 
   return (
-    <div style={{ padding: "24px 28px" }} className="fi">
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 10 }}>
+    <div style={{ padding: isMobile ? "16px" : "24px 28px" }} className="fi">
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: isMobile ? 14 : 20, gap: 10 }}>
         <div>
-          <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.8px", marginBottom: 3 }}>Úkoly</h1>
-          <p style={{ color: t.text2, fontSize: 13 }}>Všechny úkoly napříč projekty</p>
+          <h1 style={{ fontSize: isMobile ? 22 : 28, fontWeight: 800, letterSpacing: "-0.8px", marginBottom: 2 }}>Úkoly</h1>
+          {!isMobile && <p style={{ color: t.text2, fontSize: 13 }}>Všechny úkoly napříč projekty</p>}
         </div>
-        <ViewToggle view={view} setView={setView} />
+        {!isMobile && <ViewToggle view={view} setView={setView} />}
       </div>
 
-      <div style={{ marginBottom: 20 }}>
+      <div style={{ marginBottom: isMobile ? 14 : 20 }}>
         <QuickAdd />
       </div>
 
-      <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap", alignItems: "center" }}>
-        <div style={{ display: "flex", gap: 3 }}>
+      <div style={{ display: "flex", gap: isMobile ? 8 : 12, marginBottom: isMobile ? 14 : 20, flexWrap: isMobile ? "nowrap" : "wrap", alignItems: "center", overflowX: isMobile ? "auto" : "visible", paddingBottom: isMobile ? 4 : 0 }}>
+        <div style={{ display: "flex", gap: 3, flexShrink: 0 }}>
           <FilterBtn label="Vše" active={statusFilter === "all"} onClick={() => setStatusFilter("all")} />
           {Object.entries(STATUSES).map(([k, v]) => (
             <FilterBtn key={k} label={v.label} active={statusFilter === k} color={v.color} onClick={() => setStatusFilter(k)} />
@@ -2544,7 +2716,7 @@ function AllTasksPage() {
         <select
           value={projectFilter}
           onChange={(e) => setProjectFilter(e.target.value)}
-          style={{ padding: "5px 10px", borderRadius: 7, border: `1px solid ${t.border}`, background: t.input, color: t.text, fontSize: 12, outline: "none" }}
+          style={{ padding: "5px 10px", borderRadius: 7, border: `1px solid ${t.border}`, background: t.input, color: t.text, fontSize: 12, outline: "none", flexShrink: 0 }}
         >
           <option value="all">Všechny projekty</option>
           <option value="inbox">Inbox</option>
@@ -2555,13 +2727,18 @@ function AllTasksPage() {
           ))}
         </select>
 
-        <span className="mono" style={{ fontSize: 12, color: t.text3, marginLeft: "auto" }}>
+        <span className="mono" style={{ fontSize: 12, color: t.text3, marginLeft: "auto", flexShrink: 0 }}>
           {filtered.length} úkolů
         </span>
       </div>
 
-      {filtered.length > 0 && view === "list" && <ListView taskList={filtered} showProject={true} />}
-      {filtered.length > 0 && view !== "list" && (
+      {filtered.length > 0 && (view === "list" && !isMobile) && <ListView taskList={filtered} showProject={true} />}
+      {isMobile && filtered.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {filtered.map((task) => <DashTaskCard key={task.id} task={task} />)}
+        </div>
+      )}
+      {!isMobile && filtered.length > 0 && view !== "list" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
           {filtered.map((task) => (
             <DashTaskCard key={task.id} task={task} />
@@ -2588,7 +2765,7 @@ function AllTasksPage() {
    Projects Page
 ───────────────────────────────────────────── */
 function ProjectsPage() {
-  const { t, projects, tasks, addProject, openProject } = useApp();
+  const { t, projects, tasks, addProject, openProject, isMobile } = useApp();
   const toast = useToast();
   const [filter, setFilter] = useState("active");
   const [showNew, setShowNew] = useState(false);
@@ -2622,24 +2799,24 @@ function ProjectsPage() {
   ];
 
   return (
-    <div style={{ padding: "24px 28px" }} className="fi">
+    <div style={{ padding: isMobile ? "16px" : "24px 28px" }} className="fi">
 
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 24, gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: isMobile ? 16 : 24, gap: 12 }}>
         <div>
-          <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.8px", marginBottom: 2 }}>Projekty</h1>
-          <p style={{ color: t.text2, fontSize: 13 }}>{projects.length} projektů celkem · {projects.filter(p => p.status === "active").length} aktivních</p>
+          <h1 style={{ fontSize: isMobile ? 22 : 28, fontWeight: 800, letterSpacing: "-0.8px", marginBottom: 2 }}>Projekty</h1>
+          {!isMobile && <p style={{ color: t.text2, fontSize: 13 }}>{projects.length} projektů celkem · {projects.filter(p => p.status === "active").length} aktivních</p>}
         </div>
         <button
           onClick={openNew}
-          style={{ padding: "9px 20px", borderRadius: 10, border: "none", background: t.accent, color: "#fff", fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}
+          style={{ padding: isMobile ? "8px 14px" : "9px 20px", borderRadius: 10, border: "none", background: t.accent, color: "#fff", fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}
         >
-          <span style={{ fontSize: 18, fontWeight: 300, lineHeight: 1 }}>+</span> Nový projekt
+          <span style={{ fontSize: 18, fontWeight: 300, lineHeight: 1 }}>+</span> {isMobile ? "Nový" : "Nový projekt"}
         </button>
       </div>
 
       {/* Filter tabs */}
-      <div style={{ display: "flex", gap: 2, marginBottom: 20, borderBottom: `1px solid ${t.border}`, paddingBottom: 0 }}>
+      <div style={{ display: "flex", gap: 2, marginBottom: 20, borderBottom: `1px solid ${t.border}`, paddingBottom: 0, overflowX: isMobile ? "auto" : "visible" }}>
         {tabs.map((tab) => (
           <button
             key={tab.k}
@@ -2723,7 +2900,7 @@ function ProjectsPage() {
       )}
 
       {/* Project grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(340px, 1fr))", gap: 12 }}>
         {filtered.map((p) => {
           const pt = tasks.filter((x) => x.projectId === p.id);
           const doneC = pt.filter((x) => x.status === "done").length;
@@ -2772,10 +2949,10 @@ function ProjectsPage() {
               {pt.length > 0 ? (
                 <>
                   <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
-                    {todoC > 0 && <span style={{ fontSize: 11, color: STATUSES.todo.color, background: STATUSES.todo.bg, padding: "2px 8px", borderRadius: 5, fontWeight: 600 }}>{STATUSES.todo.icon} {todoC}</span>}
-                    {doingC > 0 && <span style={{ fontSize: 11, color: STATUSES.doing.color, background: STATUSES.doing.bg, padding: "2px 8px", borderRadius: 5, fontWeight: 600 }}>{STATUSES.doing.icon} {doingC}</span>}
-                    {waitingC > 0 && <span style={{ fontSize: 11, color: STATUSES.waiting.color, background: STATUSES.waiting.bg, padding: "2px 8px", borderRadius: 5, fontWeight: 600 }}>{STATUSES.waiting.icon} {waitingC}</span>}
-                    {doneC > 0 && <span style={{ fontSize: 11, color: STATUSES.done.color, background: STATUSES.done.bg, padding: "2px 8px", borderRadius: 5, fontWeight: 600 }}>{STATUSES.done.icon} {doneC}</span>}
+                    {todoC > 0 && <span style={{ fontSize: 11, color: STATUSES.todo.color, background: STATUSES.todo.bg, padding: "2px 8px", borderRadius: 5, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name={STATUSES.todo.icon} size={10} color="currentColor" strokeWidth={2} /> {todoC}</span>}
+                    {doingC > 0 && <span style={{ fontSize: 11, color: STATUSES.doing.color, background: STATUSES.doing.bg, padding: "2px 8px", borderRadius: 5, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name={STATUSES.doing.icon} size={10} color="currentColor" strokeWidth={2} /> {doingC}</span>}
+                    {waitingC > 0 && <span style={{ fontSize: 11, color: STATUSES.waiting.color, background: STATUSES.waiting.bg, padding: "2px 8px", borderRadius: 5, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name={STATUSES.waiting.icon} size={10} color="currentColor" strokeWidth={2} /> {waitingC}</span>}
+                    {doneC > 0 && <span style={{ fontSize: 11, color: STATUSES.done.color, background: STATUSES.done.bg, padding: "2px 8px", borderRadius: 5, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name={STATUSES.done.icon} size={10} color="currentColor" strokeWidth={2} /> {doneC}</span>}
                     {overdueC > 0 && <span style={{ fontSize: 11, color: "#ef4444", background: "#ef444412", padding: "2px 8px", borderRadius: 5, fontWeight: 700 }}>⚠ {overdueC} po termínu</span>}
                   </div>
                   <div style={{ height: 4, borderRadius: 999, background: t.input, overflow: "hidden" }}>
@@ -2959,7 +3136,7 @@ function ProjectDetail() {
       </div>
 
       {view === "kanban" ? (
-        <div style={{ display: "grid", gridTemplateColumns: `repeat(${STATUS_KEYS.length}, minmax(200px, 1fr))`, gap: 8, overflowX: "auto", paddingBottom: 4 }}>
+        <div style={{ display: "grid", gridTemplateColumns: `repeat(${STATUS_KEYS.length}, minmax(200px, 1fr))`, gap: 8, overflowX: "auto", paddingBottom: 4, WebkitOverflowScrolling: "touch", touchAction: "pan-x" }}>
           {STATUS_KEYS.map((status) => {
             const cfg = STATUSES[status];
             const allCol = pTasks.filter((x) => x.status === status).sort((a, b) => (a.position || 0) - (b.position || 0));
@@ -2990,8 +3167,8 @@ function ProjectDetail() {
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 10, padding: "0 4px" }}>
-                  <span style={{ width: 20, height: 20, borderRadius: 5, background: cfg.color + "20", display: "flex", alignItems: "center", justifyContent: "center", color: cfg.color, fontSize: 10, fontWeight: 700 }}>
-                    {cfg.icon}
+                  <span style={{ width: 20, height: 20, borderRadius: 5, background: cfg.color + "20", display: "flex", alignItems: "center", justifyContent: "center", color: cfg.color }}>
+                    <Icon name={cfg.icon} size={11} color={cfg.color} strokeWidth={2} />
                   </span>
                   <span style={{ fontSize: 11, fontWeight: 700, color: cfg.color }}>{cfg.label}</span>
                   <span className="mono" style={{ fontSize: 10, color: t.text3, marginLeft: "auto" }}>
@@ -3114,7 +3291,7 @@ function ProjectDetail() {
 }
 
 function KanbanCard({ task, onDragStart }) {
-  const { t, tags, setTaskDetail, updateTask } = useApp();
+  const { t, tags, setTaskDetail, updateTask, isMobile } = useApp();
   const taskTags = tags.filter((tg) => (task.tagIds || []).includes(tg.id));
   const pr = task.priority ? PRIORITIES[task.priority] : null;
 
@@ -3136,8 +3313,8 @@ function KanbanCard({ task, onDragStart }) {
         background: t.card,
         border: `1px solid ${t.border}`,
         borderRadius: 8,
-        padding: "10px 11px",
-        cursor: "grab",
+        padding: isMobile ? "13px 13px" : "10px 11px",
+        cursor: isMobile ? "pointer" : "grab",
         position: "relative",
         userSelect: "none",
       }}
@@ -3165,7 +3342,7 @@ function KanbanCard({ task, onDragStart }) {
       {pr && (
         <div style={{ marginBottom: 5 }}>
           <span style={{ fontSize: 10, fontWeight: 700, color: pr.color, background: pr.bg, padding: "2px 6px", borderRadius: 4, display: "inline-flex", alignItems: "center", gap: 3 }}>
-            {pr.icon} {pr.label}
+            <Icon name={pr.icon} size={10} color={pr.color} strokeWidth={2.5} /> {pr.label}
           </span>
         </div>
       )}
@@ -3225,7 +3402,8 @@ function KanbanCard({ task, onDragStart }) {
               cursor: "pointer",
             }}
           >
-            {STATUSES[k].icon} <span style={{ fontSize: 9 }}>{STATUSES[k].label}</span>
+            <Icon name={STATUSES[k].icon} size={9} color="currentColor" strokeWidth={2} />
+            <span style={{ fontSize: 9 }}>{STATUSES[k].label}</span>
           </button>
         ))}
       </div>
@@ -3249,7 +3427,7 @@ function Sec({ label, children }) {
 }
 
 function TaskDrawer() {
-  const { t, tasks, projects, tags, updateTask, deleteTask, addProject, taskDetail, setTaskDetail } = useApp();
+  const { t, tasks, projects, tags, updateTask, deleteTask, addProject, taskDetail, setTaskDetail, isMobile } = useApp();
   const toast = useToast();
 
   const task = tasks.find((x) => x.id === taskDetail);
@@ -3283,23 +3461,27 @@ function TaskDrawer() {
     <>
       <div onClick={() => setTaskDetail(null)} style={{ position: "fixed", inset: 0, background: "#00000040", zIndex: 90 }} />
       <div
-        className="sr"
+        className={isMobile ? "su" : "sr"}
         style={{
           position: "fixed",
-          top: 0,
-          right: 0,
-          bottom: 0,
-          width: 440,
-          maxWidth: "92vw",
+          ...(isMobile
+            ? { bottom: 0, left: 0, right: 0, top: "8vh", borderRadius: "16px 16px 0 0", borderTop: `1px solid ${t.border}` }
+            : { top: 0, right: 0, bottom: 0, width: 440, maxWidth: "92vw", borderLeft: `1px solid ${t.border}` }
+          ),
           background: t.bg2,
-          borderLeft: `1px solid ${t.border}`,
           zIndex: 100,
           display: "flex",
           flexDirection: "column",
-          boxShadow: "-8px 0 32px #0003",
+          boxShadow: isMobile ? "0 -8px 40px #0004" : "-8px 0 32px #0003",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 20px", borderBottom: `1px solid ${t.border}` }}>
+        {/* Drag handle on mobile */}
+        {isMobile && (
+          <div style={{ display: "flex", justifyContent: "center", paddingTop: 10, paddingBottom: 4, flexShrink: 0 }}>
+            <div style={{ width: 40, height: 4, borderRadius: 2, background: t.border }} />
+          </div>
+        )}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: isMobile ? "10px 16px 12px" : "18px 20px", borderBottom: `1px solid ${t.border}` }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: t.text2, fontFamily: "'Outfit',sans-serif" }}>Detail úkolu</span>
           <div style={{ display: "flex", gap: 6 }}>
             <button onClick={() => deleteTask(task.id)} style={{ background: "transparent", border: "none", color: "#ef4444", fontSize: 11.5, padding: "4px 8px", borderRadius: 5 }}>
@@ -3698,7 +3880,7 @@ function NotesMiniList({ taskId, projectId }) {
    Notes – Detail editor (right panel)
 ───────────────────────────────────────────── */
 function NoteDetail({ note, onDelete }) {
-  const { t, updateNote, projects, tasks } = useApp();
+  const { t, updateNote, projects, tasks, isMobile } = useApp();
   const [title, setTitle] = useState(note.title);
   const [content, setContent] = useState(note.content);
   const contentRef = useRef(null);
@@ -3726,7 +3908,7 @@ function NoteDetail({ note, onDelete }) {
   const linkedTask = note.primaryTaskId ? tasks.find((tk) => tk.id === note.primaryTaskId) : null;
 
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "auto", padding: "32px 40px 48px", maxWidth: 860 }}>
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "auto", padding: isMobile ? "20px 18px 32px" : "32px 40px 48px", maxWidth: isMobile ? "100%" : 860 }}>
       {/* Title */}
       <input
         value={title}
@@ -3828,6 +4010,7 @@ function NoteDetail({ note, onDelete }) {
               {note.pinned ? "Připnuto" : "Připnout"}
             </span>
           </button>
+          {onDelete && (
           <button
             onClick={onDelete}
             style={{ padding: "5px 13px", borderRadius: 7, border: "none", background: "transparent", color: "#ef4444", fontSize: 12, fontWeight: 600 }}
@@ -3837,6 +4020,7 @@ function NoteDetail({ note, onDelete }) {
               Smazat
             </span>
           </button>
+          )}
         </div>
 
         {/* Dates */}
@@ -3853,19 +4037,21 @@ function NoteDetail({ note, onDelete }) {
    Notes Page
 ───────────────────────────────────────────── */
 function NotesPage() {
-  const { t, notes, addNote, deleteNote, projects, tasks, openNoteId, setOpenNoteId } = useApp();
+  const { t, notes, addNote, deleteNote, projects, tasks, openNoteId, setOpenNoteId, isMobile } = useApp();
   const toast = useToast();
   const [selId, setSelId] = useState(null);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const [sortBy, setSortBy] = useState("updated");
+  const [mobileView, setMobileView] = useState("list"); // "list" | "detail"
 
   // Auto-select: openNoteId from context (navigated from TaskDrawer/ProjectDetail)
   useEffect(() => {
     if (openNoteId) {
       setSelId(openNoteId);
       setOpenNoteId(null);
-    } else if (!selId && notes.length > 0) {
+      if (isMobile) setMobileView("detail");
+    } else if (!selId && notes.length > 0 && !isMobile) {
       setSelId(notes[0].id);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -3889,6 +4075,7 @@ function NotesPage() {
   const handleCreate = () => {
     const n = addNote({});
     setSelId(n.id);
+    if (isMobile) setMobileView("detail");
   };
 
   const handleDelete = (id) => {
@@ -3896,6 +4083,7 @@ function NotesPage() {
     deleteNote(id);
     const remaining = sortedNotes.filter((n) => n.id !== id);
     setSelId(remaining.length > 0 ? remaining[0].id : null);
+    if (isMobile) setMobileView("list");
     toast("Poznámka smazána", "success");
   };
 
@@ -3926,14 +4114,18 @@ function NotesPage() {
     { k: "unlinked", l: "Volné" },
   ];
 
+  const showList = !isMobile || mobileView === "list";
+  const showDetail = !isMobile || mobileView === "detail";
+
   return (
     <div style={{ display: "flex", height: "100%", overflow: "hidden" }} className="fi">
 
       {/* ── LEFT: list ── */}
-      <div style={{ width: 300, minWidth: 260, borderRight: `1px solid ${t.border}`, display: "flex", flexDirection: "column", background: t.bg2, overflow: "hidden" }}>
+      {showList && (
+      <div style={{ width: isMobile ? "100%" : 300, minWidth: isMobile ? "auto" : 260, borderRight: isMobile ? "none" : `1px solid ${t.border}`, display: "flex", flexDirection: "column", background: t.bg2, overflow: "hidden", flex: isMobile ? 1 : "none" }}>
 
         {/* Header */}
-        <div style={{ padding: "18px 14px 10px", borderBottom: `1px solid ${t.border}` }}>
+        <div style={{ padding: isMobile ? "14px 16px 10px" : "18px 14px 10px", borderBottom: `1px solid ${t.border}` }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
             <h2 style={{ fontSize: 16, fontWeight: 800, letterSpacing: "-0.4px", display: "flex", alignItems: "center", gap: 7 }}>
               <Icon name="file-text" size={15} color={t.accent} strokeWidth={2} />
@@ -3941,7 +4133,7 @@ function NotesPage() {
             </h2>
             <button
               onClick={handleCreate}
-              style={{ padding: "4px 12px", borderRadius: 7, border: "none", background: t.accent, color: "#fff", fontSize: 12, fontWeight: 600 }}
+              style={{ padding: "6px 14px", borderRadius: 7, border: "none", background: t.accent, color: "#fff", fontSize: 13, fontWeight: 600 }}
             >
               + Nová
             </button>
@@ -4012,7 +4204,7 @@ function NotesPage() {
             return (
               <div
                 key={n.id}
-                onClick={() => setSelId(n.id)}
+                onClick={() => { setSelId(n.id); if (isMobile) setMobileView("detail"); }}
                 style={{
                   padding: "10px 11px", borderRadius: 8, marginBottom: 3, cursor: "pointer",
                   background: isActive ? t.accentBg : "transparent",
@@ -4064,11 +4256,35 @@ function NotesPage() {
           {sortedNotes.length} poznámek
         </div>
       </div>
+      )}
 
       {/* ── RIGHT: editor ── */}
+      {showDetail && (
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: t.bg }}>
+        {isMobile && (
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", borderBottom: `1px solid ${t.border}`, background: t.bg2 }}>
+            <button
+              onClick={() => setMobileView("list")}
+              style={{ background: "none", border: "none", color: t.accent, fontSize: 14, fontWeight: 600, display: "flex", alignItems: "center", gap: 5, padding: "4px 0", cursor: "pointer" }}
+            >
+              <Icon name="chevron-left" size={16} color={t.accent} strokeWidth={2.5} />
+              Zpět
+            </button>
+            <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: t.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {selNote?.title || "Nová poznámka"}
+            </span>
+            {selNote && (
+              <button
+                onClick={() => handleDelete(selNote.id)}
+                style={{ background: "none", border: "none", color: "#ef4444", display: "flex", alignItems: "center", padding: "4px" }}
+              >
+                <Icon name="trash" size={16} color="#ef4444" strokeWidth={1.75} />
+              </button>
+            )}
+          </div>
+        )}
         {selNote ? (
-          <NoteDetail key={selNote.id} note={selNote} onDelete={() => handleDelete(selNote.id)} />
+          <NoteDetail key={selNote.id} note={selNote} onDelete={isMobile ? undefined : () => handleDelete(selNote.id)} />
         ) : (
           <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, color: t.text3, padding: 40 }}>
             <Icon name="file-text" size={52} color={t.text} strokeWidth={0.75} fill="none" />
@@ -4083,6 +4299,7 @@ function NotesPage() {
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }
@@ -4091,7 +4308,7 @@ function NotesPage() {
    Tags Page
 ───────────────────────────────────────────── */
 function TagsPage() {
-  const { t, tags, tasks, addTag, updateTag, deleteTag } = useApp();
+  const { t, tags, tasks, addTag, updateTag, deleteTag, isMobile } = useApp();
   const toast = useToast();
 
   const [newName, setNewName] = useState("");
@@ -4107,8 +4324,8 @@ function TagsPage() {
   };
 
   return (
-    <div style={{ padding: "24px 28px", maxWidth: 680 }} className="fi">
-      <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.8px", marginBottom: 20 }}>Správa tagů</h1>
+    <div style={{ padding: isMobile ? "16px" : "24px 28px", maxWidth: isMobile ? "100%" : 680 }} className="fi">
+      <h1 style={{ fontSize: isMobile ? 22 : 28, fontWeight: 800, letterSpacing: "-0.8px", marginBottom: 20 }}>Správa tagů</h1>
 
       <div style={{ display: "flex", gap: 8, marginBottom: 12, alignItems: "center" }}>
         <input
@@ -4245,7 +4462,7 @@ function TagsPage() {
    Command Palette (Cmd+K)
 ───────────────────────────────────────────── */
 function CommandPalette({ onClose }) {
-  const { t, tasks, projects, notes, addNote, setPage, setTaskDetail, openProject, openNote } = useApp();
+  const { t, tasks, projects, notes, addNote, setPage, setTaskDetail, openProject, openNote, isMobile } = useApp();
   const [query, setQuery] = useState("");
   const [cursor, setCursor] = useState(0);
   const inputRef = useRef(null);
@@ -4352,24 +4569,31 @@ function CommandPalette({ onClose }) {
       style={{
         position: "fixed", inset: 0, zIndex: 1000,
         background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)",
-        display: "flex", alignItems: "flex-start", justifyContent: "center",
-        paddingTop: "15vh",
+        display: "flex",
+        alignItems: isMobile ? "flex-end" : "flex-start",
+        justifyContent: "center",
+        paddingTop: isMobile ? 0 : "15vh",
       }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="pop"
+        className={isMobile ? "su" : "pop"}
         style={{
-          width: 580, maxWidth: "90vw",
+          width: isMobile ? "100%" : 580, maxWidth: isMobile ? "100%" : "90vw",
           background: t.bg2,
           border: `1px solid ${t.border}`,
-          borderRadius: 14,
-          boxShadow: "0 24px 80px rgba(0,0,0,0.4)",
+          borderRadius: isMobile ? "16px 16px 0 0" : 14,
+          boxShadow: isMobile ? "0 -8px 40px rgba(0,0,0,0.4)" : "0 24px 80px rgba(0,0,0,0.4)",
           overflow: "hidden",
         }}
       >
+        {isMobile && (
+          <div style={{ display: "flex", justifyContent: "center", paddingTop: 10, paddingBottom: 2 }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: t.border }} />
+          </div>
+        )}
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", borderBottom: `1px solid ${t.border}` }}>
-          <span style={{ fontSize: 16, opacity: 0.5 }}>⌕</span>
+          <Icon name="search" size={15} color={t.text3} strokeWidth={2} />
           <input
             ref={inputRef}
             value={query}
@@ -4384,7 +4608,7 @@ function CommandPalette({ onClose }) {
           <kbd style={{ fontSize: 10, color: t.text3, background: t.input, border: `1px solid ${t.border}`, borderRadius: 4, padding: "2px 6px" }}>Esc</kbd>
         </div>
 
-        <div style={{ maxHeight: 380, overflowY: "auto", padding: "8px 0" }}>
+        <div style={{ maxHeight: isMobile ? "55vh" : 380, overflowY: "auto", padding: "8px 0" }}>
           {items.length === 0 ? (
             <div style={{ padding: "28px 20px", textAlign: "center", color: t.text3, fontSize: 13 }}>
               Nic nenalezeno
@@ -4427,11 +4651,14 @@ function CommandPalette({ onClose }) {
           )}
         </div>
 
+        {!isMobile && (
         <div style={{ padding: "8px 16px", borderTop: `1px solid ${t.border}`, display: "flex", gap: 14, fontSize: 11, color: t.text3 }}>
           <span><kbd style={{ background: t.input, border: `1px solid ${t.border}`, borderRadius: 3, padding: "1px 4px" }}>↑↓</kbd> navigace</span>
           <span><kbd style={{ background: t.input, border: `1px solid ${t.border}`, borderRadius: 3, padding: "1px 4px" }}>↵</kbd> otevřít</span>
           <span><kbd style={{ background: t.input, border: `1px solid ${t.border}`, borderRadius: 3, padding: "1px 4px" }}>Esc</kbd> zavřít</span>
         </div>
+        )}
+        {isMobile && <div style={{ height: "env(safe-area-inset-bottom, 0px)" }} />}
       </div>
     </div>
   );
