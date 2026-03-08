@@ -1050,6 +1050,7 @@ export default function MichalTasks() {
           ::-webkit-scrollbar-thumb{background:${t.border};border-radius:3px}
           ::selection{background:${t.accent}33}
           input,textarea,select{font-family:'Figtree',sans-serif;-webkit-appearance:none;border-radius:0}
+          @media(max-width:767px){input,textarea,select{font-size:16px !important}}
           button{font-family:'Figtree',sans-serif;cursor:pointer}
           .mono{font-family:'JetBrains Mono',monospace}
           @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
@@ -3012,7 +3013,7 @@ function ProjectsPage() {
    Project Detail + Kanban
 ───────────────────────────────────────────── */
 function ProjectDetail() {
-  const { t, projects, tasks, addTask, updateTask, updateProject, deleteProject, selProject, setPage } = useApp();
+  const { t, projects, tasks, addTask, updateTask, updateProject, deleteProject, selProject, setPage, isMobile } = useApp();
   const toast = useToast();
   const project = projects.find((p) => p.id === selProject);
 
@@ -3038,9 +3039,10 @@ function ProjectDetail() {
   const pTasks = tasks.filter((x) => x.projectId === project.id);
 
   return (
-    <div style={{ padding: "24px 28px" }} className="fi">
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 16, fontSize: 12.5, color: t.text3 }}>
-        <button onClick={() => setPage("projects")} style={{ background: "none", border: "none", color: t.text2, cursor: "pointer", fontSize: 12.5 }}>
+    <div style={{ padding: isMobile ? "14px 16px" : "24px 28px" }} className="fi">
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 14, fontSize: 12.5, color: t.text3 }}>
+        <button onClick={() => setPage("projects")} style={{ background: "none", border: "none", color: t.text2, cursor: "pointer", fontSize: 12.5, display: "flex", alignItems: "center", gap: 4 }}>
+          <Icon name="chevron-left" size={14} color={t.text2} strokeWidth={2} />
           Projekty
         </button>
         <span>›</span>
@@ -3128,15 +3130,15 @@ function ProjectDetail() {
         </div>
       )}
 
-      <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 20 }}>
+      <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 16 }}>
         <div style={{ flex: 1 }}>
           <QuickAdd defaultProjectId={project.id} />
         </div>
-        <ViewToggle view={view} setView={setView} modes={[{ k: "kanban", label: "Kanban", icon: "▦" }, { k: "list", label: "Tabulka", icon: "☰" }]} />
+        {!isMobile && <ViewToggle view={view} setView={setView} modes={[{ k: "kanban", label: "Kanban", icon: "▦" }, { k: "list", label: "Tabulka", icon: "☰" }]} />}
       </div>
 
       {view === "kanban" ? (
-        <div style={{ display: "grid", gridTemplateColumns: `repeat(${STATUS_KEYS.length}, minmax(200px, 1fr))`, gap: 8, overflowX: "auto", paddingBottom: 4, WebkitOverflowScrolling: "touch", touchAction: "pan-x" }}>
+        <div style={isMobile ? { display: "flex", flexDirection: "column", gap: 10 } : { display: "grid", gridTemplateColumns: `repeat(${STATUS_KEYS.length}, minmax(200px, 1fr))`, gap: 8, overflowX: "auto", paddingBottom: 4, WebkitOverflowScrolling: "touch" }}>
           {STATUS_KEYS.map((status) => {
             const cfg = STATUSES[status];
             const allCol = pTasks.filter((x) => x.status === status).sort((a, b) => (a.position || 0) - (b.position || 0));
@@ -4147,13 +4149,15 @@ function NotesPage() {
         </div>
 
         {/* Filters + sort */}
-        <div style={{ display: "flex", gap: 2, padding: "8px 10px 2px", flexWrap: "wrap", alignItems: "center", borderBottom: `1px solid ${t.border}` }}>
+        <div style={{ display: "flex", gap: isMobile ? 4 : 2, padding: isMobile ? "10px 12px 6px" : "8px 10px 2px", flexWrap: "wrap", alignItems: "center", borderBottom: `1px solid ${t.border}` }}>
           {filterTabs.map((tab) => (
             <button
               key={tab.k}
               onClick={() => setFilter(tab.k)}
               style={{
-                padding: "3px 8px", borderRadius: 5, fontSize: 10.5,
+                padding: isMobile ? "6px 12px" : "3px 8px",
+                borderRadius: 6,
+                fontSize: isMobile ? 13 : 10.5,
                 fontWeight: filter === tab.k ? 700 : 400,
                 border: "none",
                 background: filter === tab.k ? t.accentBg : "transparent",
@@ -4166,7 +4170,7 @@ function NotesPage() {
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
-            style={{ marginLeft: "auto", padding: "3px 6px", borderRadius: 5, border: `1px solid ${t.border}`, background: t.input, color: t.text2, fontSize: 10.5, outline: "none" }}
+            style={{ marginLeft: "auto", padding: isMobile ? "6px 8px" : "3px 6px", borderRadius: 5, border: `1px solid ${t.border}`, background: t.input, color: t.text2, fontSize: isMobile ? 13 : 10.5, outline: "none" }}
           >
             <option value="updated">Upravené</option>
             <option value="created">Vytvořené</option>
@@ -4270,17 +4274,23 @@ function NotesPage() {
               <Icon name="chevron-left" size={16} color={t.accent} strokeWidth={2.5} />
               Zpět
             </button>
-            <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: t.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: t.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", margin: "0 8px" }}>
               {selNote?.title || "Nová poznámka"}
             </span>
             {selNote && (
               <button
                 onClick={() => handleDelete(selNote.id)}
-                style={{ background: "none", border: "none", color: "#ef4444", display: "flex", alignItems: "center", padding: "4px" }}
+                style={{ background: "none", border: "none", color: "#ef4444", display: "flex", alignItems: "center", padding: "6px" }}
               >
-                <Icon name="trash" size={16} color="#ef4444" strokeWidth={1.75} />
+                <Icon name="trash" size={17} color="#ef4444" strokeWidth={1.75} />
               </button>
             )}
+            <button
+              onClick={() => setMobileView("list")}
+              style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: t.accent, color: "#fff", fontSize: 13, fontWeight: 600, flexShrink: 0 }}
+            >
+              Hotovo
+            </button>
           </div>
         )}
         {selNote ? (
