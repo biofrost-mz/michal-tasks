@@ -547,6 +547,39 @@ function ToastList({ toasts }) {
 }
 
 /* ─────────────────────────────────────────────
+   Confirm Dialog
+───────────────────────────────────────────── */
+const ConfirmCtx = createContext(null);
+const useConfirm = () => useContext(ConfirmCtx);
+
+function ConfirmProvider({ children }) {
+  const [state, setState] = useState(null); // { msg, resolve }
+  const confirm = useCallback((msg) => new Promise((resolve) => setState({ msg, resolve })), []);
+  const handle = (ok) => { state?.resolve(ok); setState(null); };
+  const { t } = useApp();
+  return (
+    <ConfirmCtx.Provider value={confirm}>
+      {children}
+      {state && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 2000, background: "#0006", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+          <div className="pop" style={{ background: t.bg2, border: `1px solid ${t.border}`, borderRadius: 14, padding: "24px 28px", maxWidth: 360, width: "100%", boxShadow: "0 20px 60px #0005" }}>
+            <div style={{ fontSize: 15, fontWeight: 600, color: t.text, marginBottom: 20, lineHeight: 1.45 }}>{state.msg}</div>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button onClick={() => handle(false)} style={{ padding: "8px 18px", borderRadius: 8, border: `1px solid ${t.border}`, background: "transparent", color: t.text2, fontSize: 13, fontWeight: 500 }}>
+                Zrušit
+              </button>
+              <button onClick={() => handle(true)} style={{ padding: "8px 18px", borderRadius: 8, border: "none", background: "#ef4444", color: "#fff", fontSize: 13, fontWeight: 600 }}>
+                Smazat
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </ConfirmCtx.Provider>
+  );
+}
+
+/* ─────────────────────────────────────────────
    Main App
 ───────────────────────────────────────────── */
 export default function MichalTasks() {
@@ -565,6 +598,7 @@ export default function MichalTasks() {
   const [cmdOpen, setCmdOpen] = useState(false);
 
   const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(null);
 
   const [taskDetail, setTaskDetail] = useState(null);
   const [search, setSearch] = useState("");
@@ -605,6 +639,7 @@ export default function MichalTasks() {
         setNotes(data.notes);
       } catch (e) {
         console.error("dbFetchAll error:", e);
+        setLoadError(e?.message || "Nepodařilo se načíst data");
       } finally {
         clearTimeout(timeout);
         setLoaded(true);
@@ -663,7 +698,6 @@ export default function MichalTasks() {
 
   const deleteProject = useCallback(
     (id) => {
-      if (!confirm("Opravdu smazat projekt? Úkoly přejdou do Inboxu.")) return;
 
       setProjects((p) => p.filter((x) => x.id !== id));
       setTasks((p) => p.map((x) => (x.projectId === id ? { ...x, projectId: null } : x)));
@@ -784,15 +818,19 @@ export default function MichalTasks() {
         }
 
         // Auto-create next recurrence when task is marked done
-        if (u.status === "done" && prevTask?.status !== "done" && nextTask.recurrence) {
+        const VALID_RECURRENCE = ["daily", "weekly", "monthly"];
+        if (u.status === "done" && prevTask?.status !== "done" && VALID_RECURRENCE.includes(nextTask.recurrence)) {
           const rec = nextTask.recurrence;
           let nextDue = null;
           if (nextTask.dueDate) {
-            const d = new Date(nextTask.dueDate + "T00:00:00");
-            if (rec === "daily") d.setDate(d.getDate() + 1);
-            else if (rec === "weekly") d.setDate(d.getDate() + 7);
-            else if (rec === "monthly") d.setMonth(d.getMonth() + 1);
-            nextDue = d.toISOString().slice(0, 10);
+            const parsed = parseYMD(nextTask.dueDate);
+            if (parsed && !isNaN(parsed)) {
+              const d = new Date(parsed);
+              if (rec === "daily") d.setDate(d.getDate() + 1);
+              else if (rec === "weekly") d.setDate(d.getDate() + 7);
+              else if (rec === "monthly") d.setMonth(d.getMonth() + 1);
+              nextDue = d.toISOString().slice(0, 10);
+            }
           }
           const newId = crypto.randomUUID();
           const newTask = {
@@ -854,7 +892,6 @@ export default function MichalTasks() {
 
   const deleteTask = useCallback(
     (id) => {
-      if (!confirm("Smazat úkol?")) return;
       setTasks((p) => p.filter((x) => x.id !== id));
       if (taskDetail === id) setTaskDetail(null);
 
@@ -975,22 +1012,28 @@ export default function MichalTasks() {
 
   if (!loaded) {
     return (
-      <div
-        style={{
-          height: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: dk ? "#0c0e14" : "#f5f6fa",
-        }}
-      >
-        <div style={{ textAlign: "center", color: dk ? "#e8ecf4" : "#1a1e2e" }}>
-          <div style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-1px", fontFamily: "'Outfit',sans-serif" }}>
-            Michal Tasks v1
+      <div style={{ height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: dk ? "#0c0e14" : "#f5f6fa" }}>
+        <div style={{ textAlign: "center", color: dk ? "#e8ecf4" : "#1a1e2e", maxWidth: 340, padding: 24 }}>
+          <div style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-1px", fontFamily: "'Outfit',sans-serif", marginBottom: 10 }}>
+            Michal Tasks
           </div>
-          <div style={{ marginTop: 8, opacity: 0.5, animation: "pulse 1.5s infinite", fontSize: 14 }}>
-            Načítám data…
-          </div>
+          {loadError ? (
+            <>
+              <div style={{ color: "#ef4444", fontSize: 14, marginBottom: 16, lineHeight: 1.5 }}>
+                Nepodařilo se načíst data.<br /><span style={{ opacity: 0.7, fontSize: 12 }}>{loadError}</span>
+              </div>
+              <button
+                onClick={() => { setLoadError(null); setLoaded(false); window.location.reload(); }}
+                style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: "#3b82f6", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+              >
+                Zkusit znovu
+              </button>
+            </>
+          ) : (
+            <div style={{ opacity: 0.5, animation: "pulse 1.5s infinite", fontSize: 14 }}>
+              Načítám data…
+            </div>
+          )}
         </div>
       </div>
     );
@@ -1037,6 +1080,7 @@ export default function MichalTasks() {
   return (
     <AppContext.Provider value={ctx}>
       <ToastProvider>
+        <ConfirmProvider>
         <AuthGate>
         <style>{`
           @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -1082,6 +1126,7 @@ export default function MichalTasks() {
           {isMobile && <MobileNav toggleDk={() => setDk(!dk)} />}
         </div>
         </AuthGate>
+        </ConfirmProvider>
       </ToastProvider>
     </AppContext.Provider>
   );
@@ -3014,6 +3059,7 @@ function ProjectsPage() {
 ───────────────────────────────────────────── */
 function ProjectDetail() {
   const { t, projects, tasks, addTask, updateTask, updateProject, deleteProject, selProject, setPage, isMobile } = useApp();
+  const confirm = useConfirm();
   const toast = useToast();
   const project = projects.find((p) => p.id === selProject);
 
@@ -3073,7 +3119,7 @@ function ProjectDetail() {
               Upravit
             </button>
             <button
-              onClick={() => deleteProject(project.id)}
+              onClick={async () => { if (await confirm("Opravdu smazat projekt? Úkoly přejdou do Inboxu.")) deleteProject(project.id); }}
               style={{ padding: "6px 14px", borderRadius: 7, border: `1px solid #ef444430`, background: "transparent", color: "#ef4444", fontSize: 12 }}
             >
               Smazat
@@ -3431,22 +3477,26 @@ function Sec({ label, children }) {
 function TaskDrawer() {
   const { t, tasks, projects, tags, updateTask, deleteTask, addProject, taskDetail, setTaskDetail, isMobile } = useApp();
   const toast = useToast();
+  const confirm = useConfirm();
 
-  const task = tasks.find((x) => x.id === taskDetail);
-  if (!task) return null;
-
-  const [title, setTitle] = useState(task.title);
-  const [desc, setDesc] = useState(task.description || "");
+  // Hooks must come before any conditional return (Rules of Hooks)
+  const task = tasks.find((x) => x.id === taskDetail) ?? null;
+  const [title, setTitle] = useState(task?.title ?? "");
+  const [desc, setDesc] = useState(task?.description ?? "");
   const [showNewProject, setShowNewProject] = useState(false);
   const [npName, setNpName] = useState("");
-   const [newPhase, setNewPhase] = useState("");
+  const [newPhase, setNewPhase] = useState("");
 
+  // Sync local state when task changes (id switch OR external update)
   useEffect(() => {
+    if (!task) return;
     setTitle(task.title);
     setDesc(task.description || "");
     setShowNewProject(false);
     setNpName("");
-  }, [task.id]);
+  }, [task?.id, task?.title, task?.description]);
+
+  if (!task) return null;
 
   const s = (u) => updateTask(task.id, u);
 
@@ -3486,7 +3536,7 @@ function TaskDrawer() {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: isMobile ? "10px 16px 12px" : "18px 20px", borderBottom: `1px solid ${t.border}` }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: t.text2, fontFamily: "'Outfit',sans-serif" }}>Detail úkolu</span>
           <div style={{ display: "flex", gap: 6 }}>
-            <button onClick={() => deleteTask(task.id)} style={{ background: "transparent", border: "none", color: "#ef4444", fontSize: 11.5, padding: "4px 8px", borderRadius: 5 }}>
+            <button onClick={async () => { if (await confirm("Smazat úkol?")) { setTaskDetail(null); deleteTask(task.id); } }} style={{ background: "transparent", border: "none", color: "#ef4444", fontSize: 11.5, padding: "4px 8px", borderRadius: 5 }}>
               Smazat
             </button>
             <button onClick={() => setTaskDetail(null)} style={{ background: t.input, border: `1px solid ${t.border}`, color: t.text2, fontSize: 14, padding: "2px 10px", borderRadius: 6 }}>
@@ -3987,7 +4037,7 @@ function NoteDetail({ note, onDelete }) {
               ))}
             </optgroup>
             <optgroup label="Úkoly">
-              {tasks.slice(0, 60).map((tk) => (
+              {tasks.map((tk) => (
                 <option key={tk.id} value={`task:${tk.id}`}>{tk.title || "Bez názvu"}</option>
               ))}
             </optgroup>
@@ -4041,6 +4091,7 @@ function NoteDetail({ note, onDelete }) {
 function NotesPage() {
   const { t, notes, addNote, deleteNote, projects, tasks, openNoteId, setOpenNoteId, isMobile } = useApp();
   const toast = useToast();
+  const confirm = useConfirm();
   const [selId, setSelId] = useState(null);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
@@ -4080,8 +4131,8 @@ function NotesPage() {
     if (isMobile) setMobileView("detail");
   };
 
-  const handleDelete = (id) => {
-    if (!confirm("Smazat poznámku?")) return;
+  const handleDelete = async (id) => {
+    if (!await confirm("Smazat poznámku?")) return;
     deleteNote(id);
     const remaining = sortedNotes.filter((n) => n.id !== id);
     setSelId(remaining.length > 0 ? remaining[0].id : null);
@@ -4320,6 +4371,7 @@ function NotesPage() {
 function TagsPage() {
   const { t, tags, tasks, addTag, updateTag, deleteTag, isMobile } = useApp();
   const toast = useToast();
+  const confirm = useConfirm();
 
   const [newName, setNewName] = useState("");
   const [newColor, setNewColor] = useState("#6366f1");
@@ -4403,8 +4455,8 @@ function TagsPage() {
                   </button>
 
                   <button
-                    onClick={() => {
-                      if (confirm(`Smazat tag "${tag.name}"?`)) deleteTag(tag.id);
+                    onClick={async () => {
+                      if (await confirm(`Smazat tag "${tag.name}"?`)) deleteTag(tag.id);
                     }}
                     style={{ background: "none", border: "none", color: "#ef4444", fontSize: 11, padding: "2px 6px" }}
                   >
