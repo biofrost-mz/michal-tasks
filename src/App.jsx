@@ -273,25 +273,65 @@ async function dbSeedIfEmpty(userId) {
   }
 }
 
-async function dbFetchAll(userId) {
+async function dbFetchWorkspaces(userId) {
+  const { data, error } = await supabase
+    .from("workspace_members")
+    .select("role, joined_at, workspaces(id, name, created_at, created_by)")
+    .eq("user_id", userId);
+  if (error) throw error;
+  return (data || []).map((m) => ({
+    id: m.workspaces.id,
+    name: m.workspaces.name,
+    role: m.role,
+    createdAt: m.workspaces.created_at ? new Date(m.workspaces.created_at).getTime() : Date.now(),
+  }));
+}
+
+async function dbEnsurePersonalWorkspace(userId) {
+  // Check if user already has a workspace
+  const { data: memberships } = await supabase
+    .from("workspace_members")
+    .select("workspace_id")
+    .eq("user_id", userId)
+    .limit(1);
+  if (memberships && memberships.length > 0) return memberships[0].workspace_id;
+
+  // Create personal workspace
+  const wsId = uuid4();
+  const { error: wsErr } = await supabase.from("workspaces").insert({
+    id: wsId,
+    name: "Osobní",
+    created_by: userId,
+  });
+  if (wsErr) throw wsErr;
+  const { error: memErr } = await supabase.from("workspace_members").insert({
+    workspace_id: wsId,
+    user_id: userId,
+    role: "owner",
+  });
+  if (memErr) throw memErr;
+  return wsId;
+}
+
+async function dbFetchAll(userId, workspaceId) {
   const { data: projects, error: pErr } = await supabase
     .from("projects")
     .select("*")
-    .eq("owner", userId)
+    .eq("workspace_id", workspaceId)
     .order("created_at", { ascending: true });
   if (pErr) throw pErr;
 
   const { data: tasks, error: tErr } = await supabase
     .from("tasks")
     .select("*")
-    .eq("owner", userId)
+    .eq("workspace_id", workspaceId)
     .order("position", { ascending: true });
   if (tErr) throw tErr;
 
   const { data: tags, error: gErr } = await supabase
     .from("tags")
     .select("*")
-    .eq("owner", userId)
+    .eq("workspace_id", workspaceId)
     .order("created_at", { ascending: true });
   if (gErr) throw gErr;
 
@@ -322,6 +362,7 @@ async function dbFetchAll(userId) {
     phases: Array.isArray(t.phases) ? t.phases : [],
     starred: !!t.starred,
     recurrence: t.recurrence ?? null,
+    assigneeUserId: t.assignee_user_id ?? null,
   }));
 
   const projectsNorm = (projects || []).map((p) => ({
@@ -343,7 +384,7 @@ async function dbFetchAll(userId) {
   const { data: notes, error: nErr } = await supabase
     .from("notes")
     .select("*")
-    .eq("owner", userId)
+    .eq("workspace_id", workspaceId)
     .order("updated_at", { ascending: false });
   if (nErr) console.warn("notes table:", nErr.message); // table may not exist yet — non-fatal
 
@@ -361,7 +402,7 @@ async function dbFetchAll(userId) {
   const { data: atts, error: aErr } = await supabase
     .from("attachments")
     .select("*")
-    .eq("owner", userId)
+    .eq("workspace_id", workspaceId)
     .order("created_at", { ascending: false });
   if (aErr) console.warn("attachments table:", aErr.message);
 
@@ -618,6 +659,23 @@ export default function MichalTasks() {
   const [tags, setTags] = useState([]);
   const [notes, setNotes] = useState([]);
   const [attachments, setAttachments] = useState([]);
+  const [workspaces, setWorkspaces] = useState([]);
+  const [activeWorkspaceId, setActiveWorkspaceIdRaw] = useState(null);
+  const [workspaceMembers, setWorkspaceMembers] = useState([]);
+
+  const setActiveWorkspaceId = useCallback(async (wsId) => {
+    setActiveWorkspaceIdRaw(wsId);
+    if (wsId) {
+      const { data: members } = await supabase
+        .from("workspace_members")
+        .select("user_id, role, joined_at")
+        .eq("workspace_id", wsId);
+      setWorkspaceMembers(members || []);
+    } else {
+      setWorkspaceMembers([]);
+    }
+  }, []);
+
   const [openNoteId, setOpenNoteId] = useState(null);
   const [cmdOpen, setCmdOpen] = useState(false);
 
@@ -646,24 +704,36 @@ export default function MichalTasks() {
     })();
   }, []);
 
-  // Load from Supabase (projects/tags/tasks) after login
+  // Load from Supabase after login
   useEffect(() => {
     if (!userId) { setLoaded(true); return; }
 
     (async () => {
-      // Failsafe: always unblock after 10s even if Supabase hangs
       const timeout = setTimeout(() => setLoaded(true), 10_000);
       try {
         setLoaded(false);
+        // Ensure user has a workspace (creates personal one if needed)
+        const wsId = await dbEnsurePersonalWorkspace(userId);
+        // Fetch all workspaces for this user
+        const wsList = await dbFetchWorkspaces(userId);
+        setWorkspaces(wsList);
+        setActiveWorkspaceIdRaw(wsId);
+        // Fetch members of active workspace
+        const { data: members } = await supabase
+          .from("workspace_members")
+          .select("user_id, role, joined_at")
+          .eq("workspace_id", wsId);
+        setWorkspaceMembers(members || []);
+        // Seed and fetch data for active workspace
         await dbSeedIfEmpty(userId);
-        const data = await dbFetchAll(userId);
+        const data = await dbFetchAll(userId, wsId);
         setProjects(data.projects);
         setTasks(data.tasks);
         setTags(data.tags);
         setNotes(data.notes);
         setAttachments(data.attachments ?? []);
       } catch (e) {
-        console.error("dbFetchAll error:", e);
+        console.error("load error:", e);
         setLoadError(e?.message || "Nepodařilo se načíst data");
       } finally {
         clearTimeout(timeout);
@@ -671,6 +741,25 @@ export default function MichalTasks() {
       }
     })();
   }, [userId]);
+
+  // Handle invite token from URL on login
+  useEffect(() => {
+    if (!userId || !loaded) return;
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("invite");
+    if (!token) return;
+    (async () => {
+      try {
+        const wsId = await acceptInvite(token);
+        const wsList = await dbFetchWorkspaces(userId);
+        setWorkspaces(wsList);
+        await switchWorkspace(wsId);
+        window.history.replaceState({}, "", window.location.pathname);
+      } catch (e) {
+        console.error("invite accept error:", e);
+      }
+    })();
+  }, [userId, loaded]);
 
   // Save dk preference
   useDebouncedEffect(() => {
@@ -696,6 +785,8 @@ export default function MichalTasks() {
       const { error } = await supabase.from("projects").insert({
         id: proj.id,
         owner: userId,
+        workspace_id: activeWorkspaceId,
+        created_by: userId,
         name: proj.name,
         description: proj.description,
         status: proj.status,
@@ -704,7 +795,7 @@ export default function MichalTasks() {
     })();
 
     return proj;
-  }, [userId]);
+  }, [userId, activeWorkspaceId]);
 
   const updateProject = useCallback((id, u) => {
     setProjects((p) => p.map((x) => (x.id === id ? { ...x, ...u, updatedAt: Date.now() } : x)));
@@ -768,6 +859,8 @@ export default function MichalTasks() {
       const { error } = await supabase.from("tasks").insert({
         id: tsk.id,
         owner: userId,
+        workspace_id: activeWorkspaceId,
+        created_by: userId,
         project_id: tsk.projectId,
         title: tsk.title,
         description: tsk.description,
@@ -790,7 +883,7 @@ export default function MichalTasks() {
     })();
 
     return tsk;
-  }, [userId]);
+  }, [userId, activeWorkspaceId]);
 
   const updateTask = useCallback(
     (id, u) => {
@@ -832,6 +925,7 @@ export default function MichalTasks() {
         if (u.starred !== undefined) payload.starred = nextTask.starred;
         if (u.phases !== undefined) payload.phases = nextTask.phases;
         if (u.recurrence !== undefined) payload.recurrence = nextTask.recurrence;
+        if (u.assigneeUserId !== undefined) payload.assignee_user_id = u.assigneeUserId;
 
         if (u.status !== undefined) {
           payload.completed_at = nextTask.status === "done" ? new Date().toISOString() : null;
@@ -936,12 +1030,12 @@ export default function MichalTasks() {
 
     (async () => {
       if (!userId) return;
-      const { error } = await supabase.from("tags").insert({ id: tg.id, owner: userId, name: tg.name, color: tg.color });
+      const { error } = await supabase.from("tags").insert({ id: tg.id, owner: userId, workspace_id: activeWorkspaceId, created_by: userId, name: tg.name, color: tg.color });
       if (error) console.error(error);
     })();
 
     return tg;
-  }, [userId]);
+  }, [userId, activeWorkspaceId]);
 
   const updateTag = useCallback((id, u) => {
     setTags((p) => p.map((x) => (x.id === id ? { ...x, ...u } : x)));
@@ -986,6 +1080,8 @@ export default function MichalTasks() {
       const { error } = await supabase.from("notes").insert({
         id: note.id,
         owner: userId,
+        workspace_id: activeWorkspaceId,
+        created_by: userId,
         title: note.title,
         content: note.content,
         primary_project_id: note.primaryProjectId,
@@ -996,7 +1092,7 @@ export default function MichalTasks() {
     })();
 
     return note;
-  }, [userId]);
+  }, [userId, activeWorkspaceId]);
 
   const updateNote = useCallback((id, u) => {
     setNotes((prev) =>
@@ -1033,6 +1129,7 @@ export default function MichalTasks() {
     const { error: dbErr } = await supabase.from("attachments").insert({
       id: attId,
       owner: userId,
+      workspace_id: activeWorkspaceId,
       task_id: taskId,
       project_id: projectId,
       note_id: noteId,
@@ -1048,13 +1145,82 @@ export default function MichalTasks() {
     const att = { id: attId, taskId, projectId, noteId, name: file.name, size: file.size, mimeType: file.type || null, storagePath: path, createdAt: Date.now() };
     setAttachments((prev) => [att, ...prev]);
     return att;
-  }, [userId]);
+  }, [userId, activeWorkspaceId]);
 
   const deleteAttachment = useCallback(async (att) => {
     setAttachments((prev) => prev.filter((a) => a.id !== att.id));
     await supabase.storage.from("attachments").remove([att.storagePath]);
     await supabase.from("attachments").delete().eq("id", att.id);
   }, []);
+
+  const switchWorkspace = useCallback(async (wsId) => {
+    if (wsId === activeWorkspaceId) return;
+    setLoaded(false);
+    try {
+      await setActiveWorkspaceId(wsId);
+      const data = await dbFetchAll(userId, wsId);
+      setProjects(data.projects);
+      setTasks(data.tasks);
+      setTags(data.tags);
+      setNotes(data.notes);
+      setAttachments(data.attachments ?? []);
+    } catch (e) {
+      console.error("switchWorkspace error:", e);
+    } finally {
+      setLoaded(true);
+    }
+  }, [userId, activeWorkspaceId, setActiveWorkspaceId]);
+
+  const createWorkspace = useCallback(async (name) => {
+    const wsId = uuid4();
+    const { error: wsErr } = await supabase.from("workspaces").insert({
+      id: wsId,
+      name: name.trim(),
+      created_by: userId,
+    });
+    if (wsErr) throw wsErr;
+    const { error: memErr } = await supabase.from("workspace_members").insert({
+      workspace_id: wsId,
+      user_id: userId,
+      role: "owner",
+    });
+    if (memErr) throw memErr;
+    const newWs = { id: wsId, name: name.trim(), role: "owner", createdAt: Date.now() };
+    setWorkspaces((prev) => [...prev, newWs]);
+    return newWs;
+  }, [userId]);
+
+  const generateInviteLink = useCallback(async (role = "member") => {
+    const token = uuid4().replace(/-/g, "");
+    const { error } = await supabase.from("workspace_invites").insert({
+      workspace_id: activeWorkspaceId,
+      role,
+      token,
+      invited_by: userId,
+    });
+    if (error) throw error;
+    return `${window.location.origin}?invite=${token}`;
+  }, [activeWorkspaceId, userId]);
+
+  const acceptInvite = useCallback(async (token) => {
+    const { data: invite, error } = await supabase
+      .from("workspace_invites")
+      .select("*")
+      .eq("token", token)
+      .is("accepted_at", null)
+      .is("revoked_at", null)
+      .gt("expires_at", new Date().toISOString())
+      .single();
+    if (error || !invite) throw new Error("Pozvánka není platná nebo vypršela");
+    const { error: memErr } = await supabase.from("workspace_members").insert({
+      workspace_id: invite.workspace_id,
+      user_id: userId,
+      role: invite.role,
+    });
+    if (memErr && !memErr.message.includes("duplicate")) throw memErr;
+    await supabase.from("workspace_invites").update({ accepted_at: new Date().toISOString() }).eq("id", invite.id);
+    return invite.workspace_id;
+  }, [userId]);
 
   const openNote = useCallback((id) => {
     setPage("notes");
@@ -1167,6 +1333,14 @@ export default function MichalTasks() {
     attachments,
     uploadAttachment,
     deleteAttachment,
+    workspaces,
+    activeWorkspaceId,
+    workspaceMembers,
+    workspaceRole: workspaceMembers.find((m) => m.user_id === userId)?.role ?? "viewer",
+    switchWorkspace,
+    createWorkspace,
+    generateInviteLink,
+    acceptInvite,
   };
 
   return (
@@ -1224,6 +1398,166 @@ export default function MichalTasks() {
         </ConfirmProvider>
       </ToastProvider>
     </AppContext.Provider>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   Workspace Switcher
+───────────────────────────────────────────── */
+function WorkspaceSwitcher() {
+  const { t, workspaces, activeWorkspaceId, switchWorkspace, createWorkspace, generateInviteLink, workspaceRole, isMobile } = useApp();
+  const toast = useToast();
+  const [open, setOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteRole, setInviteRole] = useState("member");
+  const [inviteLink, setInviteLink] = useState("");
+
+  const active = workspaces.find((w) => w.id === activeWorkspaceId);
+
+  const handleCreate = async () => {
+    if (!newName.trim()) return;
+    try {
+      const ws = await createWorkspace(newName);
+      await switchWorkspace(ws.id);
+      setNewName("");
+      setCreating(false);
+      setOpen(false);
+      toast("Workspace vytvořen", "success");
+    } catch (e) {
+      toast(e.message || "Chyba", "error");
+    }
+  };
+
+  const handleGenerateLink = async () => {
+    try {
+      const link = await generateInviteLink(inviteRole);
+      setInviteLink(link);
+      toast("Odkaz vygenerován", "success");
+    } catch (e) {
+      toast(e.message || "Chyba", "error");
+    }
+  };
+
+  return (
+    <div style={{ position: "relative" }}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        style={{
+          width: "100%",
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          padding: "8px 10px",
+          borderRadius: 8,
+          border: `1px solid ${t.border}`,
+          background: t.input,
+          color: t.text,
+          cursor: "pointer",
+          fontSize: 13,
+          fontWeight: 600,
+        }}
+      >
+        <div style={{ width: 24, height: 24, borderRadius: 6, background: t.accent, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 11, fontWeight: 800, flexShrink: 0 }}>
+          {active?.name?.[0]?.toUpperCase() ?? "?"}
+        </div>
+        <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "left" }}>
+          {active?.name ?? "Načítám…"}
+        </span>
+        <Icon name="chevron-down" size={13} color={t.text3} strokeWidth={2} />
+      </button>
+
+      {open && (
+        <>
+          <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 199 }} />
+          <div className="pop" style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0, background: t.bg2, border: `1px solid ${t.border}`, borderRadius: 10, zIndex: 200, overflow: "hidden", boxShadow: t.shadow }}>
+            <div style={{ padding: "6px 6px 4px", fontSize: 10, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: "0.08em" }}>Workspace</div>
+            {workspaces.map((ws) => (
+              <button
+                key={ws.id}
+                onClick={() => { switchWorkspace(ws.id); setOpen(false); }}
+                style={{
+                  display: "flex", alignItems: "center", gap: 8, width: "100%",
+                  padding: "7px 8px", borderRadius: 7, border: "none",
+                  background: ws.id === activeWorkspaceId ? t.accentBg : "transparent",
+                  color: ws.id === activeWorkspaceId ? t.accent : t.text,
+                  cursor: "pointer", fontSize: 13, fontWeight: ws.id === activeWorkspaceId ? 600 : 400,
+                }}
+              >
+                <div style={{ width: 20, height: 20, borderRadius: 5, background: ws.id === activeWorkspaceId ? t.accent : t.border, display: "flex", alignItems: "center", justifyContent: "center", color: ws.id === activeWorkspaceId ? "#fff" : t.text2, fontSize: 10, fontWeight: 800, flexShrink: 0 }}>
+                  {ws.name[0].toUpperCase()}
+                </div>
+                <span style={{ flex: 1, textAlign: "left" }}>{ws.name}</span>
+                <span style={{ fontSize: 10, color: t.text3 }}>{ws.role}</span>
+              </button>
+            ))}
+            <div style={{ borderTop: `1px solid ${t.border}`, margin: "4px 0" }} />
+            {creating ? (
+              <div style={{ padding: "6px 8px", display: "flex", gap: 6 }}>
+                <input
+                  autoFocus
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleCreate(); if (e.key === "Escape") setCreating(false); }}
+                  placeholder="Název workspace…"
+                  style={{ flex: 1, padding: "5px 8px", borderRadius: 6, border: `1px solid ${t.border}`, background: t.input, color: t.text, fontSize: 12 }}
+                />
+                <button onClick={handleCreate} style={{ padding: "5px 10px", borderRadius: 6, border: "none", background: t.accent, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>OK</button>
+              </div>
+            ) : (
+              <button onClick={() => setCreating(true)} style={{ display: "flex", alignItems: "center", gap: 7, width: "100%", padding: "7px 8px", borderRadius: 7, border: "none", background: "transparent", color: t.text2, cursor: "pointer", fontSize: 12 }}>
+                <Icon name="plus" size={13} color={t.text3} strokeWidth={2} />
+                Nový workspace
+              </button>
+            )}
+            {(workspaceRole === "owner" || workspaceRole === "admin") && (
+              <>
+                <button onClick={() => { setInviteOpen(true); setOpen(false); }} style={{ display: "flex", alignItems: "center", gap: 7, width: "100%", padding: "7px 8px", borderRadius: 7, border: "none", background: "transparent", color: t.text2, cursor: "pointer", fontSize: 12 }}>
+                  <Icon name="plus" size={13} color={t.text3} strokeWidth={2} />
+                  Pozvat člena
+                </button>
+              </>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Invite modal */}
+      {inviteOpen && (
+        <>
+          <div onClick={() => { setInviteOpen(false); setInviteLink(""); }} style={{ position: "fixed", inset: 0, background: "#0005", zIndex: 300 }} />
+          <div className="pop" style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", background: t.bg2, border: `1px solid ${t.border}`, borderRadius: 14, padding: "24px 28px", zIndex: 301, width: 360, maxWidth: "calc(100vw - 32px)", boxShadow: t.shadow }}>
+            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 16 }}>Pozvat do workspace</div>
+            <div style={{ fontSize: 12, color: t.text2, marginBottom: 10 }}>Role pozvaného:</div>
+            <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+              {["member", "viewer", "admin"].map((r) => (
+                <button key={r} onClick={() => setInviteRole(r)} style={{ padding: "5px 12px", borderRadius: 6, border: `1px solid ${inviteRole === r ? t.accent : t.border}`, background: inviteRole === r ? t.accentBg : "transparent", color: inviteRole === r ? t.accent : t.text2, fontSize: 12, fontWeight: inviteRole === r ? 600 : 400, cursor: "pointer" }}>
+                  {r}
+                </button>
+              ))}
+            </div>
+            {inviteLink ? (
+              <>
+                <div style={{ fontSize: 11, color: t.text2, marginBottom: 6 }}>Zkopíruj a pošli odkaz:</div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <input readOnly value={inviteLink} style={{ flex: 1, padding: "7px 10px", borderRadius: 7, border: `1px solid ${t.border}`, background: t.input, color: t.text, fontSize: 11 }} onClick={(e) => e.target.select()} />
+                  <button onClick={() => { navigator.clipboard.writeText(inviteLink); toast("Zkopírováno", "success"); }} style={{ padding: "7px 12px", borderRadius: 7, border: "none", background: t.accent, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                    Kopírovat
+                  </button>
+                </div>
+                <div style={{ fontSize: 10, color: t.text3, marginTop: 6 }}>Platnost 7 dní</div>
+              </>
+            ) : (
+              <button onClick={handleGenerateLink} style={{ width: "100%", padding: "9px", borderRadius: 8, border: "none", background: t.accent, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                Vygenerovat odkaz
+              </button>
+            )}
+            <button onClick={() => { setInviteOpen(false); setInviteLink(""); }} style={{ position: "absolute", top: 14, right: 14, background: "none", border: "none", color: t.text3, cursor: "pointer", fontSize: 16, padding: 4 }}>✕</button>
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 
@@ -1295,6 +1629,10 @@ function Sidebar({ toggleDk }) {
         <span style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 700, fontSize: 16, letterSpacing: "-0.5px" }}>
           Michal Tasks
         </span>
+      </div>
+
+      <div style={{ padding: "8px 10px 10px" }}>
+        <WorkspaceSwitcher />
       </div>
 
       <div style={{ padding: "0 10px 8px" }}>
@@ -3960,6 +4298,10 @@ function TaskDrawer() {
             )}
           </Sec>
 
+          <Sec label="Přiřazeno">
+            <AssigneeSelector taskId={task.id} currentAssigneeId={task.assigneeUserId} onChange={(uid) => s({ assigneeUserId: uid })} />
+          </Sec>
+
           <Sec label="Přílohy">
             <AttachmentsMiniList taskId={task.id} />
           </Sec>
@@ -3976,6 +4318,69 @@ function TaskDrawer() {
         </div>
       </div>
     </>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   Assignee Selector
+───────────────────────────────────────────── */
+function AssigneeSelector({ currentAssigneeId, onChange }) {
+  const { t, workspaceMembers } = useApp();
+  const [open, setOpen] = useState(false);
+
+  const currentMember = workspaceMembers.find((m) => m.user_id === currentAssigneeId);
+
+  return (
+    <div style={{ position: "relative" }}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        style={{
+          display: "flex", alignItems: "center", gap: 7,
+          padding: "6px 10px", borderRadius: 7,
+          border: `1px solid ${t.border}`,
+          background: t.input, color: t.text,
+          cursor: "pointer", fontSize: 12, width: "100%",
+        }}
+      >
+        {currentAssigneeId ? (
+          <>
+            <div style={{ width: 20, height: 20, borderRadius: "50%", background: t.accent, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 10, fontWeight: 700, flexShrink: 0 }}>
+              {(currentMember?.user_id ?? currentAssigneeId).slice(0, 2).toUpperCase()}
+            </div>
+            <span style={{ flex: 1, textAlign: "left" }}>{currentMember?.user_id?.slice(0, 8) ?? "Přiřazeno"}</span>
+          </>
+        ) : (
+          <>
+            <Icon name="plus" size={12} color={t.text3} strokeWidth={2} />
+            <span style={{ color: t.text2 }}>Nepřiřazeno</span>
+          </>
+        )}
+      </button>
+      {open && (
+        <>
+          <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 199 }} />
+          <div className="pop" style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: t.bg2, border: `1px solid ${t.border}`, borderRadius: 9, zIndex: 200, overflow: "hidden", boxShadow: t.shadow }}>
+            <button onClick={() => { onChange(null); setOpen(false); }} style={{ display: "flex", alignItems: "center", gap: 7, width: "100%", padding: "7px 9px", border: "none", background: !currentAssigneeId ? t.accentBg : "transparent", color: !currentAssigneeId ? t.accent : t.text2, cursor: "pointer", fontSize: 12 }}>
+              <Icon name="x" size={12} color={t.text3} strokeWidth={2} />
+              Nepřiřazeno
+            </button>
+            {workspaceMembers.map((m) => (
+              <button
+                key={m.user_id}
+                onClick={() => { onChange(m.user_id); setOpen(false); }}
+                style={{ display: "flex", alignItems: "center", gap: 7, width: "100%", padding: "7px 9px", border: "none", background: m.user_id === currentAssigneeId ? t.accentBg : "transparent", color: m.user_id === currentAssigneeId ? t.accent : t.text, cursor: "pointer", fontSize: 12 }}
+              >
+                <div style={{ width: 20, height: 20, borderRadius: "50%", background: m.user_id === currentAssigneeId ? t.accent : t.border, display: "flex", alignItems: "center", justifyContent: "center", color: m.user_id === currentAssigneeId ? "#fff" : t.text2, fontSize: 10, fontWeight: 700, flexShrink: 0 }}>
+                  {m.user_id.slice(0, 2).toUpperCase()}
+                </div>
+                <span style={{ flex: 1, textAlign: "left" }}>{m.user_id.slice(0, 12)}…</span>
+                <span style={{ fontSize: 10, color: t.text3 }}>{m.role}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 
