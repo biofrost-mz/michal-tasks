@@ -2442,7 +2442,7 @@ function MobileNav({ toggleDk }) {
                 <div style={{ fontSize: 13, fontWeight: 600, color: t.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{displayName}</div>
                 <div style={{ fontSize: 11, color: t.text3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{userEmail}</div>
               </div>
-              <button onClick={() => handleNav("profile")} style={{
+              <button onClick={() => handleNav("user-profile")} style={{
                 padding: "6px 12px", borderRadius: 8, border: `1px solid ${t.border}`,
                 background: t.input, color: t.text2, fontSize: 12, fontWeight: 500,
               }}>Profil</button>
