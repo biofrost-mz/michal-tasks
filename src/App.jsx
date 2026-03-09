@@ -5081,6 +5081,19 @@ function NotesMiniList({ taskId, projectId }) {
   );
 }
 
+function relTime(ts) {
+  const diff = Date.now() - ts;
+  const min = Math.floor(diff / 60000);
+  if (min < 2) return "právě teď";
+  if (min < 60) return `${min} min`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr} hod`;
+  const day = Math.floor(hr / 24);
+  if (day === 1) return "včera";
+  if (day < 7) return `${day} d`;
+  return new Date(ts).toLocaleDateString("cs-CZ", { day: "numeric", month: "numeric" });
+}
+
 /* ─────────────────────────────────────────────
    Notes – Detail editor (right panel)
 ───────────────────────────────────────────── */
@@ -5088,15 +5101,15 @@ function NoteDetail({ note, onDelete }) {
   const { t, updateNote, projects, tasks, isMobile } = useApp();
   const [title, setTitle] = useState(note.title);
   const [content, setContent] = useState(note.content);
+  const [showMeta, setShowMeta] = useState(false);
   const contentRef = useRef(null);
+  const titleRef = useRef(null);
 
-  // Reset on note switch
   useEffect(() => {
     setTitle(note.title);
     setContent(note.content);
   }, [note.id]);
 
-  // Auto-resize textarea
   useEffect(() => {
     if (contentRef.current) {
       contentRef.current.style.height = "auto";
@@ -5104,32 +5117,21 @@ function NoteDetail({ note, onDelete }) {
     }
   }, [content]);
 
-  // Autosave (debounce 600 ms)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useDebouncedEffect(() => { updateNote(note.id, { title, content }); }, [title, content], 600);
 
-  const projColor = note.primaryProjectId ? projectColor(note.primaryProjectId) : null;
   const linkedProject = note.primaryProjectId ? projects.find((p) => p.id === note.primaryProjectId) : null;
   const linkedTask = note.primaryTaskId ? tasks.find((tk) => tk.id === note.primaryTaskId) : null;
+  const projColor = linkedProject ? projectColor(linkedProject.id) : null;
+  const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
+  const readMin = Math.max(1, Math.round(wordCount / 200));
 
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "auto", padding: isMobile ? "20px 18px 32px" : "32px 40px 48px", maxWidth: isMobile ? "100%" : 860 }}>
-      {/* Title */}
-      <input
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        placeholder="Název poznámky…"
-        style={{
-          fontSize: 28, fontWeight: 800, letterSpacing: "-0.6px",
-          border: "none", background: "transparent", color: t.text,
-          outline: "none", width: "100%", fontFamily: "'Outfit',sans-serif",
-          marginBottom: 4,
-        }}
-      />
-
-      {/* Binding badge */}
-      {(linkedProject || linkedTask) && (
-        <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      {/* Top action bar */}
+      {!isMobile && (
+        <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 32px 0", flexShrink: 0 }}>
+          {/* Project / task badge */}
           {linkedProject && (
             <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 20, border: `1.5px solid ${projColor}55`, background: projColor + "12", color: projColor, display: "inline-flex", alignItems: "center", gap: 4 }}>
               <Icon name="folder" size={9} color={projColor} strokeWidth={2} />
@@ -5139,100 +5141,108 @@ function NoteDetail({ note, onDelete }) {
           {linkedTask && (
             <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 20, border: `1.5px solid #3b82f655`, background: "#3b82f612", color: "#3b82f6", display: "inline-flex", alignItems: "center", gap: 4 }}>
               <Icon name="check-square" size={9} color="#3b82f6" strokeWidth={2} />
-              {linkedTask.title || "Bez názvu"}
+              {linkedTask.title || "Úkol"}
             </span>
           )}
+          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 4 }}>
+            <button
+              onClick={() => updateNote(note.id, { pinned: !note.pinned })}
+              title={note.pinned ? "Odepnout" : "Připnout"}
+              style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 10px", borderRadius: 7, border: `1px solid ${note.pinned ? "#f59e0b" : t.border}`, background: note.pinned ? "#f59e0b18" : "transparent", color: note.pinned ? "#f59e0b" : t.text3, fontSize: 11.5, fontWeight: 600, cursor: "pointer" }}
+            >
+              <Icon name="pin" size={12} color="currentColor" strokeWidth={2} />
+              {note.pinned ? "Připnuto" : "Připnout"}
+            </button>
+            <button
+              onClick={() => setShowMeta((v) => !v)}
+              title="Vlastnosti"
+              style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 10px", borderRadius: 7, border: `1px solid ${showMeta ? t.accent : t.border}`, background: showMeta ? t.accentBg : "transparent", color: showMeta ? t.accent : t.text3, fontSize: 11.5, cursor: "pointer" }}
+            >
+              <Icon name="list" size={12} color="currentColor" strokeWidth={2} />
+              Vlastnosti
+            </button>
+            {onDelete && (
+              <button
+                onClick={onDelete}
+                title="Smazat"
+                style={{ display: "flex", alignItems: "center", padding: "5px 8px", borderRadius: 7, border: `1px solid transparent`, background: "transparent", color: t.text3, cursor: "pointer" }}
+              >
+                <Icon name="trash" size={13} color="#ef4444" strokeWidth={2} />
+              </button>
+            )}
+          </div>
         </div>
       )}
 
-      {/* Divider */}
-      <div style={{ height: 1, background: t.border, marginBottom: 20 }} />
+      {/* Scrollable content */}
+      <div style={{ flex: 1, overflow: "auto", padding: isMobile ? "20px 18px 32px" : "20px 40px 40px", maxWidth: isMobile ? "100%" : 860 }}>
+        <input
+          ref={titleRef}
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Název poznámky…"
+          style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-0.6px", border: "none", background: "transparent", color: t.text, outline: "none", width: "100%", fontFamily: "'Outfit',sans-serif", marginBottom: 16, display: "block" }}
+        />
 
-      {/* Content */}
-      <textarea
-        ref={contentRef}
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
-        placeholder={"Začni psát…\n\n# Nadpis\n- seznam položka\n\n**tučné**  _kurzíva_"}
-        style={{
-          width: "100%", minHeight: 260,
-          border: "none", background: "transparent",
-          color: t.text, outline: "none", resize: "none",
-          fontSize: 14.5, lineHeight: 1.75,
-          fontFamily: "'Figtree',sans-serif",
-          overflow: "hidden",
-        }}
-      />
+        <textarea
+          ref={contentRef}
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          placeholder={"Začni psát…"}
+          style={{ width: "100%", minHeight: 200, border: "none", background: "transparent", color: t.text, outline: "none", resize: "none", fontSize: 15, lineHeight: 1.8, fontFamily: "'Figtree',sans-serif", overflow: "hidden", display: "block" }}
+        />
 
-      {/* Metadata panel */}
-      <div style={{ borderTop: `1px solid ${t.border}`, marginTop: 32, paddingTop: 20, display: "flex", flexDirection: "column", gap: 16 }}>
+        {/* Properties panel (collapsible) */}
+        {(showMeta || isMobile) && (
+          <div style={{ marginTop: 32, paddingTop: 20, borderTop: `1px solid ${t.border}` }}>
+            <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: t.text3, marginBottom: 10 }}>Vazba na projekt nebo úkol</div>
+            <select
+              value={
+                note.primaryProjectId ? `project:${note.primaryProjectId}` :
+                note.primaryTaskId ? `task:${note.primaryTaskId}` : ""
+              }
+              onChange={(e) => {
+                const v = e.target.value;
+                if (!v) updateNote(note.id, { primaryProjectId: null, primaryTaskId: null });
+                else if (v.startsWith("project:")) updateNote(note.id, { primaryProjectId: v.slice(8), primaryTaskId: null });
+                else if (v.startsWith("task:")) updateNote(note.id, { primaryProjectId: null, primaryTaskId: v.slice(5) });
+              }}
+              style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: `1px solid ${t.border}`, background: t.input, color: t.text, fontSize: 13, outline: "none", marginBottom: 14 }}
+            >
+              <option value="">— Bez vazby</option>
+              <optgroup label="Projekty">
+                {projects.map((p) => <option key={p.id} value={`project:${p.id}`}>{p.name}</option>)}
+              </optgroup>
+              <optgroup label="Úkoly">
+                {tasks.map((tk) => <option key={tk.id} value={`task:${tk.id}`}>{tk.title || "Bez názvu"}</option>)}
+              </optgroup>
+            </select>
+            {isMobile && (
+              <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+                <button onClick={() => updateNote(note.id, { pinned: !note.pinned })} style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 14px", borderRadius: 7, border: `1.5px solid ${note.pinned ? "#f59e0b" : t.border}`, background: note.pinned ? "#f59e0b18" : "transparent", color: note.pinned ? "#f59e0b" : t.text2, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                  <Icon name="pin" size={12} color="currentColor" strokeWidth={2} />
+                  {note.pinned ? "Připnuto" : "Připnout"}
+                </button>
+                {onDelete && (
+                  <button onClick={onDelete} style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 14px", borderRadius: 7, border: "none", background: "transparent", color: "#ef4444", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                    <Icon name="trash" size={12} color="currentColor" strokeWidth={2} />
+                    Smazat
+                  </button>
+                )}
+              </div>
+            )}
+            <div style={{ fontSize: 11, color: t.text3, lineHeight: 1.7 }}>
+              <div>Vytvořeno: {new Date(note.createdAt).toLocaleString("cs-CZ")}</div>
+              <div>Upraveno: {new Date(note.updatedAt).toLocaleString("cs-CZ")}</div>
+            </div>
+          </div>
+        )}
+      </div>
 
-        {/* Primary binding */}
-        <div>
-          <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: t.text3, marginBottom: 7 }}>Vazba na projekt nebo úkol</div>
-          <select
-            value={
-              note.primaryProjectId ? `project:${note.primaryProjectId}` :
-              note.primaryTaskId ? `task:${note.primaryTaskId}` : ""
-            }
-            onChange={(e) => {
-              const v = e.target.value;
-              if (!v) updateNote(note.id, { primaryProjectId: null, primaryTaskId: null });
-              else if (v.startsWith("project:")) updateNote(note.id, { primaryProjectId: v.slice(8), primaryTaskId: null });
-              else if (v.startsWith("task:")) updateNote(note.id, { primaryProjectId: null, primaryTaskId: v.slice(5) });
-            }}
-            style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: `1px solid ${t.border}`, background: t.input, color: t.text, fontSize: 13, outline: "none" }}
-          >
-            <option value="">— Bez vazby</option>
-            <optgroup label="Projekty">
-              {projects.map((p) => (
-                <option key={p.id} value={`project:${p.id}`}>{p.name}</option>
-              ))}
-            </optgroup>
-            <optgroup label="Úkoly">
-              {tasks.map((tk) => (
-                <option key={tk.id} value={`task:${tk.id}`}>{tk.title || "Bez názvu"}</option>
-              ))}
-            </optgroup>
-          </select>
-        </div>
-
-        {/* Pinned + actions */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-          <button
-            onClick={() => updateNote(note.id, { pinned: !note.pinned })}
-            style={{
-              display: "flex", alignItems: "center", gap: 6,
-              padding: "5px 13px", borderRadius: 7,
-              border: `1.5px solid ${note.pinned ? "#f59e0b" : t.border}`,
-              background: note.pinned ? "#f59e0b18" : "transparent",
-              color: note.pinned ? "#f59e0b" : t.text2,
-              fontSize: 12, fontWeight: 600,
-            }}
-          >
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-              <Icon name="pin" size={12} color="currentColor" strokeWidth={2} />
-              {note.pinned ? "Připnuto" : "Připnout"}
-            </span>
-          </button>
-          {onDelete && (
-          <button
-            onClick={onDelete}
-            style={{ padding: "5px 13px", borderRadius: 7, border: "none", background: "transparent", color: "#ef4444", fontSize: 12, fontWeight: 600 }}
-          >
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-              <Icon name="trash" size={12} color="currentColor" strokeWidth={2} />
-              Smazat
-            </span>
-          </button>
-          )}
-        </div>
-
-        {/* Dates */}
-        <div style={{ fontSize: 11, color: t.text3, lineHeight: 1.7 }}>
-          <div>Vytvořeno: {new Date(note.createdAt).toLocaleString("cs-CZ")}</div>
-          <div>Upraveno: {new Date(note.updatedAt).toLocaleString("cs-CZ")}</div>
-        </div>
+      {/* Footer: word count + autosave indicator */}
+      <div style={{ flexShrink: 0, padding: "6px 40px", borderTop: `1px solid ${t.border}`, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 12, fontSize: 11, color: t.text3 }}>
+        <span>{wordCount} slov · {readMin} min čtení</span>
+        <span style={{ opacity: 0.5 }}>Automaticky uloženo</span>
       </div>
     </div>
   );
@@ -5249,9 +5259,8 @@ function NotesPage() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const [sortBy, setSortBy] = useState("updated");
-  const [mobileView, setMobileView] = useState("list"); // "list" | "detail"
+  const [mobileView, setMobileView] = useState("list");
 
-  // Auto-select: openNoteId from context (navigated from TaskDrawer/ProjectDetail)
   useEffect(() => {
     if (openNoteId) {
       setSelId(openNoteId);
@@ -5263,16 +5272,11 @@ function NotesPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openNoteId]);
 
-  // Ctrl+N — new note
   useEffect(() => {
     const handler = (e) => {
       const tag = document.activeElement?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
-      if ((e.ctrlKey || e.metaKey) && e.key === "n") {
-        e.preventDefault();
-        const n = addNote({});
-        setSelId(n.id);
-      }
+      if ((e.ctrlKey || e.metaKey) && e.key === "n") { e.preventDefault(); const n = addNote({}); setSelId(n.id); }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
@@ -5293,17 +5297,13 @@ function NotesPage() {
     toast("Poznámka smazána", "success");
   };
 
-  // Filter
   const s = search.toLowerCase();
-  let filtered = notes.filter((n) =>
-    !search || n.title.toLowerCase().includes(s) || n.content.toLowerCase().includes(s)
-  );
+  let filtered = notes.filter((n) => !search || n.title.toLowerCase().includes(s) || n.content.toLowerCase().includes(s));
   if (filter === "pinned") filtered = filtered.filter((n) => n.pinned);
   else if (filter === "project") filtered = filtered.filter((n) => !!n.primaryProjectId);
   else if (filter === "task") filtered = filtered.filter((n) => !!n.primaryTaskId);
   else if (filter === "unlinked") filtered = filtered.filter((n) => !n.primaryProjectId && !n.primaryTaskId);
 
-  // Sort
   const sortedNotes = [...filtered].sort((a, b) => {
     if (sortBy === "updated") return b.updatedAt - a.updatedAt;
     if (sortBy === "created") return b.createdAt - a.createdAt;
@@ -5313,8 +5313,8 @@ function NotesPage() {
   const selNote = notes.find((n) => n.id === selId) || null;
 
   const filterTabs = [
-    { k: "all", l: "Vše" },
-    { k: "pinned", l: "Připnuto" },
+    { k: "all", l: "Vše", count: notes.length },
+    { k: "pinned", l: "📌 Připnuto" },
     { k: "project", l: "Projekt" },
     { k: "task", l: "Úkol" },
     { k: "unlinked", l: "Volné" },
@@ -5328,191 +5328,196 @@ function NotesPage() {
 
       {/* ── LEFT: list ── */}
       {showList && (
-      <div style={{ width: isMobile ? "100%" : 300, minWidth: isMobile ? "auto" : 260, borderRight: isMobile ? "none" : `1px solid ${t.border}`, display: "flex", flexDirection: "column", background: t.bg2, overflow: "hidden", flex: isMobile ? 1 : "none" }}>
+        <div style={{ width: isMobile ? "100%" : 300, minWidth: isMobile ? "auto" : 280, borderRight: isMobile ? "none" : `1px solid ${t.border}`, display: "flex", flexDirection: "column", background: t.bg2, overflow: "hidden", flex: isMobile ? 1 : "none" }}>
 
-        {/* Header */}
-        <div style={{ padding: isMobile ? "14px 16px 10px" : "18px 14px 10px", borderBottom: `1px solid ${t.border}` }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-            <h2 style={{ fontSize: 16, fontWeight: 800, letterSpacing: "-0.4px", display: "flex", alignItems: "center", gap: 7 }}>
-              <Icon name="file-text" size={15} color={t.accent} strokeWidth={2} />
-              Poznámky
-            </h2>
-            <button
-              onClick={handleCreate}
-              style={{ padding: "6px 14px", borderRadius: 7, border: "none", background: t.accent, color: "#fff", fontSize: 13, fontWeight: 600 }}
-            >
-              + Nová
-            </button>
+          {/* Header */}
+          <div style={{ padding: "16px 14px 10px", borderBottom: `1px solid ${t.border}`, flexShrink: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+              <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: "-0.3px", display: "flex", alignItems: "center", gap: 7 }}>
+                <Icon name="file-text" size={15} color={t.accent} strokeWidth={2} />
+                Poznámky
+                <span style={{ fontSize: 11, fontWeight: 500, color: t.text3, background: t.input, padding: "1px 7px", borderRadius: 8 }}>
+                  {notes.length}
+                </span>
+              </div>
+              <button
+                onClick={handleCreate}
+                style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 7, border: "none", background: t.accent, color: "#fff", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}
+              >
+                <Icon name="plus" size={13} color="#fff" strokeWidth={2.5} />
+                Nová
+              </button>
+            </div>
+
+            {/* Search */}
+            <div style={{ position: "relative" }}>
+              <Icon name="search" size={13} color={t.text3} strokeWidth={2} style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Hledat…"
+                style={{ width: "100%", padding: "7px 11px 7px 30px", borderRadius: 8, border: `1px solid ${t.border}`, background: t.input, color: t.text, fontSize: 12.5, outline: "none", boxSizing: "border-box" }}
+              />
+              {search && (
+                <button onClick={() => setSearch("")} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: t.text3, cursor: "pointer", padding: 2, display: "flex" }}>
+                  <Icon name="x" size={12} color={t.text3} strokeWidth={2} />
+                </button>
+              )}
+            </div>
           </div>
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Hledat v poznámkách…"
-            style={{ width: "100%", padding: "7px 11px", borderRadius: 8, border: `1px solid ${t.border}`, background: t.input, color: t.text, fontSize: 12.5, outline: "none" }}
-          />
-        </div>
 
-        {/* Filters + sort */}
-        <div style={{ display: "flex", gap: isMobile ? 4 : 2, padding: isMobile ? "10px 12px 6px" : "8px 10px 2px", flexWrap: "wrap", alignItems: "center", borderBottom: `1px solid ${t.border}` }}>
-          {filterTabs.map((tab) => (
-            <button
-              key={tab.k}
-              onClick={() => setFilter(tab.k)}
-              style={{
-                padding: isMobile ? "6px 12px" : "3px 8px",
-                borderRadius: 6,
-                fontSize: isMobile ? 13 : 10.5,
-                fontWeight: filter === tab.k ? 700 : 400,
-                border: "none",
-                background: filter === tab.k ? t.accentBg : "transparent",
-                color: filter === tab.k ? t.accent : t.text3,
-              }}
+          {/* Filters */}
+          <div style={{ display: "flex", gap: 2, padding: "8px 10px 6px", overflowX: "auto", borderBottom: `1px solid ${t.border}`, flexShrink: 0 }}>
+            {filterTabs.map((tab) => (
+              <button
+                key={tab.k}
+                onClick={() => setFilter(tab.k)}
+                style={{ padding: "4px 10px", borderRadius: 6, fontSize: 11.5, fontWeight: filter === tab.k ? 700 : 400, border: "none", background: filter === tab.k ? t.accentBg : "transparent", color: filter === tab.k ? t.accent : t.text3, whiteSpace: "nowrap", cursor: "pointer", flexShrink: 0 }}
+              >
+                {tab.l}
+              </button>
+            ))}
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              style={{ marginLeft: "auto", padding: "3px 6px", borderRadius: 5, border: `1px solid ${t.border}`, background: t.input, color: t.text2, fontSize: 11, outline: "none", flexShrink: 0 }}
             >
-              {tab.l}
-            </button>
-          ))}
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            style={{ marginLeft: "auto", padding: isMobile ? "6px 8px" : "3px 6px", borderRadius: 5, border: `1px solid ${t.border}`, background: t.input, color: t.text2, fontSize: isMobile ? 13 : 10.5, outline: "none" }}
-          >
-            <option value="updated">Upravené</option>
-            <option value="created">Vytvořené</option>
-            <option value="title">Název A–Z</option>
-          </select>
-        </div>
+              <option value="updated">Upravené</option>
+              <option value="created">Vytvořené</option>
+              <option value="title">A–Z</option>
+            </select>
+          </div>
 
-        {/* Note list */}
-        <div style={{ flex: 1, overflow: "auto", padding: "6px 8px" }}>
-          {sortedNotes.length === 0 && (
-            <div style={{ textAlign: "center", padding: "44px 16px", color: t.text3 }}>
-              <div style={{ opacity: 0.2, marginBottom: 10, display: "flex", justifyContent: "center" }}>
-                <Icon name="file-text" size={44} color={t.text} strokeWidth={1} />
+          {/* Note list */}
+          <div style={{ flex: 1, overflow: "auto", padding: "6px 8px" }}>
+            {sortedNotes.length === 0 && (
+              <div style={{ textAlign: "center", padding: "48px 16px", color: t.text3 }}>
+                <div style={{ opacity: 0.15, marginBottom: 12, display: "flex", justifyContent: "center" }}>
+                  <Icon name="file-text" size={48} color={t.text} strokeWidth={1} />
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 5, color: t.text2 }}>
+                  {search ? `Nic pro „${search}"` : filter !== "all" ? "Žádné poznámky v tomto filtru" : "Zatím žádné poznámky"}
+                </div>
+                {!search && filter === "all" && (
+                  <button onClick={handleCreate} style={{ marginTop: 10, padding: "7px 18px", borderRadius: 8, border: "none", background: t.accent, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                    + Nová poznámka
+                  </button>
+                )}
               </div>
-              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 5 }}>Žádné poznámky</div>
-              <div style={{ fontSize: 12, marginBottom: 14 }}>
-                {search || filter !== "all" ? "Zkus upravit filtr nebo hledání" : "Vytvoř první poznámku"}
-              </div>
-              {!search && filter === "all" && (
-                <button
-                  onClick={handleCreate}
-                  style={{ padding: "6px 16px", borderRadius: 8, border: "none", background: t.accent, color: "#fff", fontSize: 12, fontWeight: 600 }}
+            )}
+
+            {sortedNotes.map((n) => {
+              const proj = n.primaryProjectId ? projects.find((p) => p.id === n.primaryProjectId) : null;
+              const task = n.primaryTaskId ? tasks.find((tk) => tk.id === n.primaryTaskId) : null;
+              const isActive = n.id === selId;
+              const pCol = proj ? projectColor(proj.id) : null;
+              const preview = n.content.split("\n").find((l) => l.trim()) || "";
+              return (
+                <div
+                  key={n.id}
+                  onClick={() => { setSelId(n.id); if (isMobile) setMobileView("detail"); }}
+                  style={{
+                    padding: "10px 10px 10px 14px",
+                    borderRadius: 9,
+                    marginBottom: 3,
+                    cursor: "pointer",
+                    background: isActive ? t.accentBg : "transparent",
+                    border: `1px solid ${isActive ? t.accent + "35" : "transparent"}`,
+                    transition: "background .1s",
+                    position: "relative",
+                    overflow: "hidden",
+                  }}
+                  onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = t.cardH; }}
+                  onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = "transparent"; }}
                 >
-                  + Nová poznámka
+                  {/* Project color strip */}
+                  {pCol && (
+                    <div style={{ position: "absolute", left: 0, top: 4, bottom: 4, width: 3, borderRadius: 2, background: pCol }} />
+                  )}
+
+                  {/* Title row */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 3 }}>
+                    {n.pinned && (
+                      <span style={{ fontSize: 10, background: "#f59e0b22", color: "#f59e0b", borderRadius: 4, padding: "1px 5px", fontWeight: 700, flexShrink: 0 }}>📌</span>
+                    )}
+                    <span style={{ flex: 1, fontSize: 13, fontWeight: 600, lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: isActive ? t.accent : t.text }}>
+                      {n.title || <em style={{ fontWeight: 400, color: t.text3 }}>Bez názvu</em>}
+                    </span>
+                    <span className="mono" style={{ fontSize: 10, color: t.text3, flexShrink: 0 }}>{relTime(n.updatedAt)}</span>
+                  </div>
+
+                  {/* Preview */}
+                  {preview && (
+                    <div style={{ fontSize: 11.5, color: t.text3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", lineHeight: 1.5, marginBottom: 5 }}>
+                      {preview}
+                    </div>
+                  )}
+
+                  {/* Badges */}
+                  {(proj || task) && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
+                      {proj && (
+                        <span style={{ fontSize: 10, fontWeight: 600, padding: "1px 6px", borderRadius: 4, background: pCol + "20", color: pCol, display: "inline-flex", alignItems: "center", gap: 3 }}>
+                          <Icon name="folder" size={8} color={pCol} strokeWidth={2} />
+                          {proj.name}
+                        </span>
+                      )}
+                      {task && (
+                        <span style={{ fontSize: 10, fontWeight: 600, padding: "1px 6px", borderRadius: 4, background: t.accentBg, color: t.accent, display: "inline-flex", alignItems: "center", gap: 3 }}>
+                          <Icon name="check-square" size={8} color={t.accent} strokeWidth={2} />
+                          {task.title}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Footer */}
+          <div style={{ padding: "7px 14px", borderTop: `1px solid ${t.border}`, fontSize: 11, color: t.text3, flexShrink: 0 }}>
+            {sortedNotes.length} {sortedNotes.length === 1 ? "poznámka" : sortedNotes.length < 5 ? "poznámky" : "poznámek"}
+          </div>
+        </div>
+      )}
+
+      {/* ── RIGHT: editor ── */}
+      {showDetail && (
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: t.bg }}>
+          {/* Mobile header */}
+          {isMobile && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", borderBottom: `1px solid ${t.border}`, background: t.bg2, flexShrink: 0 }}>
+              <button onClick={() => setMobileView("list")} style={{ background: "none", border: "none", color: t.accent, display: "flex", alignItems: "center", gap: 4, padding: "4px 0", cursor: "pointer", fontSize: 13, fontWeight: 600 }}>
+                <Icon name="chevron-left" size={16} color={t.accent} strokeWidth={2.5} />
+                Zpět
+              </button>
+              <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: t.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", margin: "0 8px" }}>
+                {selNote?.title || "Nová poznámka"}
+              </span>
+              {selNote && (
+                <button onClick={() => handleDelete(selNote.id)} style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", padding: 4, display: "flex" }}>
+                  <Icon name="trash" size={16} color="#ef4444" strokeWidth={2} />
                 </button>
               )}
             </div>
           )}
 
-          {sortedNotes.map((n) => {
-            const proj = n.primaryProjectId ? projects.find((p) => p.id === n.primaryProjectId) : null;
-            const task = n.primaryTaskId ? tasks.find((tk) => tk.id === n.primaryTaskId) : null;
-            const isActive = n.id === selId;
-            const pCol = proj ? projectColor(proj.id) : null;
-            return (
-              <div
-                key={n.id}
-                onClick={() => { setSelId(n.id); if (isMobile) setMobileView("detail"); }}
-                style={{
-                  padding: "10px 11px", borderRadius: 8, marginBottom: 3, cursor: "pointer",
-                  background: isActive ? t.accentBg : "transparent",
-                  border: `1px solid ${isActive ? t.accent + "40" : "transparent"}`,
-                  transition: "background .1s",
-                }}
-                onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = t.cardH; }}
-                onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = "transparent"; }}
-              >
-                <div style={{ display: "flex", alignItems: "baseline", gap: 5, marginBottom: 2 }}>
-                  {n.pinned && <Icon name="pin" size={11} color={t.accent} strokeWidth={2} />}
-                  <span style={{
-                    flex: 1, fontSize: 13, fontWeight: 600, lineHeight: 1.3,
-                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                    color: isActive ? t.accent : t.text,
-                  }}>
-                    {n.title || <em style={{ fontWeight: 400, color: t.text3 }}>Bez názvu</em>}
-                  </span>
-                </div>
-                {n.content && (
-                  <div style={{ fontSize: 11.5, color: t.text3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginBottom: 5, paddingLeft: n.pinned ? 18 : 0 }}>
-                    {n.content.split("\n").find((l) => l.trim()) || ""}
-                  </div>
-                )}
-                <div style={{ display: "flex", alignItems: "center", gap: 5, paddingLeft: n.pinned ? 18 : 0 }}>
-                  {proj && (
-                    <span style={{ fontSize: 10, fontWeight: 600, padding: "1px 6px", borderRadius: 4, background: pCol + "20", color: pCol, maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", gap: 3 }}>
-                      <Icon name="folder" size={8} color={pCol} strokeWidth={2} />
-                      {proj.name}
-                    </span>
-                  )}
-                  {task && (
-                    <span style={{ fontSize: 10, fontWeight: 600, padding: "1px 6px", borderRadius: 4, background: t.accentBg, color: t.accent, maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", gap: 3 }}>
-                      <Icon name="check-square" size={8} color={t.accent} strokeWidth={2} />
-                      {task.title}
-                    </span>
-                  )}
-                  <span className="mono" style={{ marginLeft: "auto", fontSize: 10, color: t.text3, flexShrink: 0 }}>
-                    {new Date(n.updatedAt).toLocaleDateString("cs-CZ", { day: "numeric", month: "numeric" })}
-                  </span>
-                </div>
+          {selNote ? (
+            <NoteDetail note={selNote} onDelete={() => handleDelete(selNote.id)} />
+          ) : (
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: t.text3, gap: 12 }}>
+              <div style={{ opacity: 0.12 }}>
+                <Icon name="file-text" size={64} color={t.text} strokeWidth={1} />
               </div>
-            );
-          })}
-        </div>
-
-        {/* Footer count */}
-        <div style={{ padding: "8px 14px", borderTop: `1px solid ${t.border}`, fontSize: 11, color: t.text3 }}>
-          {sortedNotes.length} poznámek
-        </div>
-      </div>
-      )}
-
-      {/* ── RIGHT: editor ── */}
-      {showDetail && (
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: t.bg }}>
-        {isMobile && (
-          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", borderBottom: `1px solid ${t.border}`, background: t.bg2 }}>
-            <button
-              onClick={() => setMobileView("list")}
-              style={{ background: "none", border: "none", color: t.accent, fontSize: 14, fontWeight: 600, display: "flex", alignItems: "center", gap: 5, padding: "4px 0", cursor: "pointer" }}
-            >
-              <Icon name="chevron-left" size={16} color={t.accent} strokeWidth={2.5} />
-              Zpět
-            </button>
-            <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: t.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", margin: "0 8px" }}>
-              {selNote?.title || "Nová poznámka"}
-            </span>
-            {selNote && (
-              <button
-                onClick={() => handleDelete(selNote.id)}
-                style={{ background: "none", border: "none", color: "#ef4444", display: "flex", alignItems: "center", padding: "6px" }}
-              >
-                <Icon name="trash" size={17} color="#ef4444" strokeWidth={1.75} />
+              <div style={{ fontSize: 15, fontWeight: 600, color: t.text2 }}>Žádná poznámka vybrána</div>
+              <div style={{ fontSize: 13, color: t.text3 }}>Vyber poznámku ze seznamu nebo vytvoř novou</div>
+              <button onClick={handleCreate} style={{ marginTop: 4, padding: "8px 20px", borderRadius: 8, border: "none", background: t.accent, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                + Nová poznámka
               </button>
-            )}
-            <button
-              onClick={() => setMobileView("list")}
-              style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: t.accent, color: "#fff", fontSize: 13, fontWeight: 600, flexShrink: 0 }}
-            >
-              Hotovo
-            </button>
-          </div>
-        )}
-        {selNote ? (
-          <NoteDetail key={selNote.id} note={selNote} onDelete={isMobile ? undefined : () => handleDelete(selNote.id)} />
-        ) : (
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, color: t.text3, padding: 40 }}>
-            <Icon name="file-text" size={52} color={t.text} strokeWidth={0.75} fill="none" />
-            <div style={{ fontSize: 16, fontWeight: 700 }}>Vyber poznámku ze seznamu</div>
-            <div style={{ fontSize: 13 }}>nebo vytvoř novou</div>
-            <button
-              onClick={handleCreate}
-              style={{ padding: "9px 22px", borderRadius: 10, border: "none", background: t.accent, color: "#fff", fontSize: 13, fontWeight: 600, marginTop: 4 }}
-            >
-              + Nová poznámka
-            </button>
-          </div>
-        )}
-      </div>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
