@@ -5127,15 +5127,182 @@ function relTime(ts) {
 }
 
 /* ─────────────────────────────────────────────
+   Note Templates
+───────────────────────────────────────────── */
+const NOTE_TEMPLATES = [
+  { id: "blank", label: "Prázdná", icon: "file-text", desc: "Začni od nuly", title: "", content: "" },
+  { id: "meeting", label: "Meeting notes", icon: "users", desc: "Agenda, zápis, akční body",
+    title: "Meeting notes",
+    content: "## Datum\n\n## Účastníci\n- \n\n## Agenda\n1. \n\n## Zápis\n\n\n## Akční body\n- [ ] " },
+  { id: "decision", label: "Decision log", icon: "check-circle", desc: "Zaznamenej rozhodnutí",
+    title: "Decision log",
+    content: "## Kontext\n\n\n## Možnosti\n1. \n2. \n\n## Rozhodnutí\n\n\n## Důvody\n- \n\n## Dopady\n- " },
+  { id: "retro", label: "Retrospektiva", icon: "refresh-cw", desc: "Co šlo dobře, co zlepšit",
+    title: "Retrospektiva",
+    content: "## Co šlo dobře ✅\n- \n\n## Co šlo špatně ❌\n- \n\n## Co zlepšit 💡\n- \n\n## Akce na příště\n- [ ] " },
+  { id: "brief", label: "Brief", icon: "clipboard", desc: "Cíl, rozsah, deadline, výstupy",
+    title: "Brief",
+    content: "## Cíl\n\n\n## Cílová skupina\n\n\n## Rozsah\n\n\n## Deadline\n\n\n## Výstupy\n- " },
+  { id: "linkedin", label: "LinkedIn post", icon: "send", desc: "Hook, body, CTA, tagy",
+    title: "LinkedIn post",
+    content: "## Hook\n_První věta, která zaujme před \u201E...více\u201C_\n\n---\n\n## Hlavní myšlenka\n\n\n## Klíčové body\n1. \n2. \n3. \n\n---\n\n## CTA\n\n\n**Tagy:** #" },
+  { id: "article", label: "Článek / LI long", icon: "edit-3", desc: "Titulek, sekce, závěr, zdroje",
+    title: "Článek",
+    content: "# Titulek\n\n_Perex_\n\n---\n\n## Sekce 1\n\n\n## Sekce 2\n\n\n## Závěr\n\n\n---\n\n_Zdroje:_\n- " },
+];
+
+/* ─────────────────────────────────────────────
+   Markdown renderer (no external libraries)
+───────────────────────────────────────────── */
+function renderMarkdown(md) {
+  if (!md) return "";
+  const lines = md.split("\n");
+  let html = "";
+  let inList = false;
+  let listType = "ul";
+
+  const escHtml = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+  const processInline = (s) => {
+    // code blocks first to avoid processing their internals
+    s = s.replace(/`([^`]+)`/g, '<code style="background:#1e293b22;padding:1px 5px;border-radius:4px;font-family:monospace;font-size:0.9em">$1</code>');
+    s = s.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width:100%;border-radius:8px;margin:6px 0;display:block">');
+    s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" style="color:#3b82f6;text-decoration:underline">$1</a>');
+    s = s.replace(/\*\*\*([^*]+)\*\*\*/g, '<strong><em>$1</em></strong>');
+    s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    s = s.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+    return s;
+  };
+
+  const closeList = () => {
+    if (inList) {
+      html += listType === "ul" ? "</ul>" : "</ol>";
+      inList = false;
+    }
+  };
+
+  let i = 0;
+  while (i < lines.length) {
+    const raw = lines[i];
+
+    // Fenced code block
+    if (raw.trim().startsWith("```")) {
+      closeList();
+      const lang = raw.trim().slice(3).trim();
+      i++;
+      let code = "";
+      while (i < lines.length && !lines[i].trim().startsWith("```")) {
+        code += escHtml(lines[i]) + "\n";
+        i++;
+      }
+      html += `<pre style="background:#1e293b18;border-radius:8px;padding:12px 16px;overflow-x:auto;font-family:monospace;font-size:13px;line-height:1.6;margin:0 0 12px"><code>${code.trimEnd()}</code></pre>`;
+      i++;
+      continue;
+    }
+
+    const line = escHtml(raw);
+
+    // Headings
+    if (line.startsWith("### ")) {
+      closeList();
+      html += `<h3 style="font-size:16px;font-weight:700;margin:16px 0 6px;line-height:1.4">${processInline(line.slice(4))}</h3>`;
+    } else if (line.startsWith("## ")) {
+      closeList();
+      html += `<h2 style="font-size:19px;font-weight:700;margin:20px 0 8px;line-height:1.4">${processInline(line.slice(3))}</h2>`;
+    } else if (line.startsWith("# ")) {
+      closeList();
+      html += `<h1 style="font-size:24px;font-weight:800;margin:24px 0 10px;line-height:1.3">${processInline(line.slice(2))}</h1>`;
+    // Horizontal rule
+    } else if (line.trim() === "---") {
+      closeList();
+      html += `<hr style="border:none;border-top:1px solid #e2e8f0;margin:16px 0">`;
+    // Checkbox list
+    } else if (/^- \[x\] /i.test(raw)) {
+      if (!inList || listType !== "ul") { closeList(); html += '<ul style="margin:0 0 8px;padding-left:24px;list-style:none">'; inList = true; listType = "ul"; }
+      html += `<li style="margin:2px 0;display:flex;align-items:flex-start;gap:6px"><span style="color:#22c55e;flex-shrink:0">☑</span><span style="text-decoration:line-through;color:#94a3b8">${processInline(escHtml(raw.replace(/^- \[x\] /i, "")))}</span></li>`;
+    } else if (/^- \[ \] /.test(raw)) {
+      if (!inList || listType !== "ul") { closeList(); html += '<ul style="margin:0 0 8px;padding-left:24px;list-style:none">'; inList = true; listType = "ul"; }
+      html += `<li style="margin:2px 0;display:flex;align-items:flex-start;gap:6px"><span style="color:#94a3b8;flex-shrink:0">☐</span><span>${processInline(escHtml(raw.replace(/^- \[ \] /, "")))}</span></li>`;
+    // Unordered list
+    } else if (/^- /.test(raw)) {
+      if (!inList || listType !== "ul") { closeList(); html += '<ul style="margin:0 0 8px;padding-left:24px">'; inList = true; listType = "ul"; }
+      html += `<li style="margin:2px 0;line-height:1.7">${processInline(escHtml(raw.slice(2)))}</li>`;
+    // Ordered list
+    } else if (/^\d+\. /.test(raw)) {
+      if (!inList || listType !== "ol") { closeList(); html += '<ol style="margin:0 0 8px;padding-left:24px">'; inList = true; listType = "ol"; }
+      html += `<li style="margin:2px 0;line-height:1.7">${processInline(escHtml(raw.replace(/^\d+\. /, "")))}</li>`;
+    // Empty line
+    } else if (line.trim() === "") {
+      closeList();
+      html += `<div style="height:8px"></div>`;
+    // Regular paragraph
+    } else {
+      closeList();
+      html += `<p style="margin:0 0 6px;line-height:1.8">${processInline(line)}</p>`;
+    }
+
+    i++;
+  }
+
+  closeList();
+  return html;
+}
+
+/* ─────────────────────────────────────────────
+   Template Picker Modal
+───────────────────────────────────────────── */
+function TemplatePickerModal({ onSelect, onClose }) {
+  const { t } = useApp();
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: "fixed", inset: 0, zIndex: 400, background: "#0006", display: "flex", alignItems: "center", justifyContent: "center" }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ background: t.bg2, borderRadius: 16, padding: 24, maxWidth: 520, width: "calc(100% - 32px)", maxHeight: "90vh", overflowY: "auto", boxShadow: t.shadow }}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+          <div style={{ fontSize: 17, fontWeight: 800, letterSpacing: "-0.4px", color: t.text }}>Vybrat šablonu</div>
+          <button
+            onClick={onClose}
+            style={{ background: "none", border: "none", color: t.text3, cursor: "pointer", padding: 4, display: "flex", borderRadius: 6 }}
+          >
+            <Icon name="x" size={18} color={t.text3} strokeWidth={2} />
+          </button>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
+          {NOTE_TEMPLATES.map((tpl) => (
+            <button
+              key={tpl.id}
+              onClick={() => onSelect(tpl)}
+              style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 6, padding: "14px 16px", borderRadius: 10, border: `1px solid ${t.border}`, background: t.bg, color: t.text, cursor: "pointer", textAlign: "left", transition: "border-color .15s" }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = t.accent; e.currentTarget.style.background = t.accentBg; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = t.border; e.currentTarget.style.background = t.bg; }}
+            >
+              <Icon name={tpl.icon} size={18} color={t.accent} strokeWidth={1.8} />
+              <div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>{tpl.label}</div>
+              <div style={{ fontSize: 11.5, color: t.text3, lineHeight: 1.4 }}>{tpl.desc}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
    Notes – Detail editor (right panel)
 ───────────────────────────────────────────── */
 function NoteDetail({ note, onDelete }) {
-  const { t, updateNote, projects, tasks, isMobile } = useApp();
+  const { t, updateNote, projects, tasks, isMobile, uploadAttachment } = useApp();
   const [title, setTitle] = useState(note.title);
   const [content, setContent] = useState(note.content);
   const [showMeta, setShowMeta] = useState(false);
+  const [preview, setPreview] = useState(false);
   const contentRef = useRef(null);
   const titleRef = useRef(null);
+  const imgInputRef = useRef(null);
 
   useEffect(() => {
     setTitle(note.title);
@@ -5143,11 +5310,11 @@ function NoteDetail({ note, onDelete }) {
   }, [note.id]);
 
   useEffect(() => {
-    if (contentRef.current) {
+    if (!preview && contentRef.current) {
       contentRef.current.style.height = "auto";
       contentRef.current.style.height = contentRef.current.scrollHeight + "px";
     }
-  }, [content]);
+  }, [content, preview]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useDebouncedEffect(() => { updateNote(note.id, { title, content }); }, [title, content], 600);
@@ -5158,8 +5325,49 @@ function NoteDetail({ note, onDelete }) {
   const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
   const readMin = Math.max(1, Math.round(wordCount / 200));
 
+  const insertMd = (before, after = "", placeholder = "text") => {
+    const el = contentRef.current;
+    if (!el) return;
+    const start = el.selectionStart, end = el.selectionEnd;
+    const selected = el.value.slice(start, end) || placeholder;
+    const newVal = el.value.slice(0, start) + before + selected + after + el.value.slice(end);
+    setContent(newVal);
+    requestAnimationFrame(() => {
+      el.focus();
+      const pos = start + before.length + selected.length + after.length;
+      el.setSelectionRange(pos, pos);
+    });
+  };
+
+  const handleImgUpload = async (file) => {
+    if (!file) return;
+    try {
+      const att = await uploadAttachment(file, { noteId: note.id });
+      const { data } = supabase.storage.from("attachments").getPublicUrl(att.storagePath);
+      insertMd(`![${file.name}](${data.publicUrl})`, "", "");
+    } catch (e) { /* silent */ }
+  };
+
+  const tbBtn = (label, onClick, title) => (
+    <button
+      key={label}
+      onClick={onClick}
+      title={title || label}
+      style={{ padding: "4px 8px", borderRadius: 6, border: `1px solid ${t.border}`, background: "transparent", color: t.text2, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+    >{label}</button>
+  );
+
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      {/* Hidden image input */}
+      <input
+        ref={imgInputRef}
+        type="file"
+        accept="image/*"
+        style={{ display: "none" }}
+        onChange={(e) => { handleImgUpload(e.target.files[0]); e.target.value = ""; }}
+      />
+
       {/* Top action bar */}
       {!isMobile && (
         <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 32px 0", flexShrink: 0 }}>
@@ -5177,6 +5385,14 @@ function NoteDetail({ note, onDelete }) {
             </span>
           )}
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 4 }}>
+            <button
+              onClick={() => setPreview((v) => !v)}
+              title={preview ? "Upravit" : "Náhled"}
+              style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 10px", borderRadius: 7, border: `1px solid ${preview ? t.accent : t.border}`, background: preview ? t.accentBg : "transparent", color: preview ? t.accent : t.text3, fontSize: 11.5, fontWeight: 600, cursor: "pointer" }}
+            >
+              <Icon name={preview ? "edit-2" : "eye"} size={12} color="currentColor" strokeWidth={2} />
+              {preview ? "Upravit" : "Náhled"}
+            </button>
             <button
               onClick={() => updateNote(note.id, { pinned: !note.pinned })}
               title={note.pinned ? "Odepnout" : "Připnout"}
@@ -5206,6 +5422,26 @@ function NoteDetail({ note, onDelete }) {
         </div>
       )}
 
+      {/* Markdown toolbar (edit mode only) */}
+      {!preview && (
+        <div style={{ display: "flex", gap: 2, padding: "8px 10px", borderBottom: `1px solid ${t.border}`, flexShrink: 0, flexWrap: "wrap", background: t.bg2 }}>
+          {tbBtn("B", () => insertMd("**", "**", "bold"), "Bold")}
+          {tbBtn("I", () => insertMd("*", "*", "italic"), "Italic")}
+          {tbBtn("H2", () => insertMd("## ", "", "Nadpis"), "Nadpis H2")}
+          {tbBtn("H3", () => insertMd("### ", "", "Nadpis"), "Nadpis H3")}
+          {tbBtn("🔗", () => insertMd("[", "](url)", "text"), "Odkaz")}
+          {tbBtn("•", () => insertMd("- ", "", "položka"), "Odrážka")}
+          {tbBtn("1.", () => insertMd("1. ", "", "položka"), "Číslovaný seznam")}
+          {tbBtn("</>", () => insertMd("\n```\n", "\n```\n", "kód"), "Blok kódu")}
+          {tbBtn("—", () => insertMd("\n---\n", "", ""), "Oddělovač")}
+          <button
+            onClick={() => imgInputRef.current && imgInputRef.current.click()}
+            title="Vložit obrázek"
+            style={{ padding: "4px 8px", borderRadius: 6, border: `1px solid ${t.border}`, background: "transparent", color: t.text2, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+          >📷</button>
+        </div>
+      )}
+
       {/* Scrollable content */}
       <div style={{ flex: 1, overflow: "auto", padding: isMobile ? "20px 18px 32px" : "20px 40px 40px", maxWidth: isMobile ? "100%" : 860 }}>
         <input
@@ -5216,13 +5452,20 @@ function NoteDetail({ note, onDelete }) {
           style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-0.6px", border: "none", background: "transparent", color: t.text, outline: "none", width: "100%", fontFamily: "'Outfit',sans-serif", marginBottom: 16, display: "block" }}
         />
 
-        <textarea
-          ref={contentRef}
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder={"Začni psát…"}
-          style={{ width: "100%", minHeight: 200, border: "none", background: "transparent", color: t.text, outline: "none", resize: "none", fontSize: 15, lineHeight: 1.8, fontFamily: "'Figtree',sans-serif", overflow: "hidden", display: "block" }}
-        />
+        {preview ? (
+          <div
+            dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }}
+            style={{ fontSize: 15, lineHeight: 1.8, color: t.text }}
+          />
+        ) : (
+          <textarea
+            ref={contentRef}
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder={"Začni psát…"}
+            style={{ width: "100%", minHeight: 200, border: "none", background: "transparent", color: t.text, outline: "none", resize: "none", fontSize: 15, lineHeight: 1.8, fontFamily: "'Figtree',sans-serif", overflow: "hidden", display: "block" }}
+          />
+        )}
 
         {/* Properties panel (collapsible) */}
         {(showMeta || isMobile) && (
@@ -5292,6 +5535,7 @@ function NotesPage() {
   const [filter, setFilter] = useState("all");
   const [sortBy, setSortBy] = useState("updated");
   const [mobileView, setMobileView] = useState("list");
+  const [templatePicker, setTemplatePicker] = useState(false);
 
   useEffect(() => {
     if (openNoteId) {
@@ -5308,15 +5552,18 @@ function NotesPage() {
     const handler = (e) => {
       const tag = document.activeElement?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
-      if ((e.ctrlKey || e.metaKey) && e.key === "n") { e.preventDefault(); const n = addNote({}); setSelId(n.id); }
+      if ((e.ctrlKey || e.metaKey) && e.key === "n") { e.preventDefault(); setTemplatePicker(true); }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [addNote]);
+  }, []);
 
-  const handleCreate = () => {
-    const n = addNote({});
+  const handleCreate = () => setTemplatePicker(true);
+
+  const handleCreateFromTemplate = (tpl) => {
+    const n = addNote({ title: tpl.title, content: tpl.content });
     setSelId(n.id);
+    setTemplatePicker(false);
     if (isMobile) setMobileView("detail");
   };
 
@@ -5357,6 +5604,12 @@ function NotesPage() {
 
   return (
     <div style={{ display: "flex", height: "100%", overflow: "hidden" }} className="fi">
+      {templatePicker && (
+        <TemplatePickerModal
+          onSelect={handleCreateFromTemplate}
+          onClose={() => setTemplatePicker(false)}
+        />
+      )}
 
       {/* ── LEFT: list ── */}
       {showList && (
