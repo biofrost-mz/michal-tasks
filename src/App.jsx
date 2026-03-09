@@ -3324,11 +3324,16 @@ function DashTaskCard({ task, sectionColor }) {
           {!isMobile && taskTags.length > 0 && (
             <span style={{ width: 1, height: 12, background: t.border, alignSelf: "center", flexShrink: 0 }} />
           )}
-          {!isMobile && taskTags.map((tg) => (
+          {!isMobile && taskTags.slice(0, 2).map((tg) => (
             <span key={tg.id} style={{ fontSize: 11.5, fontWeight: 600, padding: "3px 8px", borderRadius: 4, background: tg.color + "18", color: tg.color }}>
               # {tg.name}
             </span>
           ))}
+          {!isMobile && taskTags.length > 2 && (
+            <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 7px", borderRadius: 4, background: t.input, color: t.text3 }}>
+              +{taskTags.length - 2}
+            </span>
+          )}
           {task.dueDate && (
             <span className="mono" style={{
               fontSize: 11.5, fontWeight: isOverdue ? 700 : 500,
@@ -3342,8 +3347,8 @@ function DashTaskCard({ task, sectionColor }) {
         </div>
       </div>
 
-      {/* Footer: quick status buttons */}
-      <div
+      {/* Footer: quick status buttons (desktop only) */}
+      {!isMobile && <div
         style={{ display: "flex", gap: 4, padding: "6px 14px 8px", borderTop: `1px solid ${t.border}`, flexWrap: "wrap" }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -3375,7 +3380,7 @@ function DashTaskCard({ task, sectionColor }) {
             {STATUS_SHORT[k]}
           </button>
         ))}
-      </div>
+      </div>}
     </div>
   );
 }
