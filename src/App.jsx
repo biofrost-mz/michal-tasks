@@ -5145,7 +5145,7 @@ const NOTE_TEMPLATES = [
     content: "## Cíl\n\n\n## Cílová skupina\n\n\n## Rozsah\n\n\n## Deadline\n\n\n## Výstupy\n- " },
   { id: "linkedin", label: "LinkedIn post", icon: "send", desc: "Hook, body, CTA, tagy",
     title: "LinkedIn post",
-    content: "## Hook\n_První věta, která zaujme před \u201E...více\u201C_\n\n---\n\n## Hlavní myšlenka\n\n\n## Klíčové body\n1. \n2. \n3. \n\n---\n\n## CTA\n\n\n**Tagy:** #" },
+    content: "## Hook\n_První věta, která zaujme před '...více'_\n\n---\n\n## Hlavní myšlenka\n\n\n## Klíčové body\n1. \n2. \n3. \n\n---\n\n## CTA\n\n\n**Tagy:** #" },
   { id: "article", label: "Článek / LI long", icon: "edit-3", desc: "Titulek, sekce, závěr, zdroje",
     title: "Článek",
     content: "# Titulek\n\n_Perex_\n\n---\n\n## Sekce 1\n\n\n## Sekce 2\n\n\n## Závěr\n\n\n---\n\n_Zdroje:_\n- " },
