@@ -2332,7 +2332,8 @@ function Sidebar({ toggleDk }) {
    Mobile Nav — bottom tab bar
 ───────────────────────────────────────────── */
 function MobileNav({ toggleDk }) {
-  const { t, dk, page, setPage, tasks, setCmdOpen, setTaskDetail } = useApp();
+  const { t, dk, page, setPage, tasks, setCmdOpen, setTaskDetail, userEmail, workspaceMembers, userId, logout } = useApp();
+  const confirm = useConfirm();
   const [moreOpen, setMoreOpen] = useState(false);
 
   const primary = [
@@ -2347,10 +2348,19 @@ function MobileNav({ toggleDk }) {
     { id: "tags",      label: "Tagy",     icon: "tag"          },
   ];
 
+  const me = workspaceMembers.find((m) => m.userId === userId);
+  const displayName = me?.displayName || me?.email || userEmail || "Uživatel";
+  const initials = displayName.slice(0, 2).toUpperCase();
+
   const handleNav = (id) => {
     setPage(id);
     setMoreOpen(false);
     setTaskDetail(null);
+  };
+
+  const handleLogout = async () => {
+    if (!await confirm("Odhlásit se?")) return;
+    await logout();
   };
 
   return (
@@ -2403,7 +2413,7 @@ function MobileNav({ toggleDk }) {
             </div>
 
             {/* Dark mode toggle */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: 10, background: t.card, border: `1px solid ${t.border}` }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: 10, background: t.card, border: `1px solid ${t.border}`, marginBottom: 8 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <span style={{ fontSize: 16 }}>{dk ? "🌙" : "☀️"}</span>
                 <span style={{ fontSize: 13, color: t.text2 }}>{dk ? "Tmavý režim" : "Světlý režim"}</span>
@@ -2418,6 +2428,28 @@ function MobileNav({ toggleDk }) {
                   transition: "left .15s ease", boxShadow: t.shadow,
                 }} />
               </button>
+            </div>
+
+            {/* Account row */}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 10, background: t.card, border: `1px solid ${t.border}` }}>
+              <div style={{
+                width: 34, height: 34, borderRadius: "50%", flexShrink: 0,
+                background: "linear-gradient(135deg,#3b82f6,#8b5cf6)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                color: "#fff", fontSize: 13, fontWeight: 700,
+              }}>{initials}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: t.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{displayName}</div>
+                <div style={{ fontSize: 11, color: t.text3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{userEmail}</div>
+              </div>
+              <button onClick={() => handleNav("profile")} style={{
+                padding: "6px 12px", borderRadius: 8, border: `1px solid ${t.border}`,
+                background: t.input, color: t.text2, fontSize: 12, fontWeight: 500,
+              }}>Profil</button>
+              <button onClick={handleLogout} style={{
+                padding: "6px 10px", borderRadius: 8, border: `1px solid ${t.border}`,
+                background: t.input, color: t.text3, fontSize: 12,
+              }}>Odhlásit</button>
             </div>
           </div>
         </>
