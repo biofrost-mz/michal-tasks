@@ -2063,12 +2063,12 @@ function UserBar({ setPage }) {
         onClick={() => setOpen((v) => !v)}
         style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 8, border: "none", background: "transparent", color: t.text, cursor: "pointer", textAlign: "left" }}
       >
-        <div style={{ width: 28, height: 28, borderRadius: "50%", background: "linear-gradient(135deg,#3b82f6,#8b5cf6)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 11, fontWeight: 800, flexShrink: 0 }}>
+        <div style={{ width: 32, height: 32, borderRadius: "50%", background: "linear-gradient(135deg,#3b82f6,#8b5cf6)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 11, fontWeight: 800, flexShrink: 0 }}>
           {initials}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 12.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{me?.displayName || displayName}</div>
-          {me?.displayName && <div style={{ fontSize: 10, color: t.text3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{userEmail}</div>}
+          <div style={{ fontSize: 13.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{me?.displayName || displayName}</div>
+          {me?.displayName && <div style={{ fontSize: 11.5, color: t.text3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{userEmail}</div>}
         </div>
         <Icon name="chevron-up" size={12} color={t.text3} strokeWidth={2} />
       </button>
@@ -2218,19 +2218,19 @@ function Sidebar({ toggleDk }) {
                 display: "flex",
                 alignItems: "center",
                 gap: 9,
-                padding: "7px 10px",
+                padding: "9px 10px",
                 borderRadius: 7,
                 marginBottom: 1,
                 background: act ? t.accentBg : "transparent",
                 border: "none",
                 color: act ? t.accent : t.text2,
-                fontSize: 13.5,
+                fontSize: 14,
                 fontWeight: act ? 600 : 400,
                 transition: "all .12s",
               }}
             >
               <span style={{ width: 18, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.85 }}>
-                <Icon name={n.icon} size={15} color={act ? t.accent : t.text2} strokeWidth={act ? 2.25 : 1.75} />
+                <Icon name={n.icon} size={17} color={act ? t.accent : t.text2} strokeWidth={act ? 2.25 : 1.75} />
               </span>
               {n.label}
               {n.count > 0 && (
@@ -2256,7 +2256,7 @@ function Sidebar({ toggleDk }) {
           <div style={{ marginTop: 18, paddingTop: 12, borderTop: `1px solid ${t.border}` }}>
             <div
               style={{
-                fontSize: 10,
+                fontSize: 11.5,
                 fontWeight: 700,
                 textTransform: "uppercase",
                 letterSpacing: ".08em",
@@ -2279,12 +2279,12 @@ function Sidebar({ toggleDk }) {
                     display: "flex",
                     alignItems: "center",
                     gap: 8,
-                    padding: "5px 10px",
+                    padding: "6px 10px",
                     borderRadius: 6,
                     background: "transparent",
                     border: "none",
                     color: t.text2,
-                    fontSize: 12.5,
+                    fontSize: 13,
                     textAlign: "left",
                   }}
                 >
@@ -2298,7 +2298,7 @@ function Sidebar({ toggleDk }) {
                     }}
                   />
                   <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{p.name}</span>
-                  {count > 0 && <span className="mono" style={{ fontSize: 10, color: t.text3 }}>{count}</span>}
+                  {count > 0 && <span className="mono" style={{ fontSize: 11.5, color: t.text3 }}>{count}</span>}
                 </button>
               );
             })}
@@ -2487,8 +2487,8 @@ function MobileNav({ toggleDk }) {
                   alignItems: "center", justifyContent: "center", padding: "0 3px",
                 }}>{n.count > 99 ? "99+" : n.count}</span>
               )}
-              <Icon name={n.icon} size={22} color={act ? t.accent : t.text3} strokeWidth={act ? 2.25 : 1.75} />
-              <span style={{ fontSize: 9.5, fontWeight: act ? 600 : 400, letterSpacing: "0.01em" }}>{n.label}</span>
+              <Icon name={n.icon} size={24} color={act ? t.accent : t.text3} strokeWidth={act ? 2.25 : 1.75} />
+              <span style={{ fontSize: 11, fontWeight: act ? 600 : 400, letterSpacing: "0.01em" }}>{n.label}</span>
             </button>
           );
         })}
@@ -2503,8 +2503,8 @@ function MobileNav({ toggleDk }) {
             color: moreOpen ? t.accent : t.text3,
           }}
         >
-          <Icon name="list" size={22} color={moreOpen ? t.accent : t.text3} strokeWidth={moreOpen ? 2.25 : 1.75} />
-          <span style={{ fontSize: 9.5, fontWeight: moreOpen ? 600 : 400 }}>Více</span>
+          <Icon name="list" size={24} color={moreOpen ? t.accent : t.text3} strokeWidth={moreOpen ? 2.25 : 1.75} />
+          <span style={{ fontSize: 11, fontWeight: moreOpen ? 600 : 400 }}>Více</span>
         </button>
       </nav>
     </>
@@ -2852,7 +2852,7 @@ function StatCard({ label, value, color, icon, active, onClick }) {
       <div style={{ position: "absolute", top: 10, right: 10, opacity: 0.1 }}>
         <Icon name={icon} size={40} color={color} strokeWidth={1.25} />
       </div>
-      <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: t.text2, marginBottom: 8 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: t.text2, marginBottom: 8 }}>
         {label}
       </div>
       <div className="mono" style={{ fontSize: 30, fontWeight: 700, color, letterSpacing: "-1px" }}>
@@ -3009,8 +3009,8 @@ function Dashboard() {
       <span style={{ width: 22, height: 22, borderRadius: 6, background: color + "18", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
         <Icon name={icon} size={12} color={color} strokeWidth={2} />
       </span>
-      <span style={{ fontSize: 13, fontWeight: 700, color }}>{title}</span>
-      <span className="mono" style={{ fontSize: 10, color: t.text3, background: t.input, padding: "1px 7px", borderRadius: 6 }}>{count}</span>
+      <span style={{ fontSize: 14, fontWeight: 700, color }}>{title}</span>
+      <span className="mono" style={{ fontSize: 11.5, color: t.text3, background: t.input, padding: "1px 7px", borderRadius: 6 }}>{count}</span>
       {action && <span style={{ marginLeft: "auto" }}>{action}</span>}
     </div>
   );
@@ -3022,12 +3022,12 @@ function Dashboard() {
       <div style={{ display: "flex", alignItems: isMobile ? "center" : "flex-end", justifyContent: "space-between", marginBottom: isMobile ? 14 : 20, gap: 12 }}>
         <div>
           <h1 style={{ fontSize: isMobile ? 22 : 28, fontWeight: 800, letterSpacing: "-0.8px", marginBottom: 2 }}>Přehled</h1>
-          <p style={{ color: t.text2, fontSize: 12 }}>
+          <p style={{ color: t.text2, fontSize: 13 }}>
             {new Date().toLocaleDateString("cs-CZ", { weekday: isMobile ? "short" : "long", day: "numeric", month: isMobile ? "numeric" : "long", year: isMobile ? undefined : "numeric" })}
           </p>
         </div>
         {!isMobile && (
-          <div style={{ fontSize: 11, color: t.text3, textAlign: "right", lineHeight: 1.7, flexShrink: 0 }}>
+          <div style={{ fontSize: 12, color: t.text3, textAlign: "right", lineHeight: 1.7, flexShrink: 0 }}>
             <span style={{ background: t.input, padding: "2px 7px", borderRadius: 5, marginRight: 4 }}>N</span> nový úkol
             {"  ·  "}
             <span style={{ background: t.input, padding: "2px 7px", borderRadius: 5, marginRight: 4 }}>Esc</span> zavřít
@@ -3139,7 +3139,7 @@ function Dashboard() {
           {/* Active projects */}
           {activeProjects.length > 0 && (
             <div>
-              <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: t.text3, marginBottom: 8 }}>Aktivní projekty</div>
+              <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: t.text3, marginBottom: 8 }}>Aktivní projekty</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 {activeProjects.map((p) => {
                   const pt = tasks.filter((x) => x.projectId === p.id);
@@ -3148,8 +3148,8 @@ function Dashboard() {
                   return (
                     <div key={p.id} onClick={() => openProject(p.id)} style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 9, padding: "10px 12px", cursor: "pointer", borderLeft: `3px solid ${projectColor(p.id)}` }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
-                        <span style={{ fontSize: 12.5, fontWeight: 600 }}>{p.name}</span>
-                        <span className="mono" style={{ fontSize: 10, color: pct === 100 ? "#22c55e" : t.text3, fontWeight: 600 }}>{pct}%</span>
+                        <span style={{ fontSize: 13, fontWeight: 600 }}>{p.name}</span>
+                        <span className="mono" style={{ fontSize: 11.5, color: pct === 100 ? "#22c55e" : t.text3, fontWeight: 600 }}>{pct}%</span>
                       </div>
                       <div style={{ height: 3, borderRadius: 999, background: t.input }}>
                         <div style={{ height: "100%", width: `${pct}%`, background: `linear-gradient(90deg, ${projectColor(p.id)}, #22c55e)`, borderRadius: 999 }} />
@@ -3216,7 +3216,7 @@ function Dashboard() {
    Task Cards
 ───────────────────────────────────────────── */
 function DashTaskCard({ task, sectionColor }) {
-  const { t, projects, tags, updateTask, setTaskDetail } = useApp();
+  const { t, projects, tags, updateTask, setTaskDetail, isMobile } = useApp();
   const project = projects.find((p) => p.id === task.projectId);
   const taskTags = tags.filter((tg) => (task.tagIds || []).includes(tg.id));
 
@@ -3264,7 +3264,7 @@ function DashTaskCard({ task, sectionColor }) {
             }}
             title={`Stav: ${st.label} → klikni pro posun`}
             style={{
-              width: 24, height: 24, borderRadius: 6, flexShrink: 0, marginTop: 1,
+              width: 26, height: 26, borderRadius: 6, flexShrink: 0, marginTop: 1,
               border: `1.5px solid ${st.color}40`,
               background: t.input,
               display: "flex", alignItems: "center", justifyContent: "center",
@@ -3276,7 +3276,7 @@ function DashTaskCard({ task, sectionColor }) {
 
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{
-              fontSize: 13.5, fontWeight: 600, lineHeight: 1.35,
+              fontSize: 14, fontWeight: 600, lineHeight: 1.35,
               textDecoration: task.status === "done" ? "line-through" : "none",
               color: task.status === "done" ? t.text3 : t.text,
             }}>
@@ -3305,9 +3305,9 @@ function DashTaskCard({ task, sectionColor }) {
 
         {/* Row 2: meta pills */}
         <div style={{ display: "flex", gap: 5, flexWrap: "wrap", alignItems: "center", marginLeft: 30, minWidth: 0, overflow: "hidden" }}>
-          {project && (
+          {!isMobile && project && (
             <span style={{
-              fontSize: 10.5, fontWeight: 700, padding: "2px 9px", borderRadius: 20,
+              fontSize: 11.5, fontWeight: 700, padding: "3px 9px", borderRadius: 20,
               border: `1.5px solid ${projColor}55`, background: projColor + "12", color: projColor,
               letterSpacing: ".01em", display: "inline-flex", alignItems: "center", gap: 4,
             }}>
@@ -3316,25 +3316,25 @@ function DashTaskCard({ task, sectionColor }) {
             </span>
           )}
           {pr && (
-            <span style={{ fontSize: 10.5, fontWeight: 600, padding: "2px 8px", borderRadius: 4, background: pr.bg, color: pr.color, display: "inline-flex", alignItems: "center", gap: 3 }}>
+            <span style={{ fontSize: 11.5, fontWeight: 600, padding: "3px 8px", borderRadius: 4, background: pr.bg, color: pr.color, display: "inline-flex", alignItems: "center", gap: 3 }}>
               <Icon name={pr.icon} size={9} color={pr.color} strokeWidth={2.5} />
               {pr.label}
             </span>
           )}
-          {taskTags.length > 0 && (
+          {!isMobile && taskTags.length > 0 && (
             <span style={{ width: 1, height: 12, background: t.border, alignSelf: "center", flexShrink: 0 }} />
           )}
-          {taskTags.map((tg) => (
-            <span key={tg.id} style={{ fontSize: 10.5, fontWeight: 600, padding: "2px 7px", borderRadius: 4, background: tg.color + "18", color: tg.color }}>
+          {!isMobile && taskTags.map((tg) => (
+            <span key={tg.id} style={{ fontSize: 11.5, fontWeight: 600, padding: "3px 8px", borderRadius: 4, background: tg.color + "18", color: tg.color }}>
               # {tg.name}
             </span>
           ))}
           {task.dueDate && (
             <span className="mono" style={{
-              fontSize: 10.5, fontWeight: isOverdue ? 700 : 500,
+              fontSize: 11.5, fontWeight: isOverdue ? 700 : 500,
               color: isOverdue ? "#ef4444" : t.text2,
               background: isOverdue ? "#ef444412" : t.input,
-              padding: "2px 7px", borderRadius: 4,
+              padding: "3px 8px", borderRadius: 4,
             }}>
               {parseYMD(task.dueDate)?.toLocaleDateString("cs-CZ", { day: "numeric", month: "short" }) || task.dueDate}
             </span>
@@ -3481,8 +3481,8 @@ function ListView({ taskList, showProject = true }) {
                 onClick={() => !col.noSort && toggleSort(col.key)}
                 style={{
                   width: col.width,
-                  padding: "9px 10px",
-                  fontSize: 10.5,
+                  padding: "10px 10px",
+                  fontSize: 11.5,
                   fontWeight: 700,
                   textTransform: "uppercase",
                   letterSpacing: ".06em",
@@ -3522,7 +3522,7 @@ function ListView({ taskList, showProject = true }) {
                 onMouseEnter={(e) => (e.currentTarget.style.background = t.cardH)}
                 onMouseLeave={(e) => (e.currentTarget.style.background = i % 2 === 0 ? "transparent" : t.kanban + "60")}
               >
-                <td style={{ padding: "9px 10px" }}>
+                <td style={{ padding: "10px 10px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                     <button
                       onClick={(e) => {
@@ -3570,7 +3570,7 @@ function ListView({ taskList, showProject = true }) {
 
                     <span
                       style={{
-                        fontSize: 12.5,
+                        fontSize: 13.5,
                         fontWeight: 600,
                         overflow: "hidden",
                         textOverflow: "ellipsis",
@@ -3584,10 +3584,10 @@ function ListView({ taskList, showProject = true }) {
                   </div>
                 </td>
 
-                <td style={{ padding: "9px 10px" }}>
+                <td style={{ padding: "10px 10px" }}>
                   <span
                     style={{
-                      fontSize: 10.5,
+                      fontSize: 11.5,
                       fontWeight: 600,
                       color: st.color,
                       background: st.bg,
@@ -3603,11 +3603,11 @@ function ListView({ taskList, showProject = true }) {
                   </span>
                 </td>
 
-                <td style={{ padding: "9px 10px" }}>
+                <td style={{ padding: "10px 10px" }}>
                   {pr ? (
                     <span
                       style={{
-                        fontSize: 10.5,
+                        fontSize: 11.5,
                         fontWeight: 700,
                         color: pr.color,
                         background: pr.bg,
@@ -3621,28 +3621,28 @@ function ListView({ taskList, showProject = true }) {
                       <Icon name={pr.icon} size={10} color={pr.color} strokeWidth={2.5} />{pr.label}
                     </span>
                   ) : (
-                    <span style={{ fontSize: 10.5, color: t.text3 }}>—</span>
+                    <span style={{ fontSize: 11.5, color: t.text3 }}>—</span>
                   )}
                 </td>
 
                 {showProject && (
-                  <td style={{ padding: "9px 10px" }}>
+                  <td style={{ padding: "10px 10px" }}>
                     {proj ? (
-                      <span style={{ fontSize: 10.5, color: t.accent, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>
+                      <span style={{ fontSize: 11.5, color: t.accent, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>
                         {proj.name}
                       </span>
                     ) : (
-                      <span style={{ fontSize: 10.5, color: t.text3, fontStyle: "italic" }}>Inbox</span>
+                      <span style={{ fontSize: 11.5, color: t.text3, fontStyle: "italic" }}>Inbox</span>
                     )}
                   </td>
                 )}
 
-                <td style={{ padding: "9px 10px" }}>
+                <td style={{ padding: "10px 10px" }}>
                   {task.dueDate ? (
                     <span
                       className="mono"
                       style={{
-                        fontSize: 10.5,
+                        fontSize: 11.5,
                         fontWeight: isOverdue ? 700 : 400,
                         color: isOverdue ? "#ef4444" : t.text2,
                         background: isOverdue ? "#ef444412" : "transparent",
@@ -3653,22 +3653,22 @@ function ListView({ taskList, showProject = true }) {
                       {parseYMD(task.dueDate)?.toLocaleDateString("cs-CZ", { day: "numeric", month: "numeric" }) || task.dueDate}
                     </span>
                   ) : (
-                    <span style={{ fontSize: 10.5, color: t.text3 }}>—</span>
+                    <span style={{ fontSize: 11.5, color: t.text3 }}>—</span>
                   )}
                 </td>
 
-                <td style={{ padding: "9px 10px" }}>
+                <td style={{ padding: "10px 10px" }}>
                   <div style={{ display: "flex", gap: 3, flexWrap: "wrap" }}>
                     {taskTags.map((tg) => (
-                      <span key={tg.id} style={{ fontSize: 9, fontWeight: 600, padding: "2px 6px", borderRadius: 4, background: tg.color + "18", color: tg.color, whiteSpace: "nowrap" }}>
+                      <span key={tg.id} style={{ fontSize: 11, fontWeight: 600, padding: "2px 6px", borderRadius: 4, background: tg.color + "18", color: tg.color, whiteSpace: "nowrap" }}>
                         {tg.name}
                       </span>
                     ))}
                   </div>
                 </td>
 
-                <td style={{ padding: "9px 10px" }}>
-                  <span className="mono" style={{ fontSize: 10, color: t.text3 }}>
+                <td style={{ padding: "10px 10px" }}>
+                  <span className="mono" style={{ fontSize: 11.5, color: t.text3 }}>
                     {new Date(task.createdAt).toLocaleDateString("cs-CZ", { day: "numeric", month: "numeric" })}
                   </span>
                 </td>
@@ -3694,7 +3694,7 @@ function FilterBtn({ label, active, color, onClick }) {
       style={{
         padding: "5px 11px",
         borderRadius: 6,
-        fontSize: 11.5,
+        fontSize: 12.5,
         fontWeight: 500,
         border: `1px solid ${active ? (color || t.accent) : t.border}`,
         background: active ? (color || t.accent) + "15" : "transparent",
@@ -3750,7 +3750,7 @@ function AllTasksPage() {
         <select
           value={projectFilter}
           onChange={(e) => setProjectFilter(e.target.value)}
-          style={{ padding: "5px 10px", borderRadius: 7, border: `1px solid ${t.border}`, background: t.input, color: t.text, fontSize: 12, outline: "none", flexShrink: 0 }}
+          style={{ padding: "5px 10px", borderRadius: 7, border: `1px solid ${t.border}`, background: t.input, color: t.text, fontSize: 13, outline: "none", flexShrink: 0 }}
         >
           <option value="all">Všechny projekty</option>
           <option value="inbox">Inbox</option>
@@ -3761,7 +3761,7 @@ function AllTasksPage() {
           ))}
         </select>
 
-        <span className="mono" style={{ fontSize: 12, color: t.text3, marginLeft: "auto", flexShrink: 0 }}>
+        <span className="mono" style={{ fontSize: 13, color: t.text3, marginLeft: "auto", flexShrink: 0 }}>
           {filtered.length} úkolů
         </span>
       </div>
@@ -5725,10 +5725,10 @@ function NotesPage() {
                     {n.pinned && (
                       <span style={{ fontSize: 10, background: "#f59e0b22", color: "#f59e0b", borderRadius: 4, padding: "1px 5px", fontWeight: 700, flexShrink: 0 }}>📌</span>
                     )}
-                    <span style={{ flex: 1, fontSize: 13, fontWeight: 600, lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: isActive ? t.accent : t.text }}>
+                    <span style={{ flex: 1, fontSize: 14, fontWeight: 600, lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: isActive ? t.accent : t.text }}>
                       {n.title || <em style={{ fontWeight: 400, color: t.text3 }}>Bez názvu</em>}
                     </span>
-                    <span className="mono" style={{ fontSize: 10, color: t.text3, flexShrink: 0 }}>{relTime(n.updatedAt)}</span>
+                    <span className="mono" style={{ fontSize: 11.5, color: t.text3, flexShrink: 0 }}>{relTime(n.updatedAt)}</span>
                   </div>
 
                   {/* Preview */}
