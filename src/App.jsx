@@ -1465,6 +1465,7 @@ export default function MichalTasks() {
     leaveWorkspace,
     fetchWorkspaceInvites,
     revokeInvite,
+    userId,
     userEmail: session?.user?.email ?? null,
     logout: () => supabase.auth.signOut(),
   };
