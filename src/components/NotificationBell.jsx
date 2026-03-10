@@ -11,7 +11,9 @@ function fmt(d) {
 export default function NotificationBell({ compact = false }) {
   const { t, tasks, projects, setTaskDetail } = useApp();
   const [open, setOpen] = useState(false);
+  const [fixedPos, setFixedPos] = useState({ top: 0, right: 0 });
   const ref = useRef(null);
+  const btnRef = useRef(null);
 
   const today = startOfToday();
   const todayStr = fmt(today);
@@ -24,6 +26,14 @@ export default function NotificationBell({ compact = false }) {
   const dueTomorrow = active.filter((tk) => tk.dueDate === tomorrowStr);
 
   const urgentCount = overdue.length + dueToday.length;
+
+  const handleToggle = () => {
+    if (!open && compact) {
+      const rect = btnRef.current?.getBoundingClientRect();
+      if (rect) setFixedPos({ top: rect.bottom + 6, right: window.innerWidth - rect.right });
+    }
+    setOpen((v) => !v);
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -88,7 +98,8 @@ export default function NotificationBell({ compact = false }) {
   return (
     <div ref={ref} style={{ position: "relative" }}>
       <button
-        onClick={() => setOpen((v) => !v)}
+        ref={btnRef}
+        onClick={handleToggle}
         title="Připomínky"
         style={{
           position: "relative",
@@ -123,13 +134,12 @@ export default function NotificationBell({ compact = false }) {
 
       {open && (
         <div
-          className="su"
+          className="pop"
           style={{
-            position: "absolute",
+            position: compact ? "fixed" : "absolute",
+            top: compact ? fixedPos.top : 0,
+            right: compact ? fixedPos.right : "auto",
             left: compact ? "auto" : "calc(100% + 8px)",
-            right: compact ? 0 : "auto",
-            bottom: compact ? "calc(100% + 8px)" : "auto",
-            top: compact ? "auto" : 0,
             width: 320,
             background: t.bg2,
             border: `1px solid ${t.border}`,

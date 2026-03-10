@@ -163,6 +163,16 @@ export default function DashboardPage() {
         <QuickAdd />
       </div>
 
+      {/* Stats — always on top on mobile */}
+      {isMobile && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
+          <StatCard label="Aktivní úkoly" value={activeTasks.length} color="#3b82f6" icon="check-square" sub={`z ${totalT} celkem`} />
+          <StatCard label="Hotovo" value={doneT} color="#22c55e" icon="check-circle" sub={`${doneThisWeek} tento týden`} />
+          <StatCard label="Projekty" value={activeP.length} color="#8b5cf6" icon="folder" sub="aktivních" />
+          <StatCard label="TOP úkoly" value={starredT.length} color="#eab308" icon="star" sub="označených" />
+        </div>
+      )}
+
       {/* Two-column grid */}
       <div style={{
         display: "grid",
@@ -267,15 +277,17 @@ export default function DashboardPage() {
         </div>
 
         {/* ══ RIGHT: Stats + Projects + Notes ══ */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 16, order: isMobile ? -1 : 0, minWidth: 0 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
 
-          {/* Stat cards 2×2 */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            <StatCard label="Aktivní úkoly" value={activeTasks.length} color="#3b82f6" icon="check-square" sub={`z ${totalT} celkem`} />
-            <StatCard label="Hotovo" value={doneT} color="#22c55e" icon="check-circle" sub={`${doneThisWeek} tento týden`} />
-            <StatCard label="Projekty" value={activeP.length} color="#8b5cf6" icon="folder" sub="aktivních" />
-            <StatCard label="TOP úkoly" value={starredT.length} color="#eab308" icon="star" sub="označených" />
-          </div>
+          {/* Stat cards 2×2 — desktop only (mobile shown above) */}
+          {!isMobile && (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <StatCard label="Aktivní úkoly" value={activeTasks.length} color="#3b82f6" icon="check-square" sub={`z ${totalT} celkem`} />
+              <StatCard label="Hotovo" value={doneT} color="#22c55e" icon="check-circle" sub={`${doneThisWeek} tento týden`} />
+              <StatCard label="Projekty" value={activeP.length} color="#8b5cf6" icon="folder" sub="aktivních" />
+              <StatCard label="TOP úkoly" value={starredT.length} color="#eab308" icon="star" sub="označených" />
+            </div>
+          )}
 
           {/* Aktivní projekty */}
           {activeP.length > 0 && (
