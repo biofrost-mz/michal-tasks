@@ -230,36 +230,36 @@ export default function DashboardPage() {
             );
           })()}
 
-          {/* 🟡 Čekám — kompaktní */}
+          {/* 🟡 Čekám */}
           {waiting.length > 0 && (() => {
             const list = waiting.filter(matchesSearch);
-            const shown = waitingOpen ? list : list.slice(0, 5);
+            const shown = waitingOpen ? list : list.slice(0, 3);
             return (
-              <div style={{ background: "#f59e0b08", border: `1px solid #f59e0b30`, borderRadius: 12, padding: "12px 12px 6px" }}>
+              <div style={{ background: "#f59e0b08", border: `1px solid #f59e0b30`, borderRadius: 12, padding: "12px 12px 8px" }}>
                 <SectionHead
                   icon="pause-circle" title="Čekám" color="#f59e0b" count={list.length}
                   action={<CollapseBtn open={waitingOpen} setOpen={setWaitingOpen} count={list.length} color="#f59e0b" />}
                 />
-                <div style={{ display: "flex", flexDirection: "column" }}>
-                  {shown.map((task) => <CompactTaskRow key={task.id} task={task} color="#f59e0b" />)}
+                <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                  {shown.map((task) => <DashTaskCard key={task.id} task={task} sectionColor="#f59e0b" />)}
                 </div>
               </div>
             );
           })()}
 
-          {/* ⬜ To do — kompaktní */}
+          {/* ⬜ To do */}
           {(() => {
             const list = todo.filter(matchesSearch);
             if (list.length === 0) return null;
-            const shown = todoOpen ? list : list.slice(0, 5);
+            const shown = todoOpen ? list : list.slice(0, 3);
             return (
-              <div style={{ background: t.kanban, border: `1px solid ${t.border}`, borderRadius: 12, padding: "12px 12px 6px" }}>
+              <div style={{ background: t.kanban, border: `1px solid ${t.border}`, borderRadius: 12, padding: "12px 12px 8px" }}>
                 <SectionHead
                   icon="circle" title="To do" color={t.text3} count={list.length}
                   action={<CollapseBtn open={todoOpen} setOpen={setTodoOpen} count={list.length} color={t.text2} />}
                 />
-                <div style={{ display: "flex", flexDirection: "column" }}>
-                  {shown.map((task) => <CompactTaskRow key={task.id} task={task} color={t.text3} />)}
+                <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                  {shown.map((task) => <DashTaskCard key={task.id} task={task} sectionColor={t.text3} />)}
                 </div>
               </div>
             );

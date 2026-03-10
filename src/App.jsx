@@ -5,6 +5,7 @@ import { ConfirmProvider } from "./components/Confirm.jsx";
 import AuthGate from "./components/AuthGate.jsx";
 import Sidebar from "./layout/Sidebar.jsx";
 import MobileNav from "./layout/MobileNav.jsx";
+import TopBar from "./layout/TopBar.jsx";
 import TaskDrawer from "./components/TaskDrawer.jsx";
 import CommandPalette from "./components/CommandPalette.jsx";
 import DashboardPage from "./pages/DashboardPage.jsx";
@@ -54,6 +55,8 @@ function AppShell() {
 
       <div style={{ display: "flex", width: "100%", height: "100vh", overflow: "hidden" }}>
         {!isMobile && <Sidebar toggleDk={() => setDk(!dk)} />}
+        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        {!isMobile && <TopBar />}
         <main style={{ flex: 1, minWidth: 0, width: isMobile ? "100%" : "auto", overflow: "auto", position: "relative", paddingBottom: isMobile ? 66 : 0 }}>
           {page === "dashboard" && <DashboardPage />}
           {page === "projects" && <ProjectsPage />}
@@ -67,6 +70,7 @@ function AppShell() {
         </main>
         {taskDetail && <TaskDrawer />}
         {cmdOpen && <CommandPalette onClose={() => setCmdOpen(false)} />}
+        </div>
         {isMobile && <MobileNav toggleDk={() => setDk(!dk)} />}
       </div>
     </>
