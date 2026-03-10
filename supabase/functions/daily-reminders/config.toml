@@ -1,0 +1,4 @@
+[functions.daily-reminders]
+# 7:00 UTC = 8:00 CET (zima) / 9:00 CEST (léto)
+# Změň na "0 6 * * *" pokud chceš vždy 8:00 v létě
+schedule = "0 7 * * *"
