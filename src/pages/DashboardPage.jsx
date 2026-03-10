@@ -7,14 +7,21 @@ import { STATUSES, STATUS_KEYS, PRIORITIES } from '../constants.js'
 import { startOfToday, parseYMD, projectColor } from '../utils.js'
 
 /* ── Stat card ── */
-function StatCard({ label, value, color, icon, sub }) {
+function StatCard({ label, value, color, icon, sub, onClick }) {
   const { t } = useApp();
   return (
-    <div style={{
-      background: t.card, border: `1px solid ${t.border}`,
-      borderRadius: 12, padding: "14px 16px",
-      position: "relative", overflow: "hidden",
-    }}>
+    <div
+      onClick={onClick}
+      style={{
+        background: t.card, border: `1px solid ${t.border}`,
+        borderRadius: 12, padding: "14px 16px",
+        position: "relative", overflow: "hidden",
+        cursor: onClick ? "pointer" : "default",
+        transition: "border-color .12s, box-shadow .12s",
+      }}
+      onMouseEnter={(e) => { if (onClick) { e.currentTarget.style.borderColor = t.borderH; e.currentTarget.style.boxShadow = t.shadow; } }}
+      onMouseLeave={(e) => { if (onClick) { e.currentTarget.style.borderColor = t.border; e.currentTarget.style.boxShadow = "none"; } }}
+    >
       <div style={{ position: "absolute", top: 8, right: 10, opacity: 0.08 }}>
         <Icon name={icon} size={36} color={color} strokeWidth={1.25} />
       </div>
@@ -99,7 +106,7 @@ function CompactTaskRow({ task, color }) {
 }
 
 export default function DashboardPage() {
-  const { t, tasks, projects, notes, setPage, setOpenNoteId, search, isMobile } = useApp();
+  const { t, tasks, projects, notes, setPage, setOpenNoteId, openProject, search, isMobile } = useApp();
 
   const [doingOpen, setDoingOpen] = useState(false);
   const [waitingOpen, setWaitingOpen] = useState(false);
@@ -166,10 +173,10 @@ export default function DashboardPage() {
       {/* Stats — always on top on mobile */}
       {isMobile && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
-          <StatCard label="Aktivní úkoly" value={activeTasks.length} color="#3b82f6" icon="check-square" sub={`z ${totalT} celkem`} />
-          <StatCard label="Hotovo" value={doneT} color="#22c55e" icon="check-circle" sub={`${doneThisWeek} tento týden`} />
-          <StatCard label="Projekty" value={activeP.length} color="#8b5cf6" icon="folder" sub="aktivních" />
-          <StatCard label="TOP úkoly" value={starredT.length} color="#eab308" icon="star" sub="označených" />
+          <StatCard label="Aktivní úkoly" value={activeTasks.length} color="#3b82f6" icon="check-square" sub={`z ${totalT} celkem`} onClick={() => setPage("tasks")} />
+          <StatCard label="Hotovo" value={doneT} color="#22c55e" icon="check-circle" sub={`${doneThisWeek} tento týden`} onClick={() => setPage("tasks")} />
+          <StatCard label="Projekty" value={activeP.length} color="#8b5cf6" icon="folder" sub="aktivních" onClick={() => setPage("projects")} />
+          <StatCard label="TOP úkoly" value={starredT.length} color="#eab308" icon="star" sub="označených" onClick={() => setPage("tasks")} />
         </div>
       )}
 
@@ -282,10 +289,10 @@ export default function DashboardPage() {
           {/* Stat cards 2×2 — desktop only (mobile shown above) */}
           {!isMobile && (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-              <StatCard label="Aktivní úkoly" value={activeTasks.length} color="#3b82f6" icon="check-square" sub={`z ${totalT} celkem`} />
-              <StatCard label="Hotovo" value={doneT} color="#22c55e" icon="check-circle" sub={`${doneThisWeek} tento týden`} />
-              <StatCard label="Projekty" value={activeP.length} color="#8b5cf6" icon="folder" sub="aktivních" />
-              <StatCard label="TOP úkoly" value={starredT.length} color="#eab308" icon="star" sub="označených" />
+              <StatCard label="Aktivní úkoly" value={activeTasks.length} color="#3b82f6" icon="check-square" sub={`z ${totalT} celkem`} onClick={() => setPage("tasks")} />
+              <StatCard label="Hotovo" value={doneT} color="#22c55e" icon="check-circle" sub={`${doneThisWeek} tento týden`} onClick={() => setPage("tasks")} />
+              <StatCard label="Projekty" value={activeP.length} color="#8b5cf6" icon="folder" sub="aktivních" onClick={() => setPage("projects")} />
+              <StatCard label="TOP úkoly" value={starredT.length} color="#eab308" icon="star" sub="označených" onClick={() => setPage("tasks")} />
             </div>
           )}
 
@@ -302,7 +309,10 @@ export default function DashboardPage() {
                   const pct = pt.length > 0 ? Math.round((done / pt.length) * 100) : 0;
                   const open = pt.filter((x) => x.status !== "done").length;
                   return (
-                    <div key={p.id} style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 10, padding: "10px 12px", borderLeft: `3px solid ${projectColor(p.id)}` }}>
+                    <div key={p.id} onClick={() => openProject(p.id)} style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 10, padding: "10px 12px", borderLeft: `3px solid ${projectColor(p.id)}`, cursor: "pointer", transition: "border-color .12s" }}
+                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = t.borderH; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = t.border; }}
+                    >
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                         <span style={{ fontSize: 13, fontWeight: 600, color: t.text }}>{p.name}</span>
                         <span className="mono" style={{ fontSize: 11.5, color: pct === 100 ? "#22c55e" : t.text3, fontWeight: 600 }}>{pct}%</span>
