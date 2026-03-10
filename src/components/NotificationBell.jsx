@@ -103,24 +103,29 @@ export default function NotificationBell({ compact = false }) {
         title="Připomínky"
         style={{
           position: "relative",
-          display: "flex", alignItems: "center", gap: compact ? 0 : 9,
-          padding: compact ? "7px 8px" : "9px 10px",
-          borderRadius: 7, border: "none",
-          background: open ? t.accentBg : "transparent",
+          display: "flex", alignItems: "center",
+          gap: compact ? (urgentCount > 0 ? 6 : 0) : 9,
+          padding: compact ? "5px 8px" : "9px 10px",
+          borderRadius: 8,
+          border: compact ? `1px solid ${urgentCount > 0 ? "#f59e0b50" : t.border}` : "none",
+          background: open ? t.accentBg : compact ? (urgentCount > 0 ? "#f59e0b10" : t.input) : "transparent",
           color: open ? t.accent : urgentCount > 0 ? "#f59e0b" : t.text2,
-          fontSize: 14, fontWeight: open ? 600 : 400,
+          fontSize: 13, fontWeight: open ? 600 : urgentCount > 0 ? 600 : 400,
           width: compact ? "auto" : "100%",
           cursor: "pointer", transition: "all .12s",
         }}
       >
-        <Icon name="bell" size={17} color={open ? t.accent : urgentCount > 0 ? "#f59e0b" : t.text2} strokeWidth={open ? 2.25 : 1.75} />
+        <Icon name="bell" size={16} color={open ? t.accent : urgentCount > 0 ? "#f59e0b" : t.text3} strokeWidth={open ? 2.25 : 1.75} />
+        {compact && urgentCount > 0 && (
+          <span style={{ fontSize: 12, fontWeight: 700, color: urgentCount > 0 ? "#f59e0b" : t.text2 }}>
+            {urgentCount}
+          </span>
+        )}
         {!compact && <span>Připomínky</span>}
-        {urgentCount > 0 && (
+        {urgentCount > 0 && !compact && (
           <span style={{
-            position: compact ? "absolute" : "relative",
-            top: compact ? 4 : "auto",
-            right: compact ? 4 : "auto",
-            marginLeft: compact ? 0 : "auto",
+            position: "relative",
+            marginLeft: "auto",
             minWidth: 18, height: 18, borderRadius: 9,
             background: "#ef4444", color: "#fff",
             fontSize: 10, fontWeight: 700,

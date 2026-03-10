@@ -310,8 +310,8 @@ export default function DashboardPage() {
                   const open = pt.filter((x) => x.status !== "done").length;
                   return (
                     <div key={p.id} onClick={() => openProject(p.id)} style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 10, padding: "10px 12px", borderLeft: `3px solid ${projectColor(p.id)}`, cursor: "pointer", transition: "border-color .12s" }}
-                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = t.borderH; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = t.border; }}
+                      onMouseEnter={(e) => { const el = e.currentTarget; el.style.borderTopColor = t.borderH; el.style.borderRightColor = t.borderH; el.style.borderBottomColor = t.borderH; }}
+                      onMouseLeave={(e) => { const el = e.currentTarget; el.style.borderTopColor = t.border; el.style.borderRightColor = t.border; el.style.borderBottomColor = t.border; }}
                     >
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                         <span style={{ fontSize: 13, fontWeight: 600, color: t.text }}>{p.name}</span>

@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext.jsx'
 import { useConfirm } from '../components/Confirm.jsx'
 import Icon from '../components/Icon.jsx'
 import { startOfToday } from '../utils.js'
+import { WorkspaceSwitcher } from './Sidebar.jsx'
 
 export default function MobileNav({ toggleDk }) {
   const { t, dk, page, setPage, tasks, projects, setCmdOpen, setTaskDetail, userEmail, workspaceMembers, userId, logout } = useApp();
@@ -92,6 +93,11 @@ export default function MobileNav({ toggleDk }) {
                   </button>
                 );
               })}
+            </div>
+
+            {/* Workspace switcher */}
+            <div style={{ marginBottom: 8 }}>
+              <WorkspaceSwitcher />
             </div>
 
             {/* Reminders inline panel */}

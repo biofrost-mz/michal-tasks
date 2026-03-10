@@ -8,7 +8,7 @@ import { projectColor } from '../utils.js'
 /* ─────────────────────────────────────────────
    Workspace Switcher
 ───────────────────────────────────────────── */
-function WorkspaceSwitcher() {
+export function WorkspaceSwitcher() {
   const { t, workspaces, activeWorkspaceId, switchWorkspace, createWorkspace, generateInviteLink, workspaceRole, isMobile, setPage } = useApp();
   const toast = useToast();
   const [open, setOpen] = useState(false);
