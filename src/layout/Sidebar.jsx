@@ -4,6 +4,7 @@ import { useConfirm } from '../components/Confirm.jsx'
 import { useToast } from '../components/Toast.jsx'
 import Icon from '../components/Icon.jsx'
 import { projectColor } from '../utils.js'
+import NotificationBell from '../components/NotificationBell.jsx'
 
 /* ─────────────────────────────────────────────
    Workspace Switcher
@@ -382,6 +383,9 @@ export default function Sidebar({ toggleDk }) {
             </button>
           );
         })}
+
+        {/* Notification bell as nav item */}
+        <NotificationBell />
 
         {active.length > 0 && (
           <div style={{ marginTop: 18, paddingTop: 12, borderTop: `1px solid ${t.border}` }}>

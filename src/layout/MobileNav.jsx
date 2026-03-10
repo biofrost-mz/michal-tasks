@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { useApp } from '../context/AppContext.jsx'
 import { useConfirm } from '../components/Confirm.jsx'
 import Icon from '../components/Icon.jsx'
+import NotificationBell from '../components/NotificationBell.jsx'
 
 export default function MobileNav({ toggleDk }) {
   const { t, dk, page, setPage, tasks, setCmdOpen, setTaskDetail, userEmail, workspaceMembers, userId, logout } = useApp();
@@ -82,6 +83,11 @@ export default function MobileNav({ toggleDk }) {
                   </button>
                 );
               })}
+            </div>
+
+            {/* Notification bell */}
+            <div style={{ marginBottom: 8 }}>
+              <NotificationBell compact={true} />
             </div>
 
             {/* Dark mode toggle */}
