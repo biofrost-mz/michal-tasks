@@ -214,6 +214,27 @@ async function dbEnsurePersonalWorkspace(userId) {
   return wsId;
 }
 
+function normalizeTask(t, tagIds = []) {
+  return {
+    id: t.id,
+    title: t.title || "",
+    description: t.description || "",
+    status: t.status || "todo",
+    priority: t.priority ?? null,
+    dueDate: t.due_date ?? null,
+    projectId: t.project_id ?? null,
+    tagIds,
+    position: t.position ?? Date.now(),
+    createdAt: t.created_at ? new Date(t.created_at).getTime() : Date.now(),
+    updatedAt: t.updated_at ? new Date(t.updated_at).getTime() : Date.now(),
+    completedAt: t.completed_at ? new Date(t.completed_at).getTime() : null,
+    phases: Array.isArray(t.phases) ? t.phases : [],
+    starred: !!t.starred,
+    recurrence: t.recurrence ?? null,
+    assigneeUserId: t.assignee_user_id ?? null,
+  };
+}
+
 async function dbFetchAll(userId, workspaceId) {
   const { data: projects, error: pErr } = await supabase
     .from("projects")
@@ -345,6 +366,7 @@ export function AppProvider({ children }) {
   const setActiveWorkspaceId = useCallback(async (wsId) => {
     setActiveWorkspaceIdRaw(wsId);
     if (wsId) {
+      localStorage.setItem("lastWorkspaceId", wsId);
       const normalized = await dbFetchMembers(wsId);
       setWorkspaceMembers(normalized);
     } else {
@@ -391,10 +413,13 @@ export function AppProvider({ children }) {
           { id: userId, email: session?.user?.email ?? null },
           { onConflict: "id", ignoreDuplicates: false }
         );
-        const wsId = await dbEnsurePersonalWorkspace(userId);
+        const personalWsId = await dbEnsurePersonalWorkspace(userId);
         const wsList = await dbFetchWorkspaces(userId);
         setWorkspaces(wsList);
+        const savedWsId = localStorage.getItem("lastWorkspaceId");
+        const wsId = savedWsId && wsList.find((w) => w.id === savedWsId) ? savedWsId : personalWsId;
         setActiveWorkspaceIdRaw(wsId);
+        if (wsId !== personalWsId) localStorage.setItem("lastWorkspaceId", wsId);
         const normalized = await dbFetchMembers(wsId);
         setWorkspaceMembers(normalized);
         await dbSeedIfEmpty(userId);
@@ -432,6 +457,24 @@ export function AppProvider({ children }) {
       }
     })();
   }, [userId, loaded]);
+
+  // Realtime tasks sync
+  useEffect(() => {
+    if (!activeWorkspaceId || !loaded) return;
+    const channel = supabase
+      .channel(`tasks-rt-${activeWorkspaceId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "tasks", filter: `workspace_id=eq.${activeWorkspaceId}` }, (payload) => {
+        if (payload.eventType === "UPDATE") {
+          setTasks((prev) => prev.map((t) => t.id === payload.new.id ? normalizeTask(payload.new, t.tagIds) : t));
+        } else if (payload.eventType === "INSERT") {
+          setTasks((prev) => prev.some((t) => t.id === payload.new.id) ? prev : [...prev, normalizeTask(payload.new, [])]);
+        } else if (payload.eventType === "DELETE") {
+          setTasks((prev) => prev.filter((t) => t.id !== payload.old.id));
+        }
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [activeWorkspaceId, loaded]);
 
   // Save dk preference
   useDebouncedEffect(() => {
