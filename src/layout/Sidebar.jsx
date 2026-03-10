@@ -273,7 +273,7 @@ export default function Sidebar({ toggleDk }) {
         borderRight: `1px solid ${t.border}`,
         display: "flex",
         flexDirection: "column",
-        overflow: "hidden",
+        overflow: "visible",
       }}
     >
       <div style={{ padding: "20px 14px 14px", display: "flex", alignItems: "center", gap: 9 }}>
