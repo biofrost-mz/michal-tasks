@@ -125,7 +125,7 @@ export default function WorkspaceSettingsPage() {
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ fontSize: 16, fontWeight: 700 }}>{active?.name}</div>
             {isOwner && (
-              <button onClick={() => { setEditingName(true); setNewWsName(active?.name ?? ""); }} style={{ background: "none", border: "none", color: t.text3, cursor: "pointer", fontSize: 12, padding: "3px 8px", borderRadius: 5, border: `1px solid ${t.border}` }}>
+              <button onClick={() => { setEditingName(true); setNewWsName(active?.name ?? ""); }} style={{ background: "none", color: t.text3, cursor: "pointer", fontSize: 12, padding: "3px 8px", borderRadius: 5, border: `1px solid ${t.border}` }}>
                 Přejmenovat
               </button>
             )}

@@ -119,15 +119,18 @@ const DEF_PROJECTS = [
   },
 ];
 
-async function dbSeedIfEmpty(userId) {
+async function dbSeedIfEmpty(userId, workspaceId) {
   const { count: pCount, error: pCountErr } = await supabase
     .from("projects")
-    .select("id", { count: "exact", head: true });
+    .select("id", { count: "exact", head: true })
+    .eq("workspace_id", workspaceId);
   if (pCountErr) throw pCountErr;
   if ((pCount || 0) === 0) {
     const rows = DEF_PROJECTS.map((p) => ({
       id: uuid4(),
       owner: userId,
+      created_by: userId,
+      workspace_id: workspaceId,
       name: p.name,
       description: p.description || "",
       status: p.status || "active",
@@ -137,12 +140,15 @@ async function dbSeedIfEmpty(userId) {
   }
   const { count: tCount, error: tCountErr } = await supabase
     .from("tags")
-    .select("id", { count: "exact", head: true });
+    .select("id", { count: "exact", head: true })
+    .eq("workspace_id", workspaceId);
   if (tCountErr) throw tCountErr;
   if ((tCount || 0) === 0) {
     const rows = DEF_TAGS.map((t) => ({
       id: uuid4(),
       owner: userId,
+      created_by: userId,
+      workspace_id: workspaceId,
       name: t.name,
       color: t.color,
     }));
@@ -196,6 +202,7 @@ async function dbEnsurePersonalWorkspace(userId) {
     .from("workspace_members")
     .select("workspace_id")
     .eq("user_id", userId)
+    .order("joined_at", { ascending: true })
     .limit(1);
   if (memberships && memberships.length > 0) return memberships[0].workspace_id;
   const wsId = uuid4();
@@ -257,9 +264,10 @@ async function dbFetchAll(userId, workspaceId) {
     .order("created_at", { ascending: true });
   if (gErr) throw gErr;
 
-  const { data: taskTags, error: ttErr } = await supabase
-    .from("task_tags")
-    .select("task_id, tag_id");
+  const taskIds = (tasks || []).map((t) => t.id);
+  const { data: taskTags, error: ttErr } = taskIds.length
+    ? await supabase.from("task_tags").select("task_id, tag_id").in("task_id", taskIds)
+    : { data: [], error: null };
   if (ttErr) throw ttErr;
 
   const tagMap = new Map();
@@ -422,7 +430,7 @@ export function AppProvider({ children }) {
         if (wsId !== personalWsId) localStorage.setItem("lastWorkspaceId", wsId);
         const normalized = await dbFetchMembers(wsId);
         setWorkspaceMembers(normalized);
-        await dbSeedIfEmpty(userId);
+        await dbSeedIfEmpty(userId, wsId);
         const data = await dbFetchAll(userId, wsId);
         setProjects(data.projects);
         setTasks(data.tasks);
@@ -668,11 +676,12 @@ export function AppProvider({ children }) {
           (async () => {
             if (!userId) return;
             await supabase.from("tasks").insert({
-              id: newTask.id, owner: userId, title: newTask.title,
-              description: newTask.description, status: newTask.status,
-              priority: newTask.priority, due_date: newTask.dueDate,
-              project_id: newTask.projectId, position: newTask.position,
-              starred: false, phases: [],
+              id: newTask.id, owner: userId, created_by: userId,
+              workspace_id: activeWorkspaceId,
+              title: newTask.title, description: newTask.description,
+              status: newTask.status, priority: newTask.priority,
+              due_date: newTask.dueDate, project_id: newTask.projectId,
+              position: newTask.position, starred: false, phases: [],
               ...(rec != null ? { recurrence: rec } : {}),
             });
             if (newTask.tagIds?.length) {
@@ -699,7 +708,7 @@ export function AppProvider({ children }) {
         }
       })();
     },
-    [userId]
+    [userId, activeWorkspaceId]
   );
 
   const deleteTask = useCallback(
@@ -894,6 +903,12 @@ export function AppProvider({ children }) {
     setWorkspaces(remaining);
     if (remaining.length > 0) {
       await switchWorkspace(remaining[0].id);
+    } else {
+      // Create a new personal workspace so app never ends up in broken state
+      const newWsId = await dbEnsurePersonalWorkspace(userId);
+      const wsList = await dbFetchWorkspaces(userId);
+      setWorkspaces(wsList);
+      await switchWorkspace(newWsId);
     }
   }, [activeWorkspaceId, userId, workspaces, switchWorkspace]);
 

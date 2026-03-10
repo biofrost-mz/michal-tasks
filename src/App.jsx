@@ -1,5 +1,5 @@
 import React from "react";
-import { AppContext, useApp, AppProvider } from "./context/AppContext.jsx";
+import { useApp, AppProvider } from "./context/AppContext.jsx";
 import { ToastProvider } from "./components/Toast.jsx";
 import { ConfirmProvider } from "./components/Confirm.jsx";
 import AuthGate from "./components/AuthGate.jsx";
