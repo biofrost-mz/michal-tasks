@@ -250,6 +250,7 @@ function normalizeTask(t, tagIds = []) {
     starred: !!t.starred,
     recurrence: t.recurrence ?? null,
     assigneeUserId: t.assignee_user_id ?? null,
+    remindAt: t.remind_at ?? null,
   };
 }
 
