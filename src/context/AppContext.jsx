@@ -554,8 +554,9 @@ export function AppProvider({ children }) {
   const reorderProjects = useCallback((orderedProjects) => {
     const updated = orderedProjects.map((p, i) => ({ ...p, position: (i + 1) * 1000 }));
     setProjects((prev) => {
-      const map = new Map(updated.map((p) => [p.id, p]));
-      return prev.map((p) => map.get(p.id) ?? p);
+      const updatedMap = new Map(updated.map((p) => [p.id, p]));
+      const rest = prev.filter((p) => !updatedMap.has(p.id));
+      return [...updated, ...rest];
     });
     (async () => {
       await Promise.all(
