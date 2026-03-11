@@ -250,11 +250,14 @@ function UserBar({ setPage }) {
 ───────────────────────────────────────────── */
 function SortableProjectItem({ p, tasks, t, openProject }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: p.id });
+  const [hovered, setHovered] = useState(false);
   const count = tasks.filter((tk) => tk.projectId === p.id && tk.status !== "done").length;
 
   return (
     <div
       ref={setNodeRef}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       style={{
         transform: CSS.Transform.toString(transform),
         transition,
@@ -273,10 +276,10 @@ function SortableProjectItem({ p, tasks, t, openProject }) {
           fontSize: 12,
           padding: "6px 4px 6px 10px",
           flexShrink: 0,
-          opacity: 0,
+          opacity: hovered || isDragging ? 1 : 0,
           transition: "opacity 0.15s",
+          userSelect: "none",
         }}
-        className="drag-handle"
         title="Přetáhnout"
       >
         ⠿

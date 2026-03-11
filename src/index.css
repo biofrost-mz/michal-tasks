@@ -14,8 +14,3 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* Drag handle — zobrazí se při hoveru nad položkou projektu */
-div:hover > .drag-handle,
-div:hover > * > .drag-handle {
-  opacity: 1 !important;
-}
