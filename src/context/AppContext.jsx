@@ -80,44 +80,21 @@ function useIsMobile() {
 /* ─────────────────────────────────────────────
    Supabase DB helpers
 ───────────────────────────────────────────── */
-const SID = {
-  TAG_URGENT: "tag-urgent",
-  TAG_IT: "tag-it",
-  TAG_CONTENT: "tag-content",
-  TAG_HR: "tag-hr",
-  TAG_DESIGN: "tag-design",
-  PROJ_AVENIER: "proj-avenier-web",
-  PROJ_IDEAS: "proj-ideas",
+// Pevná seed ID — používají se jako suffix s workspace prefixem
+const SEED = {
+  PROJ_TEST: "seed-proj-test",
+  TAG_URGENT: "seed-tag-urgent",
+  TAG_IT: "seed-tag-it",
+  TAG_CONTENT: "seed-tag-content",
+  TAG_HR: "seed-tag-hr",
+  TAG_DESIGN: "seed-tag-design",
+  TASK_TEST: "seed-task-test",
 };
 
-const DEF_TAGS = [
-  { id: SID.TAG_URGENT, name: "urgent", color: "#ef4444" },
-  { id: SID.TAG_IT, name: "IT", color: "#3b82f6" },
-  { id: SID.TAG_CONTENT, name: "content", color: "#8b5cf6" },
-  { id: SID.TAG_HR, name: "HR", color: "#f59e0b" },
-  { id: SID.TAG_DESIGN, name: "design", color: "#ec4899" },
-];
-
-const DEF_PROJECTS = [
-  {
-    id: SID.PROJ_AVENIER,
-    name: "Avenier Web",
-    description: "Redesign a vývoj webu",
-    status: "active",
-    tags: [],
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-  },
-  {
-    id: SID.PROJ_IDEAS,
-    name: "Nápady na później",
-    description: "Nápady k promyšlení a návratu",
-    status: "idea",
-    tags: [],
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-  },
-];
+// Generuje deterministické ID pro seed data (unikátní per workspace)
+function sid(workspaceId, key) {
+  return `${workspaceId.slice(0, 8)}-${key}`;
+}
 
 async function dbSeedIfEmpty(userId, workspaceId) {
   const { count: pCount, error: pCountErr } = await supabase
@@ -125,35 +102,68 @@ async function dbSeedIfEmpty(userId, workspaceId) {
     .select("id", { count: "exact", head: true })
     .eq("workspace_id", workspaceId);
   if (pCountErr) throw pCountErr;
+
+  const projId = sid(workspaceId, SEED.PROJ_TEST);
+  const tagItId = sid(workspaceId, SEED.TAG_IT);
+  const taskId = sid(workspaceId, SEED.TASK_TEST);
+
   if ((pCount || 0) === 0) {
-    const rows = DEF_PROJECTS.map((p) => ({
-      id: uuid4(),
+    const { error } = await supabase.from("projects").insert({
+      id: projId,
       owner: userId,
       created_by: userId,
       workspace_id: workspaceId,
-      name: p.name,
-      description: p.description || "",
-      status: p.status || "active",
-    }));
-    const { error } = await supabase.from("projects").insert(rows);
+      name: "Testovací projekt",
+      description: "Ukázkový projekt pro seznámení s aplikací",
+      status: "active",
+      position: 1000,
+    });
     if (error) throw error;
   }
+
   const { count: tCount, error: tCountErr } = await supabase
     .from("tags")
     .select("id", { count: "exact", head: true })
     .eq("workspace_id", workspaceId);
   if (tCountErr) throw tCountErr;
+
   if ((tCount || 0) === 0) {
-    const rows = DEF_TAGS.map((t) => ({
-      id: uuid4(),
+    const tags = [
+      { key: SEED.TAG_URGENT, name: "urgent",  color: "#ef4444" },
+      { key: SEED.TAG_IT,     name: "IT",       color: "#3b82f6" },
+      { key: SEED.TAG_CONTENT,name: "content",  color: "#8b5cf6" },
+      { key: SEED.TAG_HR,     name: "HR",       color: "#f59e0b" },
+      { key: SEED.TAG_DESIGN, name: "design",   color: "#ec4899" },
+    ];
+    const { error } = await supabase.from("tags").insert(
+      tags.map((t) => ({ id: sid(workspaceId, t.key), owner: userId, created_by: userId, workspace_id: workspaceId, name: t.name, color: t.color }))
+    );
+    if (error) throw error;
+  }
+
+  const { count: tkCount, error: tkCountErr } = await supabase
+    .from("tasks")
+    .select("id", { count: "exact", head: true })
+    .eq("workspace_id", workspaceId);
+  if (tkCountErr) throw tkCountErr;
+
+  if ((tkCount || 0) === 0) {
+    const { error: tErr } = await supabase.from("tasks").insert({
+      id: taskId,
       owner: userId,
       created_by: userId,
       workspace_id: workspaceId,
-      name: t.name,
-      color: t.color,
-    }));
-    const { error } = await supabase.from("tags").insert(rows);
-    if (error) throw error;
+      project_id: projId,
+      title: "Testovací úkol",
+      status: "todo",
+      position: 1000,
+    });
+    if (tErr) throw tErr;
+    const { error: ttErr } = await supabase.from("task_tags").insert({
+      task_id: taskId,
+      tag_id: tagItId,
+    });
+    if (ttErr) throw ttErr;
   }
 }
 
