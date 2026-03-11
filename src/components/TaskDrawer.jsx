@@ -95,6 +95,9 @@ export default function TaskDrawer() {
   const [showNewProject, setShowNewProject] = useState(false);
   const [npName, setNpName] = useState("");
   const [newPhase, setNewPhase] = useState("");
+  const [remindAtDraft, setRemindAtDraft] = useState(
+    task?.remindAt ? new Date(task.remindAt).toISOString().slice(0, 16) : ""
+  );
 
   useEffect(() => {
     if (!task) return;
@@ -102,7 +105,8 @@ export default function TaskDrawer() {
     setDesc(task.description || "");
     setShowNewProject(false);
     setNpName("");
-  }, [task?.id, task?.title, task?.description]);
+    setRemindAtDraft(task.remindAt ? new Date(task.remindAt).toISOString().slice(0, 16) : "");
+  }, [task?.id, task?.title, task?.description, task?.remindAt]);
 
   if (!task) return null;
 
@@ -435,15 +439,23 @@ export default function TaskDrawer() {
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
               <input
                 type="datetime-local"
-                value={task.remindAt ? new Date(task.remindAt).toISOString().slice(0, 16) : ""}
-                onChange={(e) => s({ remindAt: e.target.value ? new Date(e.target.value).toISOString() : null })}
+                value={remindAtDraft}
+                onChange={(e) => setRemindAtDraft(e.target.value)}
                 style={{ padding: "7px 12px", borderRadius: 8, border: `1px solid ${t.border}`, background: t.input, color: t.text, fontSize: 12.5, outline: "none" }}
               />
+              <button
+                onClick={() => {
+                  const val = remindAtDraft ? new Date(remindAtDraft).toISOString() : null;
+                  s({ remindAt: val });
+                }}
+                style={{ padding: "7px 12px", borderRadius: 7, border: "none", background: t.accent, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+              >
+                Uložit
+              </button>
               {task.remindAt && (
                 <button
-                  onClick={() => s({ remindAt: null })}
+                  onClick={() => { setRemindAtDraft(""); s({ remindAt: null }); }}
                   style={{ padding: "7px 10px", borderRadius: 7, border: `1px solid ${t.border}`, background: "transparent", color: "#ef4444", fontSize: 12, cursor: "pointer" }}
-                  title="Zrušit připomínku"
                 >
                   ✕ Zrušit
                 </button>
@@ -451,7 +463,7 @@ export default function TaskDrawer() {
             </div>
             {task.remindAt && (
               <div style={{ fontSize: 11, color: t.text3, marginTop: 5 }}>
-                E-mail dorazí {new Date(task.remindAt).toLocaleString("cs-CZ", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}
+                Nastaveno: {new Date(task.remindAt).toLocaleString("cs-CZ", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}
               </div>
             )}
           </Sec>
