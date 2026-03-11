@@ -304,6 +304,7 @@ async function dbFetchAll(userId, workspaceId) {
     starred: !!t.starred,
     recurrence: t.recurrence ?? null,
     assigneeUserId: t.assignee_user_id ?? null,
+    remindAt: t.remind_at ?? null,
   }));
 
   const projectsNorm = (projects || []).map((p, i) => ({
@@ -598,6 +599,7 @@ export function AppProvider({ children }) {
       completedAt: null,
       starred: !!task?.starred,
       recurrence: task?.recurrence ?? null,
+      remindAt: task?.remindAt ?? null,
     };
     setTasks((p) => [...p, tsk]);
     (async () => {
@@ -653,6 +655,7 @@ export function AppProvider({ children }) {
         if (u.starred !== undefined) payload.starred = nextTask.starred;
         if (u.phases !== undefined) payload.phases = nextTask.phases;
         if (u.recurrence !== undefined) payload.recurrence = nextTask.recurrence;
+        if (u.remindAt !== undefined) payload.remind_at = u.remindAt ?? null;
         if (u.assigneeUserId !== undefined) payload.assignee_user_id = u.assigneeUserId;
         if (u.status !== undefined) {
           payload.completed_at = nextTask.status === "done" ? new Date().toISOString() : null;

@@ -431,6 +431,31 @@ export default function TaskDrawer() {
             </div>
           </Sec>
 
+          <Sec label="Připomínka e-mailem">
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <input
+                type="datetime-local"
+                value={task.remindAt ? new Date(task.remindAt).toISOString().slice(0, 16) : ""}
+                onChange={(e) => s({ remindAt: e.target.value ? new Date(e.target.value).toISOString() : null })}
+                style={{ padding: "7px 12px", borderRadius: 8, border: `1px solid ${t.border}`, background: t.input, color: t.text, fontSize: 12.5, outline: "none" }}
+              />
+              {task.remindAt && (
+                <button
+                  onClick={() => s({ remindAt: null })}
+                  style={{ padding: "7px 10px", borderRadius: 7, border: `1px solid ${t.border}`, background: "transparent", color: "#ef4444", fontSize: 12, cursor: "pointer" }}
+                  title="Zrušit připomínku"
+                >
+                  ✕ Zrušit
+                </button>
+              )}
+            </div>
+            {task.remindAt && (
+              <div style={{ fontSize: 11, color: t.text3, marginTop: 5 }}>
+                E-mail dorazí {new Date(task.remindAt).toLocaleString("cs-CZ", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}
+              </div>
+            )}
+          </Sec>
+
           <Sec label="Opakování">
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               {[
