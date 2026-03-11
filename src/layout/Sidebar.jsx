@@ -4,6 +4,20 @@ import { useConfirm } from '../components/Confirm.jsx'
 import { useToast } from '../components/Toast.jsx'
 import Icon from '../components/Icon.jsx'
 import { projectColor } from '../utils.js'
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 /* ─────────────────────────────────────────────
    Workspace Switcher
@@ -231,9 +245,79 @@ function UserBar({ setPage }) {
 /* ─────────────────────────────────────────────
    Sidebar
 ───────────────────────────────────────────── */
+/* ─────────────────────────────────────────────
+   Sortable Project Item
+───────────────────────────────────────────── */
+function SortableProjectItem({ p, tasks, t, openProject }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: p.id });
+  const count = tasks.filter((tk) => tk.projectId === p.id && tk.status !== "done").length;
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+        display: "flex",
+        alignItems: "center",
+      }}
+    >
+      {/* Drag handle */}
+      <span
+        {...attributes}
+        {...listeners}
+        style={{
+          cursor: "grab",
+          color: t.text3,
+          fontSize: 12,
+          padding: "6px 4px 6px 10px",
+          flexShrink: 0,
+          opacity: 0,
+          transition: "opacity 0.15s",
+        }}
+        className="drag-handle"
+        title="Přetáhnout"
+      >
+        ⠿
+      </span>
+      <button
+        onClick={() => openProject(p.id)}
+        style={{
+          flex: 1,
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          padding: "6px 10px 6px 4px",
+          borderRadius: 6,
+          background: "transparent",
+          border: "none",
+          color: t.text2,
+          fontSize: 13,
+          textAlign: "left",
+          cursor: "pointer",
+        }}
+      >
+        <span
+          style={{
+            width: 7,
+            height: 7,
+            borderRadius: "50%",
+            background: projectColor(p.id) || t.text3,
+            flexShrink: 0,
+          }}
+        />
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{p.name}</span>
+        {count > 0 && <span className="mono" style={{ fontSize: 11.5, color: t.text3 }}>{count}</span>}
+      </button>
+    </div>
+  );
+}
+
 export default function Sidebar({ toggleDk }) {
-  const { t, dk, projects, tasks, page, setPage, openProject, search, setSearch, setTaskDetail, setCmdOpen } = useApp();
+  const { t, dk, projects, tasks, page, setPage, openProject, search, setSearch, setTaskDetail, setCmdOpen, reorderProjects } = useApp();
   const active = projects.filter((p) => p.status === "active");
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const searchRef = useRef(null);
 
   // Global keyboard shortcuts (desktop)
@@ -253,6 +337,14 @@ export default function Sidebar({ toggleDk }) {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [setTaskDetail, setCmdOpen]);
+
+  function handleProjectDragEnd({ active: dragActive, over }) {
+    if (!over || dragActive.id === over.id) return;
+    const oldIndex = active.findIndex((p) => p.id === dragActive.id);
+    const newIndex = active.findIndex((p) => p.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    reorderProjects(arrayMove(active, oldIndex, newIndex));
+  }
 
   const nav = [
     { id: "dashboard", label: "Přehled",   icon: "home"         },
@@ -399,40 +491,13 @@ export default function Sidebar({ toggleDk }) {
               Aktivní projekty
             </div>
 
-            {active.map((p) => {
-              const count = tasks.filter((t) => t.projectId === p.id && t.status !== "done").length;
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => openProject(p.id)}
-                  style={{
-                    width: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    padding: "6px 10px",
-                    borderRadius: 6,
-                    background: "transparent",
-                    border: "none",
-                    color: t.text2,
-                    fontSize: 13,
-                    textAlign: "left",
-                  }}
-                >
-                  <span
-                    style={{
-                      width: 7,
-                      height: 7,
-                      borderRadius: "50%",
-                      background: projectColor(p.id) || t.text3,
-                      flexShrink: 0,
-                    }}
-                  />
-                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{p.name}</span>
-                  {count > 0 && <span className="mono" style={{ fontSize: 11.5, color: t.text3 }}>{count}</span>}
-                </button>
-              );
-            })}
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleProjectDragEnd}>
+              <SortableContext items={active.map((p) => p.id)} strategy={verticalListSortingStrategy}>
+                {active.map((p) => (
+                  <SortableProjectItem key={p.id} p={p} tasks={tasks} t={t} openProject={openProject} />
+                ))}
+              </SortableContext>
+            </DndContext>
           </div>
         )}
       </nav>

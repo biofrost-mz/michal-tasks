@@ -247,7 +247,7 @@ async function dbFetchAll(userId, workspaceId) {
     .from("projects")
     .select("*")
     .eq("workspace_id", workspaceId)
-    .order("created_at", { ascending: true });
+    .order("position", { ascending: true, nullsFirst: false });
   if (pErr) throw pErr;
 
   const { data: tasks, error: tErr } = await supabase
@@ -295,12 +295,13 @@ async function dbFetchAll(userId, workspaceId) {
     assigneeUserId: t.assignee_user_id ?? null,
   }));
 
-  const projectsNorm = (projects || []).map((p) => ({
+  const projectsNorm = (projects || []).map((p, i) => ({
     id: p.id,
     name: p.name,
     description: p.description || "",
     status: p.status || "active",
     tags: [],
+    position: p.position ?? (i + 1) * 1000,
     createdAt: p.created_at ? new Date(p.created_at).getTime() : Date.now(),
     updatedAt: p.updated_at ? new Date(p.updated_at).getTime() : Date.now(),
   }));
@@ -497,6 +498,7 @@ export function AppProvider({ children }) {
       description: p?.description || "",
       status: p?.status || "active",
       tags: [],
+      position: Date.now(),
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -511,6 +513,7 @@ export function AppProvider({ children }) {
         name: proj.name,
         description: proj.description,
         status: proj.status,
+        position: proj.position,
       });
       if (error) console.error(error);
     })();
@@ -546,6 +549,22 @@ export function AppProvider({ children }) {
     },
     [selProject]
   );
+
+  // Přeuspořádání projektů — přijme nové pole projektů v požadovaném pořadí
+  const reorderProjects = useCallback((orderedProjects) => {
+    const updated = orderedProjects.map((p, i) => ({ ...p, position: (i + 1) * 1000 }));
+    setProjects((prev) => {
+      const map = new Map(updated.map((p) => [p.id, p]));
+      return prev.map((p) => map.get(p.id) ?? p);
+    });
+    (async () => {
+      await Promise.all(
+        updated.map((p) =>
+          supabase.from("projects").update({ position: p.position }).eq("id", p.id)
+        )
+      );
+    })();
+  }, []);
 
   // CRUD — Tasks
   const addTask = useCallback((task) => {
@@ -1009,6 +1028,7 @@ export function AppProvider({ children }) {
     addProject,
     updateProject,
     deleteProject,
+    reorderProjects,
     addTask,
     updateTask,
     deleteTask,
