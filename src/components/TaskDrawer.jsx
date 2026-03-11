@@ -441,17 +441,12 @@ export default function TaskDrawer() {
                 type="datetime-local"
                 value={remindAtDraft}
                 onChange={(e) => setRemindAtDraft(e.target.value)}
+                onBlur={(e) => {
+                  const val = e.target.value ? new Date(e.target.value).toISOString() : null;
+                  if (val !== (task.remindAt ?? null)) s({ remindAt: val });
+                }}
                 style={{ padding: "7px 12px", borderRadius: 8, border: `1px solid ${t.border}`, background: t.input, color: t.text, fontSize: 12.5, outline: "none" }}
               />
-              <button
-                onClick={() => {
-                  const val = remindAtDraft ? new Date(remindAtDraft).toISOString() : null;
-                  s({ remindAt: val });
-                }}
-                style={{ padding: "7px 12px", borderRadius: 7, border: "none", background: t.accent, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
-              >
-                Uložit
-              </button>
               {task.remindAt && (
                 <button
                   onClick={() => { setRemindAtDraft(""); s({ remindAt: null }); }}
