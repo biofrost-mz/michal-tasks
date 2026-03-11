@@ -1,6 +1,7 @@
 import React, {
   useState,
   useEffect,
+  useRef,
   useCallback,
   createContext,
   useContext,
@@ -375,6 +376,8 @@ export function AppProvider({ children }) {
 
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
+  const tasksRef = useRef([]);
+  useEffect(() => { tasksRef.current = tasks; }, [tasks]);
   const [tags, setTags] = useState([]);
   const [notes, setNotes] = useState([]);
   const [attachments, setAttachments] = useState([]);
@@ -628,28 +631,17 @@ export function AppProvider({ children }) {
 
   const updateTask = useCallback(
     (id, u) => {
-      let prevTask = null;
-      let nextTask = null;
+      // Compute prev/next synchronně z ref — vyhne se stale closure a race condition
+      // kde async IIFE poběží dřív než React zavolá setTasks callback
+      const prevTask = tasksRef.current.find((x) => x.id === id) ?? null;
+      if (!prevTask) return;
+      const nextTask = { ...prevTask, ...u, updatedAt: Date.now() };
+      if (u.status === "done" && prevTask.status !== "done") nextTask.completedAt = Date.now();
+      if (u.status && u.status !== "done") nextTask.completedAt = null;
 
-      setTasks((p) =>
-        p.map((x) => {
-          if (x.id !== id) return x;
-          prevTask = x;
-          const up = { ...x, ...u, updatedAt: Date.now() };
-          if (u.status === "done" && x.status !== "done") up.completedAt = Date.now();
-          if (u.status && u.status !== "done") up.completedAt = null;
-          if (u.projectId !== undefined) up.projectId = u.projectId;
-          if (u.dueDate !== undefined) up.dueDate = u.dueDate;
-          if (u.tagIds !== undefined) up.tagIds = u.tagIds;
-          if (u.phases !== undefined) up.phases = u.phases;
-          if (u.recurrence !== undefined) up.recurrence = u.recurrence;
-          nextTask = up;
-          return up;
-        })
-      );
+      setTasks((p) => p.map((x) => (x.id === id ? nextTask : x)));
 
       (async () => {
-        if (!nextTask) return;
         const payload = {};
         if (u.title !== undefined) payload.title = nextTask.title;
         if (u.description !== undefined) payload.description = nextTask.description;

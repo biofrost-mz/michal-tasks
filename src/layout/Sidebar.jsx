@@ -520,6 +520,9 @@ export default function Sidebar({ toggleDk }) {
             <span style={{ position: "absolute", top: 2, left: dk ? 22 : 2, width: 20, height: 20, borderRadius: "50%", background: dk ? t.accent : t.card, transition: "left .15s ease", boxShadow: t.shadow }} />
           </button>
         </div>
+        <div style={{ fontSize: 10.5, color: t.text3, textAlign: "center", opacity: 0.5 }}>
+          v1.0.0 · {new Date("2026-03-11").toLocaleDateString("cs-CZ", { day: "numeric", month: "long", year: "numeric" })}
+        </div>
       </div>
     </aside>
   );

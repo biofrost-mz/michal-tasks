@@ -62,7 +62,15 @@ export default function MobileNav({ toggleDk }) {
               boxShadow: "0 -8px 32px #0003",
             }}
           >
-            <div style={{ width: 36, height: 4, borderRadius: 2, background: t.border, margin: "0 auto 14px" }} />
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: t.border, margin: "0 auto" }} />
+              <button
+                onClick={() => setMoreOpen(false)}
+                style={{ position: "absolute", right: 16, top: 16, background: t.input, border: `1px solid ${t.border}`, color: t.text2, borderRadius: 6, width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 14 }}
+              >
+                ✕
+              </button>
+            </div>
 
             {/* Search / Command Palette */}
             <button

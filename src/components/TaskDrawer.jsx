@@ -106,7 +106,7 @@ export default function TaskDrawer() {
 
   if (!task) return null;
 
-  const s = (u) => updateTask(task.id, u);
+  const s = (u) => { updateTask(task.id, u); toast("Uloženo", "success"); };
 
   const createProjectInline = () => {
     if (!npName.trim()) return;
