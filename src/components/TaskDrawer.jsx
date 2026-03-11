@@ -95,9 +95,13 @@ export default function TaskDrawer() {
   const [showNewProject, setShowNewProject] = useState(false);
   const [npName, setNpName] = useState("");
   const [newPhase, setNewPhase] = useState("");
-  const [remindAtDraft, setRemindAtDraft] = useState(
-    task?.remindAt ? new Date(task.remindAt).toISOString().slice(0, 16) : ""
-  );
+  const toLocalDT = (iso) => {
+    if (!iso) return "";
+    const d = new Date(iso);
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  };
+
+  const [remindAtDraft, setRemindAtDraft] = useState(toLocalDT(task?.remindAt));
 
   useEffect(() => {
     if (!task) return;
@@ -105,7 +109,7 @@ export default function TaskDrawer() {
     setDesc(task.description || "");
     setShowNewProject(false);
     setNpName("");
-    setRemindAtDraft(task.remindAt ? new Date(task.remindAt).toISOString().slice(0, 16) : "");
+    setRemindAtDraft(toLocalDT(task?.remindAt));
   }, [task?.id, task?.title, task?.description, task?.remindAt]);
 
   if (!task) return null;
