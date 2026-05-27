@@ -6,14 +6,23 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+function escHtml(s: string): string {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function taskRow(task: Record<string, string>, projectName: string): string {
   return `
     <tr>
       <td style="padding:10px 14px;border-bottom:1px solid #f0f0f0">
-        <strong style="color:#1a1e2e;font-size:13px">${task.title}</strong>
-        ${task.description ? `<br><span style="color:#6b7280;font-size:11px">${task.description}</span>` : ""}
+        <strong style="color:#1a1e2e;font-size:13px">${escHtml(task.title)}</strong>
+        ${task.description ? `<br><span style="color:#6b7280;font-size:11px">${escHtml(task.description)}</span>` : ""}
       </td>
-      <td style="padding:10px 14px;border-bottom:1px solid #f0f0f0;color:#6b7280;font-size:12px;white-space:nowrap">${projectName}</td>
+      <td style="padding:10px 14px;border-bottom:1px solid #f0f0f0;color:#6b7280;font-size:12px;white-space:nowrap">${escHtml(projectName)}</td>
       <td style="padding:10px 14px;border-bottom:1px solid #f0f0f0;color:#6b7280;font-size:12px;white-space:nowrap">${task.due_date ?? "—"}</td>
     </tr>`;
 }
@@ -81,15 +90,23 @@ async function sendReminderEmail(to: string, tasks: Record<string, string>[], pr
   return true;
 }
 
-Deno.serve(async () => {
+Deno.serve(async (req) => {
+  // Only the internal scheduler may trigger this — verify shared secret.
+  const cronSecret = Deno.env.get("CRON_SECRET");
+  if (!cronSecret || req.headers.get("x-cron-secret") !== cronSecret) {
+    console.warn("task-reminders: unauthorized call from", req.headers.get("x-forwarded-for") ?? "unknown");
+    return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403 });
+  }
+
   const now = new Date();
   const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
 
-  // Najdi úkoly s remind_at v uplynulé hodině (nezávisle na stavu)
+  // Najdi úkoly s remind_at v uplynulé hodině (přeskočí dokončené)
   const { data: tasks, error } = await supabase
     .from("tasks")
     .select("id, title, description, due_date, priority, project_id, created_by, remind_at")
     .not("remind_at", "is", null)
+    .neq("status", "done")
     .lte("remind_at", now.toISOString())
     .gte("remind_at", oneHourAgo.toISOString());
 
