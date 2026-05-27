@@ -366,8 +366,8 @@ export default function Sidebar({ toggleDk }) {
   return (
     <aside
       style={{
-        width: 220,
-        minWidth: 220,
+        width: 260,
+        minWidth: 260,
         background: t.bg2,
         borderRight: `1px solid ${t.border}`,
         display: "flex",
@@ -376,23 +376,7 @@ export default function Sidebar({ toggleDk }) {
       }}
     >
       <div style={{ padding: "20px 14px 14px", display: "flex", alignItems: "center", gap: 9 }}>
-        <div
-          style={{
-            width: 30,
-            height: 30,
-            borderRadius: 9,
-            background: "linear-gradient(135deg, #3b82f6, #8b5cf6)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "#fff",
-            fontSize: 14,
-            fontWeight: 800,
-            fontFamily: "'Outfit',sans-serif",
-          }}
-        >
-          M
-        </div>
+        <MZLogo size={30} />
         <span style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 700, fontSize: 16, letterSpacing: "-0.5px" }}>
           Michal Tasks
         </span>

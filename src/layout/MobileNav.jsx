@@ -51,26 +51,32 @@ export default function MobileNav({ toggleDk }) {
       {/* "Více" drawer overlay */}
       {moreOpen && (
         <>
-          <div onClick={() => setMoreOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 195 }} />
           <div
             className="su"
             style={{
-              position: "fixed", bottom: 66, left: 0, right: 0, zIndex: 196,
-              background: t.bg2, borderTop: `1px solid ${t.border}`,
-              borderRadius: "14px 14px 0 0",
-              padding: "12px 16px 8px",
-              boxShadow: "0 -8px 32px #0003",
+              position: "fixed", inset: 0, zIndex: 196,
+              background: t.bg2,
+              overflowY: "auto",
+              paddingBottom: "env(safe-area-inset-bottom,0px)",
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-              <div style={{ width: 36, height: 4, borderRadius: 2, background: t.border, margin: "0 auto" }} />
+            {/* Header */}
+            <div style={{
+              position: "sticky", top: 0, zIndex: 1,
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "16px 16px 12px",
+              background: t.bg2,
+              borderBottom: `1px solid ${t.border}`,
+            }}>
+              <span style={{ fontSize: 16, fontWeight: 700, color: t.text }}>Více</span>
               <button
                 onClick={() => setMoreOpen(false)}
-                style={{ position: "absolute", right: 16, top: 16, background: t.input, border: `1px solid ${t.border}`, color: t.text2, borderRadius: 6, width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+                style={{ background: t.input, border: `1px solid ${t.border}`, color: t.text2, borderRadius: 8, width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
               >
-                <Icon name="x" size={14} color={t.text2} strokeWidth={2} />
+                <Icon name="x" size={16} color={t.text2} strokeWidth={2} />
               </button>
             </div>
+            <div style={{ padding: "12px 16px 80px" }}>
 
             {/* Search / Command Palette */}
             <button
@@ -187,6 +193,7 @@ export default function MobileNav({ toggleDk }) {
                 background: t.input, color: t.text3, fontSize: 12,
               }}>Odhlásit</button>
             </div>
+            </div>{/* end inner padding div */}
           </div>
         </>
       )}

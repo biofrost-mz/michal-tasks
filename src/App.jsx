@@ -43,7 +43,7 @@ function AppShell() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
         *{margin:0;padding:0;box-sizing:border-box}
-        html,body,#root{width:100%;height:100%;font-family:'Figtree',sans-serif;background:${t.bg};color:${t.text}}
+        html,body,#root{width:100%;height:100%;font-family:'Figtree',sans-serif;background:${t.bg};color:${t.text};font-size:15px}
         html{overscroll-behavior:none;overflow-x:hidden}
         body{overflow-x:hidden}
         h1,h2,h3{font-family:'Outfit',sans-serif}

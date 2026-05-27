@@ -156,6 +156,10 @@ async function dbFetchAll(userId, workspaceId) {
       text: q.text || "",
       done: !!q.done,
       createdAt: q.created_at ? new Date(q.created_at).getTime() : Date.now(),
+      priority: q.priority ?? null,
+      dueDate: q.due_date ?? null,
+      tags: q.tags ?? null,
+      description: q.description ?? null,
     })),
   };
 }
@@ -690,8 +694,17 @@ export function AppProvider({ children }) {
   }, []);
 
   // CRUD — Quick Todos
-  const addQuickTodo = useCallback((text) => {
-    const qt = { id: uuid4(), text: (text || "").trim(), done: false, createdAt: Date.now() };
+  const addQuickTodo = useCallback((text, extras = {}) => {
+    const qt = {
+      id: uuid4(),
+      text: (text || "").trim(),
+      done: false,
+      createdAt: Date.now(),
+      priority: extras.priority ?? null,
+      dueDate: extras.dueDate ?? null,
+      tags: extras.tags ?? null,
+      description: extras.description ?? null,
+    };
     setQuickTodos((prev) => [qt, ...prev]);
     (async () => {
       if (!userId) return;
