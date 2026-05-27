@@ -26,10 +26,10 @@ function checkRateLimit(userId: string): boolean {
 
 const TaskOptimizationSchema = z.object({
   optimizedTitle: z.string().min(1).max(120),
-  suggestedProject: z.string().nullable(),
-  suggestedTags: z.array(z.string().min(1)).min(0).max(3),
+  suggestedProject: z.string().nullable().transform((v) => v || null),
+  suggestedTags: z.array(z.string()).transform((arr) => arr.filter((s) => s.length > 0)).pipe(z.array(z.string()).max(3)),
   timeEstimate: z.enum(["15 min", "30 min", "1 hod", "2 hod", "půl dne", "celý den"]),
-  subtasks: z.array(z.string().min(1)).min(3).max(6),
+  subtasks: z.array(z.string()).transform((arr) => arr.filter((s) => s.length > 0)).pipe(z.array(z.string()).min(3).max(6)),
 });
 
 const GEMINI_RESPONSE_SCHEMA = {
@@ -142,8 +142,9 @@ Pravidla:
 
     const validated = TaskOptimizationSchema.safeParse(parsed);
     if (!validated.success) {
-      console.error("gemini-task-optimize: Zod validation error:", validated.error.flatten());
-      return new Response(JSON.stringify({ error: "AI vrátila neočekávaná data" }), { status: 500, headers: CORS });
+      console.error("gemini-task-optimize: Zod validation error:", JSON.stringify(validated.error.flatten()));
+      console.error("gemini-task-optimize: raw parsed data:", JSON.stringify(parsed));
+      return new Response(JSON.stringify({ error: "AI vrátila neočekávaná data", debug: validated.error.flatten() }), { status: 500, headers: CORS });
     }
 
     return new Response(
