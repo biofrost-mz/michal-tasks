@@ -15,6 +15,15 @@ export const PRIORITIES = {
   high:   { label: "Vysoká",  color: "#ef4444", bg: "#ef444418", icon: "arrow-up"   },
 };
 
+export const NOTE_STATUSES = {
+  idea:   { label: "Nápad",   color: "#8b5cf6", bg: "#8b5cf615" },
+  draft:  { label: "Koncept", color: "#64748b", bg: "#64748b15" },
+  active: { label: "Aktivní", color: "#3b82f6", bg: "#3b82f615" },
+  done:   { label: "Hotovo",  color: "#22c55e", bg: "#22c55e15" },
+};
+
+export const NOTE_STATUS_KEYS = Object.keys(NOTE_STATUSES);
+
 export const NOTE_TEMPLATES = [
   { id: "blank", label: "Prázdná", icon: "file-text", desc: "Začni od nuly", title: "", content: "" },
   { id: "meeting", label: "Meeting notes", icon: "users", desc: "Agenda, zápis, akční body",

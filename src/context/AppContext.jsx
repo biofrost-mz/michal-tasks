@@ -617,7 +617,13 @@ export function AppProvider({ children }) {
       content: opts.content || "",
       primaryProjectId: opts.primaryProjectId || null,
       primaryTaskId: opts.primaryTaskId || null,
+      extraProjectIds: opts.extraProjectIds || [],
+      extraTaskIds: opts.extraTaskIds || [],
       pinned: false,
+      status: opts.status || "draft",
+      icon: opts.icon || null,
+      archived: false,
+      tags: opts.tags || [],
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -645,7 +651,13 @@ export function AppProvider({ children }) {
       if (u.content !== undefined) payload.content = u.content;
       if (u.primaryProjectId !== undefined) payload.primary_project_id = u.primaryProjectId;
       if (u.primaryTaskId !== undefined) payload.primary_task_id = u.primaryTaskId;
+      if (u.extraProjectIds !== undefined) payload.extra_project_ids = u.extraProjectIds?.length ? u.extraProjectIds : null;
+      if (u.extraTaskIds !== undefined) payload.extra_task_ids = u.extraTaskIds?.length ? u.extraTaskIds : null;
       if (u.pinned !== undefined) payload.pinned = u.pinned;
+      if (u.status !== undefined) payload.status = u.status;
+      if (u.icon !== undefined) payload.icon = u.icon || null;
+      if (u.archived !== undefined) payload.archived = u.archived;
+      if (u.tags !== undefined) payload.tags = u.tags?.length ? u.tags : null;
       try {
         await noteService.updateNoteDB(id, payload);
       } catch {

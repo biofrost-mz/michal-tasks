@@ -7,7 +7,13 @@ export function normalizeNote(n) {
     content: n.content || "",
     primaryProjectId: n.primary_project_id || null,
     primaryTaskId: n.primary_task_id || null,
+    extraProjectIds: n.extra_project_ids || [],
+    extraTaskIds: n.extra_task_ids || [],
     pinned: !!n.pinned,
+    status: n.status || "draft",
+    icon: n.icon || null,
+    archived: !!n.archived,
+    tags: n.tags || [],
     createdAt: n.created_at ? new Date(n.created_at).getTime() : Date.now(),
     updatedAt: n.updated_at ? new Date(n.updated_at).getTime() : Date.now(),
   };
@@ -23,7 +29,13 @@ export async function insertNote(note, userId, workspaceId) {
     content: note.content,
     primary_project_id: note.primaryProjectId,
     primary_task_id: note.primaryTaskId,
+    extra_project_ids: note.extraProjectIds?.length ? note.extraProjectIds : null,
+    extra_task_ids: note.extraTaskIds?.length ? note.extraTaskIds : null,
     pinned: note.pinned,
+    status: note.status || "draft",
+    icon: note.icon || null,
+    archived: note.archived || false,
+    tags: note.tags?.length ? note.tags : null,
   });
   if (error) throw error;
 }
