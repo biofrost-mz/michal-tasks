@@ -112,7 +112,11 @@ export default function AITaskAssist({ task, onTitleChange }) {
         const matchedProject = projects.find(
           (p) => p.name.toLowerCase() === result.suggestedProject.toLowerCase()
         );
-        if (matchedProject) updates.projectId = matchedProject.id;
+        if (matchedProject) {
+          updates.projectId = matchedProject.id;
+        } else {
+          toast(`Projekt "${result.suggestedProject}" nenalezen — přiřazen nebyl`, "info");
+        }
       }
 
       if (Array.isArray(result.suggestedTags) && result.suggestedTags.length > 0) {
