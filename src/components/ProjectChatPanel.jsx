@@ -76,7 +76,7 @@ export default function ProjectChatPanel({ project, tasks, notes, onClose }) {
 
       if (error || !data?.reply) {
         const msg2 = data?.error || error?.message || "Neznámá chyba";
-        if (msg2.includes("Rate limit")) {
+        if (msg2.toLowerCase().includes("rate limit")) {
           toast("Příliš mnoho zpráv — zkus to za hodinu.", "error");
         } else {
           toast(`Chat selhal: ${msg2}`, "error");
@@ -92,6 +92,7 @@ export default function ProjectChatPanel({ project, tasks, notes, onClose }) {
       toast("Chyba chatu — zkus to znovu", "error");
     } finally {
       setLoading(false);
+      if (!isMobile) inputRef.current?.focus();
     }
   };
 
@@ -197,7 +198,7 @@ export default function ProjectChatPanel({ project, tasks, notes, onClose }) {
 
           {messages.map((m, i) => (
             <div
-              key={i}
+              key={`${m.ts}-${m.role}-${i}`}
               style={{
                 display: "flex",
                 justifyContent: m.role === "user" ? "flex-end" : "flex-start",
