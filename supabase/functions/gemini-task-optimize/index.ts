@@ -9,6 +9,7 @@ const CORS = {
 
 const RATE_LIMIT_MAX = 20;
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
+// In-memory store (resets on cold start — good enough for personal app).
 const rateLimitMap = new Map<string, { count: number; windowStart: number }>();
 
 function checkRateLimit(userId: string): boolean {
@@ -26,7 +27,7 @@ function checkRateLimit(userId: string): boolean {
 const TaskOptimizationSchema = z.object({
   optimizedTitle: z.string().min(1).max(120),
   suggestedProject: z.string().nullable(),
-  suggestedTags: z.array(z.string()).min(0).max(3),
+  suggestedTags: z.array(z.string().min(1)).min(0).max(3),
   timeEstimate: z.enum(["15 min", "30 min", "1 hod", "2 hod", "půl dne", "celý den"]),
   subtasks: z.array(z.string().min(1)).min(3).max(6),
 });
@@ -51,10 +52,13 @@ serve(async (req) => {
 
   try {
     const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: CORS });
+    }
     const userClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader! } } }
+      { global: { headers: { Authorization: authHeader } } }
     );
     const { data: { user }, error: authErr } = await userClient.auth.getUser();
     if (authErr || !user) {
@@ -63,7 +67,7 @@ serve(async (req) => {
 
     if (!checkRateLimit(user.id)) {
       return new Response(
-        JSON.stringify({ error: "Rate limit exceeded — max 20 optimalizací za hodinu." }),
+        JSON.stringify({ error: `Rate limit exceeded — max ${RATE_LIMIT_MAX} optimalizací za hodinu.` }),
         { status: 429, headers: { ...CORS, "Retry-After": "3600" } }
       );
     }
