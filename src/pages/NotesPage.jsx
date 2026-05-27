@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useApp } from '../context/AppContext.jsx'
 import { useToast } from '../components/Toast.jsx'
 import { useConfirm } from '../components/Confirm.jsx'
 import Icon from '../components/Icon.jsx'
 import { NOTE_TEMPLATES, NOTE_STATUSES } from '../constants.js'
-import { projectColor, relTime, sanitizeHtml } from '../utils.js'
+import { projectColor, relTime } from '../utils.js'
 import { supabase } from '../supabase.js'
 import { compareText, formatDateTime } from '../locale.js'
 
@@ -45,12 +45,13 @@ function injectNoteCSS(dk) {
 .note-ce .callout { display:flex; gap:12px; padding:13px 15px; border:1px solid ${accent}25; background:${accent}0e; border-radius:14px; margin:16px 0; }
 .note-ce .callout-icon { font-size:18px; flex-shrink:0; line-height:1.6; }
 .note-ce [data-type="todo"] { display:flex; gap:9px; align-items:flex-start; margin:6px 0; }
-.note-ce [data-type="todo"] input[type="checkbox"] { margin-top:4px; accent-color:${accent}; transform:scale(1.1); cursor:pointer; }
+.note-ce [data-type="todo"] input[type="checkbox"] { margin-top:4px; accent-color:${accent}; transform:scale(1.1); cursor:pointer; flex-shrink:0; }
 .note-ce [data-type="todo"].done span { text-decoration:line-through; color:${text3}; }
+@keyframes spin { to { transform: rotate(360deg); } }
   `;
 }
 
-/* ─── Markdown to HTML (for importing existing notes) ─── */
+/* ─── Markdown to HTML ─── */
 function mdToHtml(md) {
   if (!md) return "";
   const esc = s => s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
@@ -104,6 +105,37 @@ function PinIcon({ size = 14, filled = false, color = "currentColor" }) {
   );
 }
 
+/* ─── Module-level panel helpers (avoid remount on parent render) ─── */
+function PRow({ t, label, children }) {
+  return (
+    <div style={{ display:"grid", gridTemplateColumns:"90px 1fr", gap:10, alignItems:"flex-start", padding:"7px 0", borderBottom:`1px solid rgba(255,255,255,.055)`, fontSize:12 }}>
+      <div style={{ color:t.text3, fontWeight:700, paddingTop:2 }}>{label}</div>
+      <div style={{ color:t.text2 }}>{children}</div>
+    </div>
+  );
+}
+
+function PropCard({ t, title: ctitle, children, noPad }) {
+  return (
+    <div style={{ border:`1px solid ${t.border}`, borderRadius:14, background:"rgba(255,255,255,.03)", padding:noPad?"0":"12px", marginBottom:10 }}>
+      {ctitle && <div style={{ fontSize:12, fontWeight:750, color:t.text, marginBottom:8, padding:noPad?"12px 12px 0":"0" }}>{ctitle}</div>}
+      {children}
+    </div>
+  );
+}
+
+function MiniItem({ t, left, right, onClick }) {
+  return (
+    <div onClick={onClick} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, padding:"8px 10px", borderRadius:10, background:"rgba(255,255,255,.03)", border:`1px solid rgba(255,255,255,.045)`, fontSize:12, color:t.text2, cursor:onClick?"pointer":"default", transition:"background .1s" }}
+      onMouseEnter={e=>{ if(onClick) e.currentTarget.style.background="rgba(255,255,255,.065)"; }}
+      onMouseLeave={e=>{ e.currentTarget.style.background="rgba(255,255,255,.03)"; }}
+    >
+      <span style={{ display:"flex", alignItems:"center", gap:6 }}>{left}</span>
+      <span style={{ color:t.text3, fontSize:11, flexShrink:0 }}>{right}</span>
+    </div>
+  );
+}
+
 /* ─── TemplatePickerModal ───────────────────── */
 function TemplatePickerModal({ onSelect, onClose }) {
   const { t } = useApp();
@@ -142,34 +174,86 @@ function TemplatePickerModal({ onSelect, onClose }) {
   );
 }
 
-/* ─── NoteAI Panel ──────────────────────────── */
+/* ─── AI Panel actions ──────────────────────── */
 const NOTE_AI_ACTIONS = [
   { id:"note_summary",       icon:"align-left",  label:"Shrnutí"    },
   { id:"note_continue",      icon:"edit-2",       label:"Pokračovat" },
   { id:"note_extract_tasks", icon:"check-square", label:"Úkoly"      },
 ];
 
-/* ─── NoteEditor (contenteditable WYSIWYG) ──── */
-function NoteEditor({ note, onSave, t, isMobile, showProps, onToggleProps, onDelete, onTogglePin, projects, tasks, addTask, activeWorkspaceId }) {
-  const editorRef  = useRef(null);
-  const titleRef   = useRef(null);
-  const saveTimer  = useRef(null);
-  const [title,    setTitle]    = useState(note.title);
-  const [saveState, setSaveState] = useState("idle"); // idle | saving | saved
-  const [aiOpen,   setAiOpen]   = useState(false);
-  const [aiAction, setAiAction] = useState(null);
-  const [aiLoading,setAiLoading]= useState(null);
-  const [aiResult, setAiResult] = useState(null);
+/* ─── Slash commands ────────────────────────── */
+const SLASH_COMMANDS = [
+  { id:"h1",      label:"Nadpis 1",  icon:"type",         desc:"Velký nadpis"      },
+  { id:"h2",      label:"Nadpis 2",  icon:"type",         desc:"Střední nadpis"    },
+  { id:"h3",      label:"Nadpis 3",  icon:"type",         desc:"Malý nadpis"       },
+  { id:"ul",      label:"Odrážky",   icon:"list",         desc:"Odrážkový seznam"  },
+  { id:"ol",      label:"Číslování", icon:"list",         desc:"Číslovaný seznam"  },
+  { id:"todo",    label:"To-do",     icon:"check-square", desc:"Akční bod s checkboxem" },
+  { id:"quote",   label:"Citace",    icon:"align-left",   desc:"Blok citace"       },
+  { id:"callout", label:"Callout",   icon:"alert-circle", desc:"Zvýrazněný blok"   },
+  { id:"table",   label:"Tabulka",   icon:"file-text",    desc:"Tabulka 2×2"       },
+  { id:"code",    label:"Kód",       icon:"code",         desc:"Blok kódu"         },
+  { id:"divider", label:"Oddělovač", icon:"minus",        desc:"Vodorovná linka"   },
+];
 
-  // Load new note content into contenteditable
+const TEXT_COLORS = [
+  { c:"#ef4444", l:"Červená" }, { c:"#f97316", l:"Oranžová" }, { c:"#eab308", l:"Žlutá" },
+  { c:"#22c55e", l:"Zelená"  }, { c:"#3b82f6", l:"Modrá"    }, { c:"#8b5cf6", l:"Fialová"},
+  { c:"#ec4899", l:"Růžová"  }, { c:"#94a3b8", l:"Šedá"     }, { c:"currentColor", l:"Výchozí" },
+];
+const BG_COLORS = [
+  { c:"#fef2f2", l:"Červené" }, { c:"#fff7ed", l:"Oranžové" }, { c:"#fefce8", l:"Žluté" },
+  { c:"#f0fdf4", l:"Zelené"  }, { c:"#eff6ff", l:"Modré"    }, { c:"#f5f3ff", l:"Fialové"},
+  { c:"#fdf4ff", l:"Růžové"  }, { c:"rgba(255,255,255,.12)", l:"Bílé" }, { c:"transparent", l:"Žádné" },
+];
+
+/* ─── NoteEditor ────────────────────────────── */
+function NoteEditor({ note, onSave, t, isMobile, showProps, onToggleProps, onDelete, onTogglePin, projects, tasks, addTask, activeWorkspaceId }) {
+  const editorRef   = useRef(null);
+  const titleRef    = useRef(null);
+  const saveTimer   = useRef(null);
+  const savedRange  = useRef(null);
+  const slashRangeRef = useRef(null);
+
+  const [title,     setTitle]     = useState(note.title);
+  const [saveState, setSaveState] = useState("idle");
+  const [aiOpen,    setAiOpen]    = useState(false);
+  const [aiAction,  setAiAction]  = useState(null);
+  const [aiLoading, setAiLoading] = useState(null);
+  const [aiResult,  setAiResult]  = useState(null);
+
+  // Slash command menu
+  const [slashMenu,  setSlashMenu]  = useState(null); // { x, y, query } | null
+  const [slashIdx,   setSlashIdx]   = useState(0);
+
+  // Color picker
+  const [colorMenu,  setColorMenu]  = useState(null); // "text" | "bg" | null
+  const [colorPos,   setColorPos]   = useState({ x:0, y:0 });
+
   useEffect(() => {
     setTitle(note.title);
     if (titleRef.current) titleRef.current.value = note.title;
-    if (editorRef.current) {
-      editorRef.current.innerHTML = initEditorContent(note.content);
-    }
+    if (editorRef.current) editorRef.current.innerHTML = initEditorContent(note.content);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [note.id]);
+
+  // Close slash menu on outside click
+  useEffect(() => {
+    if (!slashMenu) return;
+    const handler = (e) => {
+      if (!editorRef.current?.contains(e.target)) setSlashMenu(null);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [slashMenu]);
+
+  // Close color menu on outside click
+  useEffect(() => {
+    if (!colorMenu) return;
+    const handler = () => setColorMenu(null);
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [colorMenu]);
 
   const triggerSave = useCallback((data) => {
     setSaveState("saving");
@@ -179,9 +263,7 @@ function NoteEditor({ note, onSave, t, isMobile, showProps, onToggleProps, onDel
         await onSave(data);
         setSaveState("saved");
         setTimeout(() => setSaveState("idle"), 2000);
-      } catch {
-        setSaveState("idle");
-      }
+      } catch { setSaveState("idle"); }
     }, 700);
   }, [onSave]);
 
@@ -190,18 +272,17 @@ function NoteEditor({ note, onSave, t, isMobile, showProps, onToggleProps, onDel
     triggerSave({ title: e.target.value, content: editorRef.current?.innerHTML || "" });
   };
 
-  const handleContentInput = () => {
+  const handleContentInput = useCallback(() => {
     triggerSave({ title: titleRef.current?.value || title, content: editorRef.current?.innerHTML || "" });
-  };
+  }, [triggerSave, title]);
 
-  // Keep selection to restore after formatbar click
-  const savedRange = useRef(null);
   const saveRange = () => {
     const sel = window.getSelection();
     if (sel && sel.rangeCount > 0 && editorRef.current?.contains(sel.getRangeAt(0).startContainer)) {
       savedRange.current = sel.getRangeAt(0).cloneRange();
     }
   };
+
   const restoreRange = () => {
     if (!savedRange.current) return;
     const sel = window.getSelection();
@@ -213,28 +294,193 @@ function NoteEditor({ note, onSave, t, isMobile, showProps, onToggleProps, onDel
     editorRef.current?.focus();
     restoreRange();
     document.execCommand(cmd, false, value);
-    editorRef.current?.focus();
+    handleContentInput();
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [handleContentInput]);
+
+  // Ensure cursor is at a new block line before inserting block elements
+  const ensureNewLine = useCallback(() => {
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return;
+    const range = sel.getRangeAt(0);
+    let node = range.startContainer;
+    if (node.nodeType === Node.TEXT_NODE) node = node.parentNode;
+    const BLOCKS = ["P","H1","H2","H3","H4","H5","H6","LI","BLOCKQUOTE","DIV","PRE","TABLE"];
+    let block = node;
+    while (block && block !== editorRef.current && !BLOCKS.includes(block.tagName?.toUpperCase())) {
+      block = block.parentNode;
+    }
+    if (block && block !== editorRef.current && (block.textContent || "").trim() !== "") {
+      const endRange = document.createRange();
+      endRange.selectNodeContents(block);
+      endRange.collapse(false);
+      sel.removeAllRanges();
+      sel.addRange(endRange);
+      document.execCommand("insertParagraph", false, null);
+    }
   }, []);
 
   const insertHtml = useCallback((html) => {
     editorRef.current?.focus();
     restoreRange();
     document.execCommand("insertHTML", false, html);
-    editorRef.current?.focus();
+    handleContentInput();
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [handleContentInput]);
+
+  // Todo uses direct DOM insertion so checkbox doesn't get stripped
+  const insertTodo = useCallback(() => {
+    editorRef.current?.focus();
+    restoreRange();
+    ensureNewLine();
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return;
+    const range = sel.getRangeAt(0);
+    range.collapse(true);
+
+    const wrap = document.createElement("div");
+    wrap.setAttribute("data-type", "todo");
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.addEventListener("change", (e) => {
+      const parent = e.target.closest("[data-type='todo']");
+      if (parent) parent.classList.toggle("done", e.target.checked);
+      triggerSave({ title: titleRef.current?.value || "", content: editorRef.current?.innerHTML || "" });
+    });
+    const span = document.createElement("span");
+    span.textContent = "Nový akční bod";
+    wrap.appendChild(cb);
+    wrap.appendChild(span);
+    range.insertNode(wrap);
+
+    // Place cursor inside span
+    const newRange = document.createRange();
+    newRange.selectNodeContents(span);
+    newRange.collapse(false);
+    sel.removeAllRanges();
+    sel.addRange(newRange);
+    handleContentInput();
+  }, [ensureNewLine, handleContentInput, triggerSave]);
+
+  const insertCallout = useCallback(() => {
+    editorRef.current?.focus();
+    restoreRange();
+    ensureNewLine();
+    document.execCommand("insertHTML", false, `<div class="callout"><span class="callout-icon">💡</span><div><strong>Poznámka:</strong> doplň obsah callout bloku.</div></div><p><br></p>`);
+    handleContentInput();
+  }, [ensureNewLine, handleContentInput]);
+
+  const insertTable = useCallback(() => {
+    editorRef.current?.focus();
+    restoreRange();
+    ensureNewLine();
+    document.execCommand("insertHTML", false, `<table><tr><th>Věc</th><th>Stav</th></tr><tr><td>Položka 1</td><td>Přidat</td></tr></table><p><br></p>`);
+    handleContentInput();
+  }, [ensureNewLine, handleContentInput]);
+
+  const insertCodeBlock = useCallback(() => {
+    editorRef.current?.focus();
+    restoreRange();
+    ensureNewLine();
+    document.execCommand("insertHTML", false, `<pre><code>// kód zde</code></pre><p><br></p>`);
+    handleContentInput();
+  }, [ensureNewLine, handleContentInput]);
+
+  const insertDivider = useCallback(() => {
+    editorRef.current?.focus();
+    restoreRange();
+    document.execCommand("insertHTML", false, `<hr><p><br></p>`);
+    handleContentInput();
+  }, [handleContentInput]);
+
+  const insertInlineCode = useCallback(() => {
+    editorRef.current?.focus();
+    restoreRange();
+    const sel = window.getSelection();
+    if (sel && sel.toString().length > 0) {
+      document.execCommand("insertHTML", false, `<code>${sel.toString()}</code>`);
+    } else {
+      document.execCommand("insertHTML", false, `<code>kód</code>`);
+    }
+    handleContentInput();
+  }, [handleContentInput]);
+
+  // ── Slash command detection ──────────────────
+  const getSlashFiltered = (query) =>
+    SLASH_COMMANDS.filter(c =>
+      !query || c.label.toLowerCase().includes(query) || c.id.includes(query)
+    );
+
+  const checkSlashMenu = useCallback(() => {
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) { setSlashMenu(null); return; }
+    const range = sel.getRangeAt(0);
+    if (!range.collapsed) { setSlashMenu(null); return; }
+    const node = range.startContainer;
+    if (node.nodeType !== Node.TEXT_NODE) { setSlashMenu(null); return; }
+    const text = node.textContent.slice(0, range.startOffset);
+    const slashIdx = text.lastIndexOf("/");
+    if (slashIdx === -1) { setSlashMenu(null); return; }
+    const between = text.slice(slashIdx + 1);
+    if (/\s/.test(between)) { setSlashMenu(null); return; }
+
+    // Store range at slash for deletion
+    const slashRange = range.cloneRange();
+    slashRange.setStart(node, slashIdx);
+    slashRangeRef.current = slashRange;
+
+    const rect = slashRange.getBoundingClientRect();
+    setSlashMenu({ x: rect.left, y: rect.bottom + 6, query: between.toLowerCase() });
+    setSlashIdx(0);
   }, []);
 
-  const insertCallout = () => insertHtml(`<div class="callout"><span class="callout-icon">💡</span><div><strong>Poznámka:</strong> doplň obsah callout bloku.</div></div><p><br></p>`);
-  const insertTodo    = () => insertHtml(`<div data-type="todo"><input type="checkbox"><span>Nový akční bod</span></div>`);
-  const insertTable   = () => insertHtml(`<table><tr><th>Věc</th><th>Stav</th></tr><tr><td>Položka 1</td><td>Přidat</td></tr></table><p><br></p>`);
+  const executeSlashCommand = useCallback((cmdId) => {
+    setSlashMenu(null);
+    // Delete "/query" text
+    if (slashRangeRef.current) {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount) {
+        const curRange = sel.getRangeAt(0);
+        const delRange = slashRangeRef.current.cloneRange();
+        delRange.setEnd(curRange.startContainer, curRange.startOffset);
+        delRange.deleteContents();
+        sel.removeAllRanges();
+        sel.addRange(delRange);
+        delRange.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(delRange);
+      }
+    }
+    editorRef.current?.focus();
+    switch (cmdId) {
+      case "h1":      document.execCommand("formatBlock", false, "h1"); break;
+      case "h2":      document.execCommand("formatBlock", false, "h2"); break;
+      case "h3":      document.execCommand("formatBlock", false, "h3"); break;
+      case "ul":      document.execCommand("insertUnorderedList", false, null); break;
+      case "ol":      document.execCommand("insertOrderedList",   false, null); break;
+      case "todo":    insertTodo(); return;
+      case "quote":   document.execCommand("formatBlock", false, "blockquote"); break;
+      case "callout": insertCallout(); return;
+      case "table":   insertTable(); return;
+      case "code":    insertCodeBlock(); return;
+      case "divider": insertDivider(); return;
+    }
+    handleContentInput();
+  }, [insertTodo, insertCallout, insertTable, insertCodeBlock, insertDivider, handleContentInput]);
 
-  const exportMD = () => {
-    const content = editorRef.current?.innerText || "";
-    const blob = new Blob([`# ${note.title}\n\n${content}`], { type: "text/plain" });
-    const url  = URL.createObjectURL(blob);
-    const a = Object.assign(document.createElement("a"), { href: url, download: `${note.title || "poznamka"}.md` });
-    a.click(); URL.revokeObjectURL(url);
+  const handleEditorKeyDown = (e) => {
+    if (slashMenu) {
+      const filtered = getSlashFiltered(slashMenu.query);
+      if (e.key === "ArrowDown") { e.preventDefault(); setSlashIdx(i => Math.min(i+1, filtered.length-1)); return; }
+      if (e.key === "ArrowUp")   { e.preventDefault(); setSlashIdx(i => Math.max(i-1, 0)); return; }
+      if (e.key === "Enter")     { e.preventDefault(); if (filtered[slashIdx]) executeSlashCommand(filtered[slashIdx].id); return; }
+      if (e.key === "Escape")    { e.preventDefault(); setSlashMenu(null); return; }
+    }
+  };
+
+  const handleEditorKeyUp = (e) => {
+    if (e.key === "Escape") return;
+    checkSlashMenu();
   };
 
   // AI
@@ -263,30 +509,107 @@ function NoteEditor({ note, onSave, t, isMobile, showProps, onToggleProps, onDel
     setAiResult(null); setAiAction(null);
   };
 
-  const statusInfo = NOTE_STATUSES[note.status] ?? NOTE_STATUSES.draft;
+  const statusInfo    = NOTE_STATUSES[note.status] ?? NOTE_STATUSES.draft;
   const linkedProject = note.primaryProjectId ? projects.find(p => p.id === note.primaryProjectId) : null;
   const linkedTask    = note.primaryTaskId    ? tasks.find(tk => tk.id === note.primaryTaskId)     : null;
-  const wordCount = editorRef.current ? (editorRef.current.innerText.trim().split(/\s+/).filter(Boolean).length) : 0;
 
-  const FmtBtn = ({ label, title: ttl, onClick, mono }) => (
+  // Format bar helpers
+  const FmtBtn = ({ label, title: ttl, onClick, mono, active }) => (
     <button
       onMouseDown={e => { e.preventDefault(); saveRange(); onClick(); }}
       title={ttl}
       style={{
-        height:30, border:"none", borderRadius:8, background:"transparent", color:t.text2,
+        height:30, border:"none", borderRadius:8,
+        background: active ? `${t.accent}22` : "transparent",
+        color: active ? t.accent : t.text2,
         padding:"0 9px", fontWeight:700, fontSize:13, cursor:"pointer", whiteSpace:"nowrap",
         fontFamily: mono ? "'JetBrains Mono',monospace" : "inherit",
         transition:"background .1s",
       }}
-      onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,.07)"}
-      onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+      onMouseEnter={e => { if (!active) e.currentTarget.style.background = "rgba(255,255,255,.07)"; }}
+      onMouseLeave={e => { if (!active) e.currentTarget.style.background = "transparent"; }}
     >{label}</button>
   );
 
   const FmtDivider = () => <div style={{ width:1, height:18, background:t.border, flexShrink:0, margin:"0 2px" }} />;
 
+  const slashFiltered = slashMenu ? getSlashFiltered(slashMenu.query) : [];
+
   return (
     <div style={{ display:"flex", flexDirection:"column", height:"100%", overflow:"hidden", position:"relative" }}>
+
+      {/* Slash command popup */}
+      {slashMenu && slashFiltered.length > 0 && (
+        <div style={{
+          position:"fixed", left:Math.min(slashMenu.x, window.innerWidth - 260), top:slashMenu.y,
+          zIndex:500, width:240, background:t.bg2, border:`1px solid ${t.border}`,
+          borderRadius:12, boxShadow:t.shadow, overflow:"hidden",
+        }}>
+          <div style={{ padding:"6px 10px 4px", fontSize:11, color:t.text3, fontWeight:700, borderBottom:`1px solid ${t.border}` }}>
+            Příkazy{slashMenu.query ? ` · ${slashMenu.query}` : ""}
+          </div>
+          {slashFiltered.map((cmd, i) => (
+            <div key={cmd.id}
+              onMouseDown={e => { e.preventDefault(); executeSlashCommand(cmd.id); }}
+              style={{
+                display:"flex", alignItems:"center", gap:10, padding:"8px 12px",
+                background: i === slashIdx ? t.accentBg : "transparent",
+                color: i === slashIdx ? t.accent : t.text2,
+                cursor:"pointer", transition:"background .08s",
+              }}
+              onMouseEnter={() => setSlashIdx(i)}
+            >
+              <div style={{ width:28, height:28, borderRadius:7, background: i===slashIdx ? `${t.accent}22` : "rgba(255,255,255,.06)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                <Icon name={cmd.icon} size={13} color={i===slashIdx ? t.accent : t.text3} strokeWidth={2} />
+              </div>
+              <div>
+                <div style={{ fontSize:13, fontWeight:700 }}>{cmd.label}</div>
+                <div style={{ fontSize:11, color:t.text3, marginTop:1 }}>{cmd.desc}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Color picker popup */}
+      {colorMenu && (
+        <div
+          onMouseDown={e => e.stopPropagation()}
+          style={{
+            position:"fixed", left:colorPos.x, top:colorPos.y, zIndex:500,
+            background:t.bg2, border:`1px solid ${t.border}`, borderRadius:12, boxShadow:t.shadow,
+            padding:12, width:200,
+          }}
+        >
+          <div style={{ fontSize:11, fontWeight:700, color:t.text3, marginBottom:8 }}>
+            {colorMenu === "text" ? "Barva textu" : "Zvýraznění"}
+          </div>
+          <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+            {(colorMenu === "text" ? TEXT_COLORS : BG_COLORS).map(({c,l}) => (
+              <button key={c} title={l}
+                onMouseDown={e => {
+                  e.preventDefault();
+                  setColorMenu(null);
+                  editorRef.current?.focus();
+                  restoreRange();
+                  if (colorMenu === "text") {
+                    document.execCommand("foreColor", false, c === "currentColor" ? "inherit" : c);
+                  } else {
+                    document.execCommand("hiliteColor", false, c);
+                  }
+                  handleContentInput();
+                }}
+                style={{
+                  width:22, height:22, borderRadius:6, border:`2px solid ${t.border}`,
+                  background: c, cursor:"pointer", flexShrink:0,
+                  boxSizing:"border-box",
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Topbar */}
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", borderBottom:`1px solid ${t.border}`, padding:"0 20px", height:52, flexShrink:0, background:t.bg2 }}>
         <div style={{ display:"flex", alignItems:"center", gap:7, fontSize:13, color:t.text3, minWidth:0 }}>
@@ -295,7 +618,6 @@ function NoteEditor({ note, onSave, t, isMobile, showProps, onToggleProps, onDel
           <span style={{ color:t.text, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{note.title || "Bez názvu"}</span>
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:6, flexShrink:0 }}>
-          {/* Save indicator */}
           {saveState === "saving" && (
             <span style={{ fontSize:11, color:t.text3, display:"flex", alignItems:"center", gap:4 }}>
               <span style={{ animation:"spin .7s linear infinite", display:"inline-block" }}>◌</span> Ukládám
@@ -375,7 +697,7 @@ function NoteEditor({ note, onSave, t, isMobile, showProps, onToggleProps, onDel
           pointerEvents:"none",
         }}>
           <div style={{
-            display:"flex", alignItems:"center", gap:5, flexWrap:"nowrap", overflowX:"auto",
+            display:"flex", alignItems:"center", gap:3, flexWrap:"nowrap", overflowX:"auto",
             width:"fit-content", maxWidth:"100%",
             padding:"6px 8px",
             borderRadius:14, border:`1px solid ${t.border}`,
@@ -395,17 +717,52 @@ function NoteEditor({ note, onSave, t, isMobile, showProps, onToggleProps, onDel
             </select>
             <FmtDivider />
             <FmtBtn label="B" ttl="Tučné (Ctrl+B)" onClick={()=>exec("bold")} />
-            <FmtBtn label={<em style={{fontStyle:"italic"}}>I</em>} ttl="Kurzíva" onClick={()=>exec("italic")} />
-            <FmtBtn label={<u>U</u>} ttl="Podtržení" onClick={()=>exec("underline")} />
+            <FmtBtn label={<em style={{fontStyle:"italic"}}>I</em>} ttl="Kurzíva (Ctrl+I)" onClick={()=>exec("italic")} />
+            <FmtBtn label={<u>U</u>} ttl="Podtržení (Ctrl+U)" onClick={()=>exec("underline")} />
             <FmtBtn label={<s>S</s>} ttl="Přeškrtnutí" onClick={()=>exec("strikeThrough")} />
+            <FmtBtn label={<span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:12}}>{"<>"}</span>} ttl="Inline kód" onClick={insertInlineCode} mono />
             <FmtDivider />
-            <FmtBtn label="• List" ttl="Odrážky" onClick={()=>exec("insertUnorderedList")} />
-            <FmtBtn label="1. List" ttl="Číslování" onClick={()=>exec("insertOrderedList")} />
-            <FmtBtn label="☑ To-do" ttl="Checkbox" onClick={insertTodo} />
+            <FmtBtn label="• Odrážky" ttl="Odrážkový seznam" onClick={()=>exec("insertUnorderedList")} />
+            <FmtBtn label="1. Číslování" ttl="Číslovaný seznam" onClick={()=>exec("insertOrderedList")} />
+            <FmtBtn label="☑ To-do" ttl="Akční bod s checkboxem" onClick={insertTodo} />
             <FmtDivider />
-            <FmtBtn label="🔗 Odkaz" ttl="Vložit odkaz" onClick={()=>{ saveRange(); const url=prompt("URL:","https://"); if(url) exec("createLink",url); }} />
+            <FmtBtn label="🔗 Odkaz" ttl="Vložit odkaz" onClick={()=>{ saveRange(); const url=prompt("URL:","https://"); if(url) { restoreRange(); document.execCommand("createLink",false,url); handleContentInput(); } }} />
             <FmtBtn label="💡 Callout" ttl="Callout blok" onClick={insertCallout} />
             <FmtBtn label="▦ Tabulka" ttl="Vložit tabulku" onClick={insertTable} />
+            <FmtBtn label="</> Kód" ttl="Blok kódu" onClick={insertCodeBlock} />
+            <FmtBtn label="— Oddělovač" ttl="Vodorovná linka" onClick={insertDivider} />
+            <FmtDivider />
+            {/* Text color */}
+            <button
+              onMouseDown={e => {
+                e.preventDefault();
+                saveRange();
+                const rect = e.currentTarget.getBoundingClientRect();
+                setColorPos({ x: rect.left, y: rect.bottom + 4 });
+                setColorMenu(v => v === "text" ? null : "text");
+              }}
+              title="Barva textu"
+              style={{ height:30, border:"none", borderRadius:8, background: colorMenu==="text" ? `${t.accent}22` : "transparent", color:t.text2, padding:"0 8px", fontWeight:700, fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", gap:4 }}
+            >
+              <span style={{ fontWeight:900 }}>A</span>
+              <div style={{ width:14, height:3, borderRadius:2, background:"#ef4444" }} />
+            </button>
+            {/* Highlight */}
+            <button
+              onMouseDown={e => {
+                e.preventDefault();
+                saveRange();
+                const rect = e.currentTarget.getBoundingClientRect();
+                setColorPos({ x: rect.left, y: rect.bottom + 4 });
+                setColorMenu(v => v === "bg" ? null : "bg");
+              }}
+              title="Zvýraznění"
+              style={{ height:30, border:"none", borderRadius:8, background: colorMenu==="bg" ? `${t.accent}22` : "transparent", color:t.text2, padding:"0 8px", fontWeight:700, fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", gap:3 }}
+            >
+              <span>Aa</span>
+              <div style={{ width:14, height:10, borderRadius:2, background:"#eab308", opacity:.8 }} />
+            </button>
+            <FmtDivider />
             <FmtBtn label="✨ Zestručnit" ttl="AI shrnutí" onClick={()=>{ setAiOpen(true); runAI("note_summary"); }} />
           </div>
         </div>
@@ -438,11 +795,9 @@ function NoteEditor({ note, onSave, t, isMobile, showProps, onToggleProps, onDel
             }}
           />
 
-          {/* Meta-line: time · words · project · status */}
+          {/* Meta-line */}
           <div style={{ display:"flex", gap:10, alignItems:"center", flexWrap:"wrap", color:t.text3, fontSize:12, paddingBottom:18, borderBottom:`1px solid ${t.border}`, marginBottom:22 }}>
             <span>Upraveno {formatDateTime(note.updatedAt)}</span>
-            <span style={{ opacity:.4 }}>·</span>
-            <span>{wordCount} slov</span>
             {linkedProject && (
               <span style={{ color:"#dbeafe", background:"rgba(59,130,246,.16)", border:"1px solid rgba(59,130,246,.22)", padding:"3px 9px", borderRadius:999, fontWeight:700, fontSize:12 }}>
                 Projekt: {linkedProject.name}
@@ -463,7 +818,7 @@ function NoteEditor({ note, onSave, t, isMobile, showProps, onToggleProps, onDel
             ))}
           </div>
 
-          {/* Contenteditable content */}
+          {/* Contenteditable */}
           <div
             ref={editorRef}
             contentEditable
@@ -471,30 +826,23 @@ function NoteEditor({ note, onSave, t, isMobile, showProps, onToggleProps, onDel
             className="note-ce"
             onInput={handleContentInput}
             onBlur={saveRange}
-            data-placeholder="Začni psát… nebo použij formátovací lištu nahoře"
+            onKeyDown={handleEditorKeyDown}
+            onKeyUp={handleEditorKeyUp}
+            data-placeholder="Začni psát… nebo napiš / pro příkazy"
             style={{ outline:"none" }}
           />
         </div>
 
         {/* Bottom slash quick commands */}
-        <div style={{
-          position:"sticky", bottom:16,
-          display:"flex", justifyContent:"center",
-          pointerEvents:"none",
-          zIndex:10,
-        }}>
-          <div style={{
-            display:"flex", alignItems:"center", gap:6, padding:"8px 10px",
-            border:`1px solid ${t.border}`, borderRadius:16,
-            background:t.bg2, boxShadow:t.shadow,
-            pointerEvents:"all",
-          }}>
+        <div style={{ position:"sticky", bottom:16, display:"flex", justifyContent:"center", pointerEvents:"none", zIndex:10 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 10px", border:`1px solid ${t.border}`, borderRadius:16, background:t.bg2, boxShadow:t.shadow, pointerEvents:"all" }}>
             {[
-              { label:"/nadpis", fn:()=>{ exec("formatBlock","h2"); } },
+              { label:"/nadpis", fn:()=>exec("formatBlock","h2") },
               { label:"/todo",   fn:insertTodo },
               { label:"/citace", fn:()=>exec("formatBlock","blockquote") },
               { label:"/callout",fn:insertCallout },
               { label:"/tabulka",fn:insertTable },
+              { label:"/kód",    fn:insertCodeBlock },
             ].map(cmd => (
               <button key={cmd.label} onMouseDown={e=>{ e.preventDefault(); saveRange(); cmd.fn(); }} style={{
                 border:`1px solid rgba(255,255,255,.06)`, background:"rgba(255,255,255,.04)",
@@ -515,27 +863,27 @@ function NoteEditor({ note, onSave, t, isMobile, showProps, onToggleProps, onDel
 /* ─── NotePropertiesPanel ───────────────────── */
 function NotePropertiesPanel({ note, onClose, t, isMobile, onExportMD, projects, tasks, addTask, activeWorkspaceId }) {
   const { updateNote } = useApp();
-  const [tagInput, setTagInput] = useState("");
+  const [tagInput,        setTagInput]        = useState("");
+  const [showAllProjects, setShowAllProjects] = useState(true);
+  const [showAllTasks,    setShowAllTasks]    = useState(false);
+  const [taskSearch,      setTaskSearch]      = useState("");
 
-  const statusInfo = NOTE_STATUSES[note.status] ?? NOTE_STATUSES.draft;
+  const statusInfo    = NOTE_STATUSES[note.status] ?? NOTE_STATUSES.draft;
   const linkedProject = note.primaryProjectId ? projects.find(p => p.id === note.primaryProjectId) : null;
   const linkedTask    = note.primaryTaskId    ? tasks.find(tk => tk.id === note.primaryTaskId)     : null;
-  const allLinkedProjects = [linkedProject, ...(note.extraProjectIds||[]).map(id => projects.find(p=>p.id===id)).filter(Boolean)].filter(Boolean);
-  const allLinkedTasks    = [linkedTask,    ...(note.extraTaskIds   ||[]).map(id => tasks.find(t=>t.id===id)).filter(Boolean)   ].filter(Boolean);
 
   const addTag = (raw) => {
     const tag = raw.trim().toLowerCase().replace(/\s+/g, "-");
     if (!tag || note.tags.includes(tag)) return;
     updateNote(note.id, { tags: [...note.tags, tag] });
   };
-  const removeTag = (tag) => updateNote(note.id, { tags: note.tags.filter(t => t !== tag) });
+  const removeTag = (tag) => updateNote(note.id, { tags: note.tags.filter(t2 => t2 !== tag) });
 
   const handleTagKey = (e) => {
     if ((e.key === "Enter" || e.key === ",") && tagInput.trim()) { e.preventDefault(); addTag(tagInput); setTagInput(""); }
     else if (e.key === "Backspace" && !tagInput && note.tags.length) removeTag(note.tags[note.tags.length-1]);
   };
 
-  // Quick AI action from panel
   const runAIExtract = async () => {
     try {
       const content = document.querySelector('.note-ce')?.innerText || "";
@@ -546,39 +894,29 @@ function NotePropertiesPanel({ note, onClose, t, isMobile, onExportMD, projects,
       const raw = data?.result ?? "";
       try {
         const c = raw.replace(/^```[a-z]*\n?/i,"").replace(/```$/,"").trim();
-        const tasks = JSON.parse(c);
-        tasks.forEach(text => { if (typeof text==="string"&&text.trim()) addTask({ title:text.trim() }); });
+        const extracted = JSON.parse(c);
+        extracted.forEach(text => { if (typeof text==="string"&&text.trim()) addTask({ title:text.trim() }); });
       } catch { if (raw.trim()) addTask({ title: raw.trim() }); }
     } catch {}
   };
 
-  const PRow = ({ label, children }) => (
-    <div style={{ display:"grid", gridTemplateColumns:"88px 1fr", gap:10, alignItems:"center", padding:"7px 0", borderBottom:`1px solid rgba(255,255,255,.055)`, fontSize:12 }}>
-      <div style={{ color:t.text3, fontWeight:700 }}>{label}</div>
-      <div style={{ color:t.text2 }}>{children}</div>
-    </div>
-  );
+  const toggleExtraProject = (id) => {
+    const cur = note.extraProjectIds || [];
+    updateNote(note.id, { extraProjectIds: cur.includes(id) ? cur.filter(x=>x!==id) : [...cur, id] });
+  };
 
-  const PropCard = ({ title: ctitle, children, noPad }) => (
-    <div style={{ border:`1px solid ${t.border}`, borderRadius:14, background:"rgba(255,255,255,.03)", padding:noPad?"0":"12px", marginBottom:10 }}>
-      {ctitle && <div style={{ fontSize:12, fontWeight:750, color:t.text, marginBottom:8, padding: noPad?"12px 12px 0":"0" }}>{ctitle}</div>}
-      {children}
-    </div>
-  );
-
-  const MiniItem = ({ left, right, onClick }) => (
-    <div onClick={onClick} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, padding:"8px 10px", borderRadius:10, background:"rgba(255,255,255,.03)", border:`1px solid rgba(255,255,255,.045)`, fontSize:12, color:t.text2, cursor:onClick?"pointer":"default", transition:"background .1s" }}
-      onMouseEnter={e=>{ if(onClick) e.currentTarget.style.background="rgba(255,255,255,.065)"; }}
-      onMouseLeave={e=>{ e.currentTarget.style.background="rgba(255,255,255,.03)"; }}
-    >
-      <span>{left}</span>
-      <span style={{ color:t.text3, fontSize:11 }}>{right}</span>
-    </div>
-  );
+  const toggleExtraTask = (id) => {
+    const cur = note.extraTaskIds || [];
+    updateNote(note.id, { extraTaskIds: cur.includes(id) ? cur.filter(x=>x!==id) : [...cur, id] });
+  };
 
   const panelStyle = isMobile
     ? { position:"fixed", inset:0, zIndex:300, background:t.bg2, overflowY:"auto" }
-    : { width:300, minWidth:300, borderLeft:`1px solid ${t.border}`, background:t.bg2, overflowY:"auto", flexShrink:0 };
+    : { width:310, minWidth:310, borderLeft:`1px solid ${t.border}`, background:t.bg2, overflowY:"auto", flexShrink:0 };
+
+  const filteredTasks = tasks.filter(tk =>
+    !taskSearch || (tk.title || "").toLowerCase().includes(taskSearch.toLowerCase())
+  );
 
   return (
     <div style={panelStyle}>
@@ -592,33 +930,22 @@ function NotePropertiesPanel({ note, onClose, t, isMobile, onExportMD, projects,
 
       <div style={{ padding:"10px 12px 24px" }}>
 
-        {/* Properties card */}
-        <PropCard>
-          <PRow label="Projekt">
-            <select
-              value={note.primaryProjectId ? `project:${note.primaryProjectId}` : note.primaryTaskId ? `task:${note.primaryTaskId}` : ""}
-              onChange={e => {
-                const v = e.target.value;
-                if (!v) updateNote(note.id, { primaryProjectId:null, primaryTaskId:null });
-                else if (v.startsWith("project:")) updateNote(note.id, { primaryProjectId:v.slice(8), primaryTaskId:null });
-                else updateNote(note.id, { primaryProjectId:null, primaryTaskId:v.slice(5) });
-              }}
-              style={{ width:"100%", background:"transparent", border:"none", color:t.text2, fontSize:12, outline:"none", cursor:"pointer" }}
-            >
-              <option value="">— Bez vazby</option>
-              <optgroup label="Projekty">{projects.map(p=><option key={p.id} value={`project:${p.id}`}>{p.name}</option>)}</optgroup>
-              <optgroup label="Úkoly">{tasks.map(tk=><option key={tk.id} value={`task:${tk.id}`}>{tk.title||"Bez názvu"}</option>)}</optgroup>
-            </select>
-          </PRow>
-          {(allLinkedTasks.length > 0 || linkedTask) && (
-            <PRow label="Vazba">{linkedTask?.title || "—"}</PRow>
-          )}
-          <PRow label="Stav">
-            <select value={note.status||"draft"} onChange={e=>updateNote(note.id,{status:e.target.value})} style={{ background:"transparent", border:"none", color:statusInfo.color, fontSize:12, fontWeight:700, outline:"none", cursor:"pointer" }}>
+        {/* Core properties */}
+        <PropCard t={t}>
+          <PRow t={t} label="Stav">
+            <select value={note.status||"draft"} onChange={e=>updateNote(note.id,{status:e.target.value})} style={{ background:"transparent", border:"none", color:statusInfo.color, fontSize:12, fontWeight:700, outline:"none", cursor:"pointer", width:"100%" }}>
               {Object.entries(NOTE_STATUSES).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}
             </select>
           </PRow>
-          <PRow label="Štítky">
+          <PRow t={t} label="Ikona">
+            <button onClick={() => {
+              const em = prompt("Emoji nebo ikona:", note.icon || "📝");
+              if (em !== null) updateNote(note.id, { icon: em.trim().slice(0,2) || null });
+            }} style={{ background:"none", border:"none", padding:0, cursor:"pointer", color:t.text2, fontSize:13 }}>
+              {note.icon || "📝"} <span style={{ color:t.text3, fontSize:11 }}>změnit</span>
+            </button>
+          </PRow>
+          <PRow t={t} label="Štítky">
             <div style={{ display:"flex", flexWrap:"wrap", gap:4 }}>
               {note.tags.map(tag=>(
                 <span key={tag} style={{ display:"inline-flex", alignItems:"center", gap:3, padding:"1px 6px", borderRadius:20, fontSize:11, fontWeight:600, background:t.accentBg, color:t.accent, border:`1px solid ${t.accent}30` }}>
@@ -629,65 +956,153 @@ function NotePropertiesPanel({ note, onClose, t, isMobile, onExportMD, projects,
                 </span>
               ))}
               <input
-                value={tagInput} onChange={e=>setTagInput(e.target.value)} onKeyDown={handleTagKey}
+                value={tagInput}
+                onChange={e=>setTagInput(e.target.value)}
+                onKeyDown={handleTagKey}
                 onBlur={()=>{ if(tagInput.trim()){addTag(tagInput);setTagInput("");} }}
                 placeholder={note.tags.length ? "+" : "Přidat…"}
                 style={{ background:"none", border:"none", color:t.text, fontSize:11, outline:"none", width:60, minWidth:40 }}
               />
             </div>
           </PRow>
-          <div style={{ padding:"7px 0", fontSize:11, color:t.text3, borderBottom:"none" }}>
+          <div style={{ padding:"7px 0 0", fontSize:11, color:t.text3 }}>
             <div>Vytvořeno: {formatDateTime(note.createdAt)}</div>
-            <div>Upraveno: {formatDateTime(note.updatedAt)}</div>
+            <div style={{ marginTop:2 }}>Upraveno: {formatDateTime(note.updatedAt)}</div>
           </div>
+        </PropCard>
+
+        {/* Projects */}
+        <PropCard t={t} noPad>
+          <div style={{ padding:"12px 12px 8px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+            <div style={{ fontSize:12, fontWeight:750, color:t.text }}>Projekty</div>
+            <button onClick={()=>setShowAllProjects(v=>!v)} style={{ background:"none", border:"none", cursor:"pointer", padding:2, display:"flex", color:t.text3 }}>
+              <Icon name={showAllProjects?"chevron-up":"chevron-down"} size={13} color={t.text3} strokeWidth={2} />
+            </button>
+          </div>
+
+          {/* Primary project selector */}
+          <div style={{ padding:"0 12px 8px", borderBottom:`1px solid rgba(255,255,255,.055)` }}>
+            <div style={{ fontSize:11, color:t.text3, marginBottom:5, fontWeight:700 }}>Primární projekt</div>
+            <select
+              value={note.primaryProjectId || ""}
+              onChange={e => {
+                const v = e.target.value;
+                updateNote(note.id, { primaryProjectId: v || null, primaryTaskId: v ? null : note.primaryTaskId });
+              }}
+              style={{ width:"100%", background:t.input, border:`1px solid ${t.border}`, borderRadius:7, color:t.text2, fontSize:12, padding:"5px 8px", outline:"none", cursor:"pointer" }}
+            >
+              <option value="">— Bez projektu</option>
+              {projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </div>
+
+          {/* All projects as toggleable */}
+          {showAllProjects && (
+            <div style={{ padding:"8px 12px 12px" }}>
+              <div style={{ fontSize:11, color:t.text3, marginBottom:6, fontWeight:700 }}>Další propojené projekty</div>
+              <div style={{ display:"flex", flexDirection:"column", gap:4, maxHeight:200, overflowY:"auto" }}>
+                {projects.length === 0 && <div style={{ fontSize:11, color:t.text3, fontStyle:"italic" }}>Žádné projekty</div>}
+                {projects.map(p => {
+                  const isPrimary = p.id === note.primaryProjectId;
+                  const isExtra   = (note.extraProjectIds || []).includes(p.id);
+                  const col = projectColor(p.id);
+                  return (
+                    <button key={p.id}
+                      onClick={() => {
+                        if (isPrimary) return;
+                        toggleExtraProject(p.id);
+                      }}
+                      style={{
+                        display:"flex", alignItems:"center", gap:8, padding:"6px 9px", borderRadius:8,
+                        border:`1px solid ${isPrimary ? col+"70" : isExtra ? col+"50" : t.border}`,
+                        background: isPrimary ? col+"20" : isExtra ? col+"12" : "transparent",
+                        color: isPrimary || isExtra ? col : t.text2,
+                        fontSize:12, cursor:isPrimary?"default":"pointer", textAlign:"left",
+                        opacity: isPrimary ? 1 : 1,
+                      }}
+                    >
+                      <div style={{ width:7, height:7, borderRadius:"50%", background:col, flexShrink:0 }} />
+                      <span style={{ flex:1 }}>{p.name}</span>
+                      {isPrimary && <span style={{ fontSize:10, color:col, fontWeight:700 }}>primární</span>}
+                      {isExtra   && <Icon name="check" size={10} color={col} strokeWidth={2.5} />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </PropCard>
+
+        {/* Tasks */}
+        <PropCard t={t} noPad>
+          <div style={{ padding:"12px 12px 8px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+            <div style={{ fontSize:12, fontWeight:750, color:t.text }}>Úkoly</div>
+            <button onClick={()=>setShowAllTasks(v=>!v)} style={{ background:"none", border:"none", cursor:"pointer", padding:2, display:"flex", color:t.text3 }}>
+              <Icon name={showAllTasks?"chevron-up":"chevron-down"} size={13} color={t.text3} strokeWidth={2} />
+            </button>
+          </div>
+
+          {/* Primary task selector */}
+          <div style={{ padding:"0 12px 8px", borderBottom:`1px solid rgba(255,255,255,.055)` }}>
+            <div style={{ fontSize:11, color:t.text3, marginBottom:5, fontWeight:700 }}>Primární úkol</div>
+            <select
+              value={note.primaryTaskId || ""}
+              onChange={e => {
+                const v = e.target.value;
+                updateNote(note.id, { primaryTaskId: v || null });
+              }}
+              style={{ width:"100%", background:t.input, border:`1px solid ${t.border}`, borderRadius:7, color:t.text2, fontSize:12, padding:"5px 8px", outline:"none", cursor:"pointer" }}
+            >
+              <option value="">— Bez úkolu</option>
+              {tasks.map(tk=><option key={tk.id} value={tk.id}>{tk.title||"Bez názvu"}</option>)}
+            </select>
+          </div>
+
+          {/* All tasks toggleable */}
+          {showAllTasks && (
+            <div style={{ padding:"8px 12px 12px" }}>
+              <div style={{ fontSize:11, color:t.text3, marginBottom:6, fontWeight:700 }}>Další propojené úkoly</div>
+              <input
+                value={taskSearch}
+                onChange={e=>setTaskSearch(e.target.value)}
+                placeholder="Hledat úkol…"
+                style={{ width:"100%", padding:"5px 8px", borderRadius:7, border:`1px solid ${t.border}`, background:t.input, color:t.text, fontSize:11, outline:"none", boxSizing:"border-box", marginBottom:6 }}
+              />
+              <div style={{ display:"flex", flexDirection:"column", gap:3, maxHeight:180, overflowY:"auto" }}>
+                {filteredTasks.length === 0 && <div style={{ fontSize:11, color:t.text3, fontStyle:"italic" }}>Žádné úkoly</div>}
+                {filteredTasks.map(tk => {
+                  const isPrimary = tk.id === note.primaryTaskId;
+                  const isExtra   = (note.extraTaskIds || []).includes(tk.id);
+                  return (
+                    <button key={tk.id}
+                      onClick={() => { if (!isPrimary) toggleExtraTask(tk.id); }}
+                      style={{
+                        display:"flex", alignItems:"center", gap:8, padding:"5px 9px", borderRadius:8,
+                        border:`1px solid ${isPrimary||isExtra ? t.accent+"50" : t.border}`,
+                        background: isPrimary||isExtra ? t.accentBg : "transparent",
+                        color: isPrimary||isExtra ? t.accent : t.text2,
+                        fontSize:12, cursor:isPrimary?"default":"pointer", textAlign:"left",
+                      }}
+                    >
+                      <Icon name="check-square" size={11} color={isPrimary||isExtra ? t.accent : t.text3} strokeWidth={2} />
+                      <span style={{ flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{tk.title || "Bez názvu"}</span>
+                      {isPrimary && <span style={{ fontSize:10, color:t.accent, fontWeight:700 }}>primární</span>}
+                      {isExtra   && <Icon name="check" size={10} color={t.accent} strokeWidth={2.5} />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </PropCard>
 
         {/* Quick actions */}
-        <PropCard title="Rychlé akce">
+        <PropCard t={t} title="Rychlé akce">
           <div style={{ display:"grid", gap:6 }}>
-            <MiniItem left={<span><PinIcon size={11} filled={note.pinned} color="#f59e0b" /> {note.pinned ? "Odepnout poznámku" : "Připnout poznámku"}</span>} right="⌥P" onClick={()=>updateNote(note.id,{pinned:!note.pinned})} />
-            <MiniItem left="🧠 Vytáhnout úkoly z textu" right="AI" onClick={runAIExtract} />
-            <MiniItem left={<span>🗄️ {note.archived ? "Obnovit z archivu" : "Archivovat poznámku"}</span>} right="" onClick={()=>updateNote(note.id,{archived:!note.archived})} />
-            <MiniItem left="📤 Export jako .md" right=".md" onClick={onExportMD} />
-          </div>
-        </PropCard>
-
-        {/* Related items */}
-        {(allLinkedProjects.length > 0 || allLinkedTasks.length > 0) && (
-          <PropCard title="Související">
-            <div style={{ display:"grid", gap:6 }}>
-              {allLinkedProjects.map(p=>{
-                const col = projectColor(p.id);
-                return <MiniItem key={p.id} left={<span style={{ display:"flex", alignItems:"center", gap:6 }}><div style={{ width:8,height:8,borderRadius:"50%",background:col }}/>{p.name}</span>} right="projekt" />;
-              })}
-              {allLinkedTasks.map(tk=>(
-                <MiniItem key={tk.id} left={<span style={{ display:"flex", alignItems:"center", gap:6 }}><Icon name="check-square" size={11} color={t.accent} strokeWidth={2}/>{tk.title||"Bez názvu"}</span>} right="úkol" />
-              ))}
-            </div>
-          </PropCard>
-        )}
-
-        {/* Extra connections */}
-        <PropCard title="Přidat propojení" noPad>
-          <div style={{ padding:"0 12px 12px" }}>
-            <div style={{ fontSize:11, color:t.text3, marginBottom:8, marginTop:8 }}>Další projekty</div>
-            <div style={{ display:"flex", flexDirection:"column", gap:3, maxHeight:120, overflowY:"auto" }}>
-              {projects.filter(p=>p.id!==note.primaryProjectId).map(p=>{
-                const linked = (note.extraProjectIds||[]).includes(p.id);
-                const col = projectColor(p.id);
-                return (
-                  <button key={p.id} onClick={()=>updateNote(note.id,{extraProjectIds:linked?(note.extraProjectIds||[]).filter(id=>id!==p.id):[...(note.extraProjectIds||[]),p.id]})} style={{
-                    display:"flex", alignItems:"center", gap:7, padding:"5px 8px", borderRadius:7,
-                    border:`1px solid ${linked?col+"50":t.border}`, background:linked?col+"12":"transparent",
-                    color:linked?col:t.text2, fontSize:12, cursor:"pointer", textAlign:"left",
-                  }}>
-                    <div style={{ width:7,height:7,borderRadius:"50%",background:col,flexShrink:0 }}/>
-                    {p.name}
-                    {linked && <Icon name="check" size={10} color={col} strokeWidth={2.5} style={{ marginLeft:"auto" }}/>}
-                  </button>
-                );
-              })}
-            </div>
+            <MiniItem t={t} left={<><PinIcon size={11} filled={note.pinned} color="#f59e0b" /> {note.pinned ? "Odepnout poznámku" : "Připnout poznámku"}</>} right="⌥P" onClick={()=>updateNote(note.id,{pinned:!note.pinned})} />
+            <MiniItem t={t} left="🧠 Vytáhnout úkoly z textu" right="AI" onClick={runAIExtract} />
+            <MiniItem t={t} left={<>{note.archived ? "🗄️ Obnovit z archivu" : "🗄️ Archivovat poznámku"}</>} right="" onClick={()=>updateNote(note.id,{archived:!note.archived})} />
+            <MiniItem t={t} left="📤 Export jako .md" right=".md" onClick={onExportMD} />
           </div>
         </PropCard>
 
@@ -702,9 +1117,7 @@ function noteAccentColor(note, projects) {
     const proj = projects.find(p => p.id === note.primaryProjectId);
     if (proj) return projectColor(proj.id);
   }
-  const sc = NOTE_STATUSES[note.status]?.color;
-  if (sc) return sc;
-  return "#64748b";
+  return NOTE_STATUSES[note.status]?.color ?? "#64748b";
 }
 
 /* ─── NotesSidebar ──────────────────────────── */
@@ -757,7 +1170,6 @@ function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects }) {
 
   return (
     <div style={{ display:"flex", flexDirection:"column", height:"100%", background:t.bg2 }}>
-      {/* Header */}
       <div style={{ padding:"16px 14px 10px", borderBottom:`1px solid ${t.border}`, flexShrink:0 }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
           <div style={{ display:"flex", alignItems:"center", gap:7 }}>
@@ -785,7 +1197,6 @@ function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects }) {
         </div>
       </div>
 
-      {/* Filter tabs */}
       <div style={{ display:"flex", alignItems:"center", gap:4, padding:"6px 10px", overflowX:"auto", borderBottom:`1px solid ${t.border}`, flexShrink:0 }}>
         {filterTabs.map(tab => {
           const isActive = filter === tab.k;
@@ -814,7 +1225,6 @@ function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects }) {
         </select>
       </div>
 
-      {/* Note list */}
       <div style={{ flex:1, overflow:"auto", padding:"6px 8px 8px" }}>
         {sorted.length === 0 && (
           <div style={{ textAlign:"center", padding:"40px 16px", color:t.text3 }}>
@@ -842,12 +1252,7 @@ function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects }) {
             {group.items.map(n => {
               const accentCol = noteAccentColor(n, projects);
               const isActive  = n.id === selId;
-              const preview   = n.content
-                .replace(/<[^>]+>/g, " ")
-                .replace(/#{1,3} /g,"")
-                .replace(/\*\*/g,"").replace(/\*/g,"")
-                .trim()
-                .slice(0, 120);
+              const preview   = n.content.replace(/<[^>]+>/g," ").replace(/#{1,3} /g,"").replace(/\*\*/g,"").replace(/\*/g,"").trim().slice(0,120);
 
               return (
                 <button key={n.id} onClick={()=>onSelect(n.id)} style={{
@@ -861,9 +1266,7 @@ function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects }) {
                   onMouseEnter={e=>{ if(!isActive) e.currentTarget.style.background="rgba(255,255,255,.04)"; }}
                   onMouseLeave={e=>{ if(!isActive) e.currentTarget.style.background="transparent"; }}
                 >
-                  {/* Accent bar */}
                   <div style={{ position:"absolute", left:0, top:11, bottom:11, width:3, borderRadius:4, background:accentCol, opacity:.95 }} />
-
                   <div style={{ display:"flex", justifyContent:"space-between", gap:8, alignItems:"flex-start", marginBottom:4 }}>
                     <div style={{ display:"flex", alignItems:"center", gap:5, minWidth:0 }}>
                       {n.icon && <span style={{ fontSize:13, flexShrink:0 }}>{n.icon}</span>}
@@ -874,13 +1277,11 @@ function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects }) {
                     </div>
                     <span style={{ fontSize:11, color:t.text3, flexShrink:0, whiteSpace:"nowrap" }}>{relTime(n.updatedAt)}</span>
                   </div>
-
                   {preview && (
                     <div style={{ fontSize:12, color:t.text3, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden", lineHeight:1.45, marginBottom:n.tags?.length ? 6 : 0 }}>
                       {preview}
                     </div>
                   )}
-
                   {n.tags?.length > 0 && (
                     <div style={{ display:"flex", gap:4, flexWrap:"nowrap", overflow:"hidden" }}>
                       {n.tags.slice(0,3).map(tag=>(
@@ -914,7 +1315,7 @@ export default function NotesPage() {
   const [selId,          setSelId]          = useState(null);
   const [mobileView,     setMobileView]     = useState("list");
   const [templatePicker, setTemplatePicker] = useState(false);
-  const [showProps,      setShowProps]      = useState(true); // default open
+  const [showProps,      setShowProps]      = useState(true);
 
   useEffect(() => { injectNoteCSS(dk); }, [dk]);
 
@@ -977,28 +1378,21 @@ export default function NotesPage() {
         <TemplatePickerModal onSelect={handleCreateFromTemplate} onClose={()=>setTemplatePicker(false)} />
       )}
 
-      {/* LEFT: notes list */}
       {showList && (
         <div style={{ width:isMobile?"100%":300, minWidth:isMobile?"auto":280, borderRight:isMobile?"none":`1px solid ${t.border}`, overflow:"hidden", flex:isMobile?1:"none" }}>
           <NotesSidebar
-            notes={notes}
-            selId={selId}
+            notes={notes} selId={selId}
             onSelect={id=>{ setSelId(id); if(isMobile) setMobileView("detail"); }}
-            onCreate={handleCreate}
-            t={t}
-            projects={projects}
+            onCreate={handleCreate} t={t} projects={projects}
           />
         </div>
       )}
 
-      {/* CENTER + RIGHT */}
       {showDetail && (
         <div style={{ flex:1, display:"flex", overflow:"hidden", minWidth:0 }}>
-
-          {/* Mobile header */}
           {isMobile && (
             <div style={{ position:"absolute", top:0, left:0, right:0, display:"flex", alignItems:"center", gap:8, padding:"12px 16px", borderBottom:`1px solid ${t.border}`, background:t.bg2, zIndex:50 }}>
-              <button onClick={()=>{ setMobileView("list"); }} style={{ background:"none", border:"none", color:t.accent, display:"flex", alignItems:"center", gap:4, cursor:"pointer", fontSize:13, fontWeight:600 }}>
+              <button onClick={()=>setMobileView("list")} style={{ background:"none", border:"none", color:t.accent, display:"flex", alignItems:"center", gap:4, cursor:"pointer", fontSize:13, fontWeight:600 }}>
                 <Icon name="chevron-left" size={16} color={t.accent} strokeWidth={2.5} />
                 Zpět
               </button>
@@ -1008,23 +1402,19 @@ export default function NotesPage() {
             </div>
           )}
 
-          {/* Editor */}
           <div style={{ flex:1, display:"flex", flexDirection:"column", overflow:"hidden", minWidth:0, background:t.bg }}>
             {selNote ? (
               <NoteEditor
                 key={selNote.id}
                 note={selNote}
                 onSave={upd => updateNote(selNote.id, upd)}
-                t={t}
-                isMobile={isMobile}
+                t={t} isMobile={isMobile}
                 showProps={showProps}
                 onToggleProps={()=>setShowProps(v=>!v)}
                 onDelete={()=>handleDelete(selNote.id)}
                 onTogglePin={()=>updateNote(selNote.id,{pinned:!selNote.pinned})}
-                projects={projects}
-                tasks={tasks}
-                addTask={addTask}
-                activeWorkspaceId={activeWorkspaceId}
+                projects={projects} tasks={tasks}
+                addTask={addTask} activeWorkspaceId={activeWorkspaceId}
               />
             ) : (
               <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", color:t.text3, gap:12 }}>
@@ -1038,31 +1428,20 @@ export default function NotesPage() {
             )}
           </div>
 
-          {/* Properties panel */}
           {showProps && selNote && !isMobile && (
             <NotePropertiesPanel
-              note={selNote}
-              onClose={()=>setShowProps(false)}
-              t={t}
-              isMobile={false}
-              onExportMD={handleExportMD}
-              projects={projects}
-              tasks={tasks}
-              addTask={addTask}
-              activeWorkspaceId={activeWorkspaceId}
+              note={selNote} onClose={()=>setShowProps(false)}
+              t={t} isMobile={false} onExportMD={handleExportMD}
+              projects={projects} tasks={tasks}
+              addTask={addTask} activeWorkspaceId={activeWorkspaceId}
             />
           )}
           {showProps && selNote && isMobile && (
             <NotePropertiesPanel
-              note={selNote}
-              onClose={()=>setShowProps(false)}
-              t={t}
-              isMobile
-              onExportMD={handleExportMD}
-              projects={projects}
-              tasks={tasks}
-              addTask={addTask}
-              activeWorkspaceId={activeWorkspaceId}
+              note={selNote} onClose={()=>setShowProps(false)}
+              t={t} isMobile onExportMD={handleExportMD}
+              projects={projects} tasks={tasks}
+              addTask={addTask} activeWorkspaceId={activeWorkspaceId}
             />
           )}
         </div>
