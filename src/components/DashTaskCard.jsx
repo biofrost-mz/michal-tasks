@@ -4,6 +4,7 @@ import Icon from './Icon.jsx'
 import { STATUSES, STATUS_KEYS, STATUS_SHORT, PRIORITIES } from '../constants.js'
 import { startOfToday, projectColor } from '../utils.js'
 import { parseYMD } from '../utils.js'
+import { formatDate } from '../locale.js'
 
 export default function DashTaskCard({ task, sectionColor }) {
   const { t, projects, tags, updateTask, setTaskDetail, isMobile } = useApp();
@@ -17,6 +18,10 @@ export default function DashTaskCard({ task, sectionColor }) {
   const due = parseYMD(task.dueDate);
   const isOverdue = due && task.status !== "done" && due < today;
   const projColor = project ? projectColor(project.id) : null;
+
+  const subtasks = task.subtasks || [];
+  const subDone = subtasks.filter((s) => s.done).length;
+  const hasSubs = subtasks.length > 0;
 
   return (
     <div
@@ -97,7 +102,7 @@ export default function DashTaskCard({ task, sectionColor }) {
         <div style={{ display: "flex", gap: 5, flexWrap: "wrap", alignItems: "center", marginLeft: 30, minWidth: 0, overflow: "hidden" }}>
           {!isMobile && project && (
             <span style={{
-              fontSize: 11.5, fontWeight: 700, padding: "3px 9px", borderRadius: 20,
+              fontSize: 12, fontWeight: 700, padding: "3px 9px", borderRadius: 20,
               border: `1.5px solid ${projColor}55`, background: projColor + "12", color: projColor,
               letterSpacing: ".01em", display: "inline-flex", alignItems: "center", gap: 4,
             }}>
@@ -106,7 +111,7 @@ export default function DashTaskCard({ task, sectionColor }) {
             </span>
           )}
           {pr && (
-            <span style={{ fontSize: 11.5, fontWeight: 600, padding: "3px 8px", borderRadius: 4, background: pr.bg, color: pr.color, display: "inline-flex", alignItems: "center", gap: 3 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, padding: "3px 8px", borderRadius: 4, background: pr.bg, color: pr.color, display: "inline-flex", alignItems: "center", gap: 3 }}>
               <Icon name={pr.icon} size={9} color={pr.color} strokeWidth={2.5} />
               {pr.label}
             </span>
@@ -115,23 +120,29 @@ export default function DashTaskCard({ task, sectionColor }) {
             <span style={{ width: 1, height: 12, background: t.border, alignSelf: "center", flexShrink: 0 }} />
           )}
           {!isMobile && taskTags.slice(0, 2).map((tg) => (
-            <span key={tg.id} style={{ fontSize: 11.5, fontWeight: 600, padding: "3px 8px", borderRadius: 4, background: tg.color + "18", color: tg.color }}>
+            <span key={tg.id} style={{ fontSize: 12, fontWeight: 600, padding: "3px 8px", borderRadius: 4, background: tg.color + "18", color: tg.color }}>
               # {tg.name}
             </span>
           ))}
           {!isMobile && taskTags.length > 2 && (
-            <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 7px", borderRadius: 4, background: t.input, color: t.text3 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, padding: "3px 7px", borderRadius: 4, background: t.input, color: t.text3 }}>
               +{taskTags.length - 2}
             </span>
           )}
           {task.dueDate && (
             <span className="mono" style={{
-              fontSize: 11.5, fontWeight: isOverdue ? 700 : 500,
+              fontSize: 12, fontWeight: isOverdue ? 700 : 500,
               color: isOverdue ? "#ef4444" : t.text2,
               background: isOverdue ? "#ef444412" : t.input,
               padding: "3px 8px", borderRadius: 4,
             }}>
-              {parseYMD(task.dueDate)?.toLocaleDateString("cs-CZ", { day: "numeric", month: "short" }) || task.dueDate}
+              {formatDate(task.dueDate, { day: "numeric", month: "short" }) || task.dueDate}
+            </span>
+          )}
+          {hasSubs && (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: subDone === subtasks.length ? "#22c55e" : t.text3 }}>
+              <Icon name="check-square" size={11} color={subDone === subtasks.length ? "#22c55e" : t.text3} strokeWidth={2} />
+              {subDone}/{subtasks.length}
             </span>
           )}
         </div>
@@ -150,7 +161,7 @@ export default function DashTaskCard({ task, sectionColor }) {
             style={{
               display: "inline-flex", alignItems: "center", gap: 4,
               padding: "3px 10px", height: 26, borderRadius: 6,
-              fontSize: 11, fontWeight: 600,
+              fontSize: 12, fontWeight: 600,
               border: `1px solid ${t.border}`,
               background: "transparent",
               color: STATUSES[k].color,

@@ -1,10 +1,176 @@
 import React, { useState } from 'react'
 import { useApp } from '../context/AppContext.jsx'
+import { useConfirm } from '../components/Confirm.jsx'
 import Icon from '../components/Icon.jsx'
 import QuickAdd from '../components/QuickAdd.jsx'
 import DashTaskCard from '../components/DashTaskCard.jsx'
-import { STATUSES, STATUS_KEYS, STATUS_SHORT, PRIORITIES } from '../constants.js'
+import { STATUSES, STATUS_KEYS, PRIORITIES } from '../constants.js'
 import { startOfToday, parseYMD } from '../utils.js'
+import { compareText, formatDate } from '../locale.js'
+import {
+  DndContext, closestCenter, PointerSensor, useSensor, useSensors,
+} from '@dnd-kit/core'
+import {
+  SortableContext, verticalListSortingStrategy, useSortable, arrayMove,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+
+function SortableTaskCard({ task, selected, onToggleSelect, bulkMode }) {
+  const { t } = useApp();
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
+  const [hovered, setHovered] = React.useState(false);
+  const showCheckbox = bulkMode || hovered;
+
+  return (
+    <div
+      ref={setNodeRef}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        display: "flex", alignItems: "stretch", gap: 0,
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.4 : 1,
+      }}
+    >
+      {/* Bulk checkbox */}
+      {showCheckbox && (
+        <div
+          onClick={(e) => { e.stopPropagation(); onToggleSelect(task.id); }}
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "center",
+            width: 36, flexShrink: 0, cursor: "pointer",
+          }}
+        >
+          <div style={{
+            width: 18, height: 18, borderRadius: 5, border: `2px solid ${selected ? t.accent : t.border}`,
+            background: selected ? t.accent : "transparent",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            transition: "all .12s",
+          }}>
+            {selected && <Icon name="check" size={11} color="#fff" strokeWidth={3} />}
+          </div>
+        </div>
+      )}
+
+      {/* Drag handle */}
+      <div
+        {...attributes}
+        {...listeners}
+        style={{
+          display: "flex", alignItems: "center", justifyContent: "center",
+          width: 20, flexShrink: 0, cursor: "grab",
+          color: t.text3, opacity: isDragging ? 1 : 0.25,
+          transition: "opacity .15s",
+          userSelect: "none",
+        }}
+        title="Přetáhnout"
+      >
+        ⠿
+      </div>
+
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <DashTaskCard task={task} />
+      </div>
+    </div>
+  );
+}
+
+function BulkActionBar({ selectedIds, tasks, projects, onClear }) {
+  const { t, updateTask, deleteTask } = useApp();
+  const confirm = useConfirm();
+  const count = selectedIds.size;
+  if (count === 0) return null;
+
+  const applyStatus = (status) => {
+    selectedIds.forEach((id) => updateTask(id, { status }));
+    onClear();
+  };
+  const applyPriority = (priority) => {
+    selectedIds.forEach((id) => updateTask(id, { priority }));
+    onClear();
+  };
+  const applyProject = (projectId) => {
+    selectedIds.forEach((id) => updateTask(id, { projectId: projectId || null }));
+    onClear();
+  };
+  const handleDelete = async () => {
+    if (!await confirm(`Smazat ${count} úkolů?`)) return;
+    selectedIds.forEach((id) => deleteTask(id));
+    onClear();
+  };
+
+  return (
+    <div style={{
+      position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
+      zIndex: 300, background: t.bg2, border: `1px solid ${t.border}`,
+      borderRadius: 14, padding: "10px 16px",
+      boxShadow: "0 8px 32px rgba(0,0,0,0.25)",
+      display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
+      minWidth: 320, maxWidth: "calc(100vw - 48px)",
+    }} className="pop">
+      <span style={{ fontSize: 13, fontWeight: 700, color: t.text, flexShrink: 0 }}>
+        {count} {count === 1 ? "úkol" : count < 5 ? "úkoly" : "úkolů"}
+      </span>
+
+      <div style={{ width: 1, height: 20, background: t.border }} />
+
+      {/* Status */}
+      <select
+        onChange={(e) => { if (e.target.value) applyStatus(e.target.value); }}
+        defaultValue=""
+        style={{ padding: "5px 8px", borderRadius: 7, border: `1px solid ${t.border}`, background: t.input, color: t.text, fontSize: 12, outline: "none", cursor: "pointer" }}
+      >
+        <option value="" disabled>Status…</option>
+        {Object.entries(STATUSES).map(([k, v]) => (
+          <option key={k} value={k}>{v.label}</option>
+        ))}
+      </select>
+
+      {/* Priority */}
+      <select
+        onChange={(e) => { if (e.target.value) applyPriority(e.target.value === "none" ? null : e.target.value); }}
+        defaultValue=""
+        style={{ padding: "5px 8px", borderRadius: 7, border: `1px solid ${t.border}`, background: t.input, color: t.text, fontSize: 12, outline: "none", cursor: "pointer" }}
+      >
+        <option value="" disabled>Priorita…</option>
+        {Object.entries(PRIORITIES).map(([k, v]) => (
+          <option key={k} value={k}>{v.label}</option>
+        ))}
+        <option value="none">— Žádná</option>
+      </select>
+
+      {/* Project */}
+      <select
+        onChange={(e) => { if (e.target.value !== "__none__") applyProject(e.target.value === "inbox" ? null : e.target.value); }}
+        defaultValue=""
+        style={{ padding: "5px 8px", borderRadius: 7, border: `1px solid ${t.border}`, background: t.input, color: t.text, fontSize: 12, outline: "none", cursor: "pointer" }}
+      >
+        <option value="" disabled>Projekt…</option>
+        <option value="inbox">Inbox</option>
+        {projects.map((p) => (
+          <option key={p.id} value={p.id}>{p.name}</option>
+        ))}
+      </select>
+
+      <div style={{ width: 1, height: 20, background: t.border }} />
+
+      <button
+        onClick={handleDelete}
+        style={{ padding: "5px 10px", borderRadius: 7, border: `1px solid #ef444440`, background: "#ef444412", color: "#ef4444", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+      >
+        Smazat
+      </button>
+
+      <button
+        onClick={onClear}
+        style={{ padding: "5px 8px", borderRadius: 7, border: `1px solid ${t.border}`, background: "transparent", color: t.text3, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center" }}
+      >
+        <Icon name="x" size={13} color={t.text3} strokeWidth={2} />
+      </button>
+    </div>
+  );
+}
 
 function ViewToggle({ view, setView, modes }) {
   const { t } = useApp();
@@ -21,7 +187,7 @@ function ViewToggle({ view, setView, modes }) {
           style={{
             padding: "5px 12px",
             borderRadius: 6,
-            fontSize: 11.5,
+            fontSize: 12,
             fontWeight: 600,
             border: "none",
             background: view === v.k ? t.card : "transparent",
@@ -75,7 +241,7 @@ function ListView({ taskList, showProject = true }) {
 
   const sorted = [...taskList].sort((a, b) => {
     let cmp = 0;
-    if (sortCol === "title") cmp = (a.title || "").localeCompare(b.title || "", "cs");
+    if (sortCol === "title") cmp = compareText(a.title || "", b.title || "");
     else if (sortCol === "status") cmp = STATUS_KEYS.indexOf(a.status) - STATUS_KEYS.indexOf(b.status);
     else if (sortCol === "priority") {
       const o = { high: 0, medium: 1, low: 2 };
@@ -90,7 +256,7 @@ function ListView({ taskList, showProject = true }) {
     } else if (sortCol === "project") {
       const pa = projects.find((p) => p.id === a.projectId)?.name || "zzz";
       const pb = projects.find((p) => p.id === b.projectId)?.name || "zzz";
-      cmp = pa.localeCompare(pb, "cs");
+      cmp = compareText(pa, pb);
     } else if (sortCol === "created") cmp = a.createdAt - b.createdAt;
 
     return sortDir === "asc" ? cmp : -cmp;
@@ -125,7 +291,7 @@ function ListView({ taskList, showProject = true }) {
                 style={{
                   width: col.width,
                   padding: "10px 10px",
-                  fontSize: 11.5,
+                  fontSize: 12,
                   fontWeight: 700,
                   textTransform: "uppercase",
                   letterSpacing: ".06em",
@@ -230,7 +396,7 @@ function ListView({ taskList, showProject = true }) {
                 <td style={{ padding: "10px 10px" }}>
                   <span
                     style={{
-                      fontSize: 11.5,
+                      fontSize: 12,
                       fontWeight: 600,
                       color: st.color,
                       background: st.bg,
@@ -250,7 +416,7 @@ function ListView({ taskList, showProject = true }) {
                   {pr ? (
                     <span
                       style={{
-                        fontSize: 11.5,
+                        fontSize: 12,
                         fontWeight: 700,
                         color: pr.color,
                         background: pr.bg,
@@ -264,18 +430,18 @@ function ListView({ taskList, showProject = true }) {
                       <Icon name={pr.icon} size={10} color={pr.color} strokeWidth={2.5} />{pr.label}
                     </span>
                   ) : (
-                    <span style={{ fontSize: 11.5, color: t.text3 }}>—</span>
+                    <span style={{ fontSize: 12, color: t.text3 }}>—</span>
                   )}
                 </td>
 
                 {showProject && (
                   <td style={{ padding: "10px 10px" }}>
                     {proj ? (
-                      <span style={{ fontSize: 11.5, color: t.accent, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>
+                      <span style={{ fontSize: 12, color: t.accent, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>
                         {proj.name}
                       </span>
                     ) : (
-                      <span style={{ fontSize: 11.5, color: t.text3, fontStyle: "italic" }}>Inbox</span>
+                      <span style={{ fontSize: 12, color: t.text3, fontStyle: "italic" }}>Inbox</span>
                     )}
                   </td>
                 )}
@@ -285,7 +451,7 @@ function ListView({ taskList, showProject = true }) {
                     <span
                       className="mono"
                       style={{
-                        fontSize: 11.5,
+                        fontSize: 12,
                         fontWeight: isOverdue ? 700 : 400,
                         color: isOverdue ? "#ef4444" : t.text2,
                         background: isOverdue ? "#ef444412" : "transparent",
@@ -293,17 +459,17 @@ function ListView({ taskList, showProject = true }) {
                         borderRadius: 4,
                       }}
                     >
-                      {parseYMD(task.dueDate)?.toLocaleDateString("cs-CZ", { day: "numeric", month: "numeric" }) || task.dueDate}
+                      {formatDate(task.dueDate) || task.dueDate}
                     </span>
                   ) : (
-                    <span style={{ fontSize: 11.5, color: t.text3 }}>—</span>
+                    <span style={{ fontSize: 12, color: t.text3 }}>—</span>
                   )}
                 </td>
 
                 <td style={{ padding: "10px 10px" }}>
                   <div style={{ display: "flex", gap: 3, flexWrap: "wrap" }}>
                     {taskTags.map((tg) => (
-                      <span key={tg.id} style={{ fontSize: 11, fontWeight: 600, padding: "2px 6px", borderRadius: 4, background: tg.color + "18", color: tg.color, whiteSpace: "nowrap" }}>
+                      <span key={tg.id} style={{ fontSize: 12, fontWeight: 600, padding: "2px 6px", borderRadius: 4, background: tg.color + "18", color: tg.color, whiteSpace: "nowrap" }}>
                         {tg.name}
                       </span>
                     ))}
@@ -311,8 +477,8 @@ function ListView({ taskList, showProject = true }) {
                 </td>
 
                 <td style={{ padding: "10px 10px" }}>
-                  <span className="mono" style={{ fontSize: 11.5, color: t.text3 }}>
-                    {new Date(task.createdAt).toLocaleDateString("cs-CZ", { day: "numeric", month: "numeric" })}
+                  <span className="mono" style={{ fontSize: 12, color: t.text3 }}>
+                    {formatDate(task.createdAt)}
                   </span>
                 </td>
               </tr>
@@ -329,15 +495,32 @@ function ListView({ taskList, showProject = true }) {
 export { ViewToggle, FilterBtn, ListView };
 
 export default function TasksPage() {
-  const { t, tasks, projects, search, isMobile } = useApp();
+  const { t, tasks, projects, tags, search, isMobile, reorderTasks } = useApp();
   const [statusFilter, setStatusFilter] = useState("all");
   const [projectFilter, setProjectFilter] = useState("all");
+  const [priorityFilter, setPriorityFilter] = useState("all");
   const [view, setView] = useState("list");
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+
+  const toggleSelect = (id) => setSelectedIds((prev) => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
+  const bulkMode = selectedIds.size > 0;
 
   const matchesSearch = (task) => {
     if (!search) return true;
     const s = search.toLowerCase();
-    return (task.title || "").toLowerCase().includes(s) || (task.description || "").toLowerCase().includes(s);
+    if ((task.title || "").toLowerCase().includes(s)) return true;
+    if ((task.description || "").toLowerCase().includes(s)) return true;
+    // Also search by tag names
+    const taskTagNames = (task.tagIds || [])
+      .map((tid) => tags.find((tg) => tg.id === tid)?.name || "")
+      .join(" ")
+      .toLowerCase();
+    return taskTagNames.includes(s);
   };
 
   let filtered = tasks.filter(matchesSearch);
@@ -345,6 +528,10 @@ export default function TasksPage() {
   if (projectFilter !== "all") {
     if (projectFilter === "inbox") filtered = filtered.filter((x) => !x.projectId);
     else filtered = filtered.filter((x) => x.projectId === projectFilter);
+  }
+  if (priorityFilter !== "all") {
+    if (priorityFilter === "none") filtered = filtered.filter((x) => !x.priority);
+    else filtered = filtered.filter((x) => x.priority === priorityFilter);
   }
 
   return (
@@ -369,6 +556,14 @@ export default function TasksPage() {
           ))}
         </div>
 
+        <div style={{ display: "flex", gap: 3, flexShrink: 0 }}>
+          <FilterBtn label="Priorita" active={priorityFilter === "all"} onClick={() => setPriorityFilter("all")} />
+          {Object.entries(PRIORITIES).map(([k, v]) => (
+            <FilterBtn key={k} label={v.label} active={priorityFilter === k} color={v.color} onClick={() => setPriorityFilter(k)} />
+          ))}
+          <FilterBtn label="—" active={priorityFilter === "none"} onClick={() => setPriorityFilter("none")} />
+        </div>
+
         <select
           value={projectFilter}
           onChange={(e) => setProjectFilter(e.target.value)}
@@ -388,19 +583,38 @@ export default function TasksPage() {
         </span>
       </div>
 
-      {filtered.length > 0 && (view === "list" && !isMobile) && <ListView taskList={filtered} showProject={true} />}
-      {isMobile && filtered.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          {filtered.map((task) => <DashTaskCard key={task.id} task={task} />)}
-        </div>
-      )}
-      {!isMobile && filtered.length > 0 && view !== "list" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-          {filtered.map((task) => (
-            <DashTaskCard key={task.id} task={task} />
-          ))}
-        </div>
-      )}
+      {/* Table list view (desktop) */}
+      {filtered.length > 0 && view === "list" && !isMobile && <ListView taskList={filtered} showProject={true} />}
+
+      {/* Card view — mobile or desktop cards — with drag-to-reorder + bulk */}
+      {filtered.length > 0 && (isMobile || view !== "list") && (() => {
+        const handleDragEnd = ({ active, over }) => {
+          if (!over || active.id === over.id) return;
+          const oldIdx = filtered.findIndex((t) => t.id === active.id);
+          const newIdx = filtered.findIndex((t) => t.id === over.id);
+          if (oldIdx === -1 || newIdx === -1) return;
+          reorderTasks(arrayMove(filtered, oldIdx, newIdx));
+        };
+        return (
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={filtered.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+              <div style={{ display: "flex", flexDirection: "column", gap: isMobile ? 6 : 5 }}>
+                {filtered.map((task) => (
+                  isMobile
+                    ? <DashTaskCard key={task.id} task={task} />
+                    : <SortableTaskCard
+                        key={task.id}
+                        task={task}
+                        selected={selectedIds.has(task.id)}
+                        onToggleSelect={toggleSelect}
+                        bulkMode={bulkMode}
+                      />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+        );
+      })()}
 
       {filtered.length === 0 && (
         <div style={{ textAlign: "center", padding: "60px 20px", color: t.text3, background: t.card, borderRadius: 14, border: `1px dashed ${t.border}` }}>
@@ -413,6 +627,20 @@ export default function TasksPage() {
           </div>
         </div>
       )}
+
+      {/* Bulk select hint */}
+      {!isMobile && view !== "list" && !bulkMode && filtered.length > 1 && (
+        <div style={{ textAlign: "center", marginTop: 12, fontSize: 12, color: t.text3, opacity: 0.5 }}>
+          Klikni na ☑ (hover nad úkolem) pro hromadné akce · Přetáhni ⠿ pro řazení
+        </div>
+      )}
+
+      <BulkActionBar
+        selectedIds={selectedIds}
+        tasks={tasks}
+        projects={projects}
+        onClear={() => setSelectedIds(new Set())}
+      />
     </div>
   );
 }

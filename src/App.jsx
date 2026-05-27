@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useApp, AppProvider } from "./context/AppContext.jsx";
-import { ToastProvider } from "./components/Toast.jsx";
+import { ToastProvider, useToast } from "./components/Toast.jsx";
 import { ConfirmProvider } from "./components/Confirm.jsx";
+import ErrorBoundary, { PageErrorBoundary } from "./components/ErrorBoundary.jsx";
 import AuthGate from "./components/AuthGate.jsx";
 import Sidebar from "./layout/Sidebar.jsx";
 import MobileNav from "./layout/MobileNav.jsx";
@@ -16,9 +17,26 @@ import TimelinePage from "./pages/TimelinePage.jsx";
 import TagsPage from "./pages/TagsPage.jsx";
 import WorkspaceSettingsPage from "./pages/WorkspaceSettingsPage.jsx";
 import UserProfilePage from "./pages/UserProfilePage.jsx";
+import QuickTodosPage from "./pages/QuickTodosPage.jsx";
+import { applyDocumentMetadata } from "./appMeta.js";
+
+function AppErrorReporter() {
+  const { errorQueue, clearErrors } = useApp();
+  const toast = useToast();
+  useEffect(() => {
+    if (!errorQueue.length) return;
+    errorQueue.forEach((msg) => toast(msg, "error"));
+    clearErrors();
+  }, [errorQueue]);
+  return null;
+}
 
 function AppShell() {
   const { t, dk, setDk, isMobile, page, taskDetail, cmdOpen, setCmdOpen } = useApp();
+
+  useEffect(() => {
+    applyDocumentMetadata(page);
+  }, [page]);
 
   return (
     <>
@@ -53,23 +71,36 @@ function AppShell() {
         .mobile-nav-bar{padding-bottom:env(safe-area-inset-bottom,0px)}
       `}</style>
 
+      <AppErrorReporter />
       <div style={{ display: "flex", width: "100%", height: "100vh", overflow: "hidden" }}>
         {!isMobile && <Sidebar toggleDk={() => setDk(!dk)} />}
         <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-        {!isMobile && <TopBar />}
-        <main style={{ flex: 1, minWidth: 0, width: isMobile ? "100%" : "auto", overflow: "auto", position: "relative", paddingBottom: isMobile ? 66 : 0 }}>
-          {page === "dashboard" && <DashboardPage />}
-          {page === "projects" && <ProjectsPage />}
-          {page === "project-detail" && <ProjectDetailPage />}
-          {page === "tasks" && <TasksPage />}
-          {page === "timeline" && <TimelinePage />}
-          {page === "tags" && <TagsPage />}
-          {page === "notes" && <NotesPage />}
-          {page === "workspace-settings" && <WorkspaceSettingsPage />}
-          {page === "user-profile" && <UserProfilePage />}
-        </main>
-        {taskDetail && <TaskDrawer />}
-        {cmdOpen && <CommandPalette onClose={() => setCmdOpen(false)} />}
+          {!isMobile && <TopBar />}
+          <main style={{ flex: 1, minWidth: 0, width: isMobile ? "100%" : "auto", overflow: "auto", position: "relative", paddingBottom: isMobile ? 66 : 0 }}>
+            {page === "dashboard"          && <PageErrorBoundary label="Přehled">         <DashboardPage />         </PageErrorBoundary>}
+            {page === "projects"           && <PageErrorBoundary label="Projekty">        <ProjectsPage />          </PageErrorBoundary>}
+            {page === "project-detail"     && <PageErrorBoundary label="Detail projektu"> <ProjectDetailPage />     </PageErrorBoundary>}
+            {page === "tasks"              && <PageErrorBoundary label="Úkoly">           <TasksPage />             </PageErrorBoundary>}
+            {page === "timeline"           && <PageErrorBoundary label="Plán">            <TimelinePage />          </PageErrorBoundary>}
+            {page === "tags"               && <PageErrorBoundary label="Tagy">            <TagsPage />              </PageErrorBoundary>}
+            {page === "notes"              && <PageErrorBoundary label="Poznámky">        <NotesPage />             </PageErrorBoundary>}
+            {page === "workspace-settings" && <PageErrorBoundary label="Nastavení">       <WorkspaceSettingsPage /> </PageErrorBoundary>}
+            {page === "user-profile"       && <PageErrorBoundary label="Profil">          <UserProfilePage />       </PageErrorBoundary>}
+            {page === "quick-todos"        && <PageErrorBoundary label="Rychlý seznam">   <QuickTodosPage />        </PageErrorBoundary>}
+          </main>
+
+          {/* TaskDrawer — vlastní boundary, chyba v draweru nerozhodí celou stránku */}
+          {taskDetail && (
+            <ErrorBoundary inline label="Task drawer">
+              <TaskDrawer />
+            </ErrorBoundary>
+          )}
+
+          {cmdOpen && (
+            <ErrorBoundary inline label="Command palette">
+              <CommandPalette onClose={() => setCmdOpen(false)} />
+            </ErrorBoundary>
+          )}
         </div>
         {isMobile && <MobileNav toggleDk={() => setDk(!dk)} />}
       </div>
@@ -79,14 +110,20 @@ function AppShell() {
 
 export default function MichalTasks() {
   return (
-    <AppProvider>
-      <ToastProvider>
-        <ConfirmProvider>
-          <AuthGate>
-            <AppShell />
-          </AuthGate>
-        </ConfirmProvider>
-      </ToastProvider>
-    </AppProvider>
+    // Vnější boundary zachytí chyby v AppProvider, AuthGate, atd.
+    <ErrorBoundary label="Aplikace">
+      <AppProvider>
+        <ToastProvider>
+          <ConfirmProvider>
+            <AuthGate>
+              {/* Vnitřní boundary zachytí chyby v samotném shellu */}
+              <ErrorBoundary>
+                <AppShell />
+              </ErrorBoundary>
+            </AuthGate>
+          </ConfirmProvider>
+        </ToastProvider>
+      </AppProvider>
+    </ErrorBoundary>
   );
 }

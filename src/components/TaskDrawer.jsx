@@ -5,7 +5,9 @@ import { useConfirm } from './Confirm.jsx'
 import Icon from './Icon.jsx'
 import AttachmentsMiniList from './AttachmentsMiniList.jsx'
 import NotesMiniList from './NotesMiniList.jsx'
+import AITaskAssist from './AITaskAssist.jsx'
 import { STATUSES, PRIORITIES } from '../constants.js'
+import { formatDate, formatDateTime } from '../locale.js'
 
 const PROJ_STATUS = {
   idea: { label: "Nápad", color: "#94a3b8" },
@@ -18,7 +20,7 @@ function Sec({ label, children }) {
   const { t } = useApp();
   return (
     <div style={{ marginBottom: 16 }}>
-      <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: t.text3, marginBottom: 7 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: t.text3, marginBottom: 7 }}>
         {label}
       </div>
       {children}
@@ -42,7 +44,7 @@ function AssigneeSelector({ currentAssigneeId, onChange }) {
       >
         {currentAssigneeId ? (
           <>
-            <div style={{ width: 20, height: 20, borderRadius: "50%", background: t.accent, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 10, fontWeight: 700, flexShrink: 0 }}>
+            <div style={{ width: 20, height: 20, borderRadius: "50%", background: t.accent, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
               {getInitials(currentMember)}
             </div>
             <span style={{ flex: 1, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{getLabel(currentMember)}</span>
@@ -68,17 +70,192 @@ function AssigneeSelector({ currentAssigneeId, onChange }) {
                 onClick={() => { onChange(m.userId); setOpen(false); }}
                 style={{ display: "flex", alignItems: "center", gap: 7, width: "100%", padding: "7px 9px", border: "none", background: m.userId === currentAssigneeId ? t.accentBg : "transparent", color: m.userId === currentAssigneeId ? t.accent : t.text, cursor: "pointer", fontSize: 12 }}
               >
-                <div style={{ width: 20, height: 20, borderRadius: "50%", background: m.userId === currentAssigneeId ? t.accent : t.border, display: "flex", alignItems: "center", justifyContent: "center", color: m.userId === currentAssigneeId ? "#fff" : t.text2, fontSize: 10, fontWeight: 700, flexShrink: 0 }}>
+                <div style={{ width: 20, height: 20, borderRadius: "50%", background: m.userId === currentAssigneeId ? t.accent : t.border, display: "flex", alignItems: "center", justifyContent: "center", color: m.userId === currentAssigneeId ? "#fff" : t.text2, fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
                   {getInitials(m)}
                 </div>
                 <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
                   <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{getLabel(m)}</div>
                 </div>
-                <span style={{ fontSize: 10, color: t.text3, flexShrink: 0 }}>{m.role}</span>
+                <span style={{ fontSize: 12, color: t.text3, flexShrink: 0 }}>{m.role}</span>
               </button>
             ))}
           </div>
         </>
+      )}
+    </div>
+  );
+}
+
+function SubtasksSection({ task, updateTask, t }) {
+  const [input, setInput] = useState("");
+  const [editingId, setEditingId] = useState(null);
+  const [editText, setEditText] = useState("");
+  const inputRef = React.useRef(null);
+
+  const subtasks = task.subtasks || [];
+  const done = subtasks.filter((s) => s.done).length;
+
+  const addSubtask = () => {
+    const text = input.trim();
+    if (!text) return;
+    const next = [...subtasks, { id: crypto.randomUUID(), text, done: false }];
+    updateTask(task.id, { subtasks: next });
+    setInput("");
+    inputRef.current?.focus();
+  };
+
+  const toggle = (id) => {
+    const next = subtasks.map((s) => s.id === id ? { ...s, done: !s.done } : s);
+    updateTask(task.id, { subtasks: next });
+  };
+
+  const remove = (id) => {
+    const next = subtasks.filter((s) => s.id !== id);
+    updateTask(task.id, { subtasks: next });
+  };
+
+  const startEdit = (s) => {
+    setEditingId(s.id);
+    setEditText(s.text);
+  };
+
+  const saveEdit = (id) => {
+    const text = editText.trim();
+    if (!text) { remove(id); setEditingId(null); return; }
+    const next = subtasks.map((s) => s.id === id ? { ...s, text } : s);
+    updateTask(task.id, { subtasks: next });
+    setEditingId(null);
+  };
+
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: t.text3 }}>
+          Podúkoly
+        </div>
+        {subtasks.length > 0 && (
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <div style={{ fontSize: 12, color: t.text3 }}>{done}/{subtasks.length}</div>
+            <div style={{ width: 60, height: 4, borderRadius: 2, background: t.border, overflow: "hidden" }}>
+              <div style={{ width: `${(done / subtasks.length) * 100}%`, height: "100%", background: "#22c55e", borderRadius: 2, transition: "width .2s" }} />
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 2, marginBottom: subtasks.length ? 8 : 0 }}>
+        {subtasks.map((s) => (
+          <SubtaskRow
+            key={s.id}
+            subtask={s}
+            editingId={editingId}
+            editText={editText}
+            setEditText={setEditText}
+            onToggle={toggle}
+            onRemove={remove}
+            onStartEdit={startEdit}
+            onSaveEdit={saveEdit}
+            onCancelEdit={() => setEditingId(null)}
+            t={t}
+          />
+        ))}
+      </div>
+
+      <div style={{ display: "flex", gap: 6 }}>
+        <input
+          ref={inputRef}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") addSubtask(); }}
+          placeholder="Přidat podúkol…"
+          style={{
+            flex: 1, padding: "8px 12px", borderRadius: 8,
+            border: `1px solid ${t.border}`, background: t.input,
+            color: t.text, fontSize: 12.5, outline: "none",
+          }}
+          onFocus={(e) => { e.target.style.borderColor = t.accent; }}
+          onBlur={(e) => { e.target.style.borderColor = t.border; }}
+        />
+        <button
+          onClick={addSubtask}
+          disabled={!input.trim()}
+          style={{
+            width: 36, borderRadius: 8, border: "none", flexShrink: 0,
+            background: input.trim() ? t.accent : t.input,
+            color: input.trim() ? "#fff" : t.text3,
+            cursor: input.trim() ? "pointer" : "default",
+            transition: "background .15s",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}
+        >
+          <Icon name="plus" size={16} color={input.trim() ? "#fff" : t.text3} strokeWidth={2.5} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function SubtaskRow({ subtask, editingId, editText, setEditText, onToggle, onRemove, onStartEdit, onSaveEdit, onCancelEdit, t }) {
+  const [hovered, setHovered] = useState(false);
+  const isEditing = editingId === subtask.id;
+
+  return (
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 4px", borderRadius: 7, background: hovered ? t.input : "transparent", transition: "background .1s" }}
+    >
+      <button
+        onClick={() => onToggle(subtask.id)}
+        style={{
+          width: 18, height: 18, borderRadius: 4, flexShrink: 0, border: `2px solid ${subtask.done ? "#22c55e" : t.border}`,
+          background: subtask.done ? "#22c55e" : "transparent",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          cursor: "pointer", transition: "all .15s",
+        }}
+      >
+        {subtask.done && <Icon name="check" size={10} color="#fff" strokeWidth={3} />}
+      </button>
+
+      {isEditing ? (
+        <input
+          autoFocus
+          value={editText}
+          onChange={(e) => setEditText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") onSaveEdit(subtask.id);
+            if (e.key === "Escape") onCancelEdit();
+          }}
+          onBlur={() => onSaveEdit(subtask.id)}
+          style={{
+            flex: 1, fontSize: 13, border: "none", background: "transparent",
+            color: t.text, outline: "none", padding: 0,
+          }}
+        />
+      ) : (
+        <span
+          onDoubleClick={() => onStartEdit(subtask)}
+          style={{
+            flex: 1, fontSize: 13, color: subtask.done ? t.text3 : t.text,
+            textDecoration: subtask.done ? "line-through" : "none",
+            cursor: "text", lineHeight: 1.4,
+          }}
+        >
+          {subtask.text}
+        </span>
+      )}
+
+      {!isEditing && (
+        <button
+          onClick={() => onRemove(subtask.id)}
+          style={{
+            opacity: hovered ? 0.6 : 0, transition: "opacity .1s",
+            background: "none", border: "none", color: t.text3,
+            cursor: "pointer", padding: "2px 3px", display: "flex", alignItems: "center", flexShrink: 0,
+          }}
+        >
+          <Icon name="x" size={12} color={t.text3} strokeWidth={2} />
+        </button>
       )}
     </div>
   );
@@ -151,11 +328,11 @@ export default function TaskDrawer() {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: isMobile ? "10px 16px 12px" : "18px 20px", borderBottom: `1px solid ${t.border}` }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: t.text2, fontFamily: "'Outfit',sans-serif" }}>Detail úkolu</span>
           <div style={{ display: "flex", gap: 6 }}>
-            <button onClick={async () => { if (await confirm("Smazat úkol?")) { setTaskDetail(null); deleteTask(task.id); } }} style={{ background: "transparent", border: "none", color: "#ef4444", fontSize: 11.5, padding: "4px 8px", borderRadius: 5 }}>
+            <button onClick={async () => { if (await confirm("Smazat úkol?")) { setTaskDetail(null); deleteTask(task.id); } }} style={{ background: "transparent", border: "none", color: "#ef4444", fontSize: 12, padding: "4px 8px", borderRadius: 5 }}>
               Smazat
             </button>
-            <button onClick={() => setTaskDetail(null)} style={{ background: t.input, border: `1px solid ${t.border}`, color: t.text2, fontSize: 14, padding: "2px 10px", borderRadius: 6 }}>
-              ✕
+            <button onClick={() => setTaskDetail(null)} style={{ background: t.input, border: `1px solid ${t.border}`, color: t.text2, padding: "5px 8px", borderRadius: 6, display: "flex", alignItems: "center" }}>
+              <Icon name="x" size={14} color={t.text2} strokeWidth={2} />
             </button>
           </div>
         </div>
@@ -198,7 +375,7 @@ export default function TaskDrawer() {
                   style={{
                     padding: "5px 11px",
                     borderRadius: 7,
-                    fontSize: 11.5,
+                    fontSize: 12,
                     fontWeight: 600,
                     border: `1.5px solid ${task.status === k ? v.color : t.border}`,
                     background: task.status === k ? v.bg : "transparent",
@@ -220,7 +397,7 @@ export default function TaskDrawer() {
                 style={{
                   padding: "5px 11px",
                   borderRadius: 7,
-                  fontSize: 11.5,
+                  fontSize: 12,
                   fontWeight: 500,
                   border: `1.5px solid ${!task.priority ? t.accent : t.border}`,
                   background: !task.priority ? t.accentBg : "transparent",
@@ -236,7 +413,7 @@ export default function TaskDrawer() {
                   style={{
                     padding: "5px 11px",
                     borderRadius: 7,
-                    fontSize: 11.5,
+                    fontSize: 12,
                     fontWeight: 700,
                     border: `1.5px solid ${task.priority === k ? v.color : t.border}`,
                     background: task.priority === k ? v.bg : "transparent",
@@ -287,8 +464,8 @@ export default function TaskDrawer() {
                 <button onClick={createProjectInline} style={{ padding: "7px 12px", borderRadius: 7, border: "none", background: t.accent, color: "#fff", fontSize: 12, fontWeight: 600 }}>
                   Vytvořit
                 </button>
-                <button onClick={() => setShowNewProject(false)} style={{ padding: "7px 10px", borderRadius: 7, border: `1px solid ${t.border}`, background: "transparent", color: t.text2, fontSize: 12 }}>
-                  ✕
+                <button onClick={() => setShowNewProject(false)} style={{ padding: "7px 8px", borderRadius: 7, border: `1px solid ${t.border}`, background: "transparent", color: t.text2, display: "flex", alignItems: "center" }}>
+                  <Icon name="x" size={13} color={t.text2} strokeWidth={2} />
                 </button>
               </div>
             )}
@@ -300,11 +477,11 @@ export default function TaskDrawer() {
                 type="date"
                 value={task.dueDate || ""}
                 onChange={(e) => s({ dueDate: e.target.value || null })}
-                style={{ padding: "7px 12px", borderRadius: 8, border: `1px solid ${t.border}`, background: t.input, color: t.text, fontSize: 12.5, outline: "none" }}
+                style={{ padding: "7px 12px", borderRadius: 8, border: `1px solid ${t.border}`, background: t.input, color: t.text, fontSize: 12.5, outline: "none", colorScheme: t.bg === "#0c0e14" ? "dark" : "light" }}
               />
-              <span style={{ fontSize: 11.5, color: t.text3 }}>
+              <span style={{ fontSize: 12, color: t.text3 }}>
                 Založeno:{" "}
-                {new Date(task.createdAt).toLocaleDateString("cs-CZ", { day: "numeric", month: "long", year: "numeric" })}
+                {formatDate(task.createdAt, { day: "numeric", month: "long", year: "numeric" })}
               </span>
             </div>
           </Sec>
@@ -324,7 +501,7 @@ export default function TaskDrawer() {
                     style={{
                       padding: "4px 10px",
                       borderRadius: 6,
-                      fontSize: 11,
+                      fontSize: 12,
                       fontWeight: 600,
                       border: `1.5px solid ${active ? tg.color : t.border}`,
                       background: active ? tg.color + "18" : "transparent",
@@ -349,6 +526,10 @@ export default function TaskDrawer() {
             />
           </Sec>
 
+          <AITaskAssist task={task} />
+
+          <SubtasksSection task={task} updateTask={updateTask} t={t} />
+
           <Sec label="Průběh a fáze">
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 10 }}>
               {(task.phases || []).slice().reverse().map((ph) => (
@@ -366,8 +547,8 @@ export default function TaskDrawer() {
                 >
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 13, lineHeight: 1.4 }}>{ph.text}</div>
-                    <div className="mono" style={{ fontSize: 10.5, color: t.text3, marginTop: 4 }}>
-                      {new Date(ph.date).toLocaleString("cs-CZ")}
+                    <div className="mono" style={{ fontSize: 12, color: t.text3, marginTop: 4 }}>
+                      {formatDateTime(ph.date)}
                     </div>
                   </div>
                   <button
@@ -375,10 +556,10 @@ export default function TaskDrawer() {
                       const next = (task.phases || []).filter((x) => x.id !== ph.id);
                       s({ phases: next });
                     }}
-                    style={{ border: "none", background: "transparent", color: t.text3, fontSize: 14, cursor: "pointer" }}
+                    style={{ border: "none", background: "transparent", color: t.text3, cursor: "pointer", display: "flex", alignItems: "center", padding: "2px 4px" }}
                     title="Smazat"
                   >
-                    ✕
+                    <Icon name="x" size={14} color={t.text3} strokeWidth={2} />
                   </button>
                 </div>
               ))}
@@ -449,20 +630,20 @@ export default function TaskDrawer() {
                   const val = e.target.value ? new Date(e.target.value).toISOString() : null;
                   if (val !== (task.remindAt ?? null)) s({ remindAt: val });
                 }}
-                style={{ padding: "7px 12px", borderRadius: 8, border: `1px solid ${t.border}`, background: t.input, color: t.text, fontSize: 12.5, outline: "none" }}
+                style={{ padding: "7px 12px", borderRadius: 8, border: `1px solid ${t.border}`, background: t.input, color: t.text, fontSize: 12.5, outline: "none", colorScheme: t.bg === "#0c0e14" ? "dark" : "light" }}
               />
               {task.remindAt && (
                 <button
                   onClick={() => { setRemindAtDraft(""); s({ remindAt: null }); }}
-                  style={{ padding: "7px 10px", borderRadius: 7, border: `1px solid ${t.border}`, background: "transparent", color: "#ef4444", fontSize: 12, cursor: "pointer" }}
+                  style={{ padding: "7px 10px", borderRadius: 7, border: `1px solid ${t.border}`, background: "transparent", color: "#ef4444", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}
                 >
-                  ✕ Zrušit
+                  <Icon name="x" size={12} color="#ef4444" strokeWidth={2} /> Zrušit
                 </button>
               )}
             </div>
             {task.remindAt && (
-              <div style={{ fontSize: 11, color: t.text3, marginTop: 5 }}>
-                Nastaveno: {new Date(task.remindAt).toLocaleString("cs-CZ", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}
+              <div style={{ fontSize: 12, color: t.text3, marginTop: 5 }}>
+                Nastaveno: {formatDate(task.remindAt, { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}
               </div>
             )}
           </Sec>
@@ -497,7 +678,7 @@ export default function TaskDrawer() {
               })}
             </div>
             {task.recurrence && (
-              <div style={{ marginTop: 6, fontSize: 11, color: t.text3 }}>
+              <div style={{ marginTop: 6, fontSize: 12, color: t.text3 }}>
                 Po dokončení se automaticky vytvoří nový úkol.
               </div>
             )}
@@ -515,10 +696,10 @@ export default function TaskDrawer() {
             <NotesMiniList taskId={task.id} />
           </Sec>
 
-          <div style={{ borderTop: `1px solid ${t.border}`, paddingTop: 12, marginTop: 8, fontSize: 11, color: t.text3 }}>
-            <div>Vytvořeno: {new Date(task.createdAt).toLocaleString("cs-CZ")}</div>
-            <div>Upraveno: {new Date(task.updatedAt).toLocaleString("cs-CZ")}</div>
-            {task.completedAt && <div style={{ color: "#22c55e" }}>Dokončeno: {new Date(task.completedAt).toLocaleString("cs-CZ")}</div>}
+          <div style={{ borderTop: `1px solid ${t.border}`, paddingTop: 12, marginTop: 8, fontSize: 12, color: t.text3 }}>
+            <div>Vytvořeno: {formatDateTime(task.createdAt)}</div>
+            <div>Upraveno: {formatDateTime(task.updatedAt)}</div>
+            {task.completedAt && <div style={{ color: "#22c55e" }}>Dokončeno: {formatDateTime(task.completedAt)}</div>}
           </div>
         </div>
       </div>

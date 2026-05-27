@@ -3,18 +3,7 @@ import { useApp } from '../context/AppContext.jsx'
 import { useConfirm } from '../components/Confirm.jsx'
 import NotificationBell from '../components/NotificationBell.jsx'
 import Icon from '../components/Icon.jsx'
-
-const PAGE_TITLES = {
-  dashboard: "Přehled",
-  tasks: "Úkoly",
-  projects: "Projekty",
-  "project-detail": "Projekt",
-  timeline: "Plán",
-  tags: "Tagy",
-  notes: "Poznámky",
-  "workspace-settings": "Nastavení workspace",
-  "user-profile": "Profil",
-};
+import { PAGE_TITLES } from '../appMeta.js'
 
 function UserButton() {
   const { t, userEmail, userId, workspaceMembers, logout, setPage } = useApp();
@@ -54,7 +43,7 @@ function UserButton() {
           width: 28, height: 28, borderRadius: "50%",
           background: "linear-gradient(135deg,#3b82f6,#8b5cf6)",
           display: "flex", alignItems: "center", justifyContent: "center",
-          color: "#fff", fontSize: 11, fontWeight: 700, flexShrink: 0,
+          color: "#fff", fontSize: 12, fontWeight: 700, flexShrink: 0,
         }}>
           {initials}
         </div>
@@ -75,7 +64,7 @@ function UserButton() {
         >
           <div style={{ padding: "12px 14px 8px", borderBottom: `1px solid ${t.border}` }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: t.text }}>{displayName}</div>
-            <div style={{ fontSize: 11.5, color: t.text3, marginTop: 2 }}>{userEmail}</div>
+            <div style={{ fontSize: 12, color: t.text3, marginTop: 2 }}>{userEmail}</div>
           </div>
           <div style={{ padding: "6px 6px" }}>
             <button

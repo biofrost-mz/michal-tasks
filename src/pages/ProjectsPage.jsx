@@ -8,6 +8,7 @@ import NotesMiniList from '../components/NotesMiniList.jsx'
 import { ViewToggle, ListView } from './TasksPage.jsx'
 import { STATUSES, STATUS_KEYS, PRIORITIES } from '../constants.js'
 import { startOfToday, parseYMD, projectColor } from '../utils.js'
+import { formatDate } from '../locale.js'
 
 const PROJ_STATUS = {
   idea: { label: "Nápad", color: "#94a3b8" },
@@ -25,6 +26,8 @@ function KanbanCard({ task, onDragStart }) {
   const due = parseYMD(task.dueDate);
   const isOverdue = due && task.status !== "done" && due < today;
   const phaseCount = task.phases?.length ?? 0;
+  const subtasks = task.subtasks || [];
+  const subDone = subtasks.filter((s) => s.done).length;
 
   return (
     <div
@@ -67,7 +70,7 @@ function KanbanCard({ task, onDragStart }) {
 
       {pr && (
         <div style={{ marginBottom: 5 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, color: pr.color, background: pr.bg, padding: "2px 6px", borderRadius: 4, display: "inline-flex", alignItems: "center", gap: 3 }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: pr.color, background: pr.bg, padding: "2px 6px", borderRadius: 4, display: "inline-flex", alignItems: "center", gap: 3 }}>
             <Icon name={pr.icon} size={10} color={pr.color} strokeWidth={2.5} /> {pr.label}
           </span>
         </div>
@@ -88,7 +91,7 @@ function KanbanCard({ task, onDragStart }) {
           <span
             className="mono"
             style={{
-              fontSize: 10,
+              fontSize: 12,
               fontWeight: isOverdue ? 700 : 400,
               color: isOverdue ? "#ef4444" : t.text3,
               background: isOverdue ? "#ef444410" : "transparent",
@@ -96,12 +99,18 @@ function KanbanCard({ task, onDragStart }) {
               borderRadius: 3,
             }}
           >
-            {parseYMD(task.dueDate)?.toLocaleDateString("cs-CZ", { day: "numeric", month: "numeric" }) || task.dueDate}
+            {formatDate(task.dueDate) || task.dueDate}
           </span>
         )}
         {phaseCount > 0 && (
-          <span style={{ fontSize: 10, color: t.text3, display: "flex", alignItems: "center", gap: 2 }}>
+          <span style={{ fontSize: 12, color: t.text3, display: "flex", alignItems: "center", gap: 2 }}>
             ☰ {phaseCount}
+          </span>
+        )}
+        {subtasks.length > 0 && (
+          <span style={{ fontSize: 12, color: subDone === subtasks.length ? "#22c55e" : t.text3, display: "flex", alignItems: "center", gap: 2 }}>
+            <Icon name="check-square" size={10} color={subDone === subtasks.length ? "#22c55e" : t.text3} strokeWidth={2} />
+            {subDone}/{subtasks.length}
           </span>
         )}
       </div>
@@ -116,7 +125,7 @@ function KanbanCard({ task, onDragStart }) {
               flex: 1,
               padding: "4px 0",
               borderRadius: 5,
-              fontSize: 10,
+              fontSize: 12,
               border: `1px solid ${STATUSES[k].color}30`,
               background: STATUSES[k].color + "10",
               color: STATUSES[k].color,
@@ -180,7 +189,7 @@ export function ProjectDetailPage() {
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
               <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.5px" }}>{project.name}</h1>
-              <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 6, background: PROJ_STATUS[project.status].color + "18", color: PROJ_STATUS[project.status].color }}>
+              <span style={{ fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: 6, background: PROJ_STATUS[project.status].color + "18", color: PROJ_STATUS[project.status].color }}>
                 {PROJ_STATUS[project.status].label}
               </span>
             </div>
@@ -227,7 +236,7 @@ export function ProjectDetailPage() {
                 style={{
                   padding: "4px 10px",
                   borderRadius: 6,
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: 500,
                   border: `1px solid ${project.status === k ? v.color : t.border}`,
                   background: project.status === k ? v.color + "18" : "transparent",
@@ -298,8 +307,8 @@ export function ProjectDetailPage() {
                   <span style={{ width: 20, height: 20, borderRadius: 5, background: cfg.color + "20", display: "flex", alignItems: "center", justifyContent: "center", color: cfg.color }}>
                     <Icon name={cfg.icon} size={11} color={cfg.color} strokeWidth={2} />
                   </span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: cfg.color }}>{cfg.label}</span>
-                  <span className="mono" style={{ fontSize: 10, color: t.text3, marginLeft: "auto" }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: cfg.color }}>{cfg.label}</span>
+                  <span className="mono" style={{ fontSize: 12, color: t.text3, marginLeft: "auto" }}>
                     {allCol.length}
                   </span>
                 </div>
@@ -325,7 +334,7 @@ export function ProjectDetailPage() {
                       border: `1px dashed ${t.border}`,
                       background: "transparent",
                       color: t.text3,
-                      fontSize: 11,
+                      fontSize: 12,
                       cursor: "pointer",
                     }}
                   >
@@ -335,7 +344,7 @@ export function ProjectDetailPage() {
 
                 {col.length === 0 && inlineAdd !== status && (
                   <div
-                    style={{ padding: "20px 8px", textAlign: "center", color: t.text3, fontSize: 11, border: `1.5px dashed ${cfg.color}30`, borderRadius: 8, cursor: "pointer", transition: "border-color .15s" }}
+                    style={{ padding: "20px 8px", textAlign: "center", color: t.text3, fontSize: 12, border: `1.5px dashed ${cfg.color}30`, borderRadius: 8, cursor: "pointer", transition: "border-color .15s" }}
                     onClick={() => setInlineAdd(status)}
                   >
                     <div style={{ fontSize: 18, opacity: 0.35, marginBottom: 4 }}>+</div>
@@ -386,7 +395,7 @@ export function ProjectDetailPage() {
                       border: `1px dashed ${t.border}`,
                       background: "transparent",
                       color: t.text3,
-                      fontSize: 11,
+                      fontSize: 12,
                       cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
@@ -492,7 +501,7 @@ export default function ProjectsPage() {
           >
             {tab.l}
             {tab.count > 0 && (
-              <span className="mono" style={{ fontSize: 10, padding: "1px 6px", borderRadius: 6, background: filter === tab.k ? t.accentBg : t.input, color: filter === tab.k ? t.accent : t.text3 }}>
+              <span className="mono" style={{ fontSize: 12, padding: "1px 6px", borderRadius: 6, background: filter === tab.k ? t.accentBg : t.input, color: filter === tab.k ? t.accent : t.text3 }}>
                 {tab.count}
               </span>
             )}
@@ -530,7 +539,7 @@ export default function ProjectsPage() {
                   style={{
                     padding: "5px 12px",
                     borderRadius: 7,
-                    fontSize: 11.5,
+                    fontSize: 12,
                     fontWeight: nStatus === k ? 700 : 400,
                     border: `1.5px solid ${nStatus === k ? v.color : t.border}`,
                     background: nStatus === k ? v.color + "18" : "transparent",
@@ -587,7 +596,7 @@ export default function ProjectsPage() {
             >
               {/* Top row: status badge + arrow */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                <span style={{ fontSize: 10.5, fontWeight: 700, padding: "3px 9px", borderRadius: 6, background: statusColor + "18", color: statusColor, textTransform: "uppercase", letterSpacing: ".05em" }}>
+                <span style={{ fontSize: 12, fontWeight: 700, padding: "3px 9px", borderRadius: 6, background: statusColor + "18", color: statusColor, textTransform: "uppercase", letterSpacing: ".05em" }}>
                   {PROJ_STATUS[p.status]?.label || p.status}
                 </span>
                 <span style={{ color: t.text3, fontSize: 16 }}>›</span>
@@ -603,18 +612,18 @@ export default function ProjectsPage() {
               {pt.length > 0 ? (
                 <>
                   <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
-                    {todoC > 0 && <span style={{ fontSize: 11, color: STATUSES.todo.color, background: STATUSES.todo.bg, padding: "2px 8px", borderRadius: 5, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name={STATUSES.todo.icon} size={10} color="currentColor" strokeWidth={2} /> {todoC}</span>}
-                    {doingC > 0 && <span style={{ fontSize: 11, color: STATUSES.doing.color, background: STATUSES.doing.bg, padding: "2px 8px", borderRadius: 5, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name={STATUSES.doing.icon} size={10} color="currentColor" strokeWidth={2} /> {doingC}</span>}
-                    {waitingC > 0 && <span style={{ fontSize: 11, color: STATUSES.waiting.color, background: STATUSES.waiting.bg, padding: "2px 8px", borderRadius: 5, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name={STATUSES.waiting.icon} size={10} color="currentColor" strokeWidth={2} /> {waitingC}</span>}
-                    {doneC > 0 && <span style={{ fontSize: 11, color: STATUSES.done.color, background: STATUSES.done.bg, padding: "2px 8px", borderRadius: 5, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name={STATUSES.done.icon} size={10} color="currentColor" strokeWidth={2} /> {doneC}</span>}
-                    {overdueC > 0 && <span style={{ fontSize: 11, color: "#ef4444", background: "#ef444412", padding: "2px 8px", borderRadius: 5, fontWeight: 700 }}>⚠ {overdueC} po termínu</span>}
+                    {todoC > 0 && <span style={{ fontSize: 12, color: STATUSES.todo.color, background: STATUSES.todo.bg, padding: "2px 8px", borderRadius: 5, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name={STATUSES.todo.icon} size={10} color="currentColor" strokeWidth={2} /> {todoC}</span>}
+                    {doingC > 0 && <span style={{ fontSize: 12, color: STATUSES.doing.color, background: STATUSES.doing.bg, padding: "2px 8px", borderRadius: 5, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name={STATUSES.doing.icon} size={10} color="currentColor" strokeWidth={2} /> {doingC}</span>}
+                    {waitingC > 0 && <span style={{ fontSize: 12, color: STATUSES.waiting.color, background: STATUSES.waiting.bg, padding: "2px 8px", borderRadius: 5, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name={STATUSES.waiting.icon} size={10} color="currentColor" strokeWidth={2} /> {waitingC}</span>}
+                    {doneC > 0 && <span style={{ fontSize: 12, color: STATUSES.done.color, background: STATUSES.done.bg, padding: "2px 8px", borderRadius: 5, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name={STATUSES.done.icon} size={10} color="currentColor" strokeWidth={2} /> {doneC}</span>}
+                    {overdueC > 0 && <span style={{ fontSize: 12, color: "#ef4444", background: "#ef444412", padding: "2px 8px", borderRadius: 5, fontWeight: 700 }}>⚠ {overdueC} po termínu</span>}
                   </div>
                   <div style={{ height: 4, borderRadius: 999, background: t.input, overflow: "hidden" }}>
                     <div style={{ height: "100%", width: `${pct}%`, background: `linear-gradient(90deg, ${projCol}, #22c55e)`, borderRadius: 999, transition: "width .4s" }} />
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6 }}>
-                    <span style={{ fontSize: 11, color: t.text3 }}>{pt.length} úkolů celkem</span>
-                    <span className="mono" style={{ fontSize: 11, fontWeight: 700, color: pct === 100 ? "#22c55e" : t.text2 }}>{pct} %</span>
+                    <span style={{ fontSize: 12, color: t.text3 }}>{pt.length} úkolů celkem</span>
+                    <span className="mono" style={{ fontSize: 12, fontWeight: 700, color: pct === 100 ? "#22c55e" : t.text2 }}>{pct} %</span>
                   </div>
                 </>
               ) : (

@@ -3,7 +3,10 @@ import { useApp } from '../context/AppContext.jsx'
 import { useConfirm } from '../components/Confirm.jsx'
 import { useToast } from '../components/Toast.jsx'
 import Icon from '../components/Icon.jsx'
+import MZLogo from '../components/MZLogo.jsx'
 import { projectColor } from '../utils.js'
+import { APP_RELEASE_DATE, APP_VERSION } from '../appMeta.js'
+import { formatDate } from '../locale.js'
 import {
   DndContext,
   closestCenter,
@@ -77,7 +80,7 @@ export function WorkspaceSwitcher() {
           fontWeight: 600,
         }}
       >
-        <div style={{ width: 24, height: 24, borderRadius: 6, background: t.accent, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 11, fontWeight: 800, flexShrink: 0 }}>
+        <div style={{ width: 24, height: 24, borderRadius: 6, background: t.accent, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12, fontWeight: 800, flexShrink: 0 }}>
           {active?.name?.[0]?.toUpperCase() ?? "?"}
         </div>
         <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "left" }}>
@@ -90,7 +93,7 @@ export function WorkspaceSwitcher() {
         <>
           <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 199 }} />
           <div className="pop" style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0, background: t.bg2, border: `1px solid ${t.border}`, borderRadius: 10, zIndex: 200, overflow: "hidden", boxShadow: t.shadow }}>
-            <div style={{ padding: "6px 6px 4px", fontSize: 10, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: "0.08em" }}>Workspace</div>
+            <div style={{ padding: "6px 6px 4px", fontSize: 12, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: "0.08em" }}>Workspace</div>
             {workspaces.map((ws) => (
               <button
                 key={ws.id}
@@ -103,11 +106,11 @@ export function WorkspaceSwitcher() {
                   cursor: "pointer", fontSize: 13, fontWeight: ws.id === activeWorkspaceId ? 600 : 400,
                 }}
               >
-                <div style={{ width: 20, height: 20, borderRadius: 5, background: ws.id === activeWorkspaceId ? t.accent : t.border, display: "flex", alignItems: "center", justifyContent: "center", color: ws.id === activeWorkspaceId ? "#fff" : t.text2, fontSize: 10, fontWeight: 800, flexShrink: 0 }}>
+                <div style={{ width: 20, height: 20, borderRadius: 5, background: ws.id === activeWorkspaceId ? t.accent : t.border, display: "flex", alignItems: "center", justifyContent: "center", color: ws.id === activeWorkspaceId ? "#fff" : t.text2, fontSize: 12, fontWeight: 800, flexShrink: 0 }}>
                   {ws.name[0].toUpperCase()}
                 </div>
                 <span style={{ flex: 1, textAlign: "left" }}>{ws.name}</span>
-                <span style={{ fontSize: 10, color: t.text3 }}>{ws.role}</span>
+                <span style={{ fontSize: 12, color: t.text3 }}>{ws.role}</span>
               </button>
             ))}
             <div style={{ borderTop: `1px solid ${t.border}`, margin: "4px 0" }} />
@@ -161,21 +164,23 @@ export function WorkspaceSwitcher() {
             </div>
             {inviteLink ? (
               <>
-                <div style={{ fontSize: 11, color: t.text2, marginBottom: 6 }}>Zkopíruj a pošli odkaz:</div>
+                <div style={{ fontSize: 12, color: t.text2, marginBottom: 6 }}>Zkopíruj a pošli odkaz:</div>
                 <div style={{ display: "flex", gap: 6 }}>
-                  <input readOnly value={inviteLink} style={{ flex: 1, padding: "7px 10px", borderRadius: 7, border: `1px solid ${t.border}`, background: t.input, color: t.text, fontSize: 11 }} onClick={(e) => e.target.select()} />
+                  <input readOnly value={inviteLink} style={{ flex: 1, padding: "7px 10px", borderRadius: 7, border: `1px solid ${t.border}`, background: t.input, color: t.text, fontSize: 12 }} onClick={(e) => e.target.select()} />
                   <button onClick={() => { navigator.clipboard.writeText(inviteLink); toast("Zkopírováno", "success"); }} style={{ padding: "7px 12px", borderRadius: 7, border: "none", background: t.accent, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                     Kopírovat
                   </button>
                 </div>
-                <div style={{ fontSize: 10, color: t.text3, marginTop: 6 }}>Platnost 7 dní</div>
+                <div style={{ fontSize: 12, color: t.text3, marginTop: 6 }}>Platnost 7 dní</div>
               </>
             ) : (
               <button onClick={handleGenerateLink} style={{ width: "100%", padding: "9px", borderRadius: 8, border: "none", background: t.accent, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                 Vygenerovat odkaz
               </button>
             )}
-            <button onClick={() => { setInviteOpen(false); setInviteLink(""); }} style={{ position: "absolute", top: 14, right: 14, background: "none", border: "none", color: t.text3, cursor: "pointer", fontSize: 16, padding: 4 }}>✕</button>
+            <button onClick={() => { setInviteOpen(false); setInviteLink(""); }} style={{ position: "absolute", top: 14, right: 14, background: "none", border: "none", color: t.text3, cursor: "pointer", padding: 4, display: "flex", alignItems: "center" }}>
+              <Icon name="x" size={16} color={t.text3} strokeWidth={2} />
+            </button>
           </div>
         </>
       )}
@@ -208,12 +213,12 @@ function UserBar({ setPage }) {
         onClick={() => setOpen((v) => !v)}
         style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 8, border: "none", background: "transparent", color: t.text, cursor: "pointer", textAlign: "left" }}
       >
-        <div style={{ width: 32, height: 32, borderRadius: "50%", background: "linear-gradient(135deg,#3b82f6,#8b5cf6)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 11, fontWeight: 800, flexShrink: 0 }}>
+        <div style={{ width: 32, height: 32, borderRadius: "50%", background: "linear-gradient(135deg,#3b82f6,#8b5cf6)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12, fontWeight: 800, flexShrink: 0 }}>
           {initials}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{me?.displayName || displayName}</div>
-          {me?.displayName && <div style={{ fontSize: 11.5, color: t.text3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{userEmail}</div>}
+          {me?.displayName && <div style={{ fontSize: 12, color: t.text3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{userEmail}</div>}
         </div>
         <Icon name="chevron-up" size={12} color={t.text3} strokeWidth={2} />
       </button>
@@ -222,12 +227,12 @@ function UserBar({ setPage }) {
         <>
           <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 199 }} />
           <div className="pop" style={{ position: "absolute", bottom: "calc(100% + 6px)", left: 0, right: 0, background: t.bg2, border: `1px solid ${t.border}`, borderRadius: 10, zIndex: 200, overflow: "hidden", boxShadow: t.shadow }}>
-            <div style={{ padding: "8px 10px 6px", fontSize: 11, color: t.text3, borderBottom: `1px solid ${t.border}` }}>
+            <div style={{ padding: "8px 10px 6px", fontSize: 12, color: t.text3, borderBottom: `1px solid ${t.border}` }}>
               <div style={{ fontWeight: 600, color: t.text, marginBottom: 1 }}>{me?.displayName || "—"}</div>
               <div>{userEmail}</div>
             </div>
             <button onClick={() => { setPage("user-profile"); setOpen(false); }} style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "8px 10px", border: "none", background: "transparent", color: t.text, cursor: "pointer", fontSize: 13 }}>
-              <Icon name="list" size={13} color={t.text3} strokeWidth={2} />
+              <Icon name="user" size={13} color={t.text3} strokeWidth={2} />
               Můj profil
             </button>
             <div style={{ borderTop: `1px solid ${t.border}` }} />
@@ -311,14 +316,14 @@ function SortableProjectItem({ p, tasks, t, openProject }) {
           }}
         />
         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{p.name}</span>
-        {count > 0 && <span className="mono" style={{ fontSize: 11.5, color: t.text3 }}>{count}</span>}
+        {count > 0 && <span className="mono" style={{ fontSize: 12, color: t.text3 }}>{count}</span>}
       </button>
     </div>
   );
 }
 
 export default function Sidebar({ toggleDk }) {
-  const { t, dk, projects, tasks, page, setPage, openProject, search, setSearch, setTaskDetail, setCmdOpen, reorderProjects } = useApp();
+  const { t, dk, projects, tasks, quickTodos, page, setPage, openProject, search, setSearch, setTaskDetail, setCmdOpen, reorderProjects } = useApp();
   const active = projects.filter((p) => p.status === "active");
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const searchRef = useRef(null);
@@ -348,14 +353,14 @@ export default function Sidebar({ toggleDk }) {
     if (oldIndex === -1 || newIndex === -1) return;
     reorderProjects(arrayMove(active, oldIndex, newIndex));
   }
-
   const nav = [
-    { id: "dashboard", label: "Přehled",   icon: "home"         },
-    { id: "projects",  label: "Projekty",  icon: "folder"       },
-    { id: "tasks",     label: "Úkoly",     icon: "check-square", count: tasks.filter((t) => t.status !== "done").length },
-    { id: "timeline",  label: "Plán",      icon: "calendar"     },
-    { id: "tags",      label: "Tagy",      icon: "tag"          },
-    { id: "notes",     label: "Poznámky",  icon: "file-text", count: null },
+    { id: "dashboard",   label: "Přehled",       icon: "home"         },
+    { id: "quick-todos", label: "Rychlý seznam",  icon: "zap",          count: quickTodos.filter((q) => !q.done).length || null },
+    { id: "projects",    label: "Projekty",       icon: "folder"       },
+    { id: "tasks",       label: "Úkoly",          icon: "check-square", count: tasks.filter((t) => t.status !== "done").length },
+    { id: "timeline",    label: "Plán",           icon: "calendar"     },
+    { id: "tags",        label: "Tagy",           icon: "tag"          },
+    { id: "notes",       label: "Poznámky",       icon: "file-text",   count: null },
   ];
 
   return (
@@ -409,12 +414,13 @@ export default function Sidebar({ toggleDk }) {
             border: `1px solid ${t.border}`,
           }}
         >
-          <span style={{ color: t.text3, fontSize: 13 }}>⌕</span>
+          <Icon name="search" size={13} color={t.text3} strokeWidth={2} style={{ flexShrink: 0 }} />
           <input
             ref={searchRef}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Hledat… (⌘K)"
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); setCmdOpen(true); } }}
+            placeholder="Filtrovat… nebo Enter pro ⌘K"
             style={{
               flex: 1,
               border: "none",
@@ -425,8 +431,8 @@ export default function Sidebar({ toggleDk }) {
             }}
           />
           {search && (
-            <button onClick={() => setSearch("")} style={{ background: "none", border: "none", color: t.text3, fontSize: 11 }}>
-              ✕
+            <button onClick={() => setSearch("")} style={{ background: "none", border: "none", color: t.text3, cursor: "pointer", display: "flex", alignItems: "center", padding: 0 }}>
+              <Icon name="x" size={12} color={t.text3} strokeWidth={2} />
             </button>
           )}
         </div>
@@ -444,7 +450,8 @@ export default function Sidebar({ toggleDk }) {
                 display: "flex",
                 alignItems: "center",
                 gap: 9,
-                padding: "9px 10px",
+                padding: "10px 10px",
+                minHeight: 40,
                 borderRadius: 7,
                 marginBottom: 1,
                 background: act ? t.accentBg : "transparent",
@@ -464,7 +471,7 @@ export default function Sidebar({ toggleDk }) {
                   className="mono"
                   style={{
                     marginLeft: "auto",
-                    fontSize: 10,
+                    fontSize: 12,
                     color: t.text3,
                     background: t.input,
                     padding: "1px 6px",
@@ -482,7 +489,7 @@ export default function Sidebar({ toggleDk }) {
           <div style={{ marginTop: 18, paddingTop: 12, borderTop: `1px solid ${t.border}` }}>
             <div
               style={{
-                fontSize: 11.5,
+                fontSize: 12,
                 fontWeight: 700,
                 textTransform: "uppercase",
                 letterSpacing: ".08em",
@@ -509,7 +516,7 @@ export default function Sidebar({ toggleDk }) {
         {/* Theme toggle */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ fontSize: 12.5, color: t.text2, display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 14 }}>{dk ? "🌙" : "☀️"}</span>
+            <Icon name={dk ? "moon" : "sun"} size={14} color={t.text2} strokeWidth={1.75} />
             {dk ? "Tmavý" : "Světlý"}
           </div>
           <button
@@ -520,9 +527,25 @@ export default function Sidebar({ toggleDk }) {
             <span style={{ position: "absolute", top: 2, left: dk ? 22 : 2, width: 20, height: 20, borderRadius: "50%", background: dk ? t.accent : t.card, transition: "left .15s ease", boxShadow: t.shadow }} />
           </button>
         </div>
-        <div style={{ fontSize: 10.5, color: t.text3, textAlign: "center", opacity: 0.5 }}>
-          v1.0.0 · {new Date("2026-03-11").toLocaleDateString("cs-CZ", { day: "numeric", month: "long", year: "numeric" })}
-        </div>
+        <a
+          href="https://www.zichmichal.cz/"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: "flex", alignItems: "center", gap: 8,
+            textDecoration: "none", borderRadius: 8, padding: "5px 4px",
+            transition: "background .15s",
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = t.input; }}
+          onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+          title="Autor: Michal Zich · zichmichal.cz"
+        >
+          <MZLogo size={24} />
+          <div style={{ lineHeight: 1.3 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: t.text2 }}>Michal Zich</div>
+            <div style={{ fontSize: 12, color: t.text3 }}>v{APP_VERSION}</div>
+          </div>
+        </a>
       </div>
     </aside>
   );

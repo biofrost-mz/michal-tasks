@@ -3,8 +3,10 @@ import { useApp } from '../context/AppContext.jsx'
 import Icon from '../components/Icon.jsx'
 import QuickAdd from '../components/QuickAdd.jsx'
 import DashTaskCard from '../components/DashTaskCard.jsx'
-import { STATUSES, STATUS_KEYS, PRIORITIES } from '../constants.js'
-import { startOfToday, parseYMD, projectColor } from '../utils.js'
+import AIDailyPlan from '../components/AIDailyPlan.jsx'
+import { STATUS_KEYS, PRIORITIES } from '../constants.js'
+import { startOfToday, projectColor } from '../utils.js'
+import { formatDate, formatDateKey } from '../locale.js'
 
 /* ── Stat card ── */
 function StatCard({ label, value, color, icon, sub, onClick }) {
@@ -25,13 +27,13 @@ function StatCard({ label, value, color, icon, sub, onClick }) {
       <div style={{ position: "absolute", top: 8, right: 10, opacity: 0.08 }}>
         <Icon name={icon} size={36} color={color} strokeWidth={1.25} />
       </div>
-      <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: t.text3, marginBottom: 6 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: t.text3, marginBottom: 6 }}>
         {label}
       </div>
       <div className="mono" style={{ fontSize: 28, fontWeight: 800, color, letterSpacing: "-1px", lineHeight: 1 }}>
         {value}
       </div>
-      {sub && <div style={{ fontSize: 11, color: t.text3, marginTop: 4 }}>{sub}</div>}
+      {sub && <div style={{ fontSize: 12, color: t.text3, marginTop: 4 }}>{sub}</div>}
     </div>
   );
 }
@@ -45,7 +47,7 @@ function SectionHead({ icon, title, color, count, action }) {
         <Icon name={icon} size={12} color={color} strokeWidth={2} />
       </span>
       <span style={{ fontSize: 14, fontWeight: 700, color }}>{title}</span>
-      <span className="mono" style={{ fontSize: 11.5, color: t.text3, background: t.input, padding: "1px 7px", borderRadius: 6 }}>{count}</span>
+      <span className="mono" style={{ fontSize: 12, color: t.text3, background: t.input, padding: "1px 7px", borderRadius: 6 }}>{count}</span>
       {action && <span style={{ marginLeft: "auto" }}>{action}</span>}
     </div>
   );
@@ -57,7 +59,7 @@ function CompactTaskRow({ task, color }) {
   const project = projects.find((p) => p.id === task.projectId);
   const pr = task.priority ? PRIORITIES[task.priority] : null;
   const today = startOfToday();
-  const todayStr = today.toISOString().slice(0, 10);
+  const todayStr = formatDateKey(today);
   const isOverdue = task.dueDate && task.dueDate < todayStr;
   const pColor = project ? projectColor(project.id) : null;
 
@@ -97,8 +99,8 @@ function CompactTaskRow({ task, color }) {
 
       {/* Due date */}
       {task.dueDate && (
-        <span className="mono" style={{ fontSize: 11, color: isOverdue ? "#ef4444" : t.text3, flexShrink: 0, fontWeight: isOverdue ? 700 : 400 }}>
-          {parseYMD(task.dueDate)?.toLocaleDateString("cs-CZ", { day: "numeric", month: "numeric" })}
+        <span className="mono" style={{ fontSize: 12, color: isOverdue ? "#ef4444" : t.text3, flexShrink: 0, fontWeight: isOverdue ? 700 : 400 }}>
+          {formatDate(task.dueDate)}
         </span>
       )}
     </div>
@@ -113,8 +115,10 @@ export default function DashboardPage() {
   const [todoOpen, setTodoOpen] = useState(false);
 
   const today = startOfToday();
-  const todayStr = today.toISOString().slice(0, 10);
-  const tomorrowStr = new Date(today.getTime() + 86400000).toISOString().slice(0, 10);
+  const todayStr = formatDateKey(today);
+  const headerDate = formatDate(new Date(), isMobile
+    ? { weekday: "long", day: "numeric", month: "long" }
+    : { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
   const activeTasks = tasks.filter((x) => x.status !== "done");
   const activeP = projects.filter((p) => p.status === "active");
@@ -142,7 +146,7 @@ export default function DashboardPage() {
   const doneThisWeek = tasks.filter((x) => x.status === "done" && x.updatedAt && x.updatedAt > weekAgo).length;
 
   const CollapseBtn = ({ open, setOpen, count, color }) => count > 3 ? (
-    <button onClick={() => setOpen((v) => !v)} style={{ background: "none", border: "none", color, fontSize: 11, cursor: "pointer", padding: "1px 4px" }}>
+    <button onClick={() => setOpen((v) => !v)} style={{ background: "none", border: "none", color, fontSize: 12, cursor: "pointer", padding: "1px 4px" }}>
       {open ? "Sbalit ▴" : `+${count - 3} dalších ▾`}
     </button>
   ) : null;
@@ -155,7 +159,7 @@ export default function DashboardPage() {
         <div>
           <h1 style={{ fontSize: isMobile ? 22 : 26, fontWeight: 800, letterSpacing: "-0.6px", marginBottom: 2 }}>Přehled</h1>
           <p style={{ color: t.text2, fontSize: 13 }}>
-            {new Date().toLocaleDateString("cs-CZ", { weekday: "long", day: "numeric", month: "long", year: isMobile ? undefined : "numeric" })}
+            {headerDate}
           </p>
         </div>
         {!isMobile && (
@@ -168,6 +172,11 @@ export default function DashboardPage() {
 
       <div style={{ marginBottom: 20 }}>
         <QuickAdd />
+      </div>
+
+      {/* AI Daily Plan — full width */}
+      <div style={{ marginBottom: isMobile ? 16 : 20 }}>
+        <AIDailyPlan />
       </div>
 
       {/* Stats — always on top on mobile */}
@@ -299,7 +308,7 @@ export default function DashboardPage() {
           {/* Aktivní projekty */}
           {activeP.length > 0 && (
             <div>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: t.text3, marginBottom: 8, paddingLeft: 2 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: t.text3, marginBottom: 8, paddingLeft: 2 }}>
                 Aktivní projekty
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
@@ -315,12 +324,12 @@ export default function DashboardPage() {
                     >
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                         <span style={{ fontSize: 13, fontWeight: 600, color: t.text }}>{p.name}</span>
-                        <span className="mono" style={{ fontSize: 11.5, color: pct === 100 ? "#22c55e" : t.text3, fontWeight: 600 }}>{pct}%</span>
+                        <span className="mono" style={{ fontSize: 12, color: pct === 100 ? "#22c55e" : t.text3, fontWeight: 600 }}>{pct}%</span>
                       </div>
                       <div style={{ height: 4, borderRadius: 999, background: t.input, marginBottom: 5 }}>
                         <div style={{ height: "100%", width: `${pct}%`, background: `linear-gradient(90deg, ${projectColor(p.id)}, #22c55e)`, borderRadius: 999, transition: "width .3s" }} />
                       </div>
-                      <div style={{ fontSize: 11, color: t.text3 }}>{open} otevřených · {done} hotovo</div>
+                      <div style={{ fontSize: 12, color: t.text3 }}>{open} otevřených · {done} hotovo</div>
                     </div>
                   );
                 })}
@@ -331,9 +340,9 @@ export default function DashboardPage() {
           {/* Nedávné poznámky */}
           {recentNotes.length > 0 && (
             <div>
-              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: t.text3, marginBottom: 8, paddingLeft: 2, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: t.text3, marginBottom: 8, paddingLeft: 2, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <span>Nedávné poznámky</span>
-                <button onClick={() => setPage("notes")} style={{ background: "none", border: "none", color: t.accent, fontSize: 11, cursor: "pointer", fontWeight: 600 }}>
+                <button onClick={() => setPage("notes")} style={{ background: "none", border: "none", color: t.accent, fontSize: 12, cursor: "pointer", fontWeight: 600 }}>
                   Zobrazit vše →
                 </button>
               </div>
@@ -355,12 +364,12 @@ export default function DashboardPage() {
                         {note.title || "Bez názvu"}
                       </div>
                       {preview && (
-                        <div style={{ fontSize: 11.5, color: t.text3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        <div style={{ fontSize: 12, color: t.text3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {preview}
                         </div>
                       )}
-                      <div style={{ fontSize: 10.5, color: t.text3, marginTop: 4, opacity: 0.7 }}>
-                        {new Date(note.updatedAt).toLocaleDateString("cs-CZ", { day: "numeric", month: "short" })}
+                      <div style={{ fontSize: 12, color: t.text3, marginTop: 4, opacity: 0.7 }}>
+                        {formatDate(note.updatedAt, { day: "numeric", month: "short" })}
                       </div>
                     </div>
                   );
@@ -375,7 +384,7 @@ export default function DashboardPage() {
               <Icon name="alert-circle" size={16} color="#ef4444" strokeWidth={2} />
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 12.5, fontWeight: 600, color: "#ef4444" }}>{overdue.length} úkolů po termínu</div>
-                <div style={{ fontSize: 11, color: t.text3 }}>Zkontroluj sekci vlevo</div>
+                <div style={{ fontSize: 12, color: t.text3 }}>Zkontroluj sekci vlevo</div>
               </div>
             </div>
           )}

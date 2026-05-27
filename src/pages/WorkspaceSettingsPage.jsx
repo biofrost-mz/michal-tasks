@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext.jsx'
 import { useToast } from '../components/Toast.jsx'
 import { useConfirm } from '../components/Confirm.jsx'
 import Icon from '../components/Icon.jsx'
+import { formatDate } from '../locale.js'
 
 export default function WorkspaceSettingsPage() {
   const { t, workspaces, activeWorkspaceId, workspaceMembers, workspaceRole, userId,
@@ -108,7 +109,7 @@ export default function WorkspaceSettingsPage() {
 
       {/* Workspace name */}
       <div style={{ background: t.bg2, border: `1px solid ${t.border}`, borderRadius: 12, padding: "18px 20px", marginBottom: 16 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>Název workspace</div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>Název workspace</div>
         {editingName ? (
           <div style={{ display: "flex", gap: 8 }}>
             <input
@@ -135,7 +136,7 @@ export default function WorkspaceSettingsPage() {
 
       {/* Members */}
       <div style={{ background: t.bg2, border: `1px solid ${t.border}`, borderRadius: 12, padding: "18px 20px", marginBottom: 16 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 14 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 14 }}>
           Členové ({workspaceMembers.length})
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -146,7 +147,7 @@ export default function WorkspaceSettingsPage() {
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{getMemberLabel(m)}</div>
-                {m.email && m.displayName && <div style={{ fontSize: 11, color: t.text3 }}>{m.email}</div>}
+                {m.email && m.displayName && <div style={{ fontSize: 12, color: t.text3 }}>{m.email}</div>}
               </div>
               {canManage && m.userId !== userId && m.role !== "owner" ? (
                 <>
@@ -164,7 +165,7 @@ export default function WorkspaceSettingsPage() {
                   </button>
                 </>
               ) : (
-                <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 5, background: roleColors[m.role] + "18", color: roleColors[m.role], fontWeight: 600 }}>
+                <span style={{ fontSize: 12, padding: "3px 8px", borderRadius: 5, background: roleColors[m.role] + "18", color: roleColors[m.role], fontWeight: 600 }}>
                   {m.role}
                 </span>
               )}
@@ -176,7 +177,7 @@ export default function WorkspaceSettingsPage() {
       {/* Invite link */}
       {canManage && (
         <div style={{ background: t.bg2, border: `1px solid ${t.border}`, borderRadius: 12, padding: "18px 20px", marginBottom: 16 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 14 }}>Pozvat člena</div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 14 }}>Pozvat člena</div>
           <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
             {["member", "viewer", "admin"].map((r) => (
               <button key={r} onClick={() => { setInviteRole(r); setInviteLink(""); }} style={{ padding: "5px 12px", borderRadius: 6, border: `1px solid ${inviteRole === r ? t.accent : t.border}`, background: inviteRole === r ? t.accentBg : "transparent", color: inviteRole === r ? t.accent : t.text2, fontSize: 12, fontWeight: inviteRole === r ? 600 : 400, cursor: "pointer" }}>
@@ -186,12 +187,12 @@ export default function WorkspaceSettingsPage() {
           </div>
           {inviteLink ? (
             <div>
-              <div style={{ fontSize: 11, color: t.text2, marginBottom: 6 }}>Zkopíruj a pošli odkaz (platí 7 dní):</div>
+              <div style={{ fontSize: 12, color: t.text2, marginBottom: 6 }}>Zkopíruj a pošli odkaz (platí 7 dní):</div>
               <div style={{ display: "flex", gap: 6 }}>
-                <input readOnly value={inviteLink} style={{ flex: 1, padding: "7px 10px", borderRadius: 7, border: `1px solid ${t.border}`, background: t.input, color: t.text, fontSize: 11 }} onClick={(e) => e.target.select()} />
+                <input readOnly value={inviteLink} style={{ flex: 1, padding: "7px 10px", borderRadius: 7, border: `1px solid ${t.border}`, background: t.input, color: t.text, fontSize: 12 }} onClick={(e) => e.target.select()} />
                 <button onClick={() => { navigator.clipboard.writeText(inviteLink); toast("Zkopírováno", "success"); }} style={{ padding: "7px 14px", borderRadius: 7, border: "none", background: t.accent, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Kopírovat</button>
               </div>
-              <button onClick={() => { setInviteLink(""); }} style={{ marginTop: 8, background: "none", border: "none", color: t.text3, fontSize: 11, cursor: "pointer", padding: 0 }}>Vygenerovat nový</button>
+              <button onClick={() => { setInviteLink(""); }} style={{ marginTop: 8, background: "none", border: "none", color: t.text3, fontSize: 12, cursor: "pointer", padding: 0 }}>Vygenerovat nový</button>
             </div>
           ) : (
             <button onClick={handleGenerateLink} style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: t.accent, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
@@ -202,14 +203,14 @@ export default function WorkspaceSettingsPage() {
           {/* Pending invites */}
           {invites.length > 0 && (
             <div style={{ marginTop: 16 }}>
-              <div style={{ fontSize: 11, color: t.text3, marginBottom: 8 }}>Čekající pozvánky:</div>
+              <div style={{ fontSize: 12, color: t.text3, marginBottom: 8 }}>Čekající pozvánky:</div>
               {invites.map((inv) => (
                 <div key={inv.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderTop: `1px solid ${t.border}` }}>
                   <div style={{ flex: 1, fontSize: 12 }}>
                     <span style={{ color: t.text2 }}>{inv.role}</span>
-                    <span style={{ color: t.text3, fontSize: 10, marginLeft: 8 }}>vyprší {new Date(inv.expires_at).toLocaleDateString("cs-CZ")}</span>
+                    <span style={{ color: t.text3, fontSize: 12, marginLeft: 8 }}>vyprší {formatDate(inv.expires_at, { day: "numeric", month: "numeric", year: "numeric" })}</span>
                   </div>
-                  <button onClick={() => handleRevoke(inv.id)} style={{ background: "none", border: "none", color: "#ef4444", fontSize: 11, cursor: "pointer" }}>Zrušit</button>
+                  <button onClick={() => handleRevoke(inv.id)} style={{ background: "none", border: "none", color: "#ef4444", fontSize: 12, cursor: "pointer" }}>Zrušit</button>
                 </div>
               ))}
             </div>
@@ -219,7 +220,7 @@ export default function WorkspaceSettingsPage() {
 
       {/* Leave / Danger zone */}
       <div style={{ background: t.bg2, border: `1px solid #ef444430`, borderRadius: 12, padding: "18px 20px" }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: "#ef4444", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12 }}>Nebezpečná zóna</div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "#ef4444", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12 }}>Nebezpečná zóna</div>
         {!isOwner && (
           <button onClick={handleLeave} style={{ padding: "8px 18px", borderRadius: 8, border: "1px solid #ef444440", background: "transparent", color: "#ef4444", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
             Opustit workspace

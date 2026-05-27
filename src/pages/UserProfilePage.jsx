@@ -66,13 +66,13 @@ export default function UserProfilePage() {
         <div>
           <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 2 }}>{me?.displayName || "—"}</div>
           <div style={{ fontSize: 13, color: t.text2 }}>{userEmail}</div>
-          <div style={{ fontSize: 11, color: t.text3, marginTop: 2 }}>{me?.role ?? "owner"} · {workspaceMembers.length} členů</div>
+          <div style={{ fontSize: 12, color: t.text3, marginTop: 2 }}>{me?.role ?? "owner"} · {workspaceMembers.length} členů</div>
         </div>
       </div>
 
       {/* Display name */}
       <div style={{ background: t.bg2, border: `1px solid ${t.border}`, borderRadius: 12, padding: "18px 20px", marginBottom: 16 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12 }}>Zobrazované jméno</div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12 }}>Zobrazované jméno</div>
         <div style={{ display: "flex", gap: 8 }}>
           <input
             value={displayName}
@@ -85,12 +85,12 @@ export default function UserProfilePage() {
             {saving ? "Ukládám…" : "Uložit"}
           </button>
         </div>
-        <div style={{ fontSize: 11, color: t.text3, marginTop: 6 }}>Toto jméno vidí ostatní členové workspace.</div>
+        <div style={{ fontSize: 12, color: t.text3, marginTop: 6 }}>Toto jméno vidí ostatní členové workspace.</div>
       </div>
 
       {/* Password reset */}
       <div style={{ background: t.bg2, border: `1px solid ${t.border}`, borderRadius: 12, padding: "18px 20px", marginBottom: 16 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12 }}>Heslo</div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12 }}>Heslo</div>
         {resetSent ? (
           <div style={{ fontSize: 13, color: "#22c55e" }}>Odkaz pro reset hesla byl odeslán na {userEmail}</div>
         ) : (
@@ -102,7 +102,7 @@ export default function UserProfilePage() {
 
       {/* Logout */}
       <div style={{ background: t.bg2, border: `1px solid #ef444430`, borderRadius: 12, padding: "18px 20px" }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: "#ef4444", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12 }}>Odhlášení</div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "#ef4444", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12 }}>Odhlášení</div>
         <button onClick={handleLogout} style={{ padding: "8px 18px", borderRadius: 8, border: "1px solid #ef444440", background: "transparent", color: "#ef4444", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
           Odhlásit se
         </button>

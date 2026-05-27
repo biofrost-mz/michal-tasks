@@ -10,9 +10,9 @@ export const STATUS_KEYS = Object.keys(STATUSES);
 export const STATUS_SHORT = { todo: "To do", doing: "Začít", waiting: "Čekám", done: "Hotovo" };
 
 export const PRIORITIES = {
-  low:    { label: "Nízká",   color: "#22c55e", bg: "#22c55e18", icon: "minus"    },
-  medium: { label: "Střední", color: "#f59e0b", bg: "#f59e0b18", icon: "minus"    },
-  high:   { label: "Vysoká",  color: "#ef4444", bg: "#ef444418", icon: "arrow-up" },
+  low:    { label: "Nízká",   color: "#22c55e", bg: "#22c55e18", icon: "arrow-down"  },
+  medium: { label: "Střední", color: "#f59e0b", bg: "#f59e0b18", icon: "minus"      },
+  high:   { label: "Vysoká",  color: "#ef4444", bg: "#ef444418", icon: "arrow-up"   },
 };
 
 export const NOTE_TEMPLATES = [

@@ -4,26 +4,26 @@ import { useConfirm } from '../components/Confirm.jsx'
 import Icon from '../components/Icon.jsx'
 import { startOfToday } from '../utils.js'
 import { WorkspaceSwitcher } from './Sidebar.jsx'
+import { formatDateKey } from '../locale.js'
 
 export default function MobileNav({ toggleDk }) {
-  const { t, dk, page, setPage, tasks, projects, setCmdOpen, setTaskDetail, userEmail, workspaceMembers, userId, logout } = useApp();
+  const { t, dk, page, setPage, tasks, projects, quickTodos, setCmdOpen, setTaskDetail, userEmail, workspaceMembers, userId, logout } = useApp();
   const confirm = useConfirm();
   const [moreOpen, setMoreOpen] = useState(false);
 
   const today = startOfToday();
-  const todayStr = today.toISOString().slice(0, 10);
-  const tomorrowStr = new Date(today.getTime() + 86400000).toISOString().slice(0, 10);
+  const todayStr = formatDateKey(today);
+  const tomorrowStr = formatDateKey(new Date(today.getTime() + 86400000));
   const active = tasks.filter((x) => x.status !== "done");
   const overdue = active.filter((x) => x.dueDate && x.dueDate < todayStr);
   const dueToday = active.filter((x) => x.dueDate === todayStr);
   const dueTomorrow = active.filter((x) => x.dueDate === tomorrowStr);
   const urgentCount = overdue.length + dueToday.length;
-
   const primary = [
-    { id: "dashboard", label: "Přehled",  icon: "home"         },
-    { id: "tasks",     label: "Úkoly",    icon: "check-square", count: tasks.filter((x) => x.status !== "done").length },
-    { id: "projects",  label: "Projekty", icon: "folder"       },
-    { id: "notes",     label: "Poznámky", icon: "file-text"    },
+    { id: "dashboard",   label: "Přehled",  icon: "home"         },
+    { id: "quick-todos", label: "Seznam",   icon: "zap",          count: quickTodos.filter((q) => !q.done).length || null },
+    { id: "tasks",       label: "Úkoly",    icon: "check-square", count: tasks.filter((x) => x.status !== "done").length },
+    { id: "notes",       label: "Poznámky", icon: "file-text"    },
   ];
 
   const more = [
@@ -66,9 +66,9 @@ export default function MobileNav({ toggleDk }) {
               <div style={{ width: 36, height: 4, borderRadius: 2, background: t.border, margin: "0 auto" }} />
               <button
                 onClick={() => setMoreOpen(false)}
-                style={{ position: "absolute", right: 16, top: 16, background: t.input, border: `1px solid ${t.border}`, color: t.text2, borderRadius: 6, width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 14 }}
+                style={{ position: "absolute", right: 16, top: 16, background: t.input, border: `1px solid ${t.border}`, color: t.text2, borderRadius: 6, width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
               >
-                ✕
+                <Icon name="x" size={14} color={t.text2} strokeWidth={2} />
               </button>
             </div>
 
@@ -83,7 +83,7 @@ export default function MobileNav({ toggleDk }) {
             >
               <Icon name="search" size={16} color={t.text3} />
               <span>Hledat… (⌘K)</span>
-              <kbd style={{ marginLeft: "auto", fontSize: 10, color: t.text3, background: t.bg2, border: `1px solid ${t.border}`, borderRadius: 4, padding: "2px 6px" }}>⌘K</kbd>
+              <kbd style={{ marginLeft: "auto", fontSize: 12, color: t.text3, background: t.bg2, border: `1px solid ${t.border}`, borderRadius: 4, padding: "2px 6px" }}>⌘K</kbd>
             </button>
 
             {/* More nav items */}
@@ -97,7 +97,7 @@ export default function MobileNav({ toggleDk }) {
                     background: act ? t.accentBg : t.card, color: act ? t.accent : t.text2,
                   }}>
                     <Icon name={n.icon} size={20} color={act ? t.accent : t.text2} strokeWidth={act ? 2.25 : 1.75} />
-                    <span style={{ fontSize: 11, fontWeight: act ? 600 : 400 }}>{n.label}</span>
+                    <span style={{ fontSize: 12, fontWeight: act ? 600 : 400 }}>{n.label}</span>
                   </button>
                 );
               })}
@@ -114,7 +114,7 @@ export default function MobileNav({ toggleDk }) {
                 <div style={{ padding: "10px 14px 6px", display: "flex", alignItems: "center", gap: 8 }}>
                   <Icon name="bell" size={14} color={urgentCount > 0 ? "#f59e0b" : t.text3} strokeWidth={2} />
                   <span style={{ fontSize: 13, fontWeight: 600, color: t.text }}>Připomínky</span>
-                  {urgentCount > 0 && <span style={{ fontSize: 10, fontWeight: 700, background: "#ef4444", color: "#fff", borderRadius: 8, padding: "1px 6px" }}>{urgentCount}</span>}
+                  {urgentCount > 0 && <span style={{ fontSize: 12, fontWeight: 700, background: "#ef4444", color: "#fff", borderRadius: 8, padding: "1px 6px" }}>{urgentCount}</span>}
                 </div>
                 <div style={{ padding: "2px 8px 8px", display: "flex", flexDirection: "column", gap: 2 }}>
                   {[
@@ -140,7 +140,7 @@ export default function MobileNav({ toggleDk }) {
                         <span style={{ flex: 1, fontSize: 13, color: t.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {task.title || "Bez názvu"}
                         </span>
-                        {proj && <span style={{ fontSize: 11, color: t.text3, flexShrink: 0 }}>{proj.name}</span>}
+                        {proj && <span style={{ fontSize: 12, color: t.text3, flexShrink: 0 }}>{proj.name}</span>}
                       </button>
                     );
                   })}
@@ -151,7 +151,7 @@ export default function MobileNav({ toggleDk }) {
             {/* Dark mode toggle */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: 10, background: t.card, border: `1px solid ${t.border}`, marginBottom: 8 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 16 }}>{dk ? "🌙" : "☀️"}</span>
+                <Icon name={dk ? "moon" : "sun"} size={16} color={t.text2} strokeWidth={1.75} />
                 <span style={{ fontSize: 13, color: t.text2 }}>{dk ? "Tmavý režim" : "Světlý režim"}</span>
               </div>
               <button onClick={toggleDk} style={{
@@ -176,7 +176,7 @@ export default function MobileNav({ toggleDk }) {
               }}>{initials}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: t.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{displayName}</div>
-                <div style={{ fontSize: 11, color: t.text3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{userEmail}</div>
+                <div style={{ fontSize: 12, color: t.text3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{userEmail}</div>
               </div>
               <button onClick={() => handleNav("user-profile")} style={{
                 padding: "6px 12px", borderRadius: 8, border: `1px solid ${t.border}`,
@@ -224,7 +224,7 @@ export default function MobileNav({ toggleDk }) {
                 }}>{n.count > 99 ? "99+" : n.count}</span>
               )}
               <Icon name={n.icon} size={24} color={act ? t.accent : t.text3} strokeWidth={act ? 2.25 : 1.75} />
-              <span style={{ fontSize: 11, fontWeight: act ? 600 : 400, letterSpacing: "0.01em" }}>{n.label}</span>
+              <span style={{ fontSize: 12, fontWeight: act ? 600 : 400, letterSpacing: "0.01em" }}>{n.label}</span>
             </button>
           );
         })}
@@ -249,7 +249,7 @@ export default function MobileNav({ toggleDk }) {
             }}>{urgentCount > 99 ? "99+" : urgentCount}</span>
           )}
           <Icon name="list" size={24} color={moreOpen ? t.accent : t.text3} strokeWidth={moreOpen ? 2.25 : 1.75} />
-          <span style={{ fontSize: 11, fontWeight: moreOpen ? 600 : 400 }}>Více</span>
+          <span style={{ fontSize: 12, fontWeight: moreOpen ? 600 : 400 }}>Více</span>
         </button>
       </nav>
     </>

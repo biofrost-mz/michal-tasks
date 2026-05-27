@@ -2,11 +2,8 @@ import React, { useState, useRef } from 'react'
 import { useApp } from '../context/AppContext.jsx'
 import Icon from '../components/Icon.jsx'
 import { startOfToday, parseYMD, projectColor } from '../utils.js'
-import { STATUSES, PRIORITIES } from '../constants.js'
-
-const DOW = ["Ne", "Po", "Út", "St", "Čt", "Pá", "So"];
-const MONTHS = ["Leden", "Únor", "Březen", "Duben", "Květen", "Červen", "Červenec", "Srpen", "Září", "Říjen", "Listopad", "Prosinec"];
-const MONTHS_SHORT = ["Led", "Úno", "Bře", "Dub", "Kvě", "Čvn", "Čvc", "Srp", "Zář", "Říj", "Lis", "Pro"];
+import { PRIORITIES } from '../constants.js'
+import { formatDate, formatDateKey } from '../locale.js'
 
 const COL_W = 44;
 const CHIP_H = 28;
@@ -14,10 +11,6 @@ const LANE_GAP = 6;
 const ROW_PAD = 10;
 const LABEL_W = 210;
 const DAYS = 28;
-
-function fmt(d) {
-  return d.toISOString().slice(0, 10);
-}
 
 /* Assign chips to non-overlapping lanes */
 function assignLanes(tasks, startDate) {
@@ -128,7 +121,7 @@ export default function TimelinePage() {
     return d;
   });
 
-  const todayStr = fmt(today);
+  const todayStr = formatDateKey(today);
 
   const tasksWithDue = tasks.filter((task) => task.dueDate && task.status !== "done");
 
@@ -156,7 +149,7 @@ export default function TimelinePage() {
   days.forEach((d, i) => {
     if (i === 0 || d.getDay() === 1) {
       if (i > 0) weeks[weeks.length - 1].span = i - wStart;
-      weeks.push({ label: `${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`, start: i });
+      weeks.push({ label: formatDate(d, { day: "numeric", month: "short" }), start: i });
       wStart = i;
     }
   });
@@ -168,7 +161,7 @@ export default function TimelinePage() {
   };
 
   // Default date for quick-add = first day visible or today
-  const defaultAddDate = offsetDays >= 0 ? fmt(today) : fmt(startDate);
+  const defaultAddDate = offsetDays >= 0 ? formatDateKey(today) : formatDateKey(startDate);
 
   if (isMobile) {
     // Mobile: simple list grouped by project
@@ -195,7 +188,7 @@ export default function TimelinePage() {
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
               <div style={{ width: 10, height: 10, borderRadius: "50%", background: row.color, flexShrink: 0 }} />
               <div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>{row.label}</div>
-              <div style={{ fontSize: 11, color: t.text3, background: t.input, borderRadius: 6, padding: "1px 7px" }}>{row.tasks.length}</div>
+              <div style={{ fontSize: 12, color: t.text3, background: t.input, borderRadius: 6, padding: "1px 7px" }}>{row.tasks.length}</div>
             </div>
             {[...row.tasks].sort((a, b) => a.dueDate.localeCompare(b.dueDate)).map((task) => {
               const d = parseYMD(task.dueDate);
@@ -219,17 +212,17 @@ export default function TimelinePage() {
                       {task.title}
                     </div>
                     {pr && (
-                      <span style={{ fontSize: 11, fontWeight: 600, color: pr.color, background: pr.bg, padding: "1px 6px", borderRadius: 4 }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: pr.color, background: pr.bg, padding: "1px 6px", borderRadius: 4 }}>
                         {pr.label}
                       </span>
                     )}
                   </div>
                   <div style={{ textAlign: "right", flexShrink: 0 }}>
                     <div style={{ fontSize: 12, fontWeight: isOverdue ? 700 : 500, color: isOverdue ? "#ef4444" : isToday ? t.accent : t.text2 }}>
-                      {d?.toLocaleDateString("cs-CZ", { day: "numeric", month: "short" })}
+                      {formatDate(d, { day: "numeric", month: "short" })}
                     </div>
-                    {isOverdue && <div style={{ fontSize: 10, color: "#ef4444", fontWeight: 600 }}>Prošlý</div>}
-                    {isToday && <div style={{ fontSize: 10, color: t.accent, fontWeight: 600 }}>Dnes</div>}
+                    {isOverdue && <div style={{ fontSize: 12, color: "#ef4444", fontWeight: 600 }}>Prošlý</div>}
+                    {isToday && <div style={{ fontSize: 12, color: t.accent, fontWeight: 600 }}>Dnes</div>}
                   </div>
                 </div>
               );
@@ -251,7 +244,7 @@ export default function TimelinePage() {
               Plán
             </div>
             <div style={{ color: t.text3, fontSize: 13, marginTop: 2 }}>
-              {days[0].toLocaleDateString("cs-CZ", { day: "numeric", month: "long" })} – {days[DAYS - 1].toLocaleDateString("cs-CZ", { day: "numeric", month: "long", year: "numeric" })}
+              {formatDate(days[0], { day: "numeric", month: "long" })} – {formatDate(days[DAYS - 1], { day: "numeric", month: "long", year: "numeric" })}
             </div>
           </div>
           <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
@@ -280,7 +273,7 @@ export default function TimelinePage() {
               {weeks.map((w, i) => (
                 <div key={i} style={{
                   width: w.span * COL_W, flexShrink: 0,
-                  fontSize: 11, fontWeight: 600, color: t.text3,
+                  fontSize: 12, fontWeight: 600, color: t.text3,
                   paddingLeft: 4, borderLeft: `1px solid ${t.border}`,
                 }}>
                   {w.label}
@@ -291,12 +284,12 @@ export default function TimelinePage() {
             {/* Day header */}
             <div style={{ display: "flex", marginLeft: LABEL_W, marginBottom: 10 }}>
               {days.map((d, i) => {
-                const isToday = fmt(d) === todayStr;
+                const isToday = formatDateKey(d) === todayStr;
                 const isWeekend = d.getDay() === 0 || d.getDay() === 6;
                 return (
                   <div key={i} style={{
                     width: COL_W, flexShrink: 0, textAlign: "center",
-                    fontSize: 11,
+                    fontSize: 12,
                     color: isToday ? t.accent : isWeekend ? t.text2 : t.text3,
                     fontWeight: isToday ? 700 : 400,
                     borderLeft: `1px solid ${isToday ? t.accent + "40" : t.border}`,
@@ -305,7 +298,7 @@ export default function TimelinePage() {
                     borderRadius: isToday ? "4px 4px 0 0" : 0,
                     position: "relative",
                   }}>
-                    <div style={{ fontSize: 10 }}>{DOW[d.getDay()]}</div>
+                    <div style={{ fontSize: 12 }}>{formatDate(d, { weekday: "short" })}</div>
                     <div style={{
                       width: isToday ? 22 : "auto", height: isToday ? 22 : "auto",
                       borderRadius: isToday ? "50%" : 0,
@@ -338,7 +331,7 @@ export default function TimelinePage() {
                       <div style={{ fontSize: 13, fontWeight: 700, color: t.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
                         {row.label}
                       </div>
-                      <div style={{ fontSize: 11, color: t.text3, background: t.input, borderRadius: 6, padding: "1px 7px", flexShrink: 0 }}>
+                      <div style={{ fontSize: 12, color: t.text3, background: t.input, borderRadius: 6, padding: "1px 7px", flexShrink: 0 }}>
                         {row.tasks.length}
                       </div>
                       {row.isProject && (
@@ -378,7 +371,7 @@ export default function TimelinePage() {
                     {/* Background columns */}
                     <div style={{ display: "flex", position: "absolute", inset: 0 }}>
                       {days.map((d, i) => {
-                        const isToday = fmt(d) === todayStr;
+                        const isToday = formatDateKey(d) === todayStr;
                         const isWeekend = d.getDay() === 0 || d.getDay() === 6;
                         return (
                           <div key={i} style={{
@@ -473,7 +466,7 @@ export default function TimelinePage() {
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <Icon name="plus" size={11} color={t.text3} strokeWidth={2} /> Přidat úkol do projektu
           </div>
-          <div style={{ marginLeft: "auto", fontSize: 11 }}>Kliknutím na úkol otevřete detail</div>
+          <div style={{ marginLeft: "auto", fontSize: 12 }}>Kliknutím na úkol otevřete detail</div>
         </div>
       </div>
     </div>

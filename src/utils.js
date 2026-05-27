@@ -1,4 +1,27 @@
 import { useEffect } from "react";
+import { formatDate } from "./locale.js";
+import DOMPurify from "dompurify";
+
+// Sanitize HTML produced by markdown renderers before using dangerouslySetInnerHTML.
+// Allows a safe subset of tags; strips event handlers and unsafe URIs.
+export function sanitizeHtml(html) {
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: [
+      "p", "br", "strong", "em", "del", "code", "pre", "blockquote",
+      "h1", "h2", "h3", "ul", "ol", "li", "a", "img",
+      "hr", "div", "span", "table", "thead", "tbody", "tr", "th", "td",
+    ],
+    ALLOWED_ATTR: [
+      "href", "target", "rel",       // links
+      "src", "alt",                   // images
+      "class", "style",              // styling (our own classes/inline)
+      "data-lang", "data-noteid",    // our custom attributes
+    ],
+    ALLOW_DATA_ATTR: false,
+    FORBID_ATTR: ["onerror", "onload", "onclick", "onmouseover"],
+    FORCE_BODY: false,
+  });
+}
 
 // UUID v4 (for Supabase primary keys). Uses crypto.randomUUID when available.
 export function uuid4() {
@@ -47,7 +70,7 @@ export function relTime(ts) {
   const day = Math.floor(hr / 24);
   if (day === 1) return "včera";
   if (day < 7) return `${day} d`;
-  return new Date(ts).toLocaleDateString("cs-CZ", { day: "numeric", month: "numeric" });
+  return formatDate(ts);
 }
 
 export function renderMarkdown(md) {
@@ -59,11 +82,20 @@ export function renderMarkdown(md) {
 
   const escHtml = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
+  const safeUrl = (url) => {
+    try {
+      const u = new URL(url, location.href);
+      return /^https?:$/.test(u.protocol) ? url : "#";
+    } catch {
+      return url.startsWith("/") || url.startsWith("#") ? url : "#";
+    }
+  };
+
   const processInline = (s) => {
     // code blocks first to avoid processing their internals
     s = s.replace(/`([^`]+)`/g, '<code style="background:#1e293b22;padding:1px 5px;border-radius:4px;font-family:monospace;font-size:0.9em">$1</code>');
-    s = s.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width:100%;border-radius:8px;margin:6px 0;display:block">');
-    s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" style="color:#3b82f6;text-decoration:underline">$1</a>');
+    s = s.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_, alt, url) => `<img src="${safeUrl(url)}" alt="${alt}" style="max-width:100%;border-radius:8px;margin:6px 0;display:block">`);
+    s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, url) => `<a href="${safeUrl(url)}" target="_blank" rel="noopener noreferrer" style="color:#3b82f6;text-decoration:underline">${text}</a>`);
     s = s.replace(/\*\*\*([^*]+)\*\*\*/g, '<strong><em>$1</em></strong>');
     s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
     s = s.replace(/\*([^*]+)\*/g, '<em>$1</em>');

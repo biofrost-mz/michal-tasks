@@ -92,13 +92,13 @@ export default function QuickAdd({ defaultProjectId = null }) {
             <span style={{ fontSize: 12.5, fontWeight: 600, color: t.text }}>
               <span style={{ color: "#22c55e", marginRight: 4 }}>✓</span>„{task.title}"
             </span>
-            <button onClick={close} style={{ background: "none", border: "none", color: t.text3, fontSize: 13, padding: "0 2px" }}>
-              ✕
+            <button onClick={close} style={{ background: "none", border: "none", color: t.text3, cursor: "pointer", padding: "0 2px", display: "flex", alignItems: "center" }}>
+              <Icon name="x" size={13} color={t.text3} strokeWidth={2} />
             </button>
           </div>
 
           <div style={{ marginBottom: 8 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 5 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 5 }}>
               Status
             </div>
             <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
@@ -109,7 +109,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
                   style={{
                     padding: "4px 10px",
                     borderRadius: 6,
-                    fontSize: 11,
+                    fontSize: 12,
                     fontWeight: 600,
                     border: `1.5px solid ${task.status === k ? v.color : t.border}`,
                     background: task.status === k ? v.bg : "transparent",
@@ -126,7 +126,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
           </div>
 
           <div style={{ marginBottom: 8 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 5 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 5 }}>
               Priorita
             </div>
             <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
@@ -137,7 +137,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
                   style={{
                     padding: "4px 10px",
                     borderRadius: 6,
-                    fontSize: 11,
+                    fontSize: 12,
                     fontWeight: 700,
                     border: `1.5px solid ${task.priority === k ? v.color : t.border}`,
                     background: task.priority === k ? v.bg : "transparent",
@@ -155,7 +155,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
 
           <div style={{ display: "flex", gap: 10, marginBottom: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
             <div style={{ flex: 1, minWidth: 160 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 5 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 5 }}>
                 Projekt
               </div>
               <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
@@ -164,7 +164,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
                   style={{
                     padding: "4px 10px",
                     borderRadius: 6,
-                    fontSize: 11,
+                    fontSize: 12,
                     fontWeight: 500,
                     border: `1.5px solid ${!task.projectId ? t.accent : t.border}`,
                     background: !task.projectId ? t.accentBg : "transparent",
@@ -183,7 +183,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
                       style={{
                         padding: "4px 10px",
                         borderRadius: 6,
-                        fontSize: 11,
+                        fontSize: 12,
                         fontWeight: 500,
                         border: `1.5px solid ${task.projectId === p.id ? t.accent : t.border}`,
                         background: task.projectId === p.id ? t.accentBg : "transparent",
@@ -197,7 +197,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
             </div>
 
             <div>
-              <div style={{ fontSize: 10, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 5 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 5 }}>
                 Termín
               </div>
               <input
@@ -219,7 +219,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
 
           {tags.length > 0 && (
             <div style={{ marginBottom: 10 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 5 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 5 }}>
                 Tagy
               </div>
               <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
@@ -236,7 +236,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
                       style={{
                         padding: "3px 9px",
                         borderRadius: 5,
-                        fontSize: 10.5,
+                        fontSize: 12,
                         fontWeight: 600,
                         border: `1.5px solid ${active ? tg.color : t.border}`,
                         background: active ? tg.color + "18" : "transparent",
@@ -257,11 +257,11 @@ export default function QuickAdd({ defaultProjectId = null }) {
                 setTaskDetail(task.id);
                 close();
               }}
-              style={{ padding: "6px 14px", borderRadius: 7, fontSize: 11.5, fontWeight: 600, border: "none", background: t.accent, color: "#fff" }}
+              style={{ padding: "6px 14px", borderRadius: 7, fontSize: 12, fontWeight: 600, border: "none", background: t.accent, color: "#fff" }}
             >
               Otevřít detail →
             </button>
-            <button onClick={close} style={{ padding: "6px 14px", borderRadius: 7, fontSize: 11.5, border: `1px solid ${t.border}`, background: "transparent", color: t.text2 }}>
+            <button onClick={close} style={{ padding: "6px 14px", borderRadius: 7, fontSize: 12, border: `1px solid ${t.border}`, background: "transparent", color: t.text2 }}>
               Hotovo
             </button>
           </div>

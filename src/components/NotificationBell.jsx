@@ -1,12 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { useApp } from '../context/AppContext.jsx'
 import Icon from './Icon.jsx'
-import { parseYMD, startOfToday } from '../utils.js'
+import { startOfToday } from '../utils.js'
 import { PRIORITIES } from '../constants.js'
-
-function fmt(d) {
-  return d.toISOString().slice(0, 10);
-}
+import { formatDateKey } from '../locale.js'
 
 export default function NotificationBell({ compact = false }) {
   const { t, tasks, projects, setTaskDetail } = useApp();
@@ -16,8 +13,8 @@ export default function NotificationBell({ compact = false }) {
   const btnRef = useRef(null);
 
   const today = startOfToday();
-  const todayStr = fmt(today);
-  const tomorrowStr = fmt(new Date(today.getTime() + 86400000));
+  const todayStr = formatDateKey(today);
+  const tomorrowStr = formatDateKey(new Date(today.getTime() + 86400000));
 
   const active = tasks.filter((tk) => tk.status !== "done");
 
@@ -46,10 +43,10 @@ export default function NotificationBell({ compact = false }) {
     if (!items.length) return null;
     return (
       <div style={{ marginBottom: 12 }}>
-        <div style={{ fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".06em", color, marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".06em", color, marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}>
           <Icon name={icon} size={10} color={color} strokeWidth={2.5} />
           {label}
-          <span style={{ fontWeight: 500, color: t.text3, background: t.input, borderRadius: 6, padding: "0px 5px", fontSize: 10 }}>{items.length}</span>
+          <span style={{ fontWeight: 500, color: t.text3, background: t.input, borderRadius: 6, padding: "0px 5px", fontSize: 12 }}>{items.length}</span>
         </div>
         {items.map((task) => {
           const proj = projects.find((p) => p.id === task.projectId);
@@ -74,12 +71,12 @@ export default function NotificationBell({ compact = false }) {
                 </div>
                 <div style={{ display: "flex", gap: 5, marginTop: 2, alignItems: "center" }}>
                   {proj && (
-                    <span style={{ fontSize: 11, color: t.text3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <span style={{ fontSize: 12, color: t.text3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {proj.name}
                     </span>
                   )}
                   {pr && (
-                    <span style={{ fontSize: 10.5, fontWeight: 600, color: pr.color, background: pr.bg, padding: "0px 5px", borderRadius: 3, flexShrink: 0 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: pr.color, background: pr.bg, padding: "0px 5px", borderRadius: 3, flexShrink: 0 }}>
                       {pr.label}
                     </span>
                   )}
@@ -128,7 +125,7 @@ export default function NotificationBell({ compact = false }) {
             marginLeft: "auto",
             minWidth: 18, height: 18, borderRadius: 9,
             background: "#ef4444", color: "#fff",
-            fontSize: 10, fontWeight: 700,
+            fontSize: 12, fontWeight: 700,
             display: "flex", alignItems: "center", justifyContent: "center",
             padding: "0 4px",
           }}>
@@ -185,7 +182,7 @@ export default function NotificationBell({ compact = false }) {
           </div>
 
           {!isEmpty && (
-            <div style={{ padding: "8px 16px 12px", borderTop: `1px solid ${t.border}`, fontSize: 11, color: t.text3 }}>
+            <div style={{ padding: "8px 16px 12px", borderTop: `1px solid ${t.border}`, fontSize: 12, color: t.text3 }}>
               Celkem {urgentCount + dueTomorrow.length} blížících se termínů · Kliknutím otevřeš detail
             </div>
           )}

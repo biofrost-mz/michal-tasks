@@ -34,7 +34,7 @@ export default function NotesMiniList({ taskId, projectId }) {
             </span>
           </div>
           {n.content && (
-            <div style={{ fontSize: 11, color: t.text3, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <div style={{ fontSize: 12, color: t.text3, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {n.content.split("\n")[0]}
             </div>
           )}

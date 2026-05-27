@@ -10,6 +10,14 @@ import React, {
 import { supabase } from "../supabase.js";
 import theme from "../theme.js";
 import { uuid4, parseYMD, useDebouncedEffect } from "../utils.js";
+import { formatDateKey } from "../locale.js";
+import * as taskService from "../services/taskService.js";
+import * as noteService from "../services/noteService.js";
+import * as projectService from "../services/projectService.js";
+import * as tagService from "../services/tagService.js";
+import * as workspaceService from "../services/workspaceService.js";
+import * as quickTodoService from "../services/quickTodoService.js";
+import * as attachmentService from "../services/attachmentService.js";
 
 /* ─────────────────────────────────────────────
    Context
@@ -79,181 +87,8 @@ function useIsMobile() {
 }
 
 /* ─────────────────────────────────────────────
-   Supabase DB helpers
+   DB fetch all (uses service normalizers)
 ───────────────────────────────────────────── */
-// Pevná seed ID — používají se jako suffix s workspace prefixem
-const SEED = {
-  PROJ_TEST: "seed-proj-test",
-  TAG_URGENT: "seed-tag-urgent",
-  TAG_IT: "seed-tag-it",
-  TAG_CONTENT: "seed-tag-content",
-  TAG_HR: "seed-tag-hr",
-  TAG_DESIGN: "seed-tag-design",
-  TASK_TEST: "seed-task-test",
-};
-
-// Generuje deterministické ID pro seed data (unikátní per workspace)
-function sid(workspaceId, key) {
-  return `${workspaceId.slice(0, 8)}-${key}`;
-}
-
-async function dbSeedIfEmpty(userId, workspaceId) {
-  const { count: pCount, error: pCountErr } = await supabase
-    .from("projects")
-    .select("id", { count: "exact", head: true })
-    .eq("workspace_id", workspaceId);
-  if (pCountErr) throw pCountErr;
-
-  const projId = sid(workspaceId, SEED.PROJ_TEST);
-  const tagItId = sid(workspaceId, SEED.TAG_IT);
-  const taskId = sid(workspaceId, SEED.TASK_TEST);
-
-  if ((pCount || 0) === 0) {
-    const { error } = await supabase.from("projects").insert({
-      id: projId,
-      owner: userId,
-      created_by: userId,
-      workspace_id: workspaceId,
-      name: "Testovací projekt",
-      description: "Ukázkový projekt pro seznámení s aplikací",
-      status: "active",
-      position: 1000,
-    });
-    if (error) throw error;
-  }
-
-  const { count: tCount, error: tCountErr } = await supabase
-    .from("tags")
-    .select("id", { count: "exact", head: true })
-    .eq("workspace_id", workspaceId);
-  if (tCountErr) throw tCountErr;
-
-  if ((tCount || 0) === 0) {
-    const tags = [
-      { key: SEED.TAG_URGENT, name: "urgent",  color: "#ef4444" },
-      { key: SEED.TAG_IT,     name: "IT",       color: "#3b82f6" },
-      { key: SEED.TAG_CONTENT,name: "content",  color: "#8b5cf6" },
-      { key: SEED.TAG_HR,     name: "HR",       color: "#f59e0b" },
-      { key: SEED.TAG_DESIGN, name: "design",   color: "#ec4899" },
-    ];
-    const { error } = await supabase.from("tags").insert(
-      tags.map((t) => ({ id: sid(workspaceId, t.key), owner: userId, created_by: userId, workspace_id: workspaceId, name: t.name, color: t.color }))
-    );
-    if (error) throw error;
-  }
-
-  const { count: tkCount, error: tkCountErr } = await supabase
-    .from("tasks")
-    .select("id", { count: "exact", head: true })
-    .eq("workspace_id", workspaceId);
-  if (tkCountErr) throw tkCountErr;
-
-  if ((tkCount || 0) === 0) {
-    const { error: tErr } = await supabase.from("tasks").insert({
-      id: taskId,
-      owner: userId,
-      created_by: userId,
-      workspace_id: workspaceId,
-      project_id: projId,
-      title: "Testovací úkol",
-      status: "todo",
-      position: 1000,
-    });
-    if (tErr) throw tErr;
-    const { error: ttErr } = await supabase.from("task_tags").insert({
-      task_id: taskId,
-      tag_id: tagItId,
-    });
-    if (ttErr) throw ttErr;
-  }
-}
-
-async function dbFetchMembers(wsId) {
-  const { data: members, error } = await supabase
-    .from("workspace_members")
-    .select("user_id, role, joined_at")
-    .eq("workspace_id", wsId);
-  if (error) throw error;
-  const list = members || [];
-  let profileMap = {};
-  if (list.length > 0) {
-    try {
-      const { data: profiles } = await supabase
-        .from("user_profiles")
-        .select("id, email, display_name")
-        .in("id", list.map((m) => m.user_id));
-      (profiles || []).forEach((p) => { profileMap[p.id] = p; });
-    } catch (_) { /* user_profiles not created yet */ }
-  }
-  return list.map((m) => ({
-    userId: m.user_id,
-    role: m.role,
-    joinedAt: m.joined_at,
-    email: profileMap[m.user_id]?.email ?? null,
-    displayName: profileMap[m.user_id]?.display_name ?? null,
-  }));
-}
-
-async function dbFetchWorkspaces(userId) {
-  const { data, error } = await supabase
-    .from("workspace_members")
-    .select("role, joined_at, workspaces(id, name, created_at, created_by)")
-    .eq("user_id", userId);
-  if (error) throw error;
-  return (data || []).map((m) => ({
-    id: m.workspaces.id,
-    name: m.workspaces.name,
-    role: m.role,
-    createdAt: m.workspaces.created_at ? new Date(m.workspaces.created_at).getTime() : Date.now(),
-  }));
-}
-
-async function dbEnsurePersonalWorkspace(userId) {
-  const { data: memberships } = await supabase
-    .from("workspace_members")
-    .select("workspace_id")
-    .eq("user_id", userId)
-    .order("joined_at", { ascending: true })
-    .limit(1);
-  if (memberships && memberships.length > 0) return memberships[0].workspace_id;
-  const wsId = uuid4();
-  const { error: wsErr } = await supabase.from("workspaces").insert({
-    id: wsId,
-    name: "Osobní",
-    created_by: userId,
-  });
-  if (wsErr) throw wsErr;
-  const { error: memErr } = await supabase.from("workspace_members").insert({
-    workspace_id: wsId,
-    user_id: userId,
-    role: "owner",
-  });
-  if (memErr) throw memErr;
-  return wsId;
-}
-
-function normalizeTask(t, tagIds = []) {
-  return {
-    id: t.id,
-    title: t.title || "",
-    description: t.description || "",
-    status: t.status || "todo",
-    priority: t.priority ?? null,
-    dueDate: t.due_date ?? null,
-    projectId: t.project_id ?? null,
-    tagIds,
-    position: t.position ?? Date.now(),
-    createdAt: t.created_at ? new Date(t.created_at).getTime() : Date.now(),
-    updatedAt: t.updated_at ? new Date(t.updated_at).getTime() : Date.now(),
-    completedAt: t.completed_at ? new Date(t.completed_at).getTime() : null,
-    phases: Array.isArray(t.phases) ? t.phases : [],
-    starred: !!t.starred,
-    recurrence: t.recurrence ?? null,
-    assigneeUserId: t.assignee_user_id ?? null,
-    remindAt: t.remind_at ?? null,
-  };
-}
-
 async function dbFetchAll(userId, workspaceId) {
   const { data: projects, error: pErr } = await supabase
     .from("projects")
@@ -262,12 +97,15 @@ async function dbFetchAll(userId, workspaceId) {
     .order("position", { ascending: true, nullsFirst: false });
   if (pErr) throw pErr;
 
-  const { data: tasks, error: tErr } = await supabase
-    .from("tasks")
-    .select("*")
-    .eq("workspace_id", workspaceId)
-    .order("position", { ascending: true });
-  if (tErr) throw tErr;
+  const rawTasks = await taskService.fetchTasks(workspaceId);
+  const taskIds = rawTasks.map((t) => t.id);
+  const rawTaskTags = await taskService.fetchTaskTags(taskIds);
+
+  const tagMap = new Map();
+  rawTaskTags.forEach((x) => {
+    if (!tagMap.has(x.task_id)) tagMap.set(x.task_id, []);
+    tagMap.get(x.task_id).push(x.tag_id);
+  });
 
   const { data: tags, error: gErr } = await supabase
     .from("tags")
@@ -276,72 +114,12 @@ async function dbFetchAll(userId, workspaceId) {
     .order("created_at", { ascending: true });
   if (gErr) throw gErr;
 
-  const taskIds = (tasks || []).map((t) => t.id);
-  const { data: taskTags, error: ttErr } = taskIds.length
-    ? await supabase.from("task_tags").select("task_id, tag_id").in("task_id", taskIds)
-    : { data: [], error: null };
-  if (ttErr) throw ttErr;
-
-  const tagMap = new Map();
-  (taskTags || []).forEach((x) => {
-    if (!tagMap.has(x.task_id)) tagMap.set(x.task_id, []);
-    tagMap.get(x.task_id).push(x.tag_id);
-  });
-
-  const tasksNorm = (tasks || []).map((t) => ({
-    id: t.id,
-    title: t.title || "",
-    description: t.description || "",
-    status: t.status || "todo",
-    priority: t.priority ?? null,
-    dueDate: t.due_date ?? null,
-    projectId: t.project_id ?? null,
-    tagIds: tagMap.get(t.id) || [],
-    position: t.position ?? Date.now(),
-    createdAt: t.created_at ? new Date(t.created_at).getTime() : Date.now(),
-    updatedAt: t.updated_at ? new Date(t.updated_at).getTime() : Date.now(),
-    completedAt: t.completed_at ? new Date(t.completed_at).getTime() : null,
-    phases: Array.isArray(t.phases) ? t.phases : [],
-    starred: !!t.starred,
-    recurrence: t.recurrence ?? null,
-    assigneeUserId: t.assignee_user_id ?? null,
-    remindAt: t.remind_at ?? null,
-  }));
-
-  const projectsNorm = (projects || []).map((p, i) => ({
-    id: p.id,
-    name: p.name,
-    description: p.description || "",
-    status: p.status || "active",
-    tags: [],
-    position: p.position ?? (i + 1) * 1000,
-    createdAt: p.created_at ? new Date(p.created_at).getTime() : Date.now(),
-    updatedAt: p.updated_at ? new Date(p.updated_at).getTime() : Date.now(),
-  }));
-
-  const tagsNorm = (tags || []).map((tg) => ({
-    id: tg.id,
-    name: tg.name,
-    color: tg.color || "#6366f1",
-  }));
-
   const { data: notes, error: nErr } = await supabase
     .from("notes")
     .select("*")
     .eq("workspace_id", workspaceId)
     .order("updated_at", { ascending: false });
   if (nErr) console.warn("notes table:", nErr.message);
-
-  const notesNorm = (notes || []).map((n) => ({
-    id: n.id,
-    title: n.title || "",
-    content: n.content || "",
-    primaryProjectId: n.primary_project_id || null,
-    primaryTaskId: n.primary_task_id || null,
-    pinned: !!n.pinned,
-    createdAt: n.created_at ? new Date(n.created_at).getTime() : Date.now(),
-    updatedAt: n.updated_at ? new Date(n.updated_at).getTime() : Date.now(),
-  }));
 
   const { data: atts, error: aErr } = await supabase
     .from("attachments")
@@ -350,19 +128,36 @@ async function dbFetchAll(userId, workspaceId) {
     .order("created_at", { ascending: false });
   if (aErr) console.warn("attachments table:", aErr.message);
 
-  const attsNorm = (atts || []).map((a) => ({
-    id: a.id,
-    taskId: a.task_id ?? null,
-    projectId: a.project_id ?? null,
-    noteId: a.note_id ?? null,
-    name: a.name,
-    size: a.size ?? null,
-    mimeType: a.mime_type ?? null,
-    storagePath: a.storage_path,
-    createdAt: a.created_at ? new Date(a.created_at).getTime() : Date.now(),
-  }));
+  const { data: qts, error: qtErr } = await supabase
+    .from("quick_todos")
+    .select("*")
+    .eq("workspace_id", workspaceId)
+    .order("created_at", { ascending: false });
+  if (qtErr) console.warn("quick_todos table:", qtErr.message);
 
-  return { projects: projectsNorm, tasks: tasksNorm, tags: tagsNorm, notes: notesNorm, attachments: attsNorm };
+  return {
+    projects: (projects || []).map((p, i) => projectService.normalizeProject(p, i)),
+    tasks: rawTasks.map((t) => taskService.normalizeTask(t, tagMap.get(t.id) || [])),
+    tags: (tags || []).map(tagService.normalizeTag),
+    notes: (notes || []).map(noteService.normalizeNote),
+    attachments: (atts || []).map((a) => ({
+      id: a.id,
+      taskId: a.task_id ?? null,
+      projectId: a.project_id ?? null,
+      noteId: a.note_id ?? null,
+      name: a.name,
+      size: a.size ?? null,
+      mimeType: a.mime_type ?? null,
+      storagePath: a.storage_path,
+      createdAt: a.created_at ? new Date(a.created_at).getTime() : Date.now(),
+    })),
+    quickTodos: (qts || []).map((q) => ({
+      id: q.id,
+      text: q.text || "",
+      done: !!q.done,
+      createdAt: q.created_at ? new Date(q.created_at).getTime() : Date.now(),
+    })),
+  };
 }
 
 /* ─────────────────────────────────────────────
@@ -383,15 +178,21 @@ export function AppProvider({ children }) {
   const [tags, setTags] = useState([]);
   const [notes, setNotes] = useState([]);
   const [attachments, setAttachments] = useState([]);
+  const [quickTodos, setQuickTodos] = useState([]);
   const [workspaces, setWorkspaces] = useState([]);
   const [activeWorkspaceId, setActiveWorkspaceIdRaw] = useState(null);
   const [workspaceMembers, setWorkspaceMembers] = useState([]);
+
+  // Error queue for displaying DB errors as toasts
+  const [errorQueue, setErrorQueue] = useState([]);
+  const reportError = useCallback((msg) => setErrorQueue((prev) => [...prev, msg]), []);
+  const clearErrors = useCallback(() => setErrorQueue([]), []);
 
   const setActiveWorkspaceId = useCallback(async (wsId) => {
     setActiveWorkspaceIdRaw(wsId);
     if (wsId) {
       localStorage.setItem("lastWorkspaceId", wsId);
-      const normalized = await dbFetchMembers(wsId);
+      const normalized = await workspaceService.fetchMembers(wsId);
       setWorkspaceMembers(normalized);
     } else {
       setWorkspaceMembers([]);
@@ -437,22 +238,23 @@ export function AppProvider({ children }) {
           { id: userId, email: session?.user?.email ?? null },
           { onConflict: "id", ignoreDuplicates: false }
         );
-        const personalWsId = await dbEnsurePersonalWorkspace(userId);
-        const wsList = await dbFetchWorkspaces(userId);
+        const personalWsId = await workspaceService.ensurePersonalWorkspace(userId);
+        const wsList = await workspaceService.fetchWorkspaces(userId);
         setWorkspaces(wsList);
         const savedWsId = localStorage.getItem("lastWorkspaceId");
         const wsId = savedWsId && wsList.find((w) => w.id === savedWsId) ? savedWsId : personalWsId;
         setActiveWorkspaceIdRaw(wsId);
         if (wsId !== personalWsId) localStorage.setItem("lastWorkspaceId", wsId);
-        const normalized = await dbFetchMembers(wsId);
+        const normalized = await workspaceService.fetchMembers(wsId);
         setWorkspaceMembers(normalized);
-        await dbSeedIfEmpty(userId, wsId);
+        await workspaceService.seedIfEmpty(userId, wsId);
         const data = await dbFetchAll(userId, wsId);
         setProjects(data.projects);
         setTasks(data.tasks);
         setTags(data.tags);
         setNotes(data.notes);
         setAttachments(data.attachments ?? []);
+        setQuickTodos(data.quickTodos ?? []);
       } catch (e) {
         console.error("load error:", e);
         setLoadError(e?.message || "Nepodařilo se načíst data");
@@ -472,7 +274,7 @@ export function AppProvider({ children }) {
     (async () => {
       try {
         const wsId = await acceptInvite(token);
-        const wsList = await dbFetchWorkspaces(userId);
+        const wsList = await workspaceService.fetchWorkspaces(userId);
         setWorkspaces(wsList);
         await switchWorkspace(wsId);
         window.history.replaceState({}, "", window.location.pathname);
@@ -489,9 +291,9 @@ export function AppProvider({ children }) {
       .channel(`tasks-rt-${activeWorkspaceId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "tasks", filter: `workspace_id=eq.${activeWorkspaceId}` }, (payload) => {
         if (payload.eventType === "UPDATE") {
-          setTasks((prev) => prev.map((t) => t.id === payload.new.id ? normalizeTask(payload.new, t.tagIds) : t));
+          setTasks((prev) => prev.map((t) => t.id === payload.new.id ? taskService.normalizeTask(payload.new, t.tagIds) : t));
         } else if (payload.eventType === "INSERT") {
-          setTasks((prev) => prev.some((t) => t.id === payload.new.id) ? prev : [...prev, normalizeTask(payload.new, [])]);
+          setTasks((prev) => prev.some((t) => t.id === payload.new.id) ? prev : [...prev, taskService.normalizeTask(payload.new, [])]);
         } else if (payload.eventType === "DELETE") {
           setTasks((prev) => prev.filter((t) => t.id !== payload.old.id));
         }
@@ -520,22 +322,18 @@ export function AppProvider({ children }) {
     setProjects((prev) => [...prev, proj]);
     (async () => {
       if (!userId) return;
-      const { error } = await supabase.from("projects").insert({
-        id: proj.id,
-        owner: userId,
-        workspace_id: activeWorkspaceId,
-        created_by: userId,
-        name: proj.name,
-        description: proj.description,
-        status: proj.status,
-        position: proj.position,
-      });
-      if (error) console.error(error);
+      try {
+        await projectService.insertProject(proj, userId, activeWorkspaceId);
+      } catch {
+        setProjects((prev) => prev.filter((x) => x.id !== proj.id));
+        reportError("Projekt se nepodařilo uložit");
+      }
     })();
     return proj;
-  }, [userId, activeWorkspaceId]);
+  }, [userId, activeWorkspaceId, reportError]);
 
   const updateProject = useCallback((id, u) => {
+    const prevProject = projects.find((x) => x.id === id) ?? null;
     setProjects((p) => p.map((x) => (x.id === id ? { ...x, ...u, updatedAt: Date.now() } : x)));
     (async () => {
       const payload = {};
@@ -543,29 +341,52 @@ export function AppProvider({ children }) {
       if (u.description !== undefined) payload.description = u.description;
       if (u.status !== undefined) payload.status = u.status;
       if (!Object.keys(payload).length) return;
-      const { error } = await supabase.from("projects").update(payload).eq("id", id);
-      if (error) console.error(error);
+      try {
+        await projectService.updateProjectDB(id, payload);
+      } catch {
+        if (prevProject) setProjects((p) => p.map((x) => x.id === id ? prevProject : x));
+        reportError("Projekt se nepodařilo aktualizovat");
+      }
     })();
-  }, []);
+  }, [projects, reportError]);
 
   const deleteProject = useCallback(
     (id) => {
+      const prevProjects = projects;
+      const prevTasks = tasks;
       setProjects((p) => p.filter((x) => x.id !== id));
       setTasks((p) => p.map((x) => (x.projectId === id ? { ...x, projectId: null } : x)));
       (async () => {
-        await supabase.from("tasks").update({ project_id: null }).eq("project_id", id);
-        const { error } = await supabase.from("projects").delete().eq("id", id);
-        if (error) console.error(error);
+        try {
+          await projectService.deleteProjectDB(id);
+        } catch {
+          setProjects(prevProjects);
+          setTasks(prevTasks);
+          reportError("Projekt se nepodařilo smazat");
+        }
       })();
       if (selProject === id) {
         setPage("projects");
         setSelProject(null);
       }
     },
-    [selProject]
+    [selProject, projects, tasks, reportError]
   );
 
-  // Přeuspořádání projektů — přijme nové pole projektů v požadovaném pořadí
+  // Přeuspořádání úkolů — přijme nové pole úkolů v požadovaném pořadí
+  const reorderTasks = useCallback((orderedTasks) => {
+    const updated = orderedTasks.map((tk, i) => ({ ...tk, position: (i + 1) * 1000 }));
+    setTasks((prev) => {
+      const updatedMap = new Map(updated.map((tk) => [tk.id, tk]));
+      return prev.map((tk) => updatedMap.has(tk.id) ? updatedMap.get(tk.id) : tk);
+    });
+    (async () => {
+      await Promise.all(
+        updated.map((tk) => supabase.from("tasks").update({ position: tk.position }).eq("id", tk.id))
+      );
+    })();
+  }, []);
+
   const reorderProjects = useCallback((orderedProjects) => {
     const updated = orderedProjects.map((p, i) => ({ ...p, position: (i + 1) * 1000 }));
     setProjects((prev) => {
@@ -594,6 +415,7 @@ export function AppProvider({ children }) {
       projectId: task?.projectId ?? null,
       tagIds: task?.tagIds || [],
       phases: [],
+      subtasks: [],
       position: Date.now(),
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -605,37 +427,22 @@ export function AppProvider({ children }) {
     setTasks((p) => [...p, tsk]);
     (async () => {
       if (!userId) return;
-      const { error } = await supabase.from("tasks").insert({
-        id: tsk.id,
-        owner: userId,
-        workspace_id: activeWorkspaceId,
-        created_by: userId,
-        project_id: tsk.projectId,
-        title: tsk.title,
-        description: tsk.description,
-        status: tsk.status,
-        priority: tsk.priority,
-        due_date: tsk.dueDate,
-        position: tsk.position,
-        starred: tsk.starred,
-        phases: tsk.phases,
-        ...(tsk.recurrence != null ? { recurrence: tsk.recurrence } : {}),
-        completed_at: tsk.status === "done" ? new Date().toISOString() : null,
-      });
-      if (error) console.error(error);
-      if (tsk.tagIds?.length) {
-        const rows = tsk.tagIds.map((tagId) => ({ owner: userId, task_id: tsk.id, tag_id: tagId }));
-        const { error: e2 } = await supabase.from("task_tags").insert(rows);
-        if (e2) console.error(e2);
+      try {
+        await taskService.insertTask(tsk, userId, activeWorkspaceId);
+        if (tsk.tagIds?.length) {
+          await taskService.insertTaskTags(tsk.id, tsk.tagIds, userId);
+        }
+      } catch {
+        setTasks((p) => p.filter((t) => t.id !== tsk.id));
+        reportError("Úkol se nepodařilo uložit");
       }
     })();
     return tsk;
-  }, [userId, activeWorkspaceId]);
+  }, [userId, activeWorkspaceId, reportError]);
 
   const updateTask = useCallback(
     (id, u) => {
       // Compute prev/next synchronně z ref — vyhne se stale closure a race condition
-      // kde async IIFE poběží dřív než React zavolá setTasks callback
       const prevTask = tasksRef.current.find((x) => x.id === id) ?? null;
       if (!prevTask) return;
       const nextTask = { ...prevTask, ...u, updatedAt: Date.now() };
@@ -655,6 +462,7 @@ export function AppProvider({ children }) {
         if (u.position !== undefined) payload.position = nextTask.position;
         if (u.starred !== undefined) payload.starred = nextTask.starred;
         if (u.phases !== undefined) payload.phases = nextTask.phases;
+        if (u.subtasks !== undefined) payload.subtasks = nextTask.subtasks;
         if (u.recurrence !== undefined) payload.recurrence = nextTask.recurrence;
         if (u.remindAt !== undefined) payload.remind_at = u.remindAt ?? null;
         if (u.assigneeUserId !== undefined) payload.assignee_user_id = u.assigneeUserId;
@@ -662,8 +470,13 @@ export function AppProvider({ children }) {
           payload.completed_at = nextTask.status === "done" ? new Date().toISOString() : null;
         }
         if (Object.keys(payload).length) {
-          const { error } = await supabase.from("tasks").update(payload).eq("id", id);
-          if (error) console.error(error);
+          try {
+            await taskService.updateTaskDB(id, payload);
+          } catch {
+            setTasks((p) => p.map((x) => x.id === id ? prevTask : x));
+            reportError("Úkol se nepodařilo aktualizovat");
+            return;
+          }
         }
 
         const VALID_RECURRENCE = ["daily", "weekly", "monthly"];
@@ -677,7 +490,7 @@ export function AppProvider({ children }) {
               if (rec === "daily") d.setDate(d.getDate() + 1);
               else if (rec === "weekly") d.setDate(d.getDate() + 7);
               else if (rec === "monthly") d.setMonth(d.getMonth() + 1);
-              nextDue = d.toISOString().slice(0, 10);
+              nextDue = formatDateKey(d);
             }
           }
           const newId = uuid4();
@@ -691,6 +504,7 @@ export function AppProvider({ children }) {
             projectId: nextTask.projectId,
             tagIds: nextTask.tagIds || [],
             phases: [],
+            subtasks: [],
             position: Date.now() + 1,
             createdAt: Date.now(),
             updatedAt: Date.now(),
@@ -701,53 +515,45 @@ export function AppProvider({ children }) {
           setTasks((p) => [...p, newTask]);
           (async () => {
             if (!userId) return;
-            await supabase.from("tasks").insert({
-              id: newTask.id, owner: userId, created_by: userId,
-              workspace_id: activeWorkspaceId,
-              title: newTask.title, description: newTask.description,
-              status: newTask.status, priority: newTask.priority,
-              due_date: newTask.dueDate, project_id: newTask.projectId,
-              position: newTask.position, starred: false, phases: [],
-              ...(rec != null ? { recurrence: rec } : {}),
-            });
-            if (newTask.tagIds?.length) {
-              const rows = newTask.tagIds.map((tagId) => ({ owner: userId, task_id: newTask.id, tag_id: tagId }));
-              await supabase.from("task_tags").insert(rows);
+            try {
+              await taskService.insertTask({ ...newTask, recurrence: rec }, userId, activeWorkspaceId);
+              if (newTask.tagIds?.length) {
+                await taskService.insertTaskTags(newTask.id, newTask.tagIds, userId);
+              }
+            } catch {
+              setTasks((p) => p.filter((t) => t.id !== newTask.id));
             }
           })();
         }
 
         if (u.tagIds !== undefined) {
-          const prev = prevTask?.tagIds || [];
-          const next = nextTask.tagIds || [];
-          const toAdd = next.filter((x) => !prev.includes(x));
-          const toRemove = prev.filter((x) => !next.includes(x));
-          if (toAdd.length) {
-            const rows = toAdd.map((tagId) => ({ owner: userId, task_id: id, tag_id: tagId }));
-            const { error: e1 } = await supabase.from("task_tags").insert(rows);
-            if (e1) console.error(e1);
-          }
-          if (toRemove.length) {
-            const { error: e2 } = await supabase.from("task_tags").delete().eq("task_id", id).in("tag_id", toRemove);
-            if (e2) console.error(e2);
+          try {
+            await taskService.syncTaskTags(id, prevTask?.tagIds || [], nextTask.tagIds || [], userId);
+          } catch {
+            // Tag sync failure is non-critical, don't rollback the whole task update
+            reportError("Tagy se nepodařilo synchronizovat");
           }
         }
       })();
     },
-    [userId, activeWorkspaceId]
+    [userId, activeWorkspaceId, reportError]
   );
 
   const deleteTask = useCallback(
     (id) => {
+      const prevTask = tasksRef.current.find((x) => x.id === id) ?? null;
       setTasks((p) => p.filter((x) => x.id !== id));
       if (taskDetail === id) setTaskDetail(null);
       (async () => {
-        await supabase.from("task_tags").delete().eq("task_id", id);
-        const { error } = await supabase.from("tasks").delete().eq("id", id);
-        if (error) console.error(error);
+        try {
+          await taskService.deleteTaskDB(id);
+        } catch {
+          if (prevTask) setTasks((p) => [...p, prevTask]);
+          reportError("Úkol se nepodařilo smazat");
+        }
       })();
     },
-    [taskDetail]
+    [taskDetail, reportError]
   );
 
   // CRUD — Tags
@@ -756,33 +562,48 @@ export function AppProvider({ children }) {
     setTags((p) => [...p, tg]);
     (async () => {
       if (!userId) return;
-      const { error } = await supabase.from("tags").insert({ id: tg.id, owner: userId, workspace_id: activeWorkspaceId, created_by: userId, name: tg.name, color: tg.color });
-      if (error) console.error(error);
+      try {
+        await tagService.insertTag(tg, userId, activeWorkspaceId);
+      } catch {
+        setTags((p) => p.filter((x) => x.id !== tg.id));
+        reportError("Tag se nepodařilo uložit");
+      }
     })();
     return tg;
-  }, [userId, activeWorkspaceId]);
+  }, [userId, activeWorkspaceId, reportError]);
 
   const updateTag = useCallback((id, u) => {
+    const prevTag = tags.find((x) => x.id === id) ?? null;
     setTags((p) => p.map((x) => (x.id === id ? { ...x, ...u } : x)));
     (async () => {
       const payload = {};
       if (u.name !== undefined) payload.name = u.name;
       if (u.color !== undefined) payload.color = u.color;
       if (!Object.keys(payload).length) return;
-      const { error } = await supabase.from("tags").update(payload).eq("id", id);
-      if (error) console.error(error);
+      try {
+        await tagService.updateTagDB(id, payload);
+      } catch {
+        if (prevTag) setTags((p) => p.map((x) => x.id === id ? prevTag : x));
+        reportError("Tag se nepodařilo aktualizovat");
+      }
     })();
-  }, []);
+  }, [tags, reportError]);
 
   const deleteTag = useCallback((id) => {
+    const prevTags = tags;
+    const prevTasks = tasks;
     setTags((p) => p.filter((x) => x.id !== id));
     setTasks((p) => p.map((x) => ({ ...x, tagIds: (x.tagIds || []).filter((tid) => tid !== id) })));
     (async () => {
-      await supabase.from("task_tags").delete().eq("tag_id", id);
-      const { error } = await supabase.from("tags").delete().eq("id", id);
-      if (error) console.error(error);
+      try {
+        await tagService.deleteTagDB(id);
+      } catch {
+        setTags(prevTags);
+        setTasks(prevTasks);
+        reportError("Tag se nepodařilo smazat");
+      }
     })();
-  }, []);
+  }, [tags, tasks, reportError]);
 
   // CRUD — Notes
   const addNote = useCallback((opts = {}) => {
@@ -799,23 +620,18 @@ export function AppProvider({ children }) {
     setNotes((prev) => [note, ...prev]);
     (async () => {
       if (!userId) return;
-      const { error } = await supabase.from("notes").insert({
-        id: note.id,
-        owner: userId,
-        workspace_id: activeWorkspaceId,
-        created_by: userId,
-        title: note.title,
-        content: note.content,
-        primary_project_id: note.primaryProjectId,
-        primary_task_id: note.primaryTaskId,
-        pinned: note.pinned,
-      });
-      if (error) console.error(error);
+      try {
+        await noteService.insertNote(note, userId, activeWorkspaceId);
+      } catch {
+        setNotes((prev) => prev.filter((n) => n.id !== note.id));
+        reportError("Poznámka se nepodařilo uložit");
+      }
     })();
     return note;
-  }, [userId, activeWorkspaceId]);
+  }, [userId, activeWorkspaceId, reportError]);
 
   const updateNote = useCallback((id, u) => {
+    const prevNote = notes.find((n) => n.id === id) ?? null;
     setNotes((prev) =>
       prev.map((n) => (n.id !== id ? n : { ...n, ...u, updatedAt: Date.now() }))
     );
@@ -826,52 +642,123 @@ export function AppProvider({ children }) {
       if (u.primaryProjectId !== undefined) payload.primary_project_id = u.primaryProjectId;
       if (u.primaryTaskId !== undefined) payload.primary_task_id = u.primaryTaskId;
       if (u.pinned !== undefined) payload.pinned = u.pinned;
-      const { error } = await supabase.from("notes").update(payload).eq("id", id);
-      if (error) console.error(error);
+      try {
+        await noteService.updateNoteDB(id, payload);
+      } catch {
+        if (prevNote) setNotes((prev) => prev.map((n) => n.id === id ? prevNote : n));
+        reportError("Poznámka se nepodařilo aktualizovat");
+      }
     })();
-  }, []);
+  }, [notes, reportError]);
 
   const deleteNote = useCallback((id) => {
+    const prevNote = notes.find((n) => n.id === id) ?? null;
     setNotes((prev) => prev.filter((n) => n.id !== id));
     (async () => {
-      const { error } = await supabase.from("notes").delete().eq("id", id);
-      if (error) console.error(error);
+      try {
+        await noteService.deleteNoteDB(id);
+      } catch {
+        if (prevNote) setNotes((prev) => [...prev, prevNote]);
+        reportError("Poznámka se nepodařilo smazat");
+      }
     })();
-  }, []);
+  }, [notes, reportError]);
 
   const uploadAttachment = useCallback(async (file, { taskId = null, projectId = null, noteId = null } = {}) => {
     if (!userId) throw new Error("Not logged in");
-    const ext = file.name.includes(".") ? file.name.split(".").pop() : "bin";
-    const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-    const { error: upErr } = await supabase.storage.from("attachments").upload(path, file);
-    if (upErr) throw upErr;
+    const storagePath = await attachmentService.uploadFile(file, userId);
     const attId = (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
-    const { error: dbErr } = await supabase.from("attachments").insert({
+    const att = {
       id: attId,
-      owner: userId,
-      workspace_id: activeWorkspaceId,
-      task_id: taskId,
-      project_id: projectId,
-      note_id: noteId,
+      taskId,
+      projectId,
+      noteId,
       name: file.name,
       size: file.size,
-      mime_type: file.type || null,
-      storage_path: path,
-    });
-    if (dbErr) {
-      await supabase.storage.from("attachments").remove([path]);
-      throw dbErr;
-    }
-    const att = { id: attId, taskId, projectId, noteId, name: file.name, size: file.size, mimeType: file.type || null, storagePath: path, createdAt: Date.now() };
-    setAttachments((prev) => [att, ...prev]);
-    return att;
+      mimeType: file.type || null,
+      storagePath,
+    };
+    await attachmentService.insertAttachmentDB(att, userId, activeWorkspaceId);
+    const result = { ...att, createdAt: Date.now() };
+    setAttachments((prev) => [result, ...prev]);
+    return result;
   }, [userId, activeWorkspaceId]);
 
   const deleteAttachment = useCallback(async (att) => {
     setAttachments((prev) => prev.filter((a) => a.id !== att.id));
-    await supabase.storage.from("attachments").remove([att.storagePath]);
-    await supabase.from("attachments").delete().eq("id", att.id);
+    await attachmentService.deleteAttachmentDB(att);
   }, []);
+
+  // CRUD — Quick Todos
+  const addQuickTodo = useCallback((text) => {
+    const qt = { id: uuid4(), text: (text || "").trim(), done: false, createdAt: Date.now() };
+    setQuickTodos((prev) => [qt, ...prev]);
+    (async () => {
+      if (!userId) return;
+      try {
+        await quickTodoService.insertQuickTodo(qt, userId, activeWorkspaceId);
+      } catch {
+        setQuickTodos((prev) => prev.filter((q) => q.id !== qt.id));
+        reportError("Rychlý úkol se nepodařilo uložit");
+      }
+    })();
+    return qt;
+  }, [userId, activeWorkspaceId, reportError]);
+
+  const archiveQuickTodo = useCallback((id) => {
+    const prevTodos = quickTodos;
+    setQuickTodos((prev) => prev.map((q) => q.id === id ? { ...q, done: true } : q));
+    (async () => {
+      try {
+        await quickTodoService.updateQuickTodoDB(id, { done: true });
+      } catch {
+        setQuickTodos(prevTodos);
+        reportError("Rychlý úkol se nepodařilo archivovat");
+      }
+    })();
+  }, [quickTodos, reportError]);
+
+  const restoreQuickTodo = useCallback((id) => {
+    const prevTodos = quickTodos;
+    setQuickTodos((prev) => prev.map((q) => q.id === id ? { ...q, done: false } : q));
+    (async () => {
+      try {
+        await quickTodoService.updateQuickTodoDB(id, { done: false });
+      } catch {
+        setQuickTodos(prevTodos);
+        reportError("Rychlý úkol se nepodařilo obnovit");
+      }
+    })();
+  }, [quickTodos, reportError]);
+
+  const deleteQuickTodo = useCallback((id) => {
+    const prevTodo = quickTodos.find((q) => q.id === id) ?? null;
+    setQuickTodos((prev) => prev.filter((q) => q.id !== id));
+    (async () => {
+      try {
+        await quickTodoService.deleteQuickTodoDB(id);
+      } catch {
+        if (prevTodo) setQuickTodos((prev) => [...prev, prevTodo]);
+        reportError("Rychlý úkol se nepodařilo smazat");
+      }
+    })();
+  }, [quickTodos, reportError]);
+
+  const clearArchivedQuickTodos = useCallback(() => {
+    const ids = quickTodos.filter((q) => q.done).map((q) => q.id);
+    if (!ids.length) return;
+    const prevTodos = quickTodos;
+    setQuickTodos((prev) => prev.filter((q) => !q.done));
+    (async () => {
+      try {
+        const { error } = await supabase.from("quick_todos").delete().in("id", ids);
+        if (error) throw error;
+      } catch {
+        setQuickTodos(prevTodos);
+        reportError("Archivované úkoly se nepodařilo smazat");
+      }
+    })();
+  }, [quickTodos, reportError]);
 
   const switchWorkspace = useCallback(async (wsId) => {
     if (wsId === activeWorkspaceId) return;
@@ -884,6 +771,7 @@ export function AppProvider({ children }) {
       setTags(data.tags);
       setNotes(data.notes);
       setAttachments(data.attachments ?? []);
+      setQuickTodos(data.quickTodos ?? []);
     } catch (e) {
       console.error("switchWorkspace error:", e);
     } finally {
@@ -930,9 +818,8 @@ export function AppProvider({ children }) {
     if (remaining.length > 0) {
       await switchWorkspace(remaining[0].id);
     } else {
-      // Create a new personal workspace so app never ends up in broken state
-      const newWsId = await dbEnsurePersonalWorkspace(userId);
-      const wsList = await dbFetchWorkspaces(userId);
+      const newWsId = await workspaceService.ensurePersonalWorkspace(userId);
+      const wsList = await workspaceService.fetchWorkspaces(userId);
       setWorkspaces(wsList);
       await switchWorkspace(newWsId);
     }
@@ -1004,7 +891,7 @@ export function AppProvider({ children }) {
       user_id: userId,
       role: invite.role,
     });
-    if (memErr && !memErr.message.includes("duplicate")) throw memErr;
+    if (memErr && memErr.code !== "23505") throw memErr;
     await supabase.from("workspace_invites").update({ accepted_at: new Date().toISOString() }).eq("id", invite.id);
     return invite.workspace_id;
   }, [userId]);
@@ -1036,6 +923,7 @@ export function AppProvider({ children }) {
     updateProject,
     deleteProject,
     reorderProjects,
+    reorderTasks,
     addTask,
     updateTask,
     deleteTask,
@@ -1060,6 +948,12 @@ export function AppProvider({ children }) {
     openNote,
     openNoteId,
     setOpenNoteId,
+    quickTodos,
+    addQuickTodo,
+    archiveQuickTodo,
+    restoreQuickTodo,
+    deleteQuickTodo,
+    clearArchivedQuickTodos,
     cmdOpen,
     setCmdOpen,
     isMobile,
@@ -1083,6 +977,9 @@ export function AppProvider({ children }) {
     userId,
     userEmail: session?.user?.email ?? null,
     logout: () => supabase.auth.signOut(),
+    // Error queue
+    errorQueue,
+    clearErrors,
   };
 
   return (
