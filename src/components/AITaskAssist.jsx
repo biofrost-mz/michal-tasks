@@ -5,17 +5,18 @@ import Icon from './Icon.jsx'
 import { supabase } from '../supabase.js'
 
 const ACTIONS = [
-  { id: "subtasks",    icon: "check-square", label: "Podúkoly",  desc: "Navrhni podúkoly" },
-  { id: "tags",        icon: "tag",          label: "Tagy",      desc: "Navrhni tagy" },
-  { id: "description", icon: "file-text",    label: "Popis",     desc: "Doplň popis" },
-  { id: "priority",    icon: "arrow-up",     label: "Priorita",  desc: "Odhadni prioritu" },
+  { id: "optimize",    icon: "zap",          label: "Optimalizovat", desc: "Optimalizuj název, projekt, tagy a podúkoly najednou" },
+  { id: "subtasks",    icon: "check-square", label: "Podúkoly",      desc: "Navrhni podúkoly" },
+  { id: "tags",        icon: "tag",          label: "Tagy",          desc: "Navrhni tagy" },
+  { id: "description", icon: "file-text",    label: "Popis",         desc: "Doplň popis" },
+  { id: "priority",    icon: "arrow-up",     label: "Priorita",      desc: "Odhadni prioritu" },
 ];
 
 const PRIORITY_LABELS = { low: "Nízká", medium: "Střední", high: "Vysoká" };
 const PRIORITY_COLORS = { low: "#22c55e", medium: "#f59e0b", high: "#ef4444" };
 
-export default function AITaskAssist({ task }) {
-  const { t, tags, updateTask, activeWorkspaceId } = useApp();
+export default function AITaskAssist({ task, onTitleChange }) {
+  const { t, tags, projects, updateTask, activeWorkspaceId } = useApp();
   const toast = useToast();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(null);
@@ -23,48 +24,69 @@ export default function AITaskAssist({ task }) {
   const [activeAction, setActiveAction] = useState(null);
 
   const availableTags = tags.map((tg) => tg.name);
+  const availableProjects = projects.map((p) => p.name);
 
   const run = async (action) => {
     setLoading(action);
     setResult(null);
     setActiveAction(action);
     try {
-      const { data, error } = await supabase.functions.invoke("ai-task-assist", {
-        body: {
-          action,
-          task: {
-            title: task.title,
-            description: task.description,
-            dueDate: task.dueDate,
-            priority: task.priority,
+      if (action === "optimize") {
+        const { data, error } = await supabase.functions.invoke("gemini-task-optimize", {
+          body: {
+            currentTitle: task.title,
+            currentDescription: task.description ?? "",
+            availableProjects,
+            availableTags,
           },
-          availableTags,
-          workspaceId: activeWorkspaceId,
-        },
-      });
-      if (error) {
-        const msg = data?.error || error.message || String(error);
-        if (error.status === 429 || msg.includes("Rate limit")) {
-          toast("Příliš mnoho AI dotazů — zkus to za hodinu.", "error");
-        } else {
-          toast("Chyba AI", "error");
+        });
+        if (error) {
+          const msg = data?.error || error.message || String(error);
+          if (error.status === 429 || msg.includes("Rate limit")) {
+            toast("Příliš mnoho AI dotazů — zkus to za hodinu.", "error");
+          } else {
+            toast("Chyba AI optimalizace", "error");
+          }
+          setActiveAction(null);
+          return;
         }
-        setActiveAction(null);
-        return;
-      }
+        setResult(data?.result ?? null);
+      } else {
+        const { data, error } = await supabase.functions.invoke("ai-task-assist", {
+          body: {
+            action,
+            task: {
+              title: task.title,
+              description: task.description,
+              dueDate: task.dueDate,
+              priority: task.priority,
+            },
+            availableTags,
+            workspaceId: activeWorkspaceId,
+          },
+        });
+        if (error) {
+          const msg = data?.error || error.message || String(error);
+          if (error.status === 429 || msg.includes("Rate limit")) {
+            toast("Příliš mnoho AI dotazů — zkus to za hodinu.", "error");
+          } else {
+            toast("Chyba AI", "error");
+          }
+          setActiveAction(null);
+          return;
+        }
 
-      const raw = data?.result ?? "";
-
-      if (action === "subtasks" || action === "tags" || action === "priority") {
-        try {
-          // Strip markdown code fences if present
-          const cleaned = raw.replace(/^```[a-z]*\n?/i, "").replace(/```$/,"").trim();
-          setResult(JSON.parse(cleaned));
-        } catch {
+        const raw = data?.result ?? "";
+        if (action === "subtasks" || action === "tags" || action === "priority") {
+          try {
+            const cleaned = raw.replace(/^```[a-z]*\n?/i, "").replace(/```$/, "").trim();
+            setResult(JSON.parse(cleaned));
+          } catch {
+            setResult(raw);
+          }
+        } else {
           setResult(raw);
         }
-      } else {
-        setResult(raw);
       }
     } catch (e) {
       toast("Chyba AI — zkus to znovu", "error");
@@ -78,7 +100,46 @@ export default function AITaskAssist({ task }) {
   const apply = () => {
     if (!result) return;
 
-    if (activeAction === "subtasks" && Array.isArray(result)) {
+    if (activeAction === "optimize" && result) {
+      const updates = {};
+
+      if (result.optimizedTitle && result.optimizedTitle !== task.title) {
+        updates.title = result.optimizedTitle;
+        onTitleChange?.(result.optimizedTitle);
+      }
+
+      if (result.suggestedProject) {
+        const matchedProject = projects.find(
+          (p) => p.name.toLowerCase() === result.suggestedProject.toLowerCase()
+        );
+        if (matchedProject) updates.projectId = matchedProject.id;
+      }
+
+      if (Array.isArray(result.suggestedTags) && result.suggestedTags.length > 0) {
+        const existingTagIds = task.tagIds || [];
+        const newTagIds = result.suggestedTags
+          .map((name) => tags.find((tg) => tg.name.toLowerCase() === name.toLowerCase())?.id)
+          .filter(Boolean);
+        const merged = [...new Set([...existingTagIds, ...newTagIds])];
+        if (merged.length !== existingTagIds.length) updates.tagIds = merged;
+      }
+
+      if (Array.isArray(result.subtasks) && result.subtasks.length > 0) {
+        const newSubs = result.subtasks.map((text) => ({
+          id: crypto.randomUUID(),
+          text: String(text),
+          done: false,
+        }));
+        updates.subtasks = [...(task.subtasks || []), ...newSubs];
+      }
+
+      if (Object.keys(updates).length > 0) {
+        updateTask(task.id, updates);
+        toast("Úkol optimalizován ✨", "success");
+      } else {
+        toast("Vše bylo již nastaveno správně", "info");
+      }
+    } else if (activeAction === "subtasks" && Array.isArray(result)) {
       const newSubs = result.map((text) => ({
         id: crypto.randomUUID(),
         text: String(text),
@@ -104,7 +165,6 @@ export default function AITaskAssist({ task }) {
 
   return (
     <div style={{ marginBottom: 16 }}>
-      {/* Header */}
       <button
         onClick={() => setOpen((v) => !v)}
         style={{
@@ -124,7 +184,6 @@ export default function AITaskAssist({ task }) {
 
       {open && (
         <div className="fi" style={{ marginTop: 8 }}>
-          {/* Action buttons */}
           <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: result ? 10 : 0 }}>
             {ACTIONS.map((a) => (
               <button
@@ -152,7 +211,6 @@ export default function AITaskAssist({ task }) {
             ))}
           </div>
 
-          {/* Result card */}
           {result !== null && (
             <div className="fi" style={{
               background: t.input, border: `1px solid ${t.border}`,
@@ -189,6 +247,51 @@ export default function AITaskAssist({ task }) {
 }
 
 function ResultView({ action, result, t }) {
+  if (action === "optimize" && result) {
+    return (
+      <div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 10 }}>
+          Návrh optimalizace
+        </div>
+        <OptimizeRow icon="edit-2" label="Název" t={t}>
+          <span style={{ fontSize: 13, color: t.text, fontWeight: 600 }}>{result.optimizedTitle}</span>
+        </OptimizeRow>
+        <OptimizeRow icon="folder" label="Projekt" t={t}>
+          {result.suggestedProject
+            ? <span style={{ fontSize: 13, color: t.accent }}>{result.suggestedProject}</span>
+            : <span style={{ fontSize: 12, color: t.text3, fontStyle: "italic" }}>Žádný</span>}
+        </OptimizeRow>
+        <OptimizeRow icon="tag" label="Tagy" t={t}>
+          {result.suggestedTags?.length > 0
+            ? <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                {result.suggestedTags.map((tag, i) => (
+                  <span key={i} style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 5, background: t.accentBg, color: t.accent }}>
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            : <span style={{ fontSize: 12, color: t.text3, fontStyle: "italic" }}>Žádné</span>}
+        </OptimizeRow>
+        <OptimizeRow icon="clock" label="Odhad" t={t}>
+          <span style={{ fontSize: 13, color: t.text2 }}>
+            {result.timeEstimate}
+            <span style={{ fontSize: 11, color: t.text3, marginLeft: 6 }}>(jen informace)</span>
+          </span>
+        </OptimizeRow>
+        <OptimizeRow icon="list" label="Podúkoly" t={t}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            {result.subtasks?.map((s, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: t.text }}>
+                <div style={{ width: 5, height: 5, borderRadius: "50%", background: t.accent, flexShrink: 0 }} />
+                {s}
+              </div>
+            ))}
+          </div>
+        </OptimizeRow>
+      </div>
+    );
+  }
+
   if (action === "subtasks" && Array.isArray(result)) {
     return (
       <div>
@@ -250,10 +353,21 @@ function ResultView({ action, result, t }) {
     );
   }
 
-  // Fallback: raw text
   return (
     <div style={{ fontSize: 13, color: t.text, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>
       {typeof result === "string" ? result : JSON.stringify(result, null, 2)}
+    </div>
+  );
+}
+
+function OptimizeRow({ icon, label, children, t }) {
+  return (
+    <div style={{ display: "flex", gap: 8, padding: "5px 0", borderBottom: `1px solid ${t.border}20`, alignItems: "flex-start" }}>
+      <div style={{ width: 70, flexShrink: 0, display: "flex", alignItems: "center", gap: 5, paddingTop: 1 }}>
+        <Icon name={icon} size={10} color={t.text3} strokeWidth={2} />
+        <span style={{ fontSize: 11, color: t.text3, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".05em" }}>{label}</span>
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>{children}</div>
     </div>
   );
 }
