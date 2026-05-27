@@ -144,7 +144,7 @@ Pravidla:
     if (!validated.success) {
       console.error("gemini-task-optimize: Zod validation error:", JSON.stringify(validated.error.flatten()));
       console.error("gemini-task-optimize: raw parsed data:", JSON.stringify(parsed));
-      return new Response(JSON.stringify({ error: "AI vrátila neočekávaná data", debug: validated.error.flatten() }), { status: 500, headers: CORS });
+      return new Response(JSON.stringify({ error: "AI vrátila neočekávaná data" }), { status: 500, headers: CORS });
     }
 
     return new Response(

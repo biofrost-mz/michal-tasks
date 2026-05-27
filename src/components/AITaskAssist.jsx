@@ -40,17 +40,21 @@ export default function AITaskAssist({ task, onTitleChange }) {
             availableTags,
           },
         });
-        if (error) {
-          const msg = data?.error || error.message || String(error);
-          if (error.status === 429 || msg.includes("Rate limit")) {
+        if (error || !data?.result) {
+          const msg = data?.error || error?.message || String(error);
+          if (msg.includes("Rate limit") || msg.includes("429")) {
             toast("Příliš mnoho AI dotazů — zkus to za hodinu.", "error");
+          } else if (msg.includes("Server configuration")) {
+            toast("Chyba konfigurace serveru — kontaktuj správce.", "error");
+          } else if (msg.includes("AI služby") || msg.includes("502")) {
+            toast("AI služba nedostupná — zkus to za chvíli.", "error");
           } else {
-            toast("Chyba AI optimalizace", "error");
+            toast(`Optimalizace selhala: ${msg || "neznámá chyba"}`, "error");
           }
           setActiveAction(null);
           return;
         }
-        setResult(data?.result ?? null);
+        setResult(data.result);
       } else {
         const { data, error } = await supabase.functions.invoke("ai-task-assist", {
           body: {
