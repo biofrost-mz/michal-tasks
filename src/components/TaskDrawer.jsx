@@ -526,7 +526,7 @@ export default function TaskDrawer() {
             />
           </Sec>
 
-          <AITaskAssist task={task} />
+          <AITaskAssist task={task} onTitleChange={setTitle} />
 
           <SubtasksSection task={task} updateTask={updateTask} t={t} />
 
