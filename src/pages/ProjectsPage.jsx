@@ -5,6 +5,7 @@ import { useConfirm } from '../components/Confirm.jsx'
 import Icon from '../components/Icon.jsx'
 import QuickAdd from '../components/QuickAdd.jsx'
 import NotesMiniList from '../components/NotesMiniList.jsx'
+import ProjectChatPanel from '../components/ProjectChatPanel.jsx'
 import { ViewToggle, ListView } from './TasksPage.jsx'
 import { STATUSES, STATUS_KEYS, PRIORITIES } from '../constants.js'
 import { startOfToday, parseYMD, projectColor } from '../utils.js'
@@ -147,7 +148,7 @@ function KanbanCard({ task, onDragStart }) {
 }
 
 export function ProjectDetailPage() {
-  const { t, projects, tasks, addTask, updateTask, updateProject, deleteProject, selProject, setPage, isMobile } = useApp();
+  const { t, projects, tasks, notes, addTask, updateTask, updateProject, deleteProject, selProject, setPage, isMobile } = useApp();
   const confirm = useConfirm();
   const toast = useToast();
   const project = projects.find((p) => p.id === selProject);
@@ -168,10 +169,12 @@ export function ProjectDetailPage() {
   const [inlineAdd, setInlineAdd] = useState(null);
   const [inlineVal, setInlineVal] = useState("");
   const [showAllDone, setShowAllDone] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
 
   if (!project) return <div style={{ padding: 40, color: t.text3 }}>Projekt nenalezen</div>;
 
   const pTasks = tasks.filter((x) => x.projectId === project.id);
+  const pNotes = notes.filter((n) => n.primaryProjectId === project.id);
 
   return (
     <div style={{ padding: isMobile ? "14px 16px" : "24px 28px" }} className="fi">
@@ -197,6 +200,12 @@ export function ProjectDetailPage() {
           </div>
 
           <div style={{ display: "flex", gap: 6 }}>
+            <button
+              onClick={() => setChatOpen(true)}
+              style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 14px", borderRadius: 7, border: `1px solid ${t.accent}40`, background: t.accentBg, color: t.accent, fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+            >
+              <span>💬</span> Chat
+            </button>
             <button
               onClick={() => {
                 setEName(project.name);
@@ -423,6 +432,15 @@ export function ProjectDetailPage() {
         </div>
         <NotesMiniList projectId={project.id} />
       </div>
+
+      {chatOpen && (
+        <ProjectChatPanel
+          project={project}
+          tasks={pTasks}
+          notes={pNotes}
+          onClose={() => setChatOpen(false)}
+        />
+      )}
     </div>
   );
 }
