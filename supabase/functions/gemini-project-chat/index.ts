@@ -76,11 +76,24 @@ Máš k dispozici kompletní data projektu níže. Pomáháš uživateli analyzo
 
 ${contextText}`;
 
+    const rawHistory = (messages ?? []).slice(-20).map((m: { role: string; content: string }) => ({
+      role: m.role === "assistant" ? "model" : "user",
+      parts: [{ text: m.content }],
+    }));
+
+    // Gemini requires strictly alternating user/model turns.
+    // Drop consecutive same-role messages keeping the last one in each run.
+    const alternating: typeof rawHistory = [];
+    for (const msg of rawHistory) {
+      if (alternating.length > 0 && alternating[alternating.length - 1].role === msg.role) {
+        alternating[alternating.length - 1] = msg;
+      } else {
+        alternating.push(msg);
+      }
+    }
+
     const geminiMessages = [
-      ...(messages ?? []).map((m: { role: string; content: string }) => ({
-        role: m.role === "assistant" ? "model" : "user",
-        parts: [{ text: m.content }],
-      })),
+      ...alternating,
       { role: "user", parts: [{ text: currentMessage }] },
     ];
 
