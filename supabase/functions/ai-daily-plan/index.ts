@@ -1,9 +1,9 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY")!;
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") || "";
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") || "";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -165,33 +165,93 @@ Připrav mi stručný denní plán v češtině. Strukturuj odpověď takto:
 
 Pokud některá kategorie nemá žádné úkoly, vynech ji. Buď konkrétní — uváděj skutečné názvy úkolů. Nepiš žádné zbytečné úvody ani závěry mimo stanovenou strukturu.`;
 
-  // Zavolej Claude API
-  const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "x-api-key": ANTHROPIC_API_KEY,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-6",
-      max_tokens: 1024,
-      system: systemPrompt,
-      messages: [{ role: "user", content: userPrompt }],
-    }),
-  });
+  let plan = "";
+  let success = false;
 
-  if (!claudeRes.ok) {
-    const errText = await claudeRes.text();
-    console.error("Claude API error:", errText);
-    return new Response(
-      JSON.stringify({ error: "AI není dostupné. Zkontroluj ANTHROPIC_API_KEY v Supabase secrets." }),
-      { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+  const apiKey = Deno.env.get("GOOGLE_GENERATIVE_AI_API_KEY");
+  if (apiKey) {
+    try {
+      console.log("ai-daily-plan: Pokouším se volat Google Gemini API (gemini-2.0-flash)...");
+      const geminiResp = await fetch(
+        `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "gemini-2.0-flash",
+            contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+            systemInstruction: {
+              parts: [{ text: systemPrompt }]
+            },
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 1024,
+            },
+          }),
+        }
+      );
+
+      if (geminiResp.ok) {
+        const geminiData = await geminiResp.json();
+        const geminiText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+        if (geminiText) {
+          plan = geminiText;
+          success = true;
+          console.log("ai-daily-plan: Google Gemini API úspěšně vrátil odpověď.");
+        } else {
+          console.warn("ai-daily-plan: Gemini vrátil prázdnou odpověď.");
+        }
+      } else {
+        const errText = await geminiResp.text();
+        console.warn(`ai-daily-plan: Gemini API vrátil chybu: ${geminiResp.status} ${errText.slice(0, 300)}`);
+      }
+    } catch (geminiError) {
+      console.warn("ai-daily-plan: Selhalo volání Google Gemini API:", geminiError);
+    }
+  } else {
+    console.warn("ai-daily-plan: Chybí GOOGLE_GENERATIVE_AI_API_KEY, zkouším rovnou zálohu (Claude).");
   }
 
-  const claudeData = await claudeRes.json();
-  const plan = claudeData.content?.[0]?.text ?? "";
+  // Fallback na Claude, pokud Gemini selhalo nebo nebylo úspěšné
+  if (!success) {
+    const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY") || ANTHROPIC_API_KEY;
+    if (!anthropicKey) {
+      console.error("ai-daily-plan: Chybí GOOGLE_GENERATIVE_AI_API_KEY i ANTHROPIC_API_KEY");
+      return new Response(
+        JSON.stringify({ error: "AI není dostupné. Nastavte GOOGLE_GENERATIVE_AI_API_KEY nebo ANTHROPIC_API_KEY v Supabase secrets." }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log("ai-daily-plan: Spouštím záložní volání na Anthropic Claude...");
+    const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": anthropicKey,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 1024,
+        system: systemPrompt,
+        messages: [{ role: "user", content: userPrompt }],
+      }),
+    });
+
+    if (!claudeRes.ok) {
+      const errText = await claudeRes.text();
+      console.error("ai-daily-plan: Claude API error:", errText);
+      return new Response(
+        JSON.stringify({ error: "AI není dostupné. Zkontrolujte API klíče v Supabase secrets." }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const claudeData = await claudeRes.json();
+    plan = claudeData.content?.[0]?.text ?? "";
+    console.log("ai-daily-plan: Anthropic Claude úspěšně vrátil záložní odpověď.");
+  }
 
   return new Response(
     JSON.stringify({ plan, generatedAt: new Date().toISOString() }),

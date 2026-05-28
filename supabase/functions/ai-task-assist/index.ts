@@ -110,29 +110,90 @@ ${(note.content || "").slice(0, 4000)}`;
       return new Response(JSON.stringify({ error: "Unknown action" }), { status: 400, headers: CORS });
     }
 
-    const resp = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": Deno.env.get("ANTHROPIC_API_KEY")!,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 600,
-        system: SYSTEM,
-        messages: [{ role: "user", content: prompt }],
-      }),
-    });
+    let raw = "";
+    let success = false;
 
-    if (!resp.ok) {
-      const err = await resp.text();
-      console.error("ai-task-assist: upstream AI error:", err);
-      return new Response(JSON.stringify({ error: "AI API error" }), { status: 500, headers: CORS });
+    const apiKey = Deno.env.get("GOOGLE_GENERATIVE_AI_API_KEY");
+    if (apiKey) {
+      try {
+        console.log(`ai-task-assist: Pokouším se volat Google Gemini API (gemini-2.0-flash) pro akci "${action}"...`);
+        const isJsonAction = ["subtasks", "tags", "priority", "note_extract_tasks"].includes(action);
+        
+        const geminiResp = await fetch(
+          `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: "gemini-2.0-flash",
+              contents: [{ role: "user", parts: [{ text: prompt }] }],
+              systemInstruction: {
+                parts: [{ text: SYSTEM }]
+              },
+              generationConfig: {
+                temperature: 0.4,
+                maxOutputTokens: 600,
+                ...(isJsonAction ? { response_mime_type: "application/json" } : {}),
+              },
+            }),
+          }
+        );
+
+        if (geminiResp.ok) {
+          const geminiData = await geminiResp.json();
+          const geminiText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+          if (geminiText) {
+            raw = geminiText;
+            success = true;
+            console.log(`ai-task-assist: Google Gemini API úspěšně dokončil akci "${action}".`);
+          } else {
+            console.warn("ai-task-assist: Gemini vrátil prázdnou odpověď.");
+          }
+        } else {
+          const errText = await geminiResp.text();
+          console.warn(`ai-task-assist: Gemini API vrátil chybu: ${geminiResp.status} ${errText.slice(0, 300)}`);
+        }
+      } catch (geminiError) {
+        console.warn("ai-task-assist: Selhalo volání Google Gemini API:", geminiError);
+      }
+    } else {
+      console.warn("ai-task-assist: Chybí GOOGLE_GENERATIVE_AI_API_KEY, zkouším rovnou zálohu (Claude).");
     }
 
-    const data = await resp.json();
-    const raw = data.content?.[0]?.text?.trim() ?? "";
+    // Fallback na Claude
+    if (!success) {
+      const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
+      if (!anthropicKey) {
+        console.error("ai-task-assist: Chybí GOOGLE_GENERATIVE_AI_API_KEY i ANTHROPIC_API_KEY");
+        return new Response(JSON.stringify({ error: "AI API credentials missing" }), { status: 500, headers: CORS });
+      }
+
+      console.log(`ai-task-assist: Spouštím záložní volání na Anthropic Claude pro akci "${action}"...`);
+      const resp = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "x-api-key": anthropicKey,
+          "anthropic-version": "2023-06-01",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 600,
+          system: SYSTEM,
+          messages: [{ role: "user", content: prompt }],
+        }),
+      });
+
+      if (!resp.ok) {
+        const err = await resp.text();
+        console.error("ai-task-assist: upstream Claude API error:", err);
+        return new Response(JSON.stringify({ error: "AI API error" }), { status: 500, headers: CORS });
+      }
+
+      const data = await resp.json();
+      raw = data.content?.[0]?.text?.trim() ?? "";
+      console.log("ai-task-assist: Anthropic Claude úspěšně vrátil záložní odpověď.");
+    }
 
     return new Response(
       JSON.stringify({ result: raw }),
