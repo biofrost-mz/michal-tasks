@@ -178,7 +178,6 @@ Pokud některá kategorie nemá žádné úkoly, vynech ji. Buď konkrétní —
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            model: "gemini-2.0-flash",
             contents: [{ role: "user", parts: [{ text: userPrompt }] }],
             systemInstruction: {
               parts: [{ text: systemPrompt }]
@@ -232,7 +231,7 @@ Pokud některá kategorie nemá žádné úkoly, vynech ji. Buď konkrétní —
         "content-type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-6",
+        model: "claude-3-5-sonnet-20241022",
         max_tokens: 1024,
         system: systemPrompt,
         messages: [{ role: "user", content: userPrompt }],

@@ -95,7 +95,7 @@ export default function UserProfilePage() {
             {initials}
           </div>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontFamily: "var(--serif)", fontSize: 30, fontStyle: "italic", lineHeight: 1.05, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            <div style={{ fontFamily: "var(--serif)", fontSize: 30, lineHeight: 1.05, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
               {me?.displayName || "Bez jména"}
             </div>
             <div style={{ fontSize: 13, color: "var(--text-2)" }}>{userEmail}</div>

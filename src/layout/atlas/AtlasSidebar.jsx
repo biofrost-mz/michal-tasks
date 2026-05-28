@@ -15,24 +15,101 @@ const NAV = [
   { id: "notes", label: "Poznámky", icon: "file-text" },
 ];
 
-function MiniCal() {
-  const { setPage, setTimelineOffsetDays } = useApp();
+const MONTH_NAMES_CZ = [
+  "leden", "únor", "březen", "duben", "květen", "červen",
+  "červenec", "srpen", "září", "říjen", "listopad", "prosinec"
+];
 
-  const weeks = [
-    [{ d: 27, prev: true }, { d: 28, prev: true }, { d: 29, prev: true }, { d: 30, prev: true }, { d: 1 }, { d: 2 }, { d: 3 }],
-    [{ d: 4 }, { d: 5 }, { d: 6 }, { d: 7 }, { d: 8 }, { d: 9 }, { d: 10 }],
-    [{ d: 11 }, { d: 12 }, { d: 13 }, { d: 14 }, { d: 15 }, { d: 16 }, { d: 17 }],
-    [{ d: 18 }, { d: 19 }, { d: 20 }, { d: 21 }, { d: 22 }, { d: 23 }, { d: 24 }],
-    [{ d: 25 }, { d: 26, overdue: true }, { d: 27, today: true, has: true }, { d: 28, has: true }, { d: 29, has: true }, { d: 30 }, { d: 31 }],
-  ];
+function MiniCal() {
+  const { setPage, setTimelineOffsetDays, tasks = [] } = useApp();
+
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
+
+  const [currentYear, setCurrentYear] = useState(today.getFullYear());
+  const [currentMonth, setCurrentMonth] = useState(today.getMonth());
+
+  const handlePrevMonth = () => {
+    if (currentMonth === 0) {
+      setCurrentMonth(11);
+      setCurrentYear((y) => y - 1);
+    } else {
+      setCurrentMonth((m) => m - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (currentMonth === 11) {
+      setCurrentMonth(0);
+      setCurrentYear((y) => y + 1);
+    } else {
+      setCurrentMonth((m) => m + 1);
+    }
+  };
+
+  const cells = useMemo(() => {
+    const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
+    const dayOfWeek = firstDayOfMonth.getDay();
+    const prevDaysCount = (dayOfWeek + 6) % 7; // offset for Monday-first week
+
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+    const prevMonthDaysCount = new Date(currentYear, currentMonth, 0).getDate();
+
+    const result = [];
+
+    // Prev month's trailing days
+    for (let i = prevDaysCount - 1; i >= 0; i--) {
+      const d = prevMonthDaysCount - i;
+      const m = currentMonth === 0 ? 11 : currentMonth - 1;
+      const y = currentMonth === 0 ? currentYear - 1 : currentYear;
+      result.push({ d, month: m, year: y, muted: true });
+    }
+
+    // Current month's days
+    for (let d = 1; d <= daysInMonth; d++) {
+      result.push({ d, month: currentMonth, year: currentYear, muted: false });
+    }
+
+    // Next month's leading days to fill 42 cells
+    const remaining = 42 - result.length;
+    for (let d = 1; d <= remaining; d++) {
+      const m = currentMonth === 11 ? 0 : currentMonth + 1;
+      const y = currentMonth === 11 ? currentYear + 1 : currentYear;
+      result.push({ d, month: m, year: y, muted: true });
+    }
+
+    return result;
+  }, [currentYear, currentMonth]);
+
+  const pad0 = (num) => String(num).padStart(2, "0");
+  const todayStr = `${today.getFullYear()}-${pad0(today.getMonth() + 1)}-${pad0(today.getDate())}`;
+
+  const cellsWithStatus = useMemo(() => {
+    return cells.map((cell) => {
+      const dateStr = `${cell.year}-${pad0(cell.month + 1)}-${pad0(cell.d)}`;
+      const isToday = dateStr === todayStr;
+
+      // Filter active tasks
+      const activeTasksOnDay = tasks.filter(
+        (t) => t.dueDate === dateStr && t.status !== "done"
+      );
+      const has = activeTasksOnDay.length > 0;
+      const overdue = has && activeTasksOnDay.some((t) => t.dueDate < todayStr);
+
+      return {
+        ...cell,
+        isToday,
+        has,
+        overdue,
+      };
+    });
+  }, [cells, tasks, todayStr]);
 
   const handleClickDay = (c) => {
-    const year = 2026;
-    const month = c.prev ? 3 : 4; // April is 3, May is 4
-    const cellDate = new Date(year, month, c.d, 0, 0, 0, 0);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
+    const cellDate = new Date(c.year, c.month, c.d, 0, 0, 0, 0);
     const diffTime = cellDate.getTime() - today.getTime();
     const diffDays = Math.round(diffTime / 86400000);
 
@@ -43,15 +120,18 @@ function MiniCal() {
   return (
     <div className="sb-cal">
       <div className="sb-cal-head" onClick={() => setPage("timeline")} style={{ cursor: "pointer" }}>
-        <span className="sb-cal-month">květen</span>
-        <span className="sb-cal-nav"><span>‹</span><span>›</span></span>
+        <span className="sb-cal-month">{MONTH_NAMES_CZ[currentMonth]} {currentYear}</span>
+        <span className="sb-cal-nav">
+          <span onClick={(e) => { e.stopPropagation(); handlePrevMonth(); }} style={{ cursor: "pointer" }}>‹</span>
+          <span onClick={(e) => { e.stopPropagation(); handleNextMonth(); }} style={{ cursor: "pointer" }}>›</span>
+        </span>
       </div>
       <div className="sb-cal-grid">
         {["Po", "Út", "St", "Čt", "Pá", "So", "Ne"].map((d) => <div key={d} className="sb-cal-dh">{d}</div>)}
-        {weeks.flat().map((c, i) => (
+        {cellsWithStatus.map((c, i) => (
           <div
             key={i}
-            className={`sb-cal-d ${c.prev ? "muted" : ""} ${c.today ? "today" : ""} ${c.has ? "has" : ""} ${c.overdue ? "overdue" : ""}`}
+            className={`sb-cal-d ${c.muted ? "muted" : ""} ${c.isToday ? "today" : ""} ${c.has ? "has" : ""} ${c.overdue ? "overdue" : ""}`}
             style={{ cursor: "pointer" }}
             onClick={() => handleClickDay(c)}
           >

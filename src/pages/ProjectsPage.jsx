@@ -5,6 +5,7 @@ import { useConfirm } from "../components/Confirm.jsx";
 import Icon from "../components/Icon.jsx";
 import NotesMiniList from "../components/NotesMiniList.jsx";
 import ProjectChatPanel from "../components/ProjectChatPanel.jsx";
+import QuickAdd from "../components/QuickAdd.jsx";
 import { projectColor, parseYMD, startOfToday } from "../utils.js";
 
 const PROJ_STATUS = {
@@ -53,6 +54,8 @@ export function ProjectDetailPage() {
     updateProject,
     deleteProject,
     setTaskDetail,
+    addNote,
+    openNote,
   } = useApp();
 
   const toast = useToast();
@@ -163,15 +166,8 @@ export function ProjectDetailPage() {
         </div>
       ) : null}
 
-      <div className="quickadd">
-        <span className="quickadd-plus">+</span>
-        <input
-          placeholder={`Nový úkol v ${project.name}…`}
-          value={quickTask}
-          onChange={(e) => setQuickTask(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && createTask("todo", quickTask)}
-        />
-        <span className="quickadd-kbd">N · Enter</span>
+      <div style={{ marginBottom: 18 }}>
+        <QuickAdd defaultProjectId={project.id} />
       </div>
 
       <div className="quickadd" style={{ borderColor: "var(--border-soft)", background: "var(--bg-2)" }}>
@@ -184,9 +180,12 @@ export function ProjectDetailPage() {
           onChange={(e) => setQuickNote(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
-              setPage("notes");
-              toast("Poznámku přidej v detailu poznámek (funkce zachována)", "success");
-              setQuickNote("");
+              const clean = quickNote.trim();
+              if (clean) {
+                const n = addNote({ title: clean, primaryProjectId: project.id });
+                openNote(n.id);
+                setQuickNote("");
+              }
             }
           }}
         />
@@ -216,7 +215,7 @@ export function ProjectDetailPage() {
                   {Array.isArray(t.subtasks) && t.subtasks.length > 0 ? <div className="kcard-sub">≡ {t.subtasks.length} podúkoly</div> : null}
                   <div className="kcard-quick" onClick={(e) => e.stopPropagation()}>
                     <TaskStatusButton current={t.status} target="todo" label="To do" onClick={() => updateTask(t.id, { status: "todo" })} />
-                    <TaskStatusButton current={t.status} target="doing" label={t.status === "waiting" ? "Čekám" : "Doing"} onClick={() => updateTask(t.id, { status: t.status === "doing" ? "waiting" : "doing" })} />
+                    <TaskStatusButton current={t.status} target={t.status === "waiting" ? "waiting" : "doing"} label={t.status === "waiting" ? "Čekám" : "Doing"} onClick={() => updateTask(t.id, { status: t.status === "doing" ? "waiting" : "doing" })} />
                     <TaskStatusButton current={t.status} target="done" label="Hotovo" onClick={() => updateTask(t.id, { status: "done" })} />
                   </div>
                 </div>
@@ -575,7 +574,7 @@ export default function ProjectsPage() {
                 onClick={openNew}
               >
                 <Icon name="plus" size={14} color="currentColor" strokeWidth={2} />
-                <span style={{ marginTop: 8, fontFamily: "var(--serif)", fontStyle: "italic", fontSize: 17 }}>Nový projekt</span>
+                <span style={{ marginTop: 8, fontFamily: "var(--serif)", fontSize: 17 }}>Nový projekt</span>
               </div>
             </div>
           ) : null}
@@ -590,7 +589,7 @@ export default function ProjectsPage() {
               onClick={openNew}
             >
               <Icon name="plus" size={14} color="currentColor" strokeWidth={2} />
-              <span style={{ marginTop: 8, fontFamily: "var(--serif)", fontStyle: "italic", fontSize: 19 }}>Nový projekt</span>
+              <span style={{ marginTop: 8, fontFamily: "var(--serif)", fontSize: 19 }}>Nový projekt</span>
             </div>
           ) : null}
         </div>

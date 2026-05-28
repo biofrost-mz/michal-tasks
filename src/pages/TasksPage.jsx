@@ -7,6 +7,7 @@ import {
   CLASS_TO_STATUS,
 } from "../components/atlas/AtlasTaskCard.jsx";
 import { parseYMD, startOfToday } from "../utils.js";
+import QuickAdd from "../components/QuickAdd.jsx";
 
 const CHIP_STATUSES = ["all", "todo", "doing", "wait", "done"];
 const STATUS_LABELS = {
@@ -78,6 +79,8 @@ export default function TasksPage() {
   const [view, setView] = useState("table");
   const [statusFilter, setStatusFilter] = useState("all");
   const [projectFilter, setProjectFilter] = useState("all");
+  const [priorityFilter, setPriorityFilter] = useState("all");
+  const [tagFilter, setTagFilter] = useState("all");
   const [quickText, setQuickText] = useState("");
 
   const today = startOfToday();
@@ -107,8 +110,19 @@ export default function TasksPage() {
       else list = list.filter((t) => t.project === projectFilter);
     }
 
+    if (priorityFilter !== "all") {
+      list = list.filter((t) => t.priority === priorityFilter);
+    }
+
+    if (tagFilter !== "all") {
+      list = list.filter((t) => {
+        const originalTask = tasks.find((tk) => tk.id === t.id);
+        return originalTask?.tagIds?.includes(tagFilter);
+      });
+    }
+
     return list;
-  }, [mappedTasks, search, statusFilter, projectFilter]);
+  }, [mappedTasks, search, statusFilter, projectFilter, priorityFilter, tagFilter, tasks]);
 
   const activeCount = tasks.filter((t) => t.status !== "done").length;
   const doneCount = tasks.filter((t) => t.status === "done").length;
@@ -139,15 +153,8 @@ export default function TasksPage() {
         <ViewToggle view={view} setView={setView} />
       </div>
 
-      <div className="quickadd">
-        <span className="quickadd-plus">+</span>
-        <input
-          placeholder="Nový úkol napříč projekty…"
-          value={quickText}
-          onChange={(e) => setQuickText(e.target.value)}
-          onKeyDown={onQuickAdd}
-        />
-        <span className="quickadd-kbd">N · Enter</span>
+      <div style={{ marginBottom: 18 }}>
+        <QuickAdd />
       </div>
 
       <div className="chips">
@@ -159,12 +166,28 @@ export default function TasksPage() {
           </span>
         ))}
         <span className="chips-div" />
-        <span className="chip">Priorita ▾</span>
-        <span className="chip">Tag ▾</span>
+        <select
+          value={priorityFilter}
+          onChange={(e) => setPriorityFilter(e.target.value)}
+          style={{ background: "var(--surface)", color: "var(--text-2)", border: "1px solid var(--border-soft)", borderRadius: 999, padding: "7px 12px", fontSize: 12.5 }}
+        >
+          <option value="all">Všechny priority</option>
+          <option value="high">Vysoká</option>
+          <option value="medium">Střední</option>
+          <option value="low">Nízká</option>
+        </select>
+        <select
+          value={tagFilter}
+          onChange={(e) => setTagFilter(e.target.value)}
+          style={{ background: "var(--surface)", color: "var(--text-2)", border: "1px solid var(--border-soft)", borderRadius: 999, padding: "7px 12px", fontSize: 12.5 }}
+        >
+          <option value="all">Všechny tagy</option>
+          {tags.map((tg) => <option key={tg.id} value={tg.id}>{tg.name}</option>)}
+        </select>
         <select
           value={projectFilter}
           onChange={(e) => setProjectFilter(e.target.value)}
-          style={{ marginLeft: 6, background: "var(--surface)", color: "var(--text-2)", border: "1px solid var(--border-soft)", borderRadius: 999, padding: "7px 12px", fontSize: 12.5 }}
+          style={{ background: "var(--surface)", color: "var(--text-2)", border: "1px solid var(--border-soft)", borderRadius: 999, padding: "7px 12px", fontSize: 12.5 }}
         >
           <option value="all">Všechny projekty</option>
           <option value="inbox">Inbox</option>

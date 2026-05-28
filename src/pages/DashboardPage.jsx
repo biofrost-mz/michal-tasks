@@ -2,6 +2,7 @@ import React, { useMemo, useState, useEffect, useRef } from "react";
 import { useApp } from "../context/AppContext.jsx";
 import Icon from "../components/Icon.jsx";
 import AIDailyPlan from "../components/AIDailyPlan.jsx";
+import QuickAdd from "../components/QuickAdd.jsx";
 import { formatDate, formatDateKey } from "../locale.js";
 import { parseYMD, projectColor, startOfToday } from "../utils.js";
 import { getNamedayInfo } from "../data/czechNamedays.js";
@@ -201,7 +202,7 @@ function Headline({ overdueCount, activeCount, totalCount, doneWeek, doneWeekAvg
               ) : (
                 <><Icon name={dayPhase.icon} size={11} color="currentColor" strokeWidth={1.5} /> {dayPhase.label}</>
               )}
-              {sunTimes ? ` · ${sunTimes.dayLength}` : ""}
+              {sunTimes ? ` · délka dne ${sunTimes.dayLength}` : ""}
             </span>
           </div>
         </div>
@@ -703,15 +704,8 @@ export default function DashboardPage() {
             ))}
           </div>
 
-          <div className="quickadd">
-            <span className="quickadd-plus">+</span>
-            <input
-              placeholder="Co dnes naplánovat?"
-              value={quickText}
-              onChange={(e) => setQuickText(e.target.value)}
-              onKeyDown={onQuickAdd}
-            />
-            <span className="quickadd-kbd">N · Enter</span>
+          <div style={{ marginBottom: 18 }}>
+            <QuickAdd />
           </div>
 
           <div className="chips">

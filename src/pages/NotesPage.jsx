@@ -22,8 +22,8 @@ function injectNoteCSS(dk) {
   const accent= dk ? "#e3a850" : "#d4923a";
   el.textContent = `
 .note-ce { color: ${text}; font-size: 16px; line-height: 1.75; outline: none; min-height: 460px; }
-.note-ce h1 { font-family:var(--serif); font-size: 2em; font-weight: 400; margin: 1.2em 0 .35em; letter-spacing: -.02em; font-style: italic; }
-.note-ce h2 { font-family:var(--serif); font-size: 1.35em; font-weight: 400; margin: 1.1em 0 .3em; letter-spacing: -.01em; color: ${text}; font-style: italic; }
+.note-ce h1 { font-family:var(--serif); font-size: 2em; font-weight: 400; margin: 1.2em 0 .35em; letter-spacing: -.02em; }
+.note-ce h2 { font-family:var(--serif); font-size: 1.35em; font-weight: 400; margin: 1.1em 0 .3em; letter-spacing: -.01em; color: ${text}; }
 .note-ce h3 { font-family:var(--sans); font-size: 1.1em; font-weight: 600; margin: .9em 0 .25em; color: ${text2}; }
 .note-ce p  { margin: 8px 0; }
 .note-ce a  { color: ${accent}; text-decoration: underline; }
@@ -144,7 +144,7 @@ function TemplatePickerModal({ onSelect, onClose }) {
       <div onClick={e=>e.stopPropagation()} style={{ background:"var(--surface)", border:"1px solid var(--border-soft)", borderRadius:16, padding:28, maxWidth:560, width:"calc(100% - 32px)", maxHeight:"88vh", overflowY:"auto", boxShadow:t.shadow }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20 }}>
           <div>
-            <div style={{ fontSize:28, fontWeight:400, fontFamily:"var(--serif)", fontStyle:"italic", marginBottom:4, lineHeight:1 }}>Nová poznámka</div>
+            <div style={{ fontSize:28, fontWeight:400, fontFamily:"var(--serif)", marginBottom:4, lineHeight:1 }}>Nová poznámka</div>
             <div style={{ fontSize:12, color:t.text3 }}>Vyber šablonu nebo začni prázdnou stránkou</div>
           </div>
           <button onClick={onClose} style={{ background:"var(--bg-2)", border:"1px solid var(--border-soft)", borderRadius:8, padding:6, cursor:"pointer", display:"flex" }}>
@@ -791,7 +791,6 @@ function NoteEditor({ note, onSave, t, isMobile, showProps, onToggleProps, onDel
               width:"100%", border:"none", background:"transparent", color:t.text, outline:"none",
               fontFamily:"var(--serif)",
               fontSize:"clamp(32px, 4vw, 50px)", fontWeight:900, letterSpacing:"-.04em", lineHeight:1.04,
-              fontStyle:"italic",
               marginBottom:12, display:"block",
             }}
           />
@@ -1002,7 +1001,7 @@ function NotePropertiesPanel({ note, onClose, t, isMobile, onExportMD, projects,
             <div style={{ padding:"8px 12px 12px" }}>
               <div style={{ fontSize:11, color:t.text3, marginBottom:6, fontWeight:700 }}>Další propojené projekty</div>
               <div style={{ display:"flex", flexDirection:"column", gap:4, maxHeight:200, overflowY:"auto" }}>
-                {projects.length === 0 && <div style={{ fontSize:11, color:t.text3, fontStyle:"italic" }}>Žádné projekty</div>}
+                {projects.length === 0 && <div style={{ fontSize:11, color:t.text3 }}>Žádné projekty</div>}
                 {projects.map(p => {
                   const isPrimary = p.id === note.primaryProjectId;
                   const isExtra   = (note.extraProjectIds || []).includes(p.id);
@@ -1070,7 +1069,7 @@ function NotePropertiesPanel({ note, onClose, t, isMobile, onExportMD, projects,
                 style={{ width:"100%", padding:"5px 8px", borderRadius:7, border:"1px solid var(--border-soft)", background:"var(--bg-2)", color:"var(--text)", fontSize:11, outline:"none", boxSizing:"border-box", marginBottom:6 }}
               />
               <div style={{ display:"flex", flexDirection:"column", gap:3, maxHeight:180, overflowY:"auto" }}>
-                {filteredTasks.length === 0 && <div style={{ fontSize:11, color:t.text3, fontStyle:"italic" }}>Žádné úkoly</div>}
+                {filteredTasks.length === 0 && <div style={{ fontSize:11, color:t.text3 }}>Žádné úkoly</div>}
                 {filteredTasks.map(tk => {
                   const isPrimary = tk.id === note.primaryTaskId;
                   const isExtra   = (note.extraTaskIds || []).includes(tk.id);

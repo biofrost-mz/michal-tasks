@@ -19,6 +19,7 @@ export default function TagsPage() {
   const [newColor, setNewColor] = useState("#e3a850");
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState("");
+  const [editColor, setEditColor] = useState("");
 
   const rows = useMemo(() => {
     return tags
@@ -42,12 +43,13 @@ export default function TagsPage() {
   const startEdit = (tag) => {
     setEditingId(tag.id);
     setEditName(tag.name || "");
+    setEditColor(tag.color || "#e3a850");
   };
 
   const saveEdit = (tag) => {
     const name = editName.trim();
     if (!name) return;
-    updateTag(tag.id, { name });
+    updateTag(tag.id, { name, color: editColor });
     setEditingId(null);
     toast("Tag upraven", "success");
   };
@@ -121,18 +123,47 @@ export default function TagsPage() {
 
           return (
             <div key={tag.id} className="tagrow">
-              <div className="tagrow-name" style={{ color: tag.color }}>
+              <div className="tagrow-name" style={{ color: isEditing ? editColor : tag.color, alignItems: isEditing ? "flex-start" : "center", flexDirection: isEditing ? "column" : "row", gap: isEditing ? "6px" : "12px", width: "100%" }}>
                 {isEditing ? (
-                  <input
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") saveEdit(tag);
-                      if (e.key === "Escape") setEditingId(null);
-                    }}
-                    autoFocus
-                    style={{ background: "var(--bg-2)", border: "1px solid var(--border)", borderRadius: 7, padding: "5px 8px", color: "var(--text)", fontSize: 13, width: "100%" }}
-                  />
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%" }}>
+                    <input
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") saveEdit(tag);
+                        if (e.key === "Escape") setEditingId(null);
+                      }}
+                      autoFocus
+                      style={{ background: "var(--bg-2)", border: "1px solid var(--border)", borderRadius: 7, padding: "5px 8px", color: "var(--text)", fontSize: 13, width: "100%", outline: "none" }}
+                    />
+                    <div style={{ display: "flex", gap: 4, alignItems: "center", flexWrap: "wrap" }}>
+                      {TAG_COLORS.slice(0, 8).map((c) => (
+                        <button
+                          key={c}
+                          onClick={() => setEditColor(c)}
+                          title={c}
+                          style={{
+                            width: 14,
+                            height: 14,
+                            borderRadius: 4,
+                            background: c,
+                            border: editColor === c ? "1.5px solid #fff" : "1px solid transparent",
+                            boxShadow: editColor === c ? `0 0 0 1px ${c}` : "none",
+                            cursor: "pointer",
+                            padding: 0,
+                          }}
+                        />
+                      ))}
+                      <label title="Vlastní barva" style={{ width: 14, height: 14, borderRadius: 4, overflow: "hidden", border: "1px solid var(--border)", background: "linear-gradient(135deg,#f00,#0f0,#00f)", position: "relative", cursor: "pointer" }}>
+                        <input
+                          type="color"
+                          value={editColor}
+                          onChange={(e) => setEditColor(e.target.value)}
+                          style={{ position: "absolute", inset: 0, opacity: 0, width: "100%", height: "100%", cursor: "pointer" }}
+                        />
+                      </label>
+                    </div>
+                  </div>
                 ) : (
                   tag.name
                 )}

@@ -70,7 +70,7 @@ input, textarea { font-family: inherit; color: inherit; background: transparent;
 ::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
 
 .serif { font-family: var(--serif); }
-.it { font-style: italic; }
+.it { font-style: normal; }
 .mono { font-family: var(--mono); }
 .tabular { font-variant-numeric: tabular-nums; }
 
@@ -106,7 +106,6 @@ input, textarea { font-family: inherit; color: inherit; background: transparent;
   display: grid; place-items: center;
   font-family: var(--serif);
   font-size: 22px;
-  font-style: italic;
   color: var(--bg);
   box-shadow: 0 0 16px var(--accent-glow);
 }
@@ -232,7 +231,6 @@ input, textarea { font-family: inherit; color: inherit; background: transparent;
 .sb-cal-month {
   font-family: var(--serif);
   font-size: 17px;
-  font-style: italic;
 }
 .sb-cal-nav {
   display: flex; gap: 4px;
@@ -455,7 +453,6 @@ input, textarea { font-family: inherit; color: inherit; background: transparent;
 .hl-day {
   font-family: var(--serif);
   font-size: 30px;
-  font-style: italic;
   color: var(--text-2);
   letter-spacing: -0.01em;
   padding-bottom: 14px;
@@ -485,7 +482,7 @@ input, textarea { font-family: inherit; color: inherit; background: transparent;
 }
 .hl-meta .m-row { display: flex; gap: 8px; align-items: center; }
 .hl-meta .m-month {
-  font-family: var(--serif); font-style: italic; font-size: 26px;
+  font-family: var(--serif); font-size: 26px;
   color: var(--text); text-transform: lowercase; letter-spacing: -0.01em;
   line-height: 1;
 }
@@ -513,9 +510,14 @@ input, textarea { font-family: inherit; color: inherit; background: transparent;
 .hl-svatek {
   background: var(--accent-soft);
   color: var(--accent);
-  padding: 2px 8px;
+  padding: 4px 10px;
   border-radius: var(--r-pill);
   border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* HUD tiles inside headline */
@@ -609,7 +611,6 @@ input, textarea { font-family: inherit; color: inherit; background: transparent;
 .ai-text-h .num {
   color: var(--accent);
   font-family: var(--serif);
-  font-style: italic;
   font-size: 26px;
   vertical-align: -1px;
   padding: 0 2px;
@@ -702,7 +703,6 @@ input, textarea { font-family: inherit; color: inherit; background: transparent;
 .quickadd input::placeholder {
   color: var(--text-3);
   font-family: var(--serif);
-  font-style: italic;
   font-size: 17px;
 }
 .quickadd-kbd { font-family: var(--mono); font-size: 10.5px; color: var(--text-4); }
@@ -760,7 +760,6 @@ input, textarea { font-family: inherit; color: inherit; background: transparent;
 .sec-title {
   font-family: var(--serif);
   font-size: 28px;
-  font-style: italic;
   letter-spacing: -0.01em;
   line-height: 1;
   white-space: nowrap;
@@ -991,7 +990,6 @@ input, textarea { font-family: inherit; color: inherit; background: transparent;
 .rail-h-t {
   font-family: var(--serif);
   font-size: 22px;
-  font-style: italic;
   letter-spacing: -0.01em;
   line-height: 1;
   white-space: nowrap;
@@ -1044,7 +1042,6 @@ input, textarea { font-family: inherit; color: inherit; background: transparent;
   line-height: 1;
   color: var(--accent);
   font-variant-numeric: lining-nums tabular-nums;
-  font-style: italic;
 }
 .streak-c-sub {
   font-family: var(--mono);
@@ -1110,7 +1107,6 @@ input, textarea { font-family: inherit; color: inherit; background: transparent;
 .note-t {
   font-family: var(--serif);
   font-size: 17px;
-  font-style: italic;
   line-height: 1.15;
   letter-spacing: -0.01em;
 }
@@ -1176,7 +1172,6 @@ input, textarea { font-family: inherit; color: inherit; background: transparent;
 .pcard-name {
   font-family: var(--serif);
   font-size: 28px;
-  font-style: italic;
   letter-spacing: -0.01em;
   line-height: 1.05;
   margin-bottom: 6px;
@@ -1234,7 +1229,6 @@ input, textarea { font-family: inherit; color: inherit; background: transparent;
 .kcol-name {
   font-family: var(--serif);
   font-size: 19px;
-  font-style: italic;
   color: var(--col-color);
 }
 .kcol-count {
@@ -1442,7 +1436,6 @@ input, textarea { font-family: inherit; color: inherit; background: transparent;
 .ncard-t {
   font-family: var(--serif);
   font-size: 28px;
-  font-style: italic;
   letter-spacing: -0.01em;
   line-height: 1.1;
   margin-bottom: 10px;
@@ -1502,7 +1495,6 @@ input, textarea { font-family: inherit; color: inherit; background: transparent;
 .detail-h {
   font-family: var(--serif);
   font-size: 20px;
-  font-style: italic;
   margin-bottom: 12px;
   display: flex; justify-content: space-between; align-items: baseline;
 }
