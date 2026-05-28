@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git push origin main)",
+      "Bash(npm run build)",
+      "Bash(node_modules/.bin/vite build)",
+      "Bash(git push)",
+      "Bash(npx vite build)",
+      "Bash(cat /Users/michalzich/Desktop/michal-tasks/.env*)",
+      "Bash(ls /Users/michalzich/Desktop/michal-tasks/.env*)",
+      "Bash(cp /Users/michalzich/Desktop/zichmichal_web/web/mz-creative-theme/front-page.php /Users/michalzich/Desktop/zichmichal_web/web/mz-creative-theme_1/front-page.php)",
+      "Bash(cp /Users/michalzich/Desktop/zichmichal_web/web/mz-creative-theme/header.php /Users/michalzich/Desktop/zichmichal_web/web/mz-creative-theme_1/header.php)"
+    ],
+    "additionalDirectories": [
+      "/Users/michalzich/Desktop/michal-pocket/stash/src/app/api/search",
+      "/Users/michalzich/Desktop/michal-pocket/stash/src/components"
+    ]
+  }
+}
