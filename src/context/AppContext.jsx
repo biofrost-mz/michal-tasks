@@ -172,6 +172,7 @@ export function AppProvider({ children }) {
   const userId = session?.user?.id ?? null;
   const [dk, setDk] = useState(true);
   const [page, setPage] = useState("dashboard");
+  const [timelineOffsetDays, setTimelineOffsetDays] = useState(0);
   const isMobile = useIsMobile();
   const [selProject, setSelProject] = useState(null);
 
@@ -957,6 +958,8 @@ export function AppProvider({ children }) {
     deleteTag,
     page,
     setPage,
+    timelineOffsetDays,
+    setTimelineOffsetDays,
     selProject,
     setSelProject,
     openProject,

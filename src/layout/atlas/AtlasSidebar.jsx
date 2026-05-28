@@ -16,6 +16,8 @@ const NAV = [
 ];
 
 function MiniCal() {
+  const { setPage, setTimelineOffsetDays } = useApp();
+
   const weeks = [
     [{ d: 27, prev: true }, { d: 28, prev: true }, { d: 29, prev: true }, { d: 30, prev: true }, { d: 1 }, { d: 2 }, { d: 3 }],
     [{ d: 4 }, { d: 5 }, { d: 6 }, { d: 7 }, { d: 8 }, { d: 9 }, { d: 10 }],
@@ -24,9 +26,23 @@ function MiniCal() {
     [{ d: 25 }, { d: 26, overdue: true }, { d: 27, today: true, has: true }, { d: 28, has: true }, { d: 29, has: true }, { d: 30 }, { d: 31 }],
   ];
 
+  const handleClickDay = (c) => {
+    const year = 2026;
+    const month = c.prev ? 3 : 4; // April is 3, May is 4
+    const cellDate = new Date(year, month, c.d, 0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const diffTime = cellDate.getTime() - today.getTime();
+    const diffDays = Math.round(diffTime / 86400000);
+
+    setTimelineOffsetDays(diffDays);
+    setPage("timeline");
+  };
+
   return (
     <div className="sb-cal">
-      <div className="sb-cal-head">
+      <div className="sb-cal-head" onClick={() => setPage("timeline")} style={{ cursor: "pointer" }}>
         <span className="sb-cal-month">květen</span>
         <span className="sb-cal-nav"><span>‹</span><span>›</span></span>
       </div>
@@ -36,6 +52,8 @@ function MiniCal() {
           <div
             key={i}
             className={`sb-cal-d ${c.prev ? "muted" : ""} ${c.today ? "today" : ""} ${c.has ? "has" : ""} ${c.overdue ? "overdue" : ""}`}
+            style={{ cursor: "pointer" }}
+            onClick={() => handleClickDay(c)}
           >
             {c.d}
           </div>

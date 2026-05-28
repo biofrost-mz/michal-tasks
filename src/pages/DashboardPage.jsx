@@ -336,6 +336,7 @@ export default function DashboardPage() {
   const [filter, setFilter] = useState("all");
   const [quickText, setQuickText] = useState("");
   const [showDailyPlan, setShowDailyPlan] = useState(false);
+  const [expandedSections, setExpandedSections] = useState({});
 
   const today = startOfToday();
   const weekAgo = Date.now() - 7 * 86400000;
@@ -400,21 +401,38 @@ export default function DashboardPage() {
     updateTask(id, { starred: !current.starred });
   };
 
-  const show = (k) => filter === "all" || filter === k;
+  const show = (k) => filter === "all" || filter === "starred" || filter === k;
 
   const sec = (key, title, items, marker, alert = false) => {
-    if (!items.length || !show(key)) return null;
+    let displayItems = items;
+    if (filter === "starred") {
+      displayItems = items.filter((t) => t.starred);
+    }
+    if (!displayItems.length || !show(key)) return null;
+
+    const isExpanded = !!expandedSections[key];
+    const visibleItems = isExpanded ? displayItems : displayItems.slice(0, 3);
+    const hasMore = displayItems.length > 3;
+
     return (
       <section className="sec" key={key}>
         <div className="sec-head">
           <span className={`sec-marker ${marker}`} />
           <span className={`sec-title ${alert ? "alert" : ""}`}>{title}</span>
-          <span className="sec-count">{items.length}</span>
+          <span className="sec-count">{displayItems.length}</span>
           <span className="sec-sep" />
-          {items.length > 3 ? <span className="sec-act">+{items.length - 3} dalších</span> : null}
+          {hasMore ? (
+            <span
+              className="sec-act"
+              style={{ cursor: "pointer", userSelect: "none" }}
+              onClick={() => setExpandedSections((prev) => ({ ...prev, [key]: !prev[key] }))}
+            >
+              {isExpanded ? "Zobrazit méně ▴" : `+${displayItems.length - 3} dalších ▾`}
+            </span>
+          ) : null}
         </div>
         <div className="tcards">
-          {items.slice(0, 3).map((t) => (
+          {visibleItems.map((t) => (
             <TaskCard key={t.id} task={t} onOpen={setTaskDetail} onStatusChange={setStatus} onStar={toggleStar} projectsById={projectsById} />
           ))}
         </div>
@@ -523,7 +541,7 @@ export default function DashboardPage() {
             <span className={`chip ${filter === "todo" ? "active" : ""}`} onClick={() => setFilter("todo")}>
               <span className="chip-dot" style={{ background: "var(--gray)" }} /> To do <span className="chip-count">{todo.length}</span>
             </span>
-            <span className="chip">
+            <span className={`chip ${filter === "starred" ? "active" : ""}`} onClick={() => setFilter("starred")} style={{ cursor: "pointer" }}>
               <span className="chip-dot" style={{ background: "var(--accent)" }} /> Top úkoly <span className="chip-count">{starred.length}</span>
             </span>
             <span className="chips-sep" />

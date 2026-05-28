@@ -61,9 +61,16 @@ function QuickAddPopover({ project, defaultDate, onAdd, onClose }) {
 }
 
 export default function TimelinePage() {
-  const { tasks, projects, addTask, setTaskDetail, isMobile } = useApp();
+  const {
+    tasks,
+    projects,
+    addTask,
+    setTaskDetail,
+    isMobile,
+    timelineOffsetDays: offsetDays,
+    setTimelineOffsetDays: setOffsetDays,
+  } = useApp();
 
-  const [offsetDays, setOffsetDays] = useState(0);
   const [addingFor, setAddingFor] = useState(null);
 
   const today = startOfToday();
