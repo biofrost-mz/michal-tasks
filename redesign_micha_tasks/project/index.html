@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8" />
+<title>Michal Tasks — 2 směry redesignu</title>
+<style>
+  body { margin: 0; background: #0a0a0d; color: #ededf2; font-family: -apple-system, system-ui, sans-serif; }
+  .iframe-wrap {
+    width: 100%; height: 100%;
+    background: #0a0a0d;
+    overflow: hidden;
+    position: relative;
+  }
+  iframe {
+    border: 0;
+    width: 1480px;
+    height: 950px;
+    background: #0a0a0d;
+    display: block;
+  }
+  .dim-tag {
+    position: absolute; top: 10px; right: 14px;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 10px;
+    color: rgba(255,255,255,0.4);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    pointer-events: none;
+    z-index: 10;
+  }
+  .open-link {
+    position: absolute; top: 10px; left: 14px;
+    z-index: 10;
+    font-size: 12px;
+    background: rgba(255,255,255,0.06);
+    backdrop-filter: blur(6px);
+    color: white;
+    text-decoration: none;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.12);
+    font-family: -apple-system, system-ui, sans-serif;
+  }
+  .open-link:hover { background: rgba(255,255,255,0.12); }
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="design-canvas.jsx" data-presets="react"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const { useState } = React;
+
+function Frame({ src, label }) {
+  return (
+    <div className="iframe-wrap">
+      <a className="open-link" href={src} target="_blank">↗ Otevřít</a>
+      <span className="dim-tag">{label}</span>
+      <iframe src={src} title={label} />
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <DesignCanvas>
+      <DCSection
+        id="overview"
+        title="Michal Tasks — 2 směry redesignu"
+        subtitle="Plně klikatelné prototypy. Dvojklik na artboard pro fullscreen, ‘Open’ vlevo nahoře otevře v nové záložce."
+      >
+        <DCArtboard id="cortex" label="A · CORTEX — terminal / Linear precision" width={1480} height={950}>
+          <Frame src="cortex.html" label="A · CORTEX" />
+        </DCArtboard>
+        <DCArtboard id="atlas" label="B · ATLAS — editorial premium" width={1480} height={950}>
+          <Frame src="atlas.html" label="B · ATLAS" />
+        </DCArtboard>
+      </DCSection>
+    </DesignCanvas>
+  );
+}
+
+// wait for design-canvas to define globals
+const start = () => {
+  if (typeof DesignCanvas === "undefined") return requestAnimationFrame(start);
+  ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+};
+start();
+</script>
+</body>
+</html>

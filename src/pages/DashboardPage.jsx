@@ -1,9 +1,12 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { useApp } from "../context/AppContext.jsx";
 import Icon from "../components/Icon.jsx";
 import AIDailyPlan from "../components/AIDailyPlan.jsx";
 import { formatDate } from "../locale.js";
 import { parseYMD, projectColor, startOfToday } from "../utils.js";
+import { getNamedayInfo } from "../data/czechNamedays.js";
+import { getSunTimes, getGreeting, getDayPhaseIcon } from "../data/sunCalc.js";
+import { fetchWeather, hasWeatherApiKey } from "../data/weather.js";
 
 const STATUS_TO_CLASS = { todo: "todo", doing: "doing", waiting: "wait", done: "done" };
 const CLASS_TO_STATUS = { todo: "todo", doing: "doing", wait: "waiting", done: "done" };
@@ -129,17 +132,44 @@ function TaskCard({ task, onOpen, onStatusChange, onStar, projectsById }) {
   );
 }
 
-function Headline({ overdueCount, activeCount, totalCount, doneWeek, activeProjectsCount, streak }) {
+function Headline({ overdueCount, activeCount, totalCount, doneWeek, doneWeekAvg, addedToday, activeProjectsCount, doneProjectsCount, totalProjectsCount, streak }) {
   const now = new Date();
   const dayName = new Intl.DateTimeFormat("cs-CZ", { weekday: "long" }).format(now);
   const monthYear = new Intl.DateTimeFormat("cs-CZ", { month: "long", year: "numeric" }).format(now);
   const cw = getWeekNumber(now);
 
+  // Dynamic data
+  const { name: namedayName, isHoliday } = getNamedayInfo(now);
+  const sunTimes = getSunTimes(now);
+  const greeting = getGreeting();
+  const dayPhase = getDayPhaseIcon(now);
+
+  // Weather
+  const [weather, setWeather] = useState(null);
+  useEffect(() => {
+    if (!hasWeatherApiKey()) return;
+    fetchWeather().then(setWeather);
+    const iv = setInterval(() => fetchWeather().then(setWeather), 15 * 60 * 1000);
+    return () => clearInterval(iv);
+  }, []);
+
+  // Week comparison: percentage above/below average
+  const weekDiff = doneWeekAvg > 0 ? Math.round(((doneWeek - doneWeekAvg) / doneWeekAvg) * 100) : 0;
+  const weekDiffLabel = weekDiff > 0
+    ? `+${weekDiff} % nad průměr`
+    : weekDiff < 0
+      ? `${weekDiff} % pod průměr`
+      : "na průměru";
+
+  // Timezone abbreviation
+  const tzName = Intl.DateTimeFormat("cs-CZ", { timeZoneName: "short" }).formatToParts(now)
+    .find((p) => p.type === "timeZoneName")?.value || "CET";
+
   return (
     <div className="headline">
       <div className="headline-top">
         <div>
-          <div className="hl-greet">Dobré ráno, Michale</div>
+          <div className="hl-greet">{greeting}, Michale</div>
           <div className="hl-row">
             <div className="hl-daynum">
               <div className="hl-day">{dayName}</div>
@@ -148,19 +178,32 @@ function Headline({ overdueCount, activeCount, totalCount, doneWeek, activeProje
             <div className="hl-meta">
               <span className="m-month">{monthYear}</span>
               <div>týden K{String(cw).padStart(2, "0")} · CW{String(cw).padStart(2, "0")}</div>
-              <div><span className="accent">svátek:</span> Vilém · <span className="accent">jmeniny:</span> Vilém</div>
-              <div className="m-row">
-                <Icon name="sun" size={11} color="currentColor" strokeWidth={1.5} /> svítání 05:42
-                <span style={{ margin: "0 6px", color: "var(--text-4)" }}>·</span>
-                <Icon name="moon" size={11} color="currentColor" strokeWidth={1.5} /> soumrak 21:09
+              <div>
+                <span className="accent">{isHoliday ? "svátek:" : "jmeniny:"}</span> {namedayName}
               </div>
+              {sunTimes && (
+                <div className="m-row">
+                  <Icon name="sunrise" size={11} color="currentColor" strokeWidth={1.5} /> svítání {sunTimes.sunrise}
+                  <span style={{ margin: "0 6px", color: "var(--text-4)" }}>·</span>
+                  <Icon name="sunset" size={11} color="currentColor" strokeWidth={1.5} /> soumrak {sunTimes.sunset}
+                </div>
+              )}
             </div>
           </div>
         </div>
         <div className="hl-aside">
-          <div className="hl-aside-row"><span className="hl-live-dot" />sync · před 1 min</div>
-          <div>Praha · CET · 22 °C</div>
-          <div><span className="hl-svatek">☀ slunný den</span></div>
+          <div className="hl-aside-row"><span className="hl-live-dot" />sync · právě teď</div>
+          <div>{weather ? weather.city : "Brno"} · {tzName}{weather ? ` · ${weather.temp} °C` : ""}</div>
+          <div>
+            <span className="hl-svatek">
+              {weather ? (
+                <><Icon name={weather.icon} size={11} color="currentColor" strokeWidth={1.5} /> {weather.label}</>
+              ) : (
+                <><Icon name={dayPhase.icon} size={11} color="currentColor" strokeWidth={1.5} /> {dayPhase.label}</>
+              )}
+              {sunTimes ? ` · ${sunTimes.dayLength}` : ""}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -168,17 +211,17 @@ function Headline({ overdueCount, activeCount, totalCount, doneWeek, activeProje
         <div className="hl-stat">
           <div className="hl-stat-l">Aktivní</div>
           <div className="hl-stat-v">{activeCount}</div>
-          <div className="hl-stat-u">z {totalCount} · ↗ +3 dnes</div>
+          <div className="hl-stat-u">z {totalCount}{addedToday > 0 ? ` · ↗ +${addedToday} dnes` : ""}</div>
         </div>
         <div className="hl-stat">
           <div className="hl-stat-l">Po termínu</div>
           <div className="hl-stat-v" style={{ color: "var(--red)" }}>{overdueCount}</div>
-          <div className="hl-stat-u" style={{ color: "var(--red)" }}>⚠ vyřeš dnes</div>
+          <div className="hl-stat-u" style={{ color: "var(--red)" }}>{overdueCount > 0 ? "⚠ vyřeš dnes" : "✓ vše ok"}</div>
         </div>
         <div className="hl-stat">
           <div className="hl-stat-l">Hotovo · týden</div>
           <div className="hl-stat-v" style={{ color: "var(--green)" }}>{doneWeek}</div>
-          <div className="hl-stat-u" style={{ color: "var(--green)" }}>+41 % nad průměr</div>
+          <div className="hl-stat-u" style={{ color: weekDiff >= 0 ? "var(--green)" : "var(--red)" }}>{weekDiffLabel}</div>
         </div>
         <div className="hl-stat">
           <div className="hl-stat-l">Streak 🔥</div>
@@ -188,7 +231,7 @@ function Headline({ overdueCount, activeCount, totalCount, doneWeek, activeProje
         <div className="hl-stat">
           <div className="hl-stat-l">Projekty</div>
           <div className="hl-stat-v" style={{ color: "var(--blue)" }}>{activeProjectsCount}</div>
-          <div className="hl-stat-u">z {activeProjectsCount} · 0 hotový</div>
+          <div className="hl-stat-u">z {totalProjectsCount} · {doneProjectsCount} hotový</div>
         </div>
       </div>
     </div>
@@ -318,6 +361,22 @@ export default function DashboardPage() {
   const streak = useMemo(() => buildStreak(tasks), [tasks]);
   const doneWeek = tasks.filter((t) => t.status === "done" && t.updatedAt > weekAgo).length;
   const activeProjects = projects.filter((p) => p.status === "active");
+  const doneProjects = projects.filter((p) => p.status === "done");
+
+  // Average weekly done over last 4 weeks (excluding current)
+  const doneWeekAvg = useMemo(() => {
+    const weeks = [1, 2, 3, 4].map((w) => {
+      const from = Date.now() - (w + 1) * 7 * 86400000;
+      const to = Date.now() - w * 7 * 86400000;
+      return tasks.filter((t) => t.status === "done" && t.updatedAt > from && t.updatedAt <= to).length;
+    });
+    const sum = weeks.reduce((a, b) => a + b, 0);
+    return sum / weeks.length;
+  }, [tasks]);
+
+  // Tasks added today
+  const todayStart = today.getTime();
+  const addedToday = tasks.filter((t) => t.createdAt && t.createdAt >= todayStart).length;
 
   const aiSuggestions = useMemo(
     () => activeTasks
@@ -392,7 +451,11 @@ export default function DashboardPage() {
         activeCount={activeTasks.length}
         totalCount={tasks.length}
         doneWeek={doneWeek}
+        doneWeekAvg={doneWeekAvg}
+        addedToday={addedToday}
         activeProjectsCount={activeProjects.length}
+        doneProjectsCount={doneProjects.length}
+        totalProjectsCount={projects.length}
         streak={streak}
       />
 

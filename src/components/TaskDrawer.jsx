@@ -8,6 +8,8 @@ import NotesMiniList from './NotesMiniList.jsx'
 import AITaskAssist from './AITaskAssist.jsx'
 import { STATUSES, PRIORITIES } from '../constants.js'
 import { formatDate, formatDateTime } from '../locale.js'
+import { projectColor } from '../utils.js'
+import { PrioChip } from './atlas/AtlasTaskCard.jsx'
 
 const PROJ_STATUS = {
   idea: { label: "Nápad", color: "#94a3b8" },
@@ -16,21 +18,9 @@ const PROJ_STATUS = {
   archived: { label: "Archiv", color: "#64748b" },
 };
 
-function Sec({ label, children }) {
-  const { t } = useApp();
-  return (
-    <div style={{ marginBottom: 20 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-        <span style={{ width: 3, height: 14, borderRadius: 3, background: t.accent, boxShadow: `0 0 10px ${t.accent}55` }} />
-        <span style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".11em", color: t.text3, fontFamily: "'Geist Mono', ui-monospace, monospace" }}>
-          {label}
-        </span>
-      </div>
-      {children}
-    </div>
-  );
-}
-
+/* ─────────────────────────────────────────────
+   AssigneeSelector — unchanged production component
+───────────────────────────────────────────── */
 function AssigneeSelector({ currentAssigneeId, onChange }) {
   const { t, workspaceMembers } = useApp();
   const [open, setOpen] = useState(false);
@@ -43,43 +33,45 @@ function AssigneeSelector({ currentAssigneeId, onChange }) {
     <div style={{ position: "relative" }}>
       <button
         onClick={() => setOpen((v) => !v)}
-        style={{ display: "flex", alignItems: "center", gap: 7, padding: "6px 10px", borderRadius: 7, border: "1px solid var(--border-soft)", background: "var(--bg-2)", color: t.text, cursor: "pointer", fontSize: 12, width: "100%" }}
+        className="btn"
+        style={{ display: "flex", alignItems: "center", gap: 7, width: "100%" }}
       >
         {currentAssigneeId ? (
           <>
-            <div style={{ width: 20, height: 20, borderRadius: "50%", background: t.accent, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--bg)", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
+            <div style={{ width: 20, height: 20, borderRadius: "50%", background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--bg)", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
               {getInitials(currentMember)}
             </div>
             <span style={{ flex: 1, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{getLabel(currentMember)}</span>
           </>
         ) : (
           <>
-            <Icon name="plus" size={12} color={t.text3} strokeWidth={2} />
-            <span style={{ color: t.text2 }}>Nepřiřazeno</span>
+            <Icon name="plus" size={12} color="var(--text-3)" strokeWidth={2} />
+            <span style={{ color: "var(--text-2)" }}>Nepřiřazeno</span>
           </>
         )}
       </button>
       {open && (
         <>
           <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 199 }} />
-          <div className="pop" style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: t.bg2, border: "1px solid var(--border-soft)", borderRadius: 9, zIndex: 200, overflow: "hidden", boxShadow: t.shadow }}>
-            <button onClick={() => { onChange(null); setOpen(false); }} style={{ display: "flex", alignItems: "center", gap: 7, width: "100%", padding: "7px 9px", border: "none", background: !currentAssigneeId ? t.accentBg : "transparent", color: !currentAssigneeId ? t.accent : t.text2, cursor: "pointer", fontSize: 12 }}>
-              <Icon name="x" size={12} color={t.text3} strokeWidth={2} />
+          <div className="pop" style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 200 }}>
+            <button onClick={() => { onChange(null); setOpen(false); }} className="btn" style={{ display: "flex", alignItems: "center", gap: 7, width: "100%", background: !currentAssigneeId ? "var(--accent-soft)" : undefined, color: !currentAssigneeId ? "var(--accent)" : undefined }}>
+              <Icon name="x" size={12} color="var(--text-3)" strokeWidth={2} />
               Nepřiřazeno
             </button>
             {workspaceMembers.map((m) => (
               <button
                 key={m.userId}
                 onClick={() => { onChange(m.userId); setOpen(false); }}
-                style={{ display: "flex", alignItems: "center", gap: 7, width: "100%", padding: "7px 9px", border: "none", background: m.userId === currentAssigneeId ? t.accentBg : "transparent", color: m.userId === currentAssigneeId ? t.accent : t.text, cursor: "pointer", fontSize: 12 }}
+                className="btn"
+                style={{ display: "flex", alignItems: "center", gap: 7, width: "100%", background: m.userId === currentAssigneeId ? "var(--accent-soft)" : undefined, color: m.userId === currentAssigneeId ? "var(--accent)" : undefined }}
               >
-                <div style={{ width: 20, height: 20, borderRadius: "50%", background: m.userId === currentAssigneeId ? t.accent : "var(--border-soft)", display: "flex", alignItems: "center", justifyContent: "center", color: m.userId === currentAssigneeId ? "var(--bg)" : t.text2, fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
+                <div style={{ width: 20, height: 20, borderRadius: "50%", background: m.userId === currentAssigneeId ? "var(--accent)" : "var(--border-soft)", display: "flex", alignItems: "center", justifyContent: "center", color: m.userId === currentAssigneeId ? "var(--bg)" : "var(--text-2)", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
                   {getInitials(m)}
                 </div>
                 <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
                   <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{getLabel(m)}</div>
                 </div>
-                <span style={{ fontSize: 12, color: t.text3, flexShrink: 0 }}>{m.role}</span>
+                <span style={{ fontSize: 12, color: "var(--text-3)", flexShrink: 0 }}>{m.role}</span>
               </button>
             ))}
           </div>
@@ -89,7 +81,10 @@ function AssigneeSelector({ currentAssigneeId, onChange }) {
   );
 }
 
-function SubtasksSection({ task, updateTask, t }) {
+/* ─────────────────────────────────────────────
+   SubtasksSection — unchanged production logic
+───────────────────────────────────────────── */
+function SubtasksSection({ task, updateTask }) {
   const [input, setInput] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [editText, setEditText] = useState("");
@@ -131,94 +126,76 @@ function SubtasksSection({ task, updateTask, t }) {
   };
 
   return (
-    <div style={{ marginBottom: 16 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: t.text3 }}>
-          Podúkoly
-        </div>
+    <>
+      <div className="detail-h">
+        <span>Podúkoly · {subtasks.length}</span>
         {subtasks.length > 0 && (
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <div style={{ fontSize: 12, color: t.text3 }}>{done}/{subtasks.length}</div>
-            <div style={{ width: 60, height: 4, borderRadius: 2, background: "var(--border-soft)", overflow: "hidden" }}>
-              <div style={{ width: `${(done / subtasks.length) * 100}%`, height: "100%", background: "#22c55e", borderRadius: 2, transition: "width .2s" }} />
-            </div>
-          </div>
+          <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontFamily: "var(--mono)", color: "var(--text-3)" }}>
+            {done}/{subtasks.length}
+            <span style={{ width: 60, height: 4, borderRadius: 2, background: "var(--border-soft)", overflow: "hidden", display: "inline-block" }}>
+              <span style={{ display: "block", width: `${(done / subtasks.length) * 100}%`, height: "100%", background: "#22c55e", borderRadius: 2, transition: "width .2s" }} />
+            </span>
+          </span>
         )}
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 2, marginBottom: subtasks.length ? 8 : 0 }}>
-        {subtasks.map((s) => (
-          <SubtaskRow
-            key={s.id}
-            subtask={s}
-            editingId={editingId}
-            editText={editText}
-            setEditText={setEditText}
-            onToggle={toggle}
-            onRemove={remove}
-            onStartEdit={startEdit}
-            onSaveEdit={saveEdit}
-            onCancelEdit={() => setEditingId(null)}
-            t={t}
-          />
-        ))}
-      </div>
-
-      <div style={{ display: "flex", gap: 6 }}>
+      <div className="row" style={{ gap: 6 }}>
         <input
           ref={inputRef}
+          className="detail-input"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") addSubtask(); }}
-          placeholder="Přidat podúkol…"
-          style={{
-            flex: 1, padding: "8px 12px", borderRadius: 8,
-            border: "1px solid var(--border-soft)", background: "var(--bg-2)",
-            color: t.text, fontSize: 12.5, outline: "none",
-          }}
-          onFocus={(e) => { e.target.style.borderColor = t.accent; }}
-          onBlur={(e) => { e.target.style.borderColor = "var(--border-soft)"; }}
+          placeholder="Přidat podúkol… (Enter)"
         />
-        <button
-          onClick={addSubtask}
-          disabled={!input.trim()}
-          style={{
-            width: 36, borderRadius: 8, border: "none", flexShrink: 0,
-            background: input.trim() ? t.accent : "var(--bg-2)",
-            color: input.trim() ? "var(--bg)" : t.text3,
-            cursor: input.trim() ? "pointer" : "default",
-            transition: "background .15s",
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}
-        >
-          <Icon name="plus" size={16} color={input.trim() ? "var(--bg)" : t.text3} strokeWidth={2.5} />
+        <button className="btn primary" onClick={addSubtask} style={{ flexShrink: 0 }}>
+          <Icon name="plus" size={14} color="currentColor" strokeWidth={2.5} />
         </button>
       </div>
-    </div>
+
+      {subtasks.length > 0 && (
+        <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 6 }}>
+          {subtasks.map((s) => (
+            <SubtaskRow
+              key={s.id}
+              subtask={s}
+              editingId={editingId}
+              editText={editText}
+              setEditText={setEditText}
+              onToggle={toggle}
+              onRemove={remove}
+              onStartEdit={startEdit}
+              onSaveEdit={saveEdit}
+              onCancelEdit={() => setEditingId(null)}
+            />
+          ))}
+        </div>
+      )}
+    </>
   );
 }
 
-function SubtaskRow({ subtask, editingId, editText, setEditText, onToggle, onRemove, onStartEdit, onSaveEdit, onCancelEdit, t }) {
+function SubtaskRow({ subtask, editingId, editText, setEditText, onToggle, onRemove, onStartEdit, onSaveEdit, onCancelEdit }) {
   const [hovered, setHovered] = useState(false);
   const isEditing = editingId === subtask.id;
 
   return (
-    <div
+    <label
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 4px", borderRadius: 7, background: hovered ? "var(--bg-2)" : "transparent", transition: "background .1s" }}
+      style={{
+        display: "flex", gap: 10, padding: "10px 14px",
+        background: "var(--bg-2)", borderRadius: "var(--r, 14px)",
+        border: "1px solid var(--border-soft)", fontSize: 14,
+        alignItems: "center", cursor: "default",
+      }}
     >
-      <button
-        onClick={() => onToggle(subtask.id)}
-        style={{
-          width: 18, height: 18, borderRadius: 4, flexShrink: 0, border: `2px solid ${subtask.done ? "#22c55e" : "var(--border-soft)"}`,
-          background: subtask.done ? "#22c55e" : "transparent",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          cursor: "pointer", transition: "all .15s",
-        }}
-      >
-        {subtask.done && <Icon name="check" size={10} color="var(--bg)" strokeWidth={3} />}
-      </button>
+      <input
+        type="checkbox"
+        checked={subtask.done}
+        onChange={() => onToggle(subtask.id)}
+        style={{ accentColor: "var(--accent)", cursor: "pointer" }}
+      />
 
       {isEditing ? (
         <input
@@ -232,14 +209,14 @@ function SubtaskRow({ subtask, editingId, editText, setEditText, onToggle, onRem
           onBlur={() => onSaveEdit(subtask.id)}
           style={{
             flex: 1, fontSize: 13, border: "none", background: "transparent",
-            color: t.text, outline: "none", padding: 0,
+            color: "var(--text)", outline: "none", padding: 0,
           }}
         />
       ) : (
         <span
           onDoubleClick={() => onStartEdit(subtask)}
           style={{
-            flex: 1, fontSize: 13, color: subtask.done ? t.text3 : t.text,
+            flex: 1, fontSize: 13, color: subtask.done ? "var(--text-3)" : "var(--text)",
             textDecoration: subtask.done ? "line-through" : "none",
             cursor: "text", lineHeight: 1.4,
           }}
@@ -250,20 +227,20 @@ function SubtaskRow({ subtask, editingId, editText, setEditText, onToggle, onRem
 
       {!isEditing && (
         <button
-          onClick={() => onRemove(subtask.id)}
-          style={{
-            opacity: hovered ? 0.6 : 0, transition: "opacity .1s",
-            background: "none", border: "none", color: t.text3,
-            cursor: "pointer", padding: "2px 3px", display: "flex", alignItems: "center", flexShrink: 0,
-          }}
+          onClick={(e) => { e.preventDefault(); onRemove(subtask.id); }}
+          className="icon-btn"
+          style={{ opacity: hovered ? 0.6 : 0, transition: "opacity .1s" }}
         >
-          <Icon name="x" size={12} color={t.text3} strokeWidth={2} />
+          <Icon name="x" size={12} color="var(--text-3)" strokeWidth={2} />
         </button>
       )}
-    </div>
+    </label>
   );
 }
 
+/* ─────────────────────────────────────────────
+   TaskDrawer — Atlas .overlay + .detail design
+───────────────────────────────────────────── */
 export default function TaskDrawer() {
   const { t, tasks, projects, tags, updateTask, deleteTask, addProject, taskDetail, setTaskDetail, isMobile } = useApp();
   const toast = useToast();
@@ -275,8 +252,7 @@ export default function TaskDrawer() {
   const [showNewProject, setShowNewProject] = useState(false);
   const [npName, setNpName] = useState("");
   const [newPhase, setNewPhase] = useState("");
-  const inputBg = "var(--bg-2)";
-  const panelBorder = "var(--border-soft)";
+
   const toLocalDT = (iso) => {
     if (!iso) return "";
     const d = new Date(iso);
@@ -307,283 +283,260 @@ export default function TaskDrawer() {
     toast("Projekt vytvořen a přiřazen", "success");
   };
 
+  const taskNumber = String(task.id).padStart(4, "0");
+  const projectObj = projects.find((p) => p.id === task.projectId);
+
   return (
-    <>
-      <div onClick={() => setTaskDetail(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(5px)", zIndex: 90 }} />
-      <div
-        className={isMobile ? "su" : "sr"}
-        style={{
-          position: "fixed",
-          ...(isMobile
-            ? { bottom: 0, left: 0, right: 0, top: "8vh", borderRadius: "16px 16px 0 0", borderTop: `1px solid ${panelBorder}` }
-            : { top: 0, right: 0, bottom: 0, width: 540, maxWidth: "95vw", borderLeft: `1px solid ${panelBorder}` }
-          ),
-          background: isMobile ? t.bg2 : "var(--surface)",
-          zIndex: 100,
-          display: "flex",
-          flexDirection: "column",
-          boxShadow: isMobile ? "0 -8px 40px #0004" : "-16px 0 52px rgba(0,0,0,0.42)",
-        }}
-      >
-        {isMobile && (
-          <div style={{ display: "flex", justifyContent: "center", paddingTop: 10, paddingBottom: 4, flexShrink: 0 }}>
-            <div style={{ width: 40, height: 4, borderRadius: 2, background: panelBorder }} />
-          </div>
-        )}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: isMobile ? "10px 16px 12px" : "16px 24px", borderBottom: `1px solid ${panelBorder}` }}>
-          <span style={{ fontSize: 10.5, fontWeight: 600, color: t.text3, fontFamily: "'Geist Mono', ui-monospace, monospace", letterSpacing: ".11em", textTransform: "uppercase" }}>Detail úkolu</span>
-          <div style={{ display: "flex", gap: 6 }}>
-            <button onClick={async () => { if (await confirm("Smazat úkol?")) { setTaskDetail(null); deleteTask(task.id); } }} style={{ background: "transparent", border: "none", color: "#ef4444", fontSize: 12, padding: "4px 8px", borderRadius: 5 }}>
+    <div className="overlay" onClick={() => setTaskDetail(null)}>
+      <div className="detail" onClick={(e) => e.stopPropagation()}>
+
+        {/* ── Header ── */}
+        <div className="detail-top">
+          <div className="detail-top-l">Detail úkolu · #{taskNumber}</div>
+          <div className="row">
+            <button
+              className="btn danger"
+              onClick={async () => {
+                if (await confirm("Smazat úkol?")) {
+                  setTaskDetail(null);
+                  deleteTask(task.id);
+                }
+              }}
+            >
               Smazat
             </button>
-            <button onClick={() => setTaskDetail(null)} style={{ background: inputBg, border: `1px solid ${panelBorder}`, color: t.text2, padding: "5px 8px", borderRadius: 6, display: "flex", alignItems: "center" }}>
-              <Icon name="x" size={14} color={t.text2} strokeWidth={2} />
+            <button className="icon-btn" onClick={() => setTaskDetail(null)}>
+              <Icon name="x" size={14} color="var(--text-2)" strokeWidth={2} />
             </button>
           </div>
         </div>
 
-        <div style={{ flex: 1, overflow: "auto", padding: isMobile ? "18px 18px 30px" : "22px 24px 48px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18 }}>
+        {/* ── Body ── */}
+        <div className="detail-body">
+
+          {/* Star + Project pill + Priority + Due (top row) */}
+          <div className="row">
             <button
+              className={`icon-btn star ${task.starred ? "on" : ""}`}
               onClick={() => s({ starred: !task.starred })}
-              style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                opacity: task.starred ? 1 : 0.35,
-                transition: "all .15s",
-                padding: 0,
-                display: "flex",
-                alignItems: "center",
-                flexShrink: 0,
-              }}
               title={task.starred ? "Odebrat z TOP" : "Přidat do TOP"}
             >
-              <Icon name="star" size={20} color="#eab308" fill={task.starred ? "#eab308" : "none"} strokeWidth={1.75} />
+              <Icon name="star" size={18} color="#eab308" fill={task.starred ? "#eab308" : "none"} strokeWidth={1.75} />
             </button>
-
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              onBlur={() => s({ title })}
-              placeholder="Název úkolu"
-              style={{
-                fontSize: isMobile ? 22 : 34,
-                fontWeight: 400,
-                border: "none",
-                background: "transparent",
-                color: t.text,
-                outline: "none",
-                width: "100%",
-                fontFamily: "'Instrument Serif', Georgia, serif",
-                fontStyle: "italic",
-                letterSpacing: "-0.015em",
-                lineHeight: 1.08,
-              }}
-            />
+            {projectObj && (
+              <span className="proj-pill" style={{ "--proj-color": projectColor(projectObj.id) }}>
+                <span className="pp-dot" />
+                {projectObj.name}
+              </span>
+            )}
+            <PrioChip priority={task.priority} />
+            {task.dueDate && (
+              <span className={`due ${task.dueDate < new Date().toISOString().slice(0, 10) ? "overdue" : ""}`}>
+                {task.dueDate}
+              </span>
+            )}
           </div>
 
-          <Sec label="Status">
-            <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+          {/* Title */}
+          <input
+            className="detail-title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onBlur={() => s({ title })}
+            placeholder="Název úkolu"
+            style={{ border: "none", background: "transparent", outline: "none", width: "100%", cursor: "text", color: "var(--text)" }}
+          />
+
+          {/* ── Grid: Status, Priority, Due, Project, Tags, Assignee ── */}
+          <div className="detail-grid">
+
+            <div className="detail-k">Status</div>
+            <div className="detail-v">
               {Object.entries(STATUSES).map(([k, v]) => (
-                <button
+                <span
                   key={k}
+                  className={`chip ${task.status === k ? "active" : ""}`}
                   onClick={() => s({ status: k })}
-                  style={{
-                    padding: "5px 11px",
-                    borderRadius: 7,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    border: `1.5px solid ${task.status === k ? v.color : "var(--border-soft)"}`,
-                    background: task.status === k ? v.bg : "transparent",
-                    color: task.status === k ? v.color : t.text2,
-                    display: "inline-flex", alignItems: "center", gap: 5,
-                  }}
+                  style={task.status === k ? { borderColor: v.color, color: v.color, background: v.bg } : undefined}
                 >
                   <Icon name={v.icon} size={11} color="currentColor" strokeWidth={2} />
                   {v.label}
-                </button>
+                </span>
               ))}
             </div>
-          </Sec>
 
-          <Sec label="Priorita">
-            <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-              <button
+            <div className="detail-k">Priorita</div>
+            <div className="detail-v">
+              <span
+                className={`chip ${!task.priority ? "active" : ""}`}
                 onClick={() => s({ priority: null })}
-                style={{
-                  padding: "5px 11px",
-                  borderRadius: 7,
-                  fontSize: 12,
-                  fontWeight: 500,
-                  border: `1.5px solid ${!task.priority ? t.accent : "var(--border-soft)"}`,
-                  background: !task.priority ? t.accentBg : "transparent",
-                  color: !task.priority ? t.accent : t.text3,
-                }}
               >
                 — Žádná
-              </button>
+              </span>
               {Object.entries(PRIORITIES).map(([k, v]) => (
-                <button
+                <span
                   key={k}
+                  className={`chip ${task.priority === k ? "active" : ""}`}
                   onClick={() => s({ priority: k })}
-                  style={{
-                    padding: "5px 11px",
-                    borderRadius: 7,
-                    fontSize: 12,
-                    fontWeight: 700,
-                    border: `1.5px solid ${task.priority === k ? v.color : "var(--border-soft)"}`,
-                    background: task.priority === k ? v.bg : "transparent",
-                    color: task.priority === k ? v.color : t.text2,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 4,
-                  }}
+                  style={task.priority === k ? { borderColor: v.color, color: v.color, background: v.bg } : undefined}
                 >
                   <Icon name={v.icon} size={11} color="currentColor" strokeWidth={2.5} />
                   {v.label}
-                </button>
+                </span>
               ))}
             </div>
-          </Sec>
 
-          <Sec label="Projekt">
-            <select
-              value={task.projectId || ""}
-              onChange={(e) => {
-                if (e.target.value === "__new__") {
-                  setShowNewProject(true);
-                  return;
-                }
-                s({ projectId: e.target.value || null });
-              }}
-              style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: `1px solid ${panelBorder}`, background: inputBg, color: t.text, fontSize: 13, outline: "none" }}
-            >
-              <option value="">Inbox (bez projektu)</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} ({PROJ_STATUS[p.status]?.label || p.status})
-                </option>
-              ))}
-              <option value="__new__">+ Vytvořit nový projekt…</option>
-            </select>
-
-            {showNewProject && (
-              <div style={{ display: "flex", gap: 6, marginTop: 8 }} className="pop">
-                <input
-                  value={npName}
-                  onChange={(e) => setNpName(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && createProjectInline()}
-                  placeholder="Název nového projektu"
-                  autoFocus
-                  style={{ flex: 1, padding: "7px 12px", borderRadius: 7, border: `1px solid ${panelBorder}`, background: inputBg, color: t.text, fontSize: 12.5, outline: "none" }}
-                />
-                <button onClick={createProjectInline} style={{ padding: "7px 12px", borderRadius: 7, border: "none", background: "var(--accent)", color: "var(--bg)", fontSize: 12, fontWeight: 600 }}>
-                  Vytvořit
-                </button>
-                <button onClick={() => setShowNewProject(false)} style={{ padding: "7px 8px", borderRadius: 7, border: `1px solid ${panelBorder}`, background: "transparent", color: t.text2, display: "flex", alignItems: "center" }}>
-                  <Icon name="x" size={13} color={t.text2} strokeWidth={2} />
-                </button>
-              </div>
-            )}
-          </Sec>
-
-          <Sec label="Termín">
-            <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+            <div className="detail-k">Termín</div>
+            <div className="detail-v">
               <input
                 type="date"
+                className="detail-input"
                 value={task.dueDate || ""}
                 onChange={(e) => s({ dueDate: e.target.value || null })}
-                style={{ padding: "7px 12px", borderRadius: 8, border: `1px solid ${panelBorder}`, background: inputBg, color: t.text, fontSize: 12.5, outline: "none", colorScheme: t.bg === "#0c0e14" ? "dark" : "light" }}
+                style={{ maxWidth: 180, width: "auto" }}
               />
-              <span style={{ fontSize: 12, color: t.text3 }}>
-                Založeno:{" "}
-                {formatDate(task.createdAt, { day: "numeric", month: "long", year: "numeric" })}
+              <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--text-3)" }}>
+                založeno {formatDate(task.createdAt, { day: "numeric", month: "long", year: "numeric" })}
               </span>
             </div>
-          </Sec>
 
-          <Sec label="Tagy">
-            <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+            <div className="detail-k">Projekt</div>
+            <div className="detail-v" style={{ flexDirection: "column", alignItems: "stretch" }}>
+              <select
+                className="detail-input"
+                value={task.projectId || ""}
+                onChange={(e) => {
+                  if (e.target.value === "__new__") {
+                    setShowNewProject(true);
+                    return;
+                  }
+                  s({ projectId: e.target.value || null });
+                }}
+                style={{ width: "100%" }}
+              >
+                <option value="">Inbox (bez projektu)</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} ({PROJ_STATUS[p.status]?.label || p.status})
+                  </option>
+                ))}
+                <option value="__new__">+ Vytvořit nový projekt…</option>
+              </select>
+
+              {showNewProject && (
+                <div className="row" style={{ gap: 6, marginTop: 6 }}>
+                  <input
+                    className="detail-input"
+                    value={npName}
+                    onChange={(e) => setNpName(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && createProjectInline()}
+                    placeholder="Název nového projektu"
+                    autoFocus
+                  />
+                  <button className="btn primary" onClick={createProjectInline}>Vytvořit</button>
+                  <button className="icon-btn" onClick={() => setShowNewProject(false)}>
+                    <Icon name="x" size={13} color="var(--text-2)" strokeWidth={2} />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="detail-k">Tagy</div>
+            <div className="detail-v">
               {tags.map((tg) => {
                 const active = (task.tagIds || []).includes(tg.id);
                 return (
-                  <button
+                  <span
                     key={tg.id}
+                    className="tag"
                     onClick={() =>
                       s({
                         tagIds: active ? task.tagIds.filter((id) => id !== tg.id) : [...(task.tagIds || []), tg.id],
                       })
                     }
                     style={{
-                      padding: "4px 10px",
-                      borderRadius: 6,
-                      fontSize: 12,
-                      fontWeight: 600,
-                      border: `1.5px solid ${active ? tg.color : "var(--border-soft)"}`,
-                      background: active ? tg.color + "18" : "transparent",
-                      color: active ? tg.color : t.text2,
+                      cursor: "pointer",
+                      background: active ? "var(--accent-soft)" : undefined,
+                      color: active ? "var(--accent)" : undefined,
+                      borderColor: active ? "color-mix(in srgb, var(--accent) 30%, transparent)" : undefined,
                     }}
                   >
                     {tg.name}
-                  </button>
+                  </span>
                 );
               })}
             </div>
-          </Sec>
 
-          <Sec label="Popis">
+            <div className="detail-k">Přiřazeno</div>
+            <div className="detail-v" style={{ flex: 1 }}>
+              <AssigneeSelector currentAssigneeId={task.assigneeUserId} onChange={(uid) => s({ assigneeUserId: uid })} />
+            </div>
+          </div>
+
+          {/* ── Description ── */}
+          <div className="detail-sect">
+            <div className="detail-h">Popis</div>
             <textarea
+              className="detail-input"
               value={desc}
               onChange={(e) => setDesc(e.target.value)}
               onBlur={() => s({ description: desc })}
               rows={4}
               placeholder="Poznámky, kontext, odkazy…"
-              style={{ width: "100%", padding: "10px 14px", borderRadius: 8, border: `1px solid ${panelBorder}`, background: inputBg, color: t.text, outline: "none", fontSize: 13, resize: "vertical", lineHeight: 1.5 }}
             />
-          </Sec>
+          </div>
 
-          <AITaskAssist task={task} onTitleChange={setTitle} />
+          {/* ── AI Assistant ── */}
+          <div className="detail-sect">
+            <AITaskAssist task={task} onTitleChange={setTitle} />
+          </div>
 
-          <SubtasksSection task={task} updateTask={updateTask} t={t} />
+          {/* ── Subtasks ── */}
+          <div className="detail-sect">
+            <SubtasksSection task={task} updateTask={updateTask} />
+          </div>
 
-          <Sec label="Průběh a fáze">
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 10 }}>
-              {(task.phases || []).slice().reverse().map((ph) => (
-                <div
-                  key={ph.id}
-                  style={{
-                    padding: "10px 12px",
-                    borderRadius: 10,
-                    background: inputBg,
-                    border: `1px solid ${panelBorder}`,
-                    display: "flex",
-                    gap: 10,
-                    alignItems: "flex-start",
-                  }}
-                >
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, lineHeight: 1.4 }}>{ph.text}</div>
-                    <div className="mono" style={{ fontSize: 12, color: t.text3, marginTop: 4 }}>
-                      {formatDateTime(ph.date)}
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => {
-                      const next = (task.phases || []).filter((x) => x.id !== ph.id);
-                      s({ phases: next });
+          {/* ── Phases ── */}
+          <div className="detail-sect">
+            <div className="detail-h">Průběh a fáze</div>
+
+            {(task.phases || []).length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 10 }}>
+                {(task.phases || []).slice().reverse().map((ph) => (
+                  <div
+                    key={ph.id}
+                    style={{
+                      padding: "10px 14px",
+                      background: "var(--bg-2)",
+                      borderRadius: "var(--r, 14px)",
+                      border: "1px solid var(--border-soft)",
+                      display: "flex", gap: 10, alignItems: "flex-start",
                     }}
-                    style={{ border: "none", background: "transparent", color: t.text3, cursor: "pointer", display: "flex", alignItems: "center", padding: "2px 4px" }}
-                    title="Smazat"
                   >
-                    <Icon name="x" size={14} color={t.text3} strokeWidth={2} />
-                  </button>
-                </div>
-              ))}
-            </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, lineHeight: 1.4 }}>{ph.text}</div>
+                      <div style={{ fontFamily: "var(--mono)", fontSize: 12, color: "var(--text-3)", marginTop: 4 }}>
+                        {formatDateTime(ph.date)}
+                      </div>
+                    </div>
+                    <button
+                      className="icon-btn"
+                      onClick={() => {
+                        const next = (task.phases || []).filter((x) => x.id !== ph.id);
+                        s({ phases: next });
+                      }}
+                      title="Smazat"
+                    >
+                      <Icon name="x" size={14} color="var(--text-3)" strokeWidth={2} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
 
-            <div style={{ display: "flex", gap: 8 }}>
+            <div className="row" style={{ gap: 8 }}>
               <input
+                className="detail-input"
                 value={newPhase}
                 onChange={(e) => setNewPhase(e.target.value)}
                 onKeyDown={(e) => {
@@ -599,18 +552,9 @@ export default function TaskDrawer() {
                   }
                 }}
                 placeholder="Nová fáze / záznam průběhu…"
-                style={{
-                  flex: 1,
-                  padding: "10px 12px",
-                  borderRadius: 10,
-                  border: `1px solid ${panelBorder}`,
-                  background: inputBg,
-                  color: t.text,
-                  outline: "none",
-                  fontSize: 13,
-                }}
               />
               <button
+                className="btn primary"
                 onClick={() => {
                   const text = newPhase.trim();
                   if (!text) return;
@@ -621,52 +565,49 @@ export default function TaskDrawer() {
                   s({ phases: next });
                   setNewPhase("");
                 }}
-                style={{
-                  width: 44,
-                  borderRadius: 10,
-                  border: "none",
-                  background: "var(--accent)",
-                  color: "var(--bg)",
-                  fontWeight: 800,
-                  cursor: "pointer",
-                }}
-                title="Přidat"
+                style={{ flexShrink: 0 }}
               >
                 +
               </button>
             </div>
-          </Sec>
+          </div>
 
-          <Sec label="Připomínka e-mailem">
-            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          {/* ── Reminder ── */}
+          <div className="detail-sect">
+            <div className="detail-h">Připomínka e-mailem</div>
+            <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
               <input
                 type="datetime-local"
+                className="detail-input"
                 value={remindAtDraft}
                 onChange={(e) => setRemindAtDraft(e.target.value)}
                 onBlur={(e) => {
                   const val = e.target.value ? new Date(e.target.value).toISOString() : null;
                   if (val !== (task.remindAt ?? null)) s({ remindAt: val });
                 }}
-                style={{ padding: "7px 12px", borderRadius: 8, border: `1px solid ${panelBorder}`, background: inputBg, color: t.text, fontSize: 12.5, outline: "none", colorScheme: t.bg === "#0c0e14" ? "dark" : "light" }}
+                style={{ width: "auto" }}
               />
               {task.remindAt && (
                 <button
+                  className="btn danger"
                   onClick={() => { setRemindAtDraft(""); s({ remindAt: null }); }}
-                  style={{ padding: "7px 10px", borderRadius: 7, border: `1px solid ${panelBorder}`, background: "transparent", color: "#ef4444", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}
+                  style={{ fontSize: 12 }}
                 >
-                  <Icon name="x" size={12} color="#ef4444" strokeWidth={2} /> Zrušit
+                  <Icon name="x" size={12} color="currentColor" strokeWidth={2} /> Zrušit
                 </button>
               )}
             </div>
             {task.remindAt && (
-              <div style={{ fontSize: 12, color: t.text3, marginTop: 5 }}>
+              <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 5 }}>
                 Nastaveno: {formatDate(task.remindAt, { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}
               </div>
             )}
-          </Sec>
+          </div>
 
-          <Sec label="Opakování">
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {/* ── Recurrence ── */}
+          <div className="detail-sect">
+            <div className="detail-h">Opakování</div>
+            <div className="row" style={{ flexWrap: "wrap", gap: 6 }}>
               {[
                 { value: null, label: "Žádné" },
                 { value: "daily", label: "Každý den" },
@@ -675,51 +616,44 @@ export default function TaskDrawer() {
               ].map(({ value, label }) => {
                 const active = (task.recurrence ?? null) === value;
                 return (
-                  <button
+                  <span
                     key={String(value)}
+                    className={`chip ${active ? "active" : ""}`}
                     onClick={() => updateTask(task.id, { recurrence: value })}
-                    style={{
-                      padding: "4px 10px",
-                      borderRadius: 6,
-                      fontSize: 12,
-                      fontWeight: active ? 600 : 400,
-                      border: `1px solid ${active ? t.accent : "var(--border-soft)"}`,
-                      background: active ? t.accentBg : "transparent",
-                      color: active ? t.accent : t.text2,
-                      cursor: "pointer",
-                    }}
+                    style={{ cursor: "pointer" }}
                   >
                     {label}
-                  </button>
+                  </span>
                 );
               })}
             </div>
             {task.recurrence && (
-              <div style={{ marginTop: 6, fontSize: 12, color: t.text3 }}>
+              <div style={{ marginTop: 6, fontSize: 12, color: "var(--text-3)" }}>
                 Po dokončení se automaticky vytvoří nový úkol.
               </div>
             )}
-          </Sec>
+          </div>
 
-          <Sec label="Přiřazeno">
-            <AssigneeSelector taskId={task.id} currentAssigneeId={task.assigneeUserId} onChange={(uid) => s({ assigneeUserId: uid })} />
-          </Sec>
-
-          <Sec label="Přílohy">
+          {/* ── Attachments ── */}
+          <div className="detail-sect">
+            <div className="detail-h">Přílohy</div>
             <AttachmentsMiniList taskId={task.id} />
-          </Sec>
+          </div>
 
-          <Sec label="Poznámky">
+          {/* ── Notes ── */}
+          <div className="detail-sect">
+            <div className="detail-h">Poznámky</div>
             <NotesMiniList taskId={task.id} />
-          </Sec>
+          </div>
 
-          <div style={{ borderTop: `1px solid ${panelBorder}`, paddingTop: 12, marginTop: 8, fontSize: 12, color: t.text3 }}>
+          {/* ── Footer metadata ── */}
+          <div style={{ borderTop: "1px solid var(--border-soft)", paddingTop: 12, marginTop: 28, fontSize: 12, color: "var(--text-3)", fontFamily: "var(--mono)" }}>
             <div>Vytvořeno: {formatDateTime(task.createdAt)}</div>
             <div>Upraveno: {formatDateTime(task.updatedAt)}</div>
             {task.completedAt && <div style={{ color: "#22c55e" }}>Dokončeno: {formatDateTime(task.completedAt)}</div>}
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
