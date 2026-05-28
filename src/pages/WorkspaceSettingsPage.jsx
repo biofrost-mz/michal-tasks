@@ -6,7 +6,7 @@ import Icon from '../components/Icon.jsx'
 import { formatDate } from '../locale.js'
 
 export default function WorkspaceSettingsPage() {
-  const { t, workspaces, activeWorkspaceId, workspaceMembers, workspaceRole, userId,
+  const { workspaces, activeWorkspaceId, workspaceMembers, workspaceRole, userId,
     renameWorkspace, updateMemberRole, removeMember, leaveWorkspace,
     generateInviteLink, fetchWorkspaceInvites, revokeInvite, setPage, isMobile } = useApp();
   const toast = useToast();
@@ -97,141 +97,162 @@ export default function WorkspaceSettingsPage() {
 
   const roleColors = { owner: "#f59e0b", admin: "#3b82f6", member: "#22c55e", viewer: "#8b95a5" };
 
+  const panel = {
+    background: "var(--surface)",
+    border: "1px solid var(--border-soft)",
+    borderRadius: 14,
+    padding: isMobile ? "14px" : "16px 18px",
+  };
+  const inputStyle = {
+    width: "100%",
+    padding: "9px 12px",
+    borderRadius: 9,
+    border: "1px solid var(--border-soft)",
+    background: "var(--bg-2)",
+    color: "var(--text)",
+    fontSize: 13,
+    outline: "none",
+  };
+  const sectionLabel = {
+    fontFamily: "var(--mono)",
+    fontSize: 10.5,
+    color: "var(--text-4)",
+    textTransform: "uppercase",
+    letterSpacing: "0.1em",
+    marginBottom: 10,
+  };
+
   return (
-    <div style={{ flex: 1, overflow: "auto", padding: isMobile ? "16px" : "28px 32px", maxWidth: 700 }}>
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 28 }}>
-        <button onClick={() => setPage("dashboard")} style={{ background: "none", border: "none", color: t.text3, cursor: "pointer", padding: 4, borderRadius: 6, display: "flex" }}>
-          <Icon name="chevron-left" size={18} color={t.text3} strokeWidth={2} />
-        </button>
-        <div style={{ fontSize: 20, fontWeight: 800, fontFamily: "'Outfit',sans-serif" }}>Nastavení workspace</div>
-      </div>
-
-      {/* Workspace name */}
-      <div style={{ background: t.bg2, border: `1px solid ${t.border}`, borderRadius: 12, padding: "18px 20px", marginBottom: 16 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>Název workspace</div>
-        {editingName ? (
-          <div style={{ display: "flex", gap: 8 }}>
-            <input
-              autoFocus
-              value={newWsName}
-              onChange={(e) => setNewWsName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") handleRename(); if (e.key === "Escape") setEditingName(false); }}
-              style={{ flex: 1, padding: "7px 10px", borderRadius: 7, border: `1px solid ${t.border}`, background: t.input, color: t.text, fontSize: 14, fontWeight: 600 }}
-            />
-            <button onClick={handleRename} style={{ padding: "7px 16px", borderRadius: 7, border: "none", background: t.accent, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Uložit</button>
-            <button onClick={() => setEditingName(false)} style={{ padding: "7px 12px", borderRadius: 7, border: `1px solid ${t.border}`, background: "transparent", color: t.text2, fontSize: 13, cursor: "pointer" }}>Zrušit</button>
+    <div className="content" style={{ maxWidth: 980 }}>
+      <div className="ph">
+        <div>
+          <button className="ph-eyebrow" style={{ border: "none", background: "none", cursor: "pointer", padding: 0 }} onClick={() => setPage("dashboard")}>
+            ← Workspace
+          </button>
+          <h1 className="ph-title">Nastavení</h1>
+          <div className="ph-sub">
+            <span>{active?.name || "Workspace"} · role {workspaceRole}</span>
+            <span className="dot" />
+            <span>{workspaceMembers.length} členů</span>
           </div>
-        ) : (
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ fontSize: 16, fontWeight: 700 }}>{active?.name}</div>
-            {isOwner && (
-              <button onClick={() => { setEditingName(true); setNewWsName(active?.name ?? ""); }} style={{ background: "none", color: t.text3, cursor: "pointer", fontSize: 12, padding: "3px 8px", borderRadius: 5, border: `1px solid ${t.border}` }}>
-                Přejmenovat
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Members */}
-      <div style={{ background: t.bg2, border: `1px solid ${t.border}`, borderRadius: 12, padding: "18px 20px", marginBottom: 16 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 14 }}>
-          Členové ({workspaceMembers.length})
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {workspaceMembers.map((m) => (
-            <div key={m.userId} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ width: 34, height: 34, borderRadius: "50%", background: roleColors[m.role] + "22", border: `2px solid ${roleColors[m.role]}44`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: roleColors[m.role], flexShrink: 0 }}>
-                {getInitials(m)}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{getMemberLabel(m)}</div>
-                {m.email && m.displayName && <div style={{ fontSize: 12, color: t.text3 }}>{m.email}</div>}
-              </div>
-              {canManage && m.userId !== userId && m.role !== "owner" ? (
-                <>
-                  <select
-                    value={m.role}
-                    onChange={(e) => handleRoleChange(m.userId, e.target.value)}
-                    style={{ padding: "4px 6px", borderRadius: 6, border: `1px solid ${t.border}`, background: t.input, color: t.text, fontSize: 12, cursor: "pointer" }}
-                  >
-                    <option value="admin">admin</option>
-                    <option value="member">member</option>
-                    <option value="viewer">viewer</option>
-                  </select>
-                  <button onClick={() => handleRemove(m)} style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", padding: 4, borderRadius: 4, display: "flex" }}>
-                    <Icon name="trash" size={13} color="#ef4444" strokeWidth={2} />
-                  </button>
-                </>
-              ) : (
-                <span style={{ fontSize: 12, padding: "3px 8px", borderRadius: 5, background: roleColors[m.role] + "18", color: roleColors[m.role], fontWeight: 600 }}>
-                  {m.role}
-                </span>
-              )}
-            </div>
-          ))}
         </div>
       </div>
 
-      {/* Invite link */}
-      {canManage && (
-        <div style={{ background: t.bg2, border: `1px solid ${t.border}`, borderRadius: 12, padding: "18px 20px", marginBottom: 16 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 14 }}>Pozvat člena</div>
-          <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
-            {["member", "viewer", "admin"].map((r) => (
-              <button key={r} onClick={() => { setInviteRole(r); setInviteLink(""); }} style={{ padding: "5px 12px", borderRadius: 6, border: `1px solid ${inviteRole === r ? t.accent : t.border}`, background: inviteRole === r ? t.accentBg : "transparent", color: inviteRole === r ? t.accent : t.text2, fontSize: 12, fontWeight: inviteRole === r ? 600 : 400, cursor: "pointer" }}>
-                {r}
-              </button>
-            ))}
-          </div>
-          {inviteLink ? (
-            <div>
-              <div style={{ fontSize: 12, color: t.text2, marginBottom: 6 }}>Zkopíruj a pošli odkaz (platí 7 dní):</div>
-              <div style={{ display: "flex", gap: 6 }}>
-                <input readOnly value={inviteLink} style={{ flex: 1, padding: "7px 10px", borderRadius: 7, border: `1px solid ${t.border}`, background: t.input, color: t.text, fontSize: 12 }} onClick={(e) => e.target.select()} />
-                <button onClick={() => { navigator.clipboard.writeText(inviteLink); toast("Zkopírováno", "success"); }} style={{ padding: "7px 14px", borderRadius: 7, border: "none", background: t.accent, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Kopírovat</button>
-              </div>
-              <button onClick={() => { setInviteLink(""); }} style={{ marginTop: 8, background: "none", border: "none", color: t.text3, fontSize: 12, cursor: "pointer", padding: 0 }}>Vygenerovat nový</button>
+      <div style={{ display: "grid", gap: 14 }}>
+        <section style={panel}>
+          <div style={sectionLabel}>Název Workspace</div>
+          {editingName ? (
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <input
+                autoFocus
+                value={newWsName}
+                onChange={(e) => setNewWsName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleRename(); if (e.key === "Escape") setEditingName(false); }}
+                style={{ ...inputStyle, flex: 1, minWidth: 220 }}
+              />
+              <button className="btn primary" onClick={handleRename}>Uložit</button>
+              <button className="btn" onClick={() => setEditingName(false)}>Zrušit</button>
             </div>
           ) : (
-            <button onClick={handleGenerateLink} style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: t.accent, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-              Vygenerovat pozvánkový odkaz
-            </button>
-          )}
-
-          {/* Pending invites */}
-          {invites.length > 0 && (
-            <div style={{ marginTop: 16 }}>
-              <div style={{ fontSize: 12, color: t.text3, marginBottom: 8 }}>Čekající pozvánky:</div>
-              {invites.map((inv) => (
-                <div key={inv.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderTop: `1px solid ${t.border}` }}>
-                  <div style={{ flex: 1, fontSize: 12 }}>
-                    <span style={{ color: t.text2 }}>{inv.role}</span>
-                    <span style={{ color: t.text3, fontSize: 12, marginLeft: 8 }}>vyprší {formatDate(inv.expires_at, { day: "numeric", month: "numeric", year: "numeric" })}</span>
-                  </div>
-                  <button onClick={() => handleRevoke(inv.id)} style={{ background: "none", border: "none", color: "#ef4444", fontSize: 12, cursor: "pointer" }}>Zrušit</button>
-                </div>
-              ))}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+              <div style={{ fontFamily: "var(--serif)", fontSize: 30, fontStyle: "italic", lineHeight: 1.05 }}>{active?.name || "Bez názvu"}</div>
+              {isOwner && <button className="btn" onClick={() => { setEditingName(true); setNewWsName(active?.name ?? ""); }}>Přejmenovat</button>}
             </div>
           )}
-        </div>
-      )}
+        </section>
 
-      {/* Leave / Danger zone */}
-      <div style={{ background: t.bg2, border: `1px solid #ef444430`, borderRadius: 12, padding: "18px 20px" }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: "#ef4444", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12 }}>Nebezpečná zóna</div>
-        {!isOwner && (
-          <button onClick={handleLeave} style={{ padding: "8px 18px", borderRadius: 8, border: "1px solid #ef444440", background: "transparent", color: "#ef4444", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-            Opustit workspace
-          </button>
+        <section style={panel}>
+          <div style={sectionLabel}>Členové ({workspaceMembers.length})</div>
+          <div style={{ border: "1px solid var(--border-soft)", borderRadius: 10, overflow: "hidden" }}>
+            {workspaceMembers.map((m, idx) => (
+              <div key={m.userId} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderBottom: idx === workspaceMembers.length - 1 ? "none" : "1px solid var(--border-soft)", background: idx % 2 ? "var(--bg-2)" : "transparent" }}>
+                <div style={{ width: 30, height: 30, borderRadius: "50%", background: roleColors[m.role] + "22", border: `1px solid ${roleColors[m.role]}55`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", fontSize: 11.5, color: roleColors[m.role], flexShrink: 0 }}>
+                  {getInitials(m)}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13.5, color: "var(--text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{getMemberLabel(m)}</div>
+                  {m.email && m.displayName && <div style={{ fontSize: 11.5, color: "var(--text-3)" }}>{m.email}</div>}
+                </div>
+
+                {canManage && m.userId !== userId && m.role !== "owner" ? (
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <select
+                      value={m.role}
+                      onChange={(e) => handleRoleChange(m.userId, e.target.value)}
+                      style={{ ...inputStyle, width: 90, padding: "6px 8px", fontSize: 12 }}
+                    >
+                      <option value="admin">admin</option>
+                      <option value="member">member</option>
+                      <option value="viewer">viewer</option>
+                    </select>
+                    <button className="btn danger" style={{ padding: "7px 10px" }} onClick={() => handleRemove(m)}>
+                      <Icon name="trash" size={12} color="currentColor" strokeWidth={2} />
+                    </button>
+                  </div>
+                ) : (
+                  <span style={{ fontFamily: "var(--mono)", fontSize: 10.5, padding: "3px 8px", borderRadius: 999, border: `1px solid ${roleColors[m.role]}44`, color: roleColors[m.role], background: roleColors[m.role] + "18", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                    {m.role}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {canManage && (
+          <section style={panel}>
+            <div style={sectionLabel}>Pozvat Člena</div>
+            <div className="chips" style={{ marginBottom: 12 }}>
+              {["member", "viewer", "admin"].map((r) => (
+                <button key={r} className={`chip ${inviteRole === r ? "active" : ""}`} onClick={() => { setInviteRole(r); setInviteLink(""); }}>
+                  {r}
+                </button>
+              ))}
+            </div>
+
+            {inviteLink ? (
+              <div>
+                <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 8 }}>Odkaz platí 7 dní.</div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <input readOnly value={inviteLink} style={{ ...inputStyle, flex: 1, minWidth: 240 }} onClick={(e) => e.target.select()} />
+                  <button className="btn primary" onClick={() => { navigator.clipboard.writeText(inviteLink); toast("Zkopírováno", "success"); }}>Kopírovat</button>
+                  <button className="btn" onClick={() => { setInviteLink(""); }}>Nový</button>
+                </div>
+              </div>
+            ) : (
+              <button className="btn primary" onClick={handleGenerateLink}>Vygenerovat odkaz</button>
+            )}
+
+            <div style={{ marginTop: 12, fontSize: 12, color: "var(--text-3)" }}>
+              {loadingInvites ? "Načítám pozvánky..." : `Čekající pozvánky: ${invites.length}`}
+            </div>
+            {invites.length > 0 && (
+              <div style={{ marginTop: 8, border: "1px solid var(--border-soft)", borderRadius: 10, overflow: "hidden" }}>
+                {invites.map((inv, idx) => (
+                  <div key={inv.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderBottom: idx === invites.length - 1 ? "none" : "1px solid var(--border-soft)", background: idx % 2 ? "var(--bg-2)" : "transparent" }}>
+                    <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--text)" }}>{inv.role}</span>
+                    <span style={{ fontSize: 11.5, color: "var(--text-3)" }}>vyprší {formatDate(inv.expires_at, { day: "numeric", month: "numeric", year: "numeric" })}</span>
+                    <span style={{ flex: 1 }} />
+                    <button className="btn danger" style={{ padding: "5px 9px" }} onClick={() => handleRevoke(inv.id)}>Zrušit</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
         )}
-        {isOwner && workspaceMembers.length === 1 && (
-          <div style={{ fontSize: 12, color: t.text3 }}>Workspace nelze opustit — jsi jediný člen. Nejdřív přidej dalšího ownera nebo workspace smaž.</div>
-        )}
-        {isOwner && workspaceMembers.length > 1 && (
-          <div style={{ fontSize: 12, color: t.text3 }}>Jako owner nemůžeš workspace opustit. Předej ownership jinému členovi.</div>
-        )}
+
+        <section style={{ ...panel, borderColor: "rgba(239,68,68,.28)" }}>
+          <div style={{ ...sectionLabel, color: "var(--red)" }}>Nebezpečná Zóna</div>
+          {!isOwner && (
+            <button className="btn danger" onClick={handleLeave}>Opustit workspace</button>
+          )}
+          {isOwner && workspaceMembers.length === 1 && (
+            <div style={{ fontSize: 12, color: "var(--text-3)" }}>Workspace nelze opustit, jsi jediný člen.</div>
+          )}
+          {isOwner && workspaceMembers.length > 1 && (
+            <div style={{ fontSize: 12, color: "var(--text-3)" }}>Jako owner nemůžeš workspace opustit. Nejprve předej ownership.</div>
+          )}
+        </section>
       </div>
     </div>
   );

@@ -16,7 +16,7 @@ const PRIORITY_LABELS = { low: "Nízká", medium: "Střední", high: "Vysoká" }
 const PRIORITY_COLORS = { low: "#22c55e", medium: "#f59e0b", high: "#ef4444" };
 
 export default function AITaskAssist({ task, onTitleChange }) {
-  const { t, tags, projects, updateTask, activeWorkspaceId } = useApp();
+  const { t, tags, projects, updateTask, activeWorkspaceId, addTag } = useApp();
   const toast = useToast();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(null);
@@ -156,7 +156,38 @@ export default function AITaskAssist({ task, onTitleChange }) {
       updateTask(task.id, { subtasks: [...(task.subtasks || []), ...newSubs] });
       toast(`Přidáno ${newSubs.length} podúkolů`, "success");
     } else if (activeAction === "tags" && Array.isArray(result)) {
-      toast("Tagy zatím musíš přidat ručně — funkce přiřazení tagů přes AI brzy", "info");
+      const existingTagIds = task.tagIds || [];
+      const newTagIds = [];
+      const newlyCreatedTags = [];
+
+      for (const name of result) {
+        if (typeof name !== "string" || !name.trim()) continue;
+        const normalized = name.trim().toLowerCase();
+        const found = tags.find((tg) => tg.name.toLowerCase() === normalized);
+        if (found) {
+          newTagIds.push(found.id);
+        } else {
+          const colors = ["#6366f1", "#ec4899", "#3b82f6", "#22c55e", "#eab308", "#ef4444", "#8b5cf6", "#f97316"];
+          const randomColor = colors[Math.floor(Math.random() * colors.length)];
+          const created = addTag({ name: normalized, color: randomColor });
+          if (created?.id) {
+            newTagIds.push(created.id);
+            newlyCreatedTags.push(normalized);
+          }
+        }
+      }
+
+      const merged = [...new Set([...existingTagIds, ...newTagIds])];
+      if (merged.length !== existingTagIds.length) {
+        updateTask(task.id, { tagIds: merged });
+        if (newlyCreatedTags.length > 0) {
+          toast(`Přiřazeny tagy. Vytvořeny nové: ${newlyCreatedTags.join(", ")} ✨`, "success");
+        } else {
+          toast("Tagy přiřazeny k úkolu ✨", "success");
+        }
+      } else {
+        toast("Všechny navržené tagy již úkol má", "info");
+      }
     } else if (activeAction === "description" && typeof result === "string") {
       updateTask(task.id, { description: result });
       toast("Popis uložen", "success");
@@ -177,14 +208,14 @@ export default function AITaskAssist({ task, onTitleChange }) {
         onClick={() => setOpen((v) => !v)}
         style={{
           display: "flex", alignItems: "center", gap: 6, width: "100%",
-          background: open ? t.accentBg : "transparent",
-          border: `1px solid ${open ? t.accent + "40" : t.border}`,
-          borderRadius: 8, padding: "7px 10px", cursor: "pointer",
+          background: open ? "var(--accent-soft)" : "transparent",
+          border: `1px solid ${open ? "var(--accent-2)" : "var(--border-soft)"}`,
+          borderRadius: 9, padding: "7px 10px", cursor: "pointer",
           transition: "all .15s",
         }}
       >
         <span style={{ fontSize: 14 }}>✨</span>
-        <span style={{ fontSize: 12, fontWeight: 700, color: open ? t.accent : t.text2, flex: 1, textAlign: "left" }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: open ? "var(--accent)" : t.text2, flex: 1, textAlign: "left" }}>
           AI asistent
         </span>
         <Icon name={open ? "chevron-up" : "chevron-down"} size={13} color={t.text3} strokeWidth={2} />
@@ -202,9 +233,9 @@ export default function AITaskAssist({ task, onTitleChange }) {
                 style={{
                   display: "flex", alignItems: "center", gap: 5,
                   padding: "6px 12px", borderRadius: 7, fontSize: 12, fontWeight: 600,
-                  border: `1px solid ${activeAction === a.id ? t.accent + "60" : t.border}`,
-                  background: activeAction === a.id ? t.accentBg : t.input,
-                  color: activeAction === a.id ? t.accent : t.text2,
+                  border: `1px solid ${activeAction === a.id ? "var(--accent-2)" : "var(--border-soft)"}`,
+                  background: activeAction === a.id ? "var(--accent-soft)" : "var(--bg-2)",
+                  color: activeAction === a.id ? "var(--accent)" : t.text2,
                   cursor: loading ? "wait" : "pointer",
                   opacity: loading && loading !== a.id ? 0.5 : 1,
                   transition: "all .12s",
@@ -221,7 +252,7 @@ export default function AITaskAssist({ task, onTitleChange }) {
 
           {result !== null && (
             <div className="fi" style={{
-              background: t.input, border: `1px solid ${t.border}`,
+              background: "var(--bg-2)", border: "1px solid var(--border-soft)",
               borderRadius: 10, padding: "10px 12px",
             }}>
               <ResultView action={activeAction} result={result} t={t} />
@@ -230,7 +261,7 @@ export default function AITaskAssist({ task, onTitleChange }) {
                   onClick={apply}
                   style={{
                     flex: 1, padding: "7px", borderRadius: 7, border: "none",
-                    background: t.accent, color: "#fff", fontSize: 12.5, fontWeight: 600, cursor: "pointer",
+                    background: "var(--accent)", color: "var(--bg)", fontSize: 12.5, fontWeight: 600, cursor: "pointer",
                   }}
                 >
                   Použít
@@ -239,7 +270,7 @@ export default function AITaskAssist({ task, onTitleChange }) {
                   onClick={dismiss}
                   style={{
                     padding: "7px 12px", borderRadius: 7,
-                    border: `1px solid ${t.border}`, background: "transparent",
+                    border: "1px solid var(--border-soft)", background: "transparent",
                     color: t.text2, fontSize: 12, cursor: "pointer",
                   }}
                 >

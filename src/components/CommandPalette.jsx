@@ -165,9 +165,9 @@ export default function CommandPalette({ onClose }) {
 
   // Filter chips for quick narrowing
   const statusChips = [
-    { k: "todo",    label: "K udělání", color: "#3b82f6" },
+    { k: "todo",    label: "K udělání", color: "#8b8f9c" },
     { k: "doing",   label: "Probíhá",   color: "#f59e0b" },
-    { k: "waiting", label: "Čeká",      color: "#8b5cf6" },
+    { k: "waiting", label: "Čeká",      color: "#fb923c" },
   ];
   const priorityChips = [
     { k: "high",   label: "Vysoká", color: "#ef4444" },

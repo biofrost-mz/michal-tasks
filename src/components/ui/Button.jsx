@@ -43,10 +43,10 @@ export default function Button({
   let bg, color, border, hoverBg;
   switch (variant) {
     case "primary":
-      bg = `linear-gradient(135deg, #3b82f6, #6366f1)`;
-      color = "#fff";
+      bg = `linear-gradient(135deg, var(--accent), var(--accent-2))`;
+      color = "var(--bg)";
       border = "none";
-      hoverBg = `linear-gradient(135deg, #2563eb, #4f46e5)`;
+      hoverBg = `linear-gradient(135deg, var(--accent-2), var(--accent))`;
       break;
     case "secondary":
       bg = "transparent";

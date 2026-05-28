@@ -19,7 +19,7 @@ function MockTaskCard() {
         { done: true,  text: "Zkontrolovat pull requesty",  priority: "#22c55e" },
         { done: true,  text: "Schůzka s týmem (10:00)",     priority: "#f59e0b" },
         { done: false, text: "Dokončit design přihlášení",  priority: "#ef4444" },
-        { done: false, text: "Code review — notes linking", priority: "#3b82f6" },
+        { done: false, text: "Code review — notes linking", priority: "#e3a850" },
       ].map((item, i) => (
         <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0", borderBottom: i < 3 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
           <div style={{
@@ -121,10 +121,10 @@ export default function AuthGate({ children }) {
 
   const primaryBtn = {
     width: "100%", padding: "12px", borderRadius: 10, border: "none",
-    background: `linear-gradient(135deg, #3b82f6, #6366f1)`,
-    color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer",
+    background: `linear-gradient(135deg, var(--accent), var(--accent-2))`,
+    color: "var(--bg)", fontWeight: 700, fontSize: 14, cursor: "pointer",
     transition: "opacity .15s", letterSpacing: ".01em",
-    boxShadow: "0 4px 14px #3b82f630",
+    boxShadow: "0 4px 14px var(--accent-glow)",
   };
 
   const secondaryBtn = {
@@ -141,25 +141,25 @@ export default function AuthGate({ children }) {
       {!isMobile && (
         <div style={{
           flex: 1, minWidth: 0,
-          background: "linear-gradient(160deg, #0a0f1e 0%, #1e1b4b 55%, #0c1929 100%)",
+          background: "linear-gradient(160deg, #0a0c12 0%, #141822 55%, #0e1118 100%)",
           display: "flex", flexDirection: "column", justifyContent: "center",
           padding: "60px 56px",
           position: "relative", overflow: "hidden",
         }}>
           {/* Decorative glow orbs */}
-          <div style={{ position: "absolute", width: 500, height: 500, borderRadius: "50%", background: "radial-gradient(circle, #3b82f622 0%, transparent 70%)", top: -180, right: -160, pointerEvents: "none" }} />
-          <div style={{ position: "absolute", width: 380, height: 380, borderRadius: "50%", background: "radial-gradient(circle, #8b5cf618 0%, transparent 70%)", bottom: -80, left: -80, pointerEvents: "none" }} />
-          <div style={{ position: "absolute", width: 180, height: 180, borderRadius: "50%", background: "radial-gradient(circle, #06b6d420 0%, transparent 70%)", top: "40%", right: "15%", pointerEvents: "none" }} />
+          <div style={{ position: "absolute", width: 500, height: 500, borderRadius: "50%", background: "radial-gradient(circle, var(--accent-glow) 0%, transparent 70%)", top: -180, right: -160, pointerEvents: "none" }} />
+          <div style={{ position: "absolute", width: 380, height: 380, borderRadius: "50%", background: "radial-gradient(circle, rgba(227,168,80,.16) 0%, transparent 70%)", bottom: -80, left: -80, pointerEvents: "none" }} />
+          <div style={{ position: "absolute", width: 180, height: 180, borderRadius: "50%", background: "radial-gradient(circle, rgba(227,168,80,.14) 0%, transparent 70%)", top: "40%", right: "15%", pointerEvents: "none" }} />
 
           {/* Logo */}
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 52 }}>
             <div style={{
               width: 44, height: 44, borderRadius: 12,
-              background: "linear-gradient(135deg,#3b82f6,#8b5cf6)",
+              background: "linear-gradient(135deg,var(--accent),var(--accent-2))",
               display: "flex", alignItems: "center", justifyContent: "center",
-              color: "#fff", fontSize: 20, fontWeight: 800,
+              color: "var(--bg)", fontSize: 20, fontWeight: 800,
               fontFamily: "'Outfit',sans-serif",
-              boxShadow: "0 4px 14px #3b82f650",
+              boxShadow: "0 4px 14px var(--accent-glow)",
             }}>M</div>
             <span style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 800, fontSize: 22, letterSpacing: "-0.5px", color: "#f1f5f9" }}>
               Michal Tasks
@@ -173,7 +173,7 @@ export default function AuthGate({ children }) {
           }}>
             Tvůj osobní<br />
             <span style={{
-              background: "linear-gradient(90deg, #60a5fa 0%, #a78bfa 60%, #34d399 100%)",
+              background: "linear-gradient(90deg, var(--accent) 0%, var(--accent-2) 100%)",
               WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
             }}>AI produktivní</span><br />
             asistent
@@ -195,11 +195,11 @@ export default function AuthGate({ children }) {
               }}>
                 <div style={{
                   width: 36, height: 36, borderRadius: 9, flexShrink: 0,
-                  background: "linear-gradient(135deg, rgba(59,130,246,0.2), rgba(139,92,246,0.2))",
+                  background: "linear-gradient(135deg, rgba(227,168,80,0.18), rgba(212,146,58,0.18))",
                   border: "1px solid rgba(255,255,255,0.1)",
                   display: "flex", alignItems: "center", justifyContent: "center",
                 }}>
-                  <Icon name={f.icon} size={15} color="#60a5fa" strokeWidth={1.8} />
+                  <Icon name={f.icon} size={15} color="var(--accent)" strokeWidth={1.8} />
                 </div>
                 <div>
                   <div style={{ fontSize: 13.5, fontWeight: 600, color: "#e2e8f0", marginBottom: 1 }}>{f.label}</div>
@@ -228,7 +228,7 @@ export default function AuthGate({ children }) {
         {/* Mobile logo */}
         {isMobile && (
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 36 }}>
-            <div style={{ width: 38, height: 38, borderRadius: 10, background: "linear-gradient(135deg,#3b82f6,#8b5cf6)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 18, fontWeight: 800, fontFamily: "'Outfit',sans-serif" }}>M</div>
+            <div style={{ width: 38, height: 38, borderRadius: 10, background: "linear-gradient(135deg,var(--accent),var(--accent-2))", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--bg)", fontSize: 18, fontWeight: 800, fontFamily: "'Outfit',sans-serif" }}>M</div>
             <span style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 800, fontSize: 20, letterSpacing: "-0.5px", color: t.text }}>Michal Tasks</span>
           </div>
         )}

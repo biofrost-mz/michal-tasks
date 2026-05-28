@@ -1,473 +1,267 @@
-import React, { useState, useRef } from 'react'
-import { useApp } from '../context/AppContext.jsx'
-import Icon from '../components/Icon.jsx'
-import { startOfToday, parseYMD, projectColor } from '../utils.js'
-import { PRIORITIES } from '../constants.js'
-import { formatDate, formatDateKey } from '../locale.js'
+import React, { useMemo, useState } from "react";
+import { useApp } from "../context/AppContext.jsx";
+import { parseYMD, projectColor, startOfToday } from "../utils.js";
+import { formatDate, formatDateKey } from "../locale.js";
 
-const COL_W = 44;
-const CHIP_H = 28;
-const LANE_GAP = 6;
-const ROW_PAD = 10;
-const LABEL_W = 210;
 const DAYS = 28;
 
-/* Assign chips to non-overlapping lanes */
 function assignLanes(tasks, startDate) {
-  const sorted = [...tasks].sort((a, b) => a.dueDate.localeCompare(b.dueDate));
-  const laneEnds = []; // laneEnds[i] = last occupied column index in lane i
+  const indexed = tasks
+    .map((task) => {
+      const d = parseYMD(task.dueDate);
+      if (!d) return null;
+      const idx = Math.floor((d - startDate) / 86400000);
+      return { task, idx, span: 1 };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.idx - b.idx);
 
-  return sorted.map((task) => {
-    const d = parseYMD(task.dueDate);
-    const idx = Math.round((d - startDate) / 86400000);
-    const chipSpan = 3; // chips visually span ~3 columns
-
+  const laneEnds = [];
+  return indexed.map((it) => {
     let lane = 0;
-    while (laneEnds[lane] !== undefined && laneEnds[lane] > idx) lane++;
-    laneEnds[lane] = idx + chipSpan;
-
-    return { ...task, lane, idx };
+    while (laneEnds[lane] !== undefined && laneEnds[lane] >= it.idx) lane += 1;
+    laneEnds[lane] = it.idx + it.span - 1;
+    return { ...it, lane };
   });
 }
 
-/* Quick-add popover for a specific project row */
-function QuickAddPopover({ project, defaultDate, onAdd, onClose, t }) {
+function QuickAddPopover({ project, defaultDate, onAdd, onClose }) {
   const [title, setTitle] = useState("");
-  const [date, setDate] = useState(defaultDate);
+  const [dueDate, setDueDate] = useState(defaultDate);
   const [priority, setPriority] = useState("");
-  const inputRef = useRef(null);
 
-  React.useEffect(() => { inputRef.current?.focus(); }, []);
-
-  const handleSubmit = (e) => {
+  const submit = (e) => {
     e.preventDefault();
-    if (!title.trim()) return;
-    onAdd({ title: title.trim(), dueDate: date || null, priority: priority || null });
+    const clean = title.trim();
+    if (!clean) return;
+    onAdd({ title: clean, dueDate: dueDate || null, priority: priority || null });
     onClose();
   };
 
   return (
-    <div
-      onClick={(e) => e.stopPropagation()}
-      style={{
-        position: "absolute", left: 0, top: "calc(100% + 6px)", zIndex: 300,
-        background: t.bg2, border: `1px solid ${t.border}`, borderRadius: 12,
-        padding: 16, width: 280, boxShadow: t.shadow,
-      }}
-    >
-      <div style={{ fontSize: 12, fontWeight: 700, color: t.text2, marginBottom: 10, display: "flex", justifyContent: "space-between" }}>
-        <span>+ Úkol do „{project.name}"</span>
-        <button onClick={onClose} style={{ background: "none", border: "none", color: t.text3, cursor: "pointer", padding: 0, lineHeight: 1 }}>
-          <Icon name="x" size={14} color={t.text3} strokeWidth={2} />
-        </button>
-      </div>
-      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        <input
-          ref={inputRef}
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Název úkolu…"
-          style={{ padding: "8px 10px", borderRadius: 8, border: `1px solid ${t.border}`, background: t.input, color: t.text, fontSize: 13, outline: "none" }}
-        />
-        <div style={{ display: "flex", gap: 8 }}>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            style={{ flex: 1, padding: "7px 8px", borderRadius: 8, border: `1px solid ${t.border}`, background: t.input, color: t.text, fontSize: 12, outline: "none" }}
-          />
-          <select
-            value={priority}
-            onChange={(e) => setPriority(e.target.value)}
-            style={{ flex: 1, padding: "7px 8px", borderRadius: 8, border: `1px solid ${t.border}`, background: t.input, color: t.text, fontSize: 12, outline: "none" }}
-          >
+    <div onClick={(e) => e.stopPropagation()} style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 20, width: 270, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r)", padding: 10, boxShadow: "0 8px 24px rgba(0,0,0,.35)" }}>
+      <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Název úkolu…" className="detail-input" autoFocus />
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+          <input type="date" value={dueDate || ""} onChange={(e) => setDueDate(e.target.value)} className="detail-input" />
+          <select value={priority} onChange={(e) => setPriority(e.target.value)} className="detail-input">
             <option value="">Priorita</option>
-            {Object.entries(PRIORITIES).map(([k, v]) => (
-              <option key={k} value={k}>{v.label}</option>
-            ))}
+            <option value="low">Nízká</option>
+            <option value="medium">Střední</option>
+            <option value="high">Vysoká</option>
           </select>
         </div>
-        <button
-          type="submit"
-          disabled={!title.trim()}
-          style={{
-            padding: "8px 0", borderRadius: 8, border: "none",
-            background: title.trim() ? t.accent : t.input,
-            color: title.trim() ? "#fff" : t.text3,
-            fontSize: 13, fontWeight: 600, cursor: title.trim() ? "pointer" : "default",
-            transition: "background .15s",
-          }}
-        >
-          Přidat úkol
-        </button>
+        <div className="row" style={{ justifyContent: "flex-end" }}>
+          <button type="button" className="btn" onClick={onClose}>Zrušit</button>
+          <button type="submit" className="btn primary">Přidat</button>
+        </div>
       </form>
     </div>
   );
 }
 
 export default function TimelinePage() {
-  const { t, tasks, projects, addTask, setTaskDetail, isMobile } = useApp();
-  const today = startOfToday();
+  const { tasks, projects, addTask, setTaskDetail, isMobile } = useApp();
+
   const [offsetDays, setOffsetDays] = useState(0);
-  const [addingFor, setAddingFor] = useState(null); // project id
-  const [hoverTask, setHoverTask] = useState(null);
+  const [addingFor, setAddingFor] = useState(null);
 
-  const startDate = new Date(today);
-  startDate.setDate(startDate.getDate() + offsetDays);
-
-  const days = Array.from({ length: DAYS }, (_, i) => {
-    const d = new Date(startDate);
-    d.setDate(d.getDate() + i);
+  const today = startOfToday();
+  const startDate = useMemo(() => {
+    const d = new Date(today);
+    d.setDate(d.getDate() + offsetDays);
+    d.setHours(0, 0, 0, 0);
     return d;
-  });
+  }, [today, offsetDays]);
 
-  const todayStr = formatDateKey(today);
+  const days = useMemo(() => {
+    return Array.from({ length: DAYS }, (_, i) => {
+      const d = new Date(startDate);
+      d.setDate(startDate.getDate() + i);
+      return d;
+    });
+  }, [startDate]);
 
-  const tasksWithDue = tasks.filter((task) => task.dueDate && task.status !== "done");
+  const todayKey = formatDateKey(today);
 
   const activeProjects = projects.filter((p) => p.status === "active");
-  const unassigned = tasksWithDue.filter((task) => !task.projectId);
+  const scheduled = tasks.filter((t) => t.dueDate && t.status !== "done");
+  const overdueCount = scheduled.filter((t) => t.dueDate < todayKey).length;
 
-  const rows = [
-    ...activeProjects.map((proj) => ({
-      id: proj.id,
-      label: proj.name,
-      isProject: true,
-      project: proj,
-      tasks: tasksWithDue.filter((task) => task.projectId === proj.id),
-      color: projectColor(proj.id),
-    })),
-    ...(unassigned.length ? [{ id: "_inbox", label: "Bez projektu", isProject: false, tasks: unassigned, color: "#8b95a5" }] : []),
-  ].filter((row) => row.tasks.length > 0 || (row.isProject)); // always show active projects
+  const rows = useMemo(() => {
+    const pRows = activeProjects.map((p) => ({
+      id: p.id,
+      name: p.name,
+      color: projectColor(p.id),
+      tasks: scheduled.filter((t) => t.projectId === p.id),
+      projectId: p.id,
+    }));
 
-  // Today column index
-  const todayIdx = Math.round((today - startDate) / 86400000);
-
-  // Week groupings for header
-  const weeks = [];
-  let wStart = 0;
-  days.forEach((d, i) => {
-    if (i === 0 || d.getDay() === 1) {
-      if (i > 0) weeks[weeks.length - 1].span = i - wStart;
-      weeks.push({ label: formatDate(d, { day: "numeric", month: "short" }), start: i });
-      wStart = i;
+    const inbox = scheduled.filter((t) => !t.projectId);
+    if (inbox.length) {
+      pRows.push({ id: "_inbox", name: "Bez projektu", color: "#8b95a5", tasks: inbox, projectId: null });
     }
-  });
-  if (weeks.length) weeks[weeks.length - 1].span = DAYS - wStart;
 
-  const handleAddTask = (projectId, { title, dueDate, priority }) => {
-    addTask({ title, projectId: projectId === "_inbox" ? null : projectId, dueDate, priority });
+    return pRows;
+  }, [activeProjects, scheduled]);
+
+  const laneData = useMemo(() => {
+    const m = new Map();
+    rows.forEach((r) => m.set(r.id, assignLanes(r.tasks, startDate)));
+    return m;
+  }, [rows, startDate]);
+
+  const handleAdd = (projectId, payload) => {
+    addTask({
+      title: payload.title,
+      dueDate: payload.dueDate,
+      priority: payload.priority,
+      projectId,
+      status: "todo",
+    });
     setAddingFor(null);
   };
 
-  // Default date for quick-add = first day visible or today
-  const defaultAddDate = offsetDays >= 0 ? formatDateKey(today) : formatDateKey(startDate);
+  const rangeLabel = `${formatDate(days[0], { day: "numeric", month: "long" })} → ${formatDate(days[DAYS - 1], { day: "numeric", month: "long", year: "numeric" })}`;
 
   if (isMobile) {
-    // Mobile: simple list grouped by project
     return (
-      <div style={{ padding: "20px 16px 80px", background: t.bg, minHeight: "100%" }}>
-        <div style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 800, fontSize: 22, marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
-          <Icon name="calendar" size={20} color={t.accent} strokeWidth={2} />
-          Plán
+      <div className="content">
+        <div className="ph" style={{ marginBottom: 14 }}>
+          <div>
+            <div className="ph-eyebrow">{rangeLabel}</div>
+            <h1 className="ph-title">Plán</h1>
+            <div className="ph-sub"><span>{overdueCount} po termínu</span><span className="dot" /><span>{activeProjects.length} projektů</span></div>
+          </div>
         </div>
-        <div style={{ color: t.text3, fontSize: 13, marginBottom: 20 }}>Úkoly s termínem</div>
 
-        {tasksWithDue.length === 0 && (
-          <div style={{ textAlign: "center", padding: "60px 0", color: t.text3 }}>
-            <div style={{ opacity: 0.15, display: "flex", justifyContent: "center", marginBottom: 12 }}>
-              <Icon name="calendar" size={48} color={t.text} strokeWidth={0.75} />
-            </div>
-            <div style={{ fontSize: 15, fontWeight: 600, color: t.text2, marginBottom: 6 }}>Žádné úkoly s termínem</div>
-            <div style={{ fontSize: 13 }}>Přidejte termín k úkolům.</div>
-          </div>
-        )}
+        <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
+          <button className="btn" onClick={() => setOffsetDays((v) => v - DAYS)}>←</button>
+          <button className="btn primary" onClick={() => setOffsetDays(0)}>dnes</button>
+          <button className="btn" onClick={() => setOffsetDays((v) => v + DAYS)}>→</button>
+        </div>
 
-        {rows.filter(r => r.tasks.length > 0).map((row) => (
-          <div key={row.id} style={{ marginBottom: 20 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-              <div style={{ width: 10, height: 10, borderRadius: "50%", background: row.color, flexShrink: 0 }} />
-              <div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>{row.label}</div>
-              <div style={{ fontSize: 12, color: t.text3, background: t.input, borderRadius: 6, padding: "1px 7px" }}>{row.tasks.length}</div>
+        {rows.map((row) => {
+          const list = row.tasks
+            .filter((t) => t.dueDate)
+            .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+
+          return (
+            <div key={row.id} className="rail-card" style={{ marginBottom: 10 }}>
+              <div className="rail-h">
+                <span className="rail-h-t" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: row.color, display: "inline-block" }} />
+                  {row.name}
+                </span>
+                <span className="rail-h-a">{list.length}</span>
+              </div>
+              {list.length === 0 ? (
+                <div style={{ fontSize: 12.5, color: "var(--text-3)", padding: "8px 0" }}>Žádné úkoly s termínem</div>
+              ) : (
+                list.map((t) => {
+                  const d = parseYMD(t.dueDate);
+                  const isOver = d && d < today;
+                  return (
+                    <div key={t.id} className="pr-row" onClick={() => setTaskDetail(t.id)}>
+                      <div className="pr-top">
+                        <span className="pr-name" style={{ color: "var(--text)" }}>{t.title}</span>
+                        <span className="pr-pct" style={{ color: isOver ? "var(--red)" : "var(--text-3)" }}>{taskDue(t)}</span>
+                      </div>
+                      {isOver ? <div className="pr-sub" style={{ color: "var(--red)" }}>Po termínu</div> : null}
+                    </div>
+                  );
+                })
+              )}
             </div>
-            {[...row.tasks].sort((a, b) => a.dueDate.localeCompare(b.dueDate)).map((task) => {
-              const d = parseYMD(task.dueDate);
-              const isOverdue = task.dueDate < todayStr;
-              const isToday = task.dueDate === todayStr;
-              const pr = task.priority ? PRIORITIES[task.priority] : null;
-              return (
-                <div
-                  key={task.id}
-                  onClick={() => setTaskDetail(task.id)}
-                  style={{
-                    display: "flex", alignItems: "center", gap: 10,
-                    padding: "10px 14px", marginBottom: 6, borderRadius: 10,
-                    background: t.card, border: `1px solid ${isOverdue ? "#ef444430" : t.border}`,
-                    borderLeft: `3px solid ${isOverdue ? "#ef4444" : row.color}`,
-                    cursor: "pointer",
-                  }}
-                >
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13.5, fontWeight: 600, color: t.text, marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {task.title}
-                    </div>
-                    {pr && (
-                      <span style={{ fontSize: 12, fontWeight: 600, color: pr.color, background: pr.bg, padding: "1px 6px", borderRadius: 4 }}>
-                        {pr.label}
-                      </span>
-                    )}
-                  </div>
-                  <div style={{ textAlign: "right", flexShrink: 0 }}>
-                    <div style={{ fontSize: 12, fontWeight: isOverdue ? 700 : 500, color: isOverdue ? "#ef4444" : isToday ? t.accent : t.text2 }}>
-                      {formatDate(d, { day: "numeric", month: "short" })}
-                    </div>
-                    {isOverdue && <div style={{ fontSize: 12, color: "#ef4444", fontWeight: 600 }}>Prošlý</div>}
-                    {isToday && <div style={{ fontSize: 12, color: t.accent, fontWeight: 600 }}>Dnes</div>}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ))}
+          );
+        })}
       </div>
     );
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: t.bg, overflow: "hidden" }}>
-      {/* Header */}
-      <div style={{ padding: "24px 32px 16px", flexShrink: 0, borderBottom: `1px solid ${t.border}` }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <div>
-            <div style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 800, fontSize: 24, display: "flex", alignItems: "center", gap: 9 }}>
-              <Icon name="calendar" size={20} color={t.accent} strokeWidth={2} />
-              Plán
-            </div>
-            <div style={{ color: t.text3, fontSize: 13, marginTop: 2 }}>
-              {formatDate(days[0], { day: "numeric", month: "long" })} – {formatDate(days[DAYS - 1], { day: "numeric", month: "long", year: "numeric" })}
-            </div>
-          </div>
-          <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
-            <button onClick={() => setOffsetDays((o) => o - DAYS)} style={{ padding: "7px 14px", borderRadius: 8, border: `1px solid ${t.border}`, background: t.bg2, color: t.text, fontSize: 13, cursor: "pointer" }}>← Zpět</button>
-            <button onClick={() => setOffsetDays(0)} style={{ padding: "7px 14px", borderRadius: 8, border: `1px solid ${t.accent}`, background: t.accentBg, color: t.accent, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Dnes</button>
-            <button onClick={() => setOffsetDays((o) => o + DAYS)} style={{ padding: "7px 14px", borderRadius: 8, border: `1px solid ${t.border}`, background: t.bg2, color: t.text, fontSize: 13, cursor: "pointer" }}>Vpřed →</button>
-          </div>
+    <div className="content">
+      <div className="ph">
+        <div>
+          <div className="ph-eyebrow">{rangeLabel} · {DAYS} dní</div>
+          <h1 className="ph-title">Plán</h1>
+          <div className="ph-sub"><span>{overdueCount} po termínu</span><span className="dot" /><span>{activeProjects.length} projektů</span></div>
+        </div>
+        <div className="row">
+          <button className="btn" onClick={() => setOffsetDays((v) => v - DAYS)}>← zpět</button>
+          <button className="btn primary" onClick={() => setOffsetDays(0)}>dnes</button>
+          <button className="btn" onClick={() => setOffsetDays((v) => v + DAYS)}>vpřed →</button>
         </div>
       </div>
 
-      {/* Timeline body */}
-      <div style={{ flex: 1, overflow: "auto", padding: "16px 32px 32px" }}>
-        {rows.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "80px 0", color: t.text3 }}>
-            <div style={{ marginBottom: 12, opacity: 0.2, display: "flex", justifyContent: "center" }}>
-              <Icon name="calendar" size={56} color={t.text} strokeWidth={0.75} />
-            </div>
-            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6, color: t.text2 }}>Žádné aktivní projekty ani úkoly s termínem</div>
-            <div style={{ fontSize: 13 }}>Přidejte termíny k úkolům a zobrazí se zde.</div>
-          </div>
-        ) : (
-          <div style={{ minWidth: DAYS * COL_W + LABEL_W + 40 }}>
-
-            {/* Week header */}
-            <div style={{ display: "flex", marginLeft: LABEL_W, marginBottom: 2 }}>
-              {weeks.map((w, i) => (
-                <div key={i} style={{
-                  width: w.span * COL_W, flexShrink: 0,
-                  fontSize: 12, fontWeight: 600, color: t.text3,
-                  paddingLeft: 4, borderLeft: `1px solid ${t.border}`,
-                }}>
-                  {w.label}
-                </div>
-              ))}
-            </div>
-
-            {/* Day header */}
-            <div style={{ display: "flex", marginLeft: LABEL_W, marginBottom: 10 }}>
-              {days.map((d, i) => {
-                const isToday = formatDateKey(d) === todayStr;
-                const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-                return (
-                  <div key={i} style={{
-                    width: COL_W, flexShrink: 0, textAlign: "center",
-                    fontSize: 12,
-                    color: isToday ? t.accent : isWeekend ? t.text2 : t.text3,
-                    fontWeight: isToday ? 700 : 400,
-                    borderLeft: `1px solid ${isToday ? t.accent + "40" : t.border}`,
-                    paddingTop: 2, paddingBottom: 4,
-                    background: isWeekend ? t.kanban + "80" : "transparent",
-                    borderRadius: isToday ? "4px 4px 0 0" : 0,
-                    position: "relative",
-                  }}>
-                    <div style={{ fontSize: 12 }}>{formatDate(d, { weekday: "short" })}</div>
-                    <div style={{
-                      width: isToday ? 22 : "auto", height: isToday ? 22 : "auto",
-                      borderRadius: isToday ? "50%" : 0,
-                      background: isToday ? t.accent : "transparent",
-                      color: isToday ? "#fff" : "inherit",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      margin: isToday ? "2px auto 0" : "2px 0 0",
-                      fontWeight: isToday ? 700 : 400,
-                    }}>{d.getDate()}</div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Project rows */}
-            {rows.map((row) => {
-              const laned = assignLanes(row.tasks, startDate);
-              const maxLane = laned.reduce((m, t) => (t.lane > m ? t.lane : m), 0);
-              const rowH = (maxLane + 1) * (CHIP_H + LANE_GAP) + ROW_PAD * 2;
-
+      <div className="tl">
+        <div className="tl-head">
+          <div className="tl-head-l">Projekt</div>
+          <div className="tl-days">
+            {days.map((d, i) => {
+              const isToday = formatDateKey(d) === todayKey;
+              const dow = d.getDay();
+              const isWeekend = dow === 0 || dow === 6;
               return (
-                <div key={row.id} style={{ display: "flex", alignItems: "flex-start", marginBottom: 4 }}>
-                  {/* Project label */}
-                  <div style={{
-                    width: LABEL_W, flexShrink: 0, paddingRight: 14, paddingTop: ROW_PAD,
-                    minHeight: rowH, display: "flex", flexDirection: "column",
-                  }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 7, position: "relative" }}>
-                      <div style={{ width: 10, height: 10, borderRadius: "50%", background: row.color, flexShrink: 0 }} />
-                      <div style={{ fontSize: 13, fontWeight: 700, color: t.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
-                        {row.label}
-                      </div>
-                      <div style={{ fontSize: 12, color: t.text3, background: t.input, borderRadius: 6, padding: "1px 7px", flexShrink: 0 }}>
-                        {row.tasks.length}
-                      </div>
-                      {row.isProject && (
-                        <div style={{ position: "relative", flexShrink: 0 }}>
-                          <button
-                            onClick={() => setAddingFor(addingFor === row.id ? null : row.id)}
-                            title="Přidat úkol"
-                            style={{
-                              width: 22, height: 22, borderRadius: 6, border: `1px solid ${t.border}`,
-                              background: addingFor === row.id ? t.accentBg : t.input,
-                              color: addingFor === row.id ? t.accent : t.text3,
-                              display: "flex", alignItems: "center", justifyContent: "center",
-                              cursor: "pointer", flexShrink: 0,
-                            }}
-                          >
-                            <Icon name="plus" size={12} color="currentColor" strokeWidth={2.5} />
-                          </button>
-                          {addingFor === row.id && (
-                            <>
-                              <div onClick={() => setAddingFor(null)} style={{ position: "fixed", inset: 0, zIndex: 299 }} />
-                              <QuickAddPopover
-                                project={row.project}
-                                defaultDate={defaultAddDate}
-                                onAdd={(data) => handleAddTask(row.id, data)}
-                                onClose={() => setAddingFor(null)}
-                                t={t}
-                              />
-                            </>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Grid + chips */}
-                  <div style={{ position: "relative", flex: 1, minHeight: rowH }}>
-                    {/* Background columns */}
-                    <div style={{ display: "flex", position: "absolute", inset: 0 }}>
-                      {days.map((d, i) => {
-                        const isToday = formatDateKey(d) === todayStr;
-                        const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-                        return (
-                          <div key={i} style={{
-                            width: COL_W, flexShrink: 0, height: "100%",
-                            borderLeft: `1px solid ${isToday ? t.accent + "50" : t.border}`,
-                            background: isToday ? t.accent + "06" : isWeekend ? t.kanban + "60" : "transparent",
-                          }} />
-                        );
-                      })}
-                    </div>
-
-                    {/* Today vertical line */}
-                    {todayIdx >= 0 && todayIdx < DAYS && (
-                      <div style={{
-                        position: "absolute",
-                        left: todayIdx * COL_W + COL_W / 2,
-                        top: 0, bottom: 0,
-                        width: 2, background: t.accent + "60",
-                        zIndex: 2, pointerEvents: "none",
-                      }} />
-                    )}
-
-                    {/* Task chips */}
-                    {laned.map((task) => {
-                      if (task.idx < 0 || task.idx >= DAYS) return null;
-                      const isOverdue = task.dueDate < todayStr;
-                      const chipColor = isOverdue ? "#ef4444" : row.color;
-                      const pr = task.priority ? PRIORITIES[task.priority] : null;
-                      const isHovered = hoverTask === task.id;
-
-                      return (
-                        <div
-                          key={task.id}
-                          title={task.title}
-                          onClick={() => setTaskDetail(task.id)}
-                          onMouseEnter={() => setHoverTask(task.id)}
-                          onMouseLeave={() => setHoverTask(null)}
-                          style={{
-                            position: "absolute",
-                            left: task.idx * COL_W + 3,
-                            top: ROW_PAD + task.lane * (CHIP_H + LANE_GAP),
-                            height: CHIP_H,
-                            maxWidth: COL_W * 4 - 6,
-                            minWidth: COL_W - 6,
-                            background: isHovered ? chipColor + "30" : chipColor + "18",
-                            border: `1px solid ${chipColor}${isHovered ? "80" : "45"}`,
-                            borderLeft: `3px solid ${chipColor}`,
-                            borderRadius: 6,
-                            padding: "0 8px",
-                            display: "flex", alignItems: "center", gap: 5,
-                            overflow: "hidden",
-                            cursor: "pointer",
-                            zIndex: 3,
-                            transition: "background .1s, border-color .1s",
-                          }}
-                        >
-                          {task.recurrence && (
-                            <Icon name="repeat" size={10} color={chipColor} strokeWidth={2.5} style={{ flexShrink: 0 }} />
-                          )}
-                          {pr && (
-                            <div style={{ width: 6, height: 6, borderRadius: "50%", background: pr.color, flexShrink: 0 }} />
-                          )}
-                          <span style={{
-                            fontSize: 12, fontWeight: 500, color: chipColor,
-                            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1,
-                          }}>
-                            {task.title}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                <div key={i} className={`tl-day ${isToday ? "today" : ""} ${isWeekend ? "we" : ""}`}>{d.getDate()}.{d.getMonth() + 1}</div>
               );
             })}
           </div>
-        )}
-
-        {/* Legend */}
-        <div style={{ marginTop: 24, display: "flex", gap: 20, fontSize: 12, color: t.text3, flexWrap: "wrap", borderTop: `1px solid ${t.border}`, paddingTop: 16 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <div style={{ width: 14, height: 12, borderRadius: 3, background: "#ef444418", border: "1px solid #ef444445", borderLeft: "3px solid #ef4444" }} />
-            Prošlý termín
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <Icon name="repeat" size={12} color={t.text3} strokeWidth={2} /> Opakující se
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <div style={{ width: 2, height: 14, background: t.accent + "60", borderRadius: 1 }} />
-            Dnešní den
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <Icon name="plus" size={11} color={t.text3} strokeWidth={2} /> Přidat úkol do projektu
-          </div>
-          <div style={{ marginLeft: "auto", fontSize: 12 }}>Kliknutím na úkol otevřete detail</div>
         </div>
+
+        {rows.map((row) => {
+          const lanes = laneData.get(row.id) || [];
+          const maxLane = lanes.reduce((m, x) => Math.max(m, x.lane), 0);
+          const rowHeight = Math.max(50, 44 + maxLane * 30);
+
+          return (
+            <div key={row.id} className="tl-row" style={{ minHeight: rowHeight }}>
+              <div className="tl-lab" style={{ position: "relative" }}>
+                <span style={{ width: 9, height: 9, borderRadius: "50%", background: row.color, display: "inline-block" }} />
+                <span style={{ flex: 1 }}>{row.name}</span>
+                <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--text-4)" }}>{row.tasks.length}</span>
+                <button className="icon-btn" style={{ width: 22, height: 22 }} onClick={() => setAddingFor(addingFor === row.id ? null : row.id)}>+</button>
+
+                {addingFor === row.id ? (
+                  <QuickAddPopover
+                    project={row}
+                    defaultDate={todayKey}
+                    onClose={() => setAddingFor(null)}
+                    onAdd={(payload) => handleAdd(row.projectId, payload)}
+                  />
+                ) : null}
+              </div>
+
+              <div className="tl-grid">
+                {days.map((d, i) => (
+                  <div key={i} className={`tl-cell ${formatDateKey(d) === todayKey ? "today" : ""}`} />
+                ))}
+
+                {lanes.map(({ task, idx, span, lane }) => {
+                  if (idx < 0 || idx > DAYS - 1) return null;
+                  const d = parseYMD(task.dueDate);
+                  const isOverdue = d && d < today;
+                  return (
+                    <div
+                      key={task.id}
+                      className={`tl-task ${isOverdue ? "overdue" : ""}`}
+                      style={{
+                        left: `calc(${(idx / DAYS) * 100}% + 3px)`,
+                        width: `calc(${(span / DAYS) * 100}% - 6px)`,
+                        top: 11 + lane * 30,
+                        background: row.color,
+                      }}
+                      onClick={() => setTaskDetail(task.id)}
+                      title={task.title}
+                    >
+                      {task.title}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

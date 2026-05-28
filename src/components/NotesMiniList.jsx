@@ -23,9 +23,9 @@ export default function NotesMiniList({ taskId, projectId }) {
         <div
           key={n.id}
           onClick={() => openNote(n.id)}
-          style={{ padding: "7px 10px", borderRadius: 7, background: t.input, border: `1px solid ${t.border}`, marginBottom: 5, cursor: "pointer" }}
-          onMouseEnter={(e) => (e.currentTarget.style.borderColor = t.accent + "60")}
-          onMouseLeave={(e) => (e.currentTarget.style.borderColor = t.border)}
+          style={{ padding: "7px 10px", borderRadius: 8, background: "var(--bg-2)", border: "1px solid var(--border-soft)", marginBottom: 5, cursor: "pointer" }}
+          onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--accent-2)")}
+          onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--border-soft)")}
         >
           <div style={{ fontSize: 12.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
@@ -42,8 +42,8 @@ export default function NotesMiniList({ taskId, projectId }) {
       ))}
       <button
         onClick={handleAdd}
-        style={{ width: "100%", padding: "6px 12px", borderRadius: 7, border: `1px dashed ${t.border}`, background: "transparent", color: t.text3, fontSize: 12, marginTop: 2 }}
-        onMouseEnter={(e) => (e.currentTarget.style.color = t.accent)}
+        style={{ width: "100%", padding: "6px 12px", borderRadius: 8, border: "1px dashed var(--border-soft)", background: "transparent", color: t.text3, fontSize: 12, marginTop: 2 }}
+        onMouseEnter={(e) => (e.currentTarget.style.color = "var(--accent)")}
         onMouseLeave={(e) => (e.currentTarget.style.color = t.text3)}
       >
         + Přidat poznámku

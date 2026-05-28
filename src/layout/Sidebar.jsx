@@ -6,7 +6,7 @@ import Icon from '../components/Icon.jsx'
 import MZLogo from '../components/MZLogo.jsx'
 import { projectColor } from '../utils.js'
 import { APP_RELEASE_DATE, APP_VERSION } from '../appMeta.js'
-import { formatDate } from '../locale.js'
+import { formatDate, formatDateKey } from '../locale.js'
 import {
   DndContext,
   closestCenter,
@@ -322,6 +322,107 @@ function SortableProjectItem({ p, tasks, t, openProject }) {
   );
 }
 
+/* ─────────────────────────────────────────────
+   Mini Calendar
+───────────────────────────────────────────── */
+function MiniCalendar({ t, tasks, setPage }) {
+  const now   = new Date();
+  const todayY = now.getFullYear();
+  const todayM = now.getMonth();
+  const todayD = now.getDate();
+  const todayStr = formatDateKey(now);
+
+  const [vy, setVy] = useState(todayY);
+  const [vm, setVm] = useState(todayM);
+
+  const prevMonth = () => { if (vm === 0) { setVy(y => y - 1); setVm(11); } else setVm(m => m - 1); };
+  const nextMonth = () => { if (vm === 11) { setVy(y => y + 1); setVm(0); } else setVm(m => m + 1); };
+  const goToday   = () => { setVy(todayY); setVm(todayM); };
+
+  const firstDow   = (new Date(vy, vm, 1).getDay() + 6) % 7; // Mon = 0
+  const daysInMonth = new Date(vy, vm + 1, 0).getDate();
+
+  // Map dueDate → tasks
+  const taskMap = {};
+  tasks.forEach(tk => {
+    if (!tk.dueDate) return;
+    if (!taskMap[tk.dueDate]) taskMap[tk.dueDate] = [];
+    taskMap[tk.dueDate].push(tk);
+  });
+
+  const cells = [];
+  for (let i = 0; i < firstDow; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  const monthLabel = new Date(vy, vm).toLocaleString('cs-CZ', { month: 'long' });
+  const isCurrentMonth = vy === todayY && vm === todayM;
+
+  return (
+    <div style={{ padding: "12px 10px 8px", borderBottom: `1px solid ${t.border}` }}>
+      {/* Month nav */}
+      <div style={{ display: "flex", alignItems: "center", marginBottom: 8 }}>
+        <button onClick={prevMonth} style={{ background: "none", border: "none", color: t.text3, cursor: "pointer", padding: "2px 5px", borderRadius: 5, fontSize: 15, lineHeight: 1, display: "flex", alignItems: "center" }}>‹</button>
+        <button onClick={goToday} style={{ flex: 1, background: "none", border: "none", color: isCurrentMonth ? t.text : t.text3, cursor: "pointer", fontSize: 12, fontWeight: 700, textAlign: "center", padding: "0 4px", lineHeight: 1 }}>
+          {monthLabel}{vy !== todayY ? ` ${vy}` : ""}
+        </button>
+        <button onClick={nextMonth} style={{ background: "none", border: "none", color: t.text3, cursor: "pointer", padding: "2px 5px", borderRadius: 5, fontSize: 15, lineHeight: 1, display: "flex", alignItems: "center" }}>›</button>
+      </div>
+
+      {/* Day-of-week headers */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: 3 }}>
+        {["Po","Út","St","Čt","Pá","So","Ne"].map(d => (
+          <div key={d} style={{ textAlign: "center", fontSize: 10, color: t.text3, fontWeight: 700 }}>{d}</div>
+        ))}
+      </div>
+
+      {/* Day cells */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 1 }}>
+        {cells.map((day, i) => {
+          if (!day) return <div key={i} style={{ height: 26 }} />;
+          const dateStr = `${vy}-${String(vm + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+          const isToday   = dateStr === todayStr;
+          const isPast    = dateStr < todayStr;
+          const isWeekend = (i % 7) >= 5;
+          const dayTasks  = taskMap[dateStr] || [];
+          const openTasks = dayTasks.filter(tk => tk.status !== "done");
+          const hasOverdue= isPast && openTasks.length > 0;
+          const hasFuture = !isPast && openTasks.length > 0;
+
+          return (
+            <button key={i}
+              onClick={() => openTasks.length > 0 && setPage("tasks")}
+              title={openTasks.length > 0 ? `${openTasks.length} úkol${openTasks.length === 1 ? "" : openTasks.length < 5 ? "y" : "ů"}` : undefined}
+              style={{
+                height: 26, width: "100%",
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                borderRadius: 5, border: "none",
+                background: isToday ? t.accent : "transparent",
+                color: isToday ? "#fff" : isWeekend ? t.text3 : isPast ? t.text3 : t.text2,
+                fontSize: 11, fontWeight: isToday ? 800 : 400,
+                cursor: openTasks.length > 0 ? "pointer" : "default",
+                position: "relative", padding: 0,
+                opacity: isPast && !isToday && !hasOverdue ? 0.55 : 1,
+              }}
+              onMouseEnter={e => { if (openTasks.length > 0 && !isToday) e.currentTarget.style.background = `${t.accent}20`; }}
+              onMouseLeave={e => { if (!isToday) e.currentTarget.style.background = "transparent"; }}
+            >
+              {day}
+              {(hasOverdue || hasFuture) && (
+                <div style={{
+                  position: "absolute", bottom: 2, left: "50%", transform: "translateX(-50%)",
+                  width: 3, height: 3, borderRadius: "50%",
+                  background: isToday ? "rgba(255,255,255,.75)" : hasOverdue ? "#ef4444" : t.accent,
+                }} />
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function Sidebar({ toggleDk }) {
   const { t, dk, projects, tasks, quickTodos, page, setPage, openProject, search, setSearch, setTaskDetail, setCmdOpen, reorderProjects } = useApp();
   const active = projects.filter((p) => p.status === "active");
@@ -469,8 +570,13 @@ export default function Sidebar({ toggleDk }) {
           );
         })}
 
+        {/* Mini calendar */}
+        <div style={{ marginTop: 10 }}>
+          <MiniCalendar t={t} tasks={tasks} setPage={setPage} />
+        </div>
+
         {active.length > 0 && (
-          <div style={{ marginTop: 18, paddingTop: 12, borderTop: `1px solid ${t.border}` }}>
+          <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${t.border}` }}>
             <div
               style={{
                 fontSize: 12,

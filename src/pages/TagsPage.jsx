@@ -1,8 +1,8 @@
-import React, { useState } from 'react'
-import { useApp } from '../context/AppContext.jsx'
-import { useToast } from '../components/Toast.jsx'
-import { useConfirm } from '../components/Confirm.jsx'
-import Icon from '../components/Icon.jsx'
+import React, { useMemo, useState } from "react";
+import { useApp } from "../context/AppContext.jsx";
+import { useToast } from "../components/Toast.jsx";
+import { useConfirm } from "../components/Confirm.jsx";
+import Icon from "../components/Icon.jsx";
 
 const TAG_COLORS = [
   "#ef4444", "#f97316", "#f59e0b", "#eab308", "#84cc16", "#22c55e", "#10b981",
@@ -11,183 +11,157 @@ const TAG_COLORS = [
 ];
 
 export default function TagsPage() {
-  const { t, tags, tasks, addTag, updateTag, deleteTag, isMobile } = useApp();
+  const { tags, tasks, addTag, updateTag, deleteTag } = useApp();
   const toast = useToast();
   const confirm = useConfirm();
 
   const [newName, setNewName] = useState("");
-  const [newColor, setNewColor] = useState("#6366f1");
-  const [editing, setEditing] = useState(null);
+  const [newColor, setNewColor] = useState("#e3a850");
+  const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState("");
 
+  const rows = useMemo(() => {
+    return tags
+      .map((tag) => ({
+        tag,
+        count: tasks.filter((x) => (x.tagIds || []).includes(tag.id)).length,
+      }))
+      .sort((a, b) => b.count - a.count || a.tag.name.localeCompare(b.tag.name, "cs"));
+  }, [tags, tasks]);
+
+  const max = Math.max(1, ...rows.map((r) => r.count));
+
   const create = () => {
-    if (!newName.trim()) return;
-    addTag({ name: newName.trim(), color: newColor });
+    const name = newName.trim();
+    if (!name) return;
+    addTag({ name, color: newColor });
     setNewName("");
     toast("Tag vytvořen", "success");
   };
 
-  return (
-    <div style={{ padding: isMobile ? "16px" : "24px 28px", maxWidth: isMobile ? "100%" : 680 }} className="fi">
-      <h1 style={{ fontSize: isMobile ? 22 : 28, fontWeight: 800, letterSpacing: "-0.8px", marginBottom: 20 }}>Správa tagů</h1>
+  const startEdit = (tag) => {
+    setEditingId(tag.id);
+    setEditName(tag.name || "");
+  };
 
-      <div style={{ display: "flex", gap: 8, marginBottom: 12, alignItems: "center" }}>
+  const saveEdit = (tag) => {
+    const name = editName.trim();
+    if (!name) return;
+    updateTag(tag.id, { name });
+    setEditingId(null);
+    toast("Tag upraven", "success");
+  };
+
+  const remove = async (tag) => {
+    if (!(await confirm(`Smazat tag "${tag.name}"?`))) return;
+    deleteTag(tag.id);
+    toast("Tag smazán", "success");
+  };
+
+  return (
+    <div className="content">
+      <div className="ph">
+        <div>
+          <div className="ph-eyebrow">{tags.length} tagů · sdílené napříč projekty</div>
+          <h1 className="ph-title">Tagy</h1>
+          <div className="ph-sub"><span>nejpoužívanější: {rows[0]?.tag?.name || "—"} ({rows[0]?.count || 0}×)</span></div>
+        </div>
+        <button className="btn primary" onClick={create}>
+          <Icon name="plus" size={13} color="currentColor" strokeWidth={2} /> Nový tag
+        </button>
+      </div>
+
+      <div className="quickadd">
+        <span className="quickadd-plus">#</span>
         <input
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && create()}
-          placeholder="Nový tag…"
-          style={{ flex: 1, padding: "9px 14px", borderRadius: 8, border: `1px solid ${t.border}`, background: t.input, color: t.text, fontSize: 13, outline: "none" }}
+          placeholder="Název nového tagu…"
         />
-        <button onClick={create} style={{ padding: "9px 16px", borderRadius: 8, border: "none", background: t.accent, color: "#fff", fontSize: 13, fontWeight: 600 }}>
-          Přidat
-        </button>
+        <div style={{ display: "flex", gap: 4, alignItems: "center", flexWrap: "wrap" }}>
+          {TAG_COLORS.slice(0, 8).map((c) => (
+            <button
+              key={c}
+              onClick={() => setNewColor(c)}
+              title={c}
+              style={{
+                width: 16,
+                height: 16,
+                borderRadius: 4,
+                background: c,
+                border: newColor === c ? "1.5px solid #fff" : "1px solid transparent",
+                boxShadow: newColor === c ? `0 0 0 1px ${c}` : "none",
+              }}
+            />
+          ))}
+          <label title="Vlastní barva" style={{ width: 16, height: 16, borderRadius: 4, overflow: "hidden", border: "1px solid var(--border)", background: "linear-gradient(135deg,#f00,#0f0,#00f)", position: "relative", cursor: "pointer" }}>
+            <input
+              type="color"
+              value={newColor}
+              onChange={(e) => setNewColor(e.target.value)}
+              style={{ position: "absolute", inset: 0, opacity: 0, width: "100%", height: "100%", cursor: "pointer" }}
+            />
+          </label>
+        </div>
+        <span className="quickadd-kbd">Enter</span>
       </div>
 
-      <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 24, alignItems: "center" }}>
-        {TAG_COLORS.map((c) => (
-          <button
-            key={c}
-            onClick={() => setNewColor(c)}
-            style={{
-              width: 24,
-              height: 24,
-              borderRadius: 6,
-              background: c,
-              border: newColor === c ? "2.5px solid #fff" : "2px solid transparent",
-              boxShadow: newColor === c ? `0 0 0 2px ${c}` : "none",
-              transition: "all .1s",
-            }}
-          />
-        ))}
-        <label
-          title="Vlastní barva"
-          style={{
-            width: 24, height: 24, borderRadius: 6, overflow: "hidden",
-            border: `2px solid ${t.border}`, cursor: "pointer", flexShrink: 0,
-            background: `linear-gradient(135deg, #f00, #0f0, #00f)`,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            position: "relative",
-          }}
-        >
-          <input
-            type="color"
-            value={newColor}
-            onChange={(e) => setNewColor(e.target.value)}
-            style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", width: "100%", height: "100%" }}
-          />
-        </label>
-        <div style={{ width: 24, height: 24, borderRadius: 6, background: newColor, border: `2px solid ${t.border}`, flexShrink: 0 }} title={newColor} />
-      </div>
+      <div className="tagtable">
+        <div className="tagrow head">
+          <div>Tag ↑</div>
+          <div>Použití</div>
+          <div>Úkoly</div>
+          <div>Akce</div>
+        </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        {tags.map((tag) => {
-          const count = tasks.filter((x) => (x.tagIds || []).includes(tag.id)).length;
-          const isEditing = editing === tag.id;
+        {rows.map(({ tag, count }) => {
+          const isEditing = editingId === tag.id;
+          const widthPct = Math.round((count / max) * 100);
 
           return (
-            <div
-              key={tag.id}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                padding: "10px 14px",
-                background: t.card,
-                border: `1px solid ${t.border}`,
-                borderRadius: 9,
-                borderLeft: `4px solid ${tag.color}`,
-              }}
-            >
-              {!isEditing ? (
-                <>
-                  <span style={{ fontSize: 14, fontWeight: 600, flex: 1, color: tag.color }}>{tag.name}</span>
-                  <span style={{ fontSize: 12, color: t.text3 }}>{count} úkolů</span>
-
-                  <button
-                    onClick={() => {
-                      setEditing(tag.id);
-                      setEditName(tag.name);
-                    }}
-                    style={{ background: "none", border: "none", color: t.text3, fontSize: 12, padding: "2px 6px" }}
-                  >
-                    Upravit
-                  </button>
-
-                  <button
-                    onClick={async () => {
-                      if (await confirm(`Smazat tag "${tag.name}"?`)) deleteTag(tag.id);
-                    }}
-                    style={{ background: "none", border: "none", color: "#ef4444", fontSize: 12, padding: "2px 6px" }}
-                  >
-                    Smazat
-                  </button>
-                </>
-              ) : (
-                <>
+            <div key={tag.id} className="tagrow">
+              <div className="tagrow-name" style={{ color: tag.color }}>
+                {isEditing ? (
                   <input
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
-                    autoFocus
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        updateTag(tag.id, { name: editName });
-                        setEditing(null);
-                        toast("Tag upraven", "success");
-                      }
+                      if (e.key === "Enter") saveEdit(tag);
+                      if (e.key === "Escape") setEditingId(null);
                     }}
-                    style={{ flex: 1, padding: "4px 8px", borderRadius: 5, border: `1px solid ${t.border}`, background: t.input, color: t.text, fontSize: 13, outline: "none" }}
+                    autoFocus
+                    style={{ background: "var(--bg-2)", border: "1px solid var(--border)", borderRadius: 7, padding: "5px 8px", color: "var(--text)", fontSize: 13, width: "100%" }}
                   />
+                ) : (
+                  tag.name
+                )}
+              </div>
 
-                  <div style={{ display: "flex", gap: 3, flexWrap: "wrap", alignItems: "center" }}>
-                    {TAG_COLORS.map((c) => (
-                      <button
-                        key={c}
-                        onClick={() => updateTag(tag.id, { color: c })}
-                        style={{
-                          width: 18,
-                          height: 18,
-                          borderRadius: 4,
-                          background: c,
-                          border: tag.color === c ? "2px solid #fff" : "1px solid transparent",
-                          boxShadow: tag.color === c ? `0 0 0 1px ${c}` : "none",
-                        }}
-                      />
-                    ))}
-                    <label
-                      title="Vlastní barva"
-                      style={{
-                        width: 18, height: 18, borderRadius: 4, overflow: "hidden",
-                        border: `1px solid ${t.border}`, cursor: "pointer",
-                        background: `linear-gradient(135deg, #f00, #0f0, #00f)`,
-                        position: "relative", flexShrink: 0,
-                      }}
-                    >
-                      <input
-                        type="color"
-                        value={tag.color}
-                        onChange={(e) => updateTag(tag.id, { color: e.target.value })}
-                        style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", width: "100%", height: "100%" }}
-                      />
-                    </label>
-                  </div>
+              <div className="tagrow-bar">
+                <div className="tagrow-bar-fill"><div style={{ width: `${widthPct}%`, background: tag.color }} /></div>
+                <span className="tagrow-count">{count}×</span>
+              </div>
 
-                  <button
-                    onClick={() => {
-                      updateTag(tag.id, { name: editName });
-                      setEditing(null);
-                      toast("Tag upraven", "success");
-                    }}
-                    style={{ background: "none", border: "none", color: t.accent, fontSize: 12, fontWeight: 600, padding: "2px 6px" }}
-                  >
-                    Uložit
-                  </button>
+              <div style={{ fontFamily: "var(--mono)", color: "var(--text-3)", fontSize: 13 }}>{count}</div>
 
-                  <button onClick={() => setEditing(null)} style={{ background: "none", border: "none", color: t.text3, cursor: "pointer", padding: "2px 4px", display: "flex", alignItems: "center" }}>
-                    <Icon name="x" size={13} color={t.text3} strokeWidth={2} />
-                  </button>
-                </>
-              )}
+              <div className="row" style={{ gap: 4 }}>
+                {isEditing ? (
+                  <>
+                    <button className="btn primary" onClick={() => saveEdit(tag)} style={{ padding: "5px 10px", fontSize: 11 }}>Uložit</button>
+                    <button className="btn" onClick={() => setEditingId(null)} style={{ padding: "5px 8px", fontSize: 11 }}>Zrušit</button>
+                  </>
+                ) : (
+                  <>
+                    <button className="icon-btn" title="Upravit" onClick={() => startEdit(tag)}>
+                      <Icon name="edit-2" size={13} color="currentColor" strokeWidth={2} />
+                    </button>
+                    <button className="icon-btn" title="Smazat" onClick={() => remove(tag)}>
+                      <Icon name="trash" size={13} color="#ef4444" strokeWidth={2} />
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           );
         })}

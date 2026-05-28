@@ -1,12 +1,12 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useApp, AppProvider } from "./context/AppContext.jsx";
 import { ToastProvider, useToast } from "./components/Toast.jsx";
 import { ConfirmProvider } from "./components/Confirm.jsx";
 import ErrorBoundary, { PageErrorBoundary } from "./components/ErrorBoundary.jsx";
 import AuthGate from "./components/AuthGate.jsx";
-import Sidebar from "./layout/Sidebar.jsx";
 import MobileNav from "./layout/MobileNav.jsx";
-import TopBar from "./layout/TopBar.jsx";
+import AtlasSidebar from "./layout/atlas/AtlasSidebar.jsx";
+import AtlasTopBar from "./layout/atlas/AtlasTopBar.jsx";
 import TaskDrawer from "./components/TaskDrawer.jsx";
 import CommandPalette from "./components/CommandPalette.jsx";
 import DashboardPage from "./pages/DashboardPage.jsx";
@@ -19,6 +19,7 @@ import WorkspaceSettingsPage from "./pages/WorkspaceSettingsPage.jsx";
 import UserProfilePage from "./pages/UserProfilePage.jsx";
 import QuickTodosPage from "./pages/QuickTodosPage.jsx";
 import { applyDocumentMetadata } from "./appMeta.js";
+import "./styles/atlas-shell.css";
 
 function AppErrorReporter() {
   const { errorQueue, clearErrors } = useApp();
@@ -32,7 +33,8 @@ function AppErrorReporter() {
 }
 
 function AppShell() {
-  const { t, dk, setDk, isMobile, page, taskDetail, cmdOpen, setCmdOpen } = useApp();
+  const { dk, setDk, isMobile, page, taskDetail, cmdOpen, setCmdOpen } = useApp();
+  const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
     applyDocumentMetadata(page);
@@ -41,20 +43,13 @@ function AppShell() {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
         *{margin:0;padding:0;box-sizing:border-box}
-        html,body,#root{width:100%;height:100%;font-family:'Figtree',sans-serif;background:${t.bg};color:${t.text};font-size:15px}
+        html,body,#root{width:100%;height:100%}
         html{overscroll-behavior:none;overflow-x:hidden}
         body{overflow-x:hidden}
-        h1,h2,h3{font-family:'Outfit',sans-serif}
-        ::-webkit-scrollbar{width:5px;height:5px}
-        ::-webkit-scrollbar-track{background:transparent}
-        ::-webkit-scrollbar-thumb{background:${t.border};border-radius:3px}
-        ::selection{background:${t.accent}33}
-        input,textarea,select{font-family:'Figtree',sans-serif;-webkit-appearance:none;border-radius:0}
+        input,textarea,select{-webkit-appearance:none;border-radius:0}
         @media(max-width:767px){input,textarea,select{font-size:16px !important}}
-        button{font-family:'Figtree',sans-serif;cursor:pointer}
-        .mono{font-family:'JetBrains Mono',monospace}
+        button{cursor:pointer}
         @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
         @keyframes slideRight{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}
         @keyframes slideUp{from{opacity:0;transform:translateY(100%)}to{opacity:1;transform:translateY(0)}}
@@ -72,11 +67,11 @@ function AppShell() {
       `}</style>
 
       <AppErrorReporter />
-      <div style={{ display: "flex", width: "100%", height: "100vh", overflow: "hidden" }}>
-        {!isMobile && <Sidebar toggleDk={() => setDk(!dk)} />}
-        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-          {!isMobile && <TopBar />}
-          <main style={{ flex: 1, minWidth: 0, width: isMobile ? "100%" : "auto", overflow: "auto", position: "relative", paddingBottom: isMobile ? 66 : 0 }}>
+      <div className={!isMobile ? `app ${collapsed ? "collapsed" : ""}` : undefined} style={isMobile ? { display: "flex", width: "100%", height: "100vh", overflow: "hidden" } : undefined}>
+        {!isMobile && <AtlasSidebar collapsed={collapsed} setCollapsed={setCollapsed} />}
+        <div className={!isMobile ? "main" : undefined} style={isMobile ? { flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden" } : undefined}>
+          {!isMobile && <AtlasTopBar />}
+          <main style={isMobile ? { flex: 1, minWidth: 0, width: "100%", overflow: "auto", position: "relative", paddingBottom: 66 } : undefined}>
             {page === "dashboard"          && <PageErrorBoundary label="Přehled">         <DashboardPage />         </PageErrorBoundary>}
             {page === "projects"           && <PageErrorBoundary label="Projekty">        <ProjectsPage />          </PageErrorBoundary>}
             {page === "project-detail"     && <PageErrorBoundary label="Detail projektu"> <ProjectDetailPage />     </PageErrorBoundary>}

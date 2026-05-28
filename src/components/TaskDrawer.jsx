@@ -19,9 +19,12 @@ const PROJ_STATUS = {
 function Sec({ label, children }) {
   const { t } = useApp();
   return (
-    <div style={{ marginBottom: 16 }}>
-      <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: t.text3, marginBottom: 7 }}>
-        {label}
+    <div style={{ marginBottom: 20 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+        <span style={{ width: 3, height: 14, borderRadius: 3, background: t.accent, boxShadow: `0 0 10px ${t.accent}55` }} />
+        <span style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".11em", color: t.text3, fontFamily: "'Geist Mono', ui-monospace, monospace" }}>
+          {label}
+        </span>
       </div>
       {children}
     </div>
@@ -40,11 +43,11 @@ function AssigneeSelector({ currentAssigneeId, onChange }) {
     <div style={{ position: "relative" }}>
       <button
         onClick={() => setOpen((v) => !v)}
-        style={{ display: "flex", alignItems: "center", gap: 7, padding: "6px 10px", borderRadius: 7, border: `1px solid ${t.border}`, background: t.input, color: t.text, cursor: "pointer", fontSize: 12, width: "100%" }}
+        style={{ display: "flex", alignItems: "center", gap: 7, padding: "6px 10px", borderRadius: 7, border: "1px solid var(--border-soft)", background: "var(--bg-2)", color: t.text, cursor: "pointer", fontSize: 12, width: "100%" }}
       >
         {currentAssigneeId ? (
           <>
-            <div style={{ width: 20, height: 20, borderRadius: "50%", background: t.accent, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
+            <div style={{ width: 20, height: 20, borderRadius: "50%", background: t.accent, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--bg)", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
               {getInitials(currentMember)}
             </div>
             <span style={{ flex: 1, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{getLabel(currentMember)}</span>
@@ -59,7 +62,7 @@ function AssigneeSelector({ currentAssigneeId, onChange }) {
       {open && (
         <>
           <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 199 }} />
-          <div className="pop" style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: t.bg2, border: `1px solid ${t.border}`, borderRadius: 9, zIndex: 200, overflow: "hidden", boxShadow: t.shadow }}>
+          <div className="pop" style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: t.bg2, border: "1px solid var(--border-soft)", borderRadius: 9, zIndex: 200, overflow: "hidden", boxShadow: t.shadow }}>
             <button onClick={() => { onChange(null); setOpen(false); }} style={{ display: "flex", alignItems: "center", gap: 7, width: "100%", padding: "7px 9px", border: "none", background: !currentAssigneeId ? t.accentBg : "transparent", color: !currentAssigneeId ? t.accent : t.text2, cursor: "pointer", fontSize: 12 }}>
               <Icon name="x" size={12} color={t.text3} strokeWidth={2} />
               Nepřiřazeno
@@ -70,7 +73,7 @@ function AssigneeSelector({ currentAssigneeId, onChange }) {
                 onClick={() => { onChange(m.userId); setOpen(false); }}
                 style={{ display: "flex", alignItems: "center", gap: 7, width: "100%", padding: "7px 9px", border: "none", background: m.userId === currentAssigneeId ? t.accentBg : "transparent", color: m.userId === currentAssigneeId ? t.accent : t.text, cursor: "pointer", fontSize: 12 }}
               >
-                <div style={{ width: 20, height: 20, borderRadius: "50%", background: m.userId === currentAssigneeId ? t.accent : t.border, display: "flex", alignItems: "center", justifyContent: "center", color: m.userId === currentAssigneeId ? "#fff" : t.text2, fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
+                <div style={{ width: 20, height: 20, borderRadius: "50%", background: m.userId === currentAssigneeId ? t.accent : "var(--border-soft)", display: "flex", alignItems: "center", justifyContent: "center", color: m.userId === currentAssigneeId ? "var(--bg)" : t.text2, fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
                   {getInitials(m)}
                 </div>
                 <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
@@ -136,7 +139,7 @@ function SubtasksSection({ task, updateTask, t }) {
         {subtasks.length > 0 && (
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <div style={{ fontSize: 12, color: t.text3 }}>{done}/{subtasks.length}</div>
-            <div style={{ width: 60, height: 4, borderRadius: 2, background: t.border, overflow: "hidden" }}>
+            <div style={{ width: 60, height: 4, borderRadius: 2, background: "var(--border-soft)", overflow: "hidden" }}>
               <div style={{ width: `${(done / subtasks.length) * 100}%`, height: "100%", background: "#22c55e", borderRadius: 2, transition: "width .2s" }} />
             </div>
           </div>
@@ -170,25 +173,25 @@ function SubtasksSection({ task, updateTask, t }) {
           placeholder="Přidat podúkol…"
           style={{
             flex: 1, padding: "8px 12px", borderRadius: 8,
-            border: `1px solid ${t.border}`, background: t.input,
+            border: "1px solid var(--border-soft)", background: "var(--bg-2)",
             color: t.text, fontSize: 12.5, outline: "none",
           }}
           onFocus={(e) => { e.target.style.borderColor = t.accent; }}
-          onBlur={(e) => { e.target.style.borderColor = t.border; }}
+          onBlur={(e) => { e.target.style.borderColor = "var(--border-soft)"; }}
         />
         <button
           onClick={addSubtask}
           disabled={!input.trim()}
           style={{
             width: 36, borderRadius: 8, border: "none", flexShrink: 0,
-            background: input.trim() ? t.accent : t.input,
-            color: input.trim() ? "#fff" : t.text3,
+            background: input.trim() ? t.accent : "var(--bg-2)",
+            color: input.trim() ? "var(--bg)" : t.text3,
             cursor: input.trim() ? "pointer" : "default",
             transition: "background .15s",
             display: "flex", alignItems: "center", justifyContent: "center",
           }}
         >
-          <Icon name="plus" size={16} color={input.trim() ? "#fff" : t.text3} strokeWidth={2.5} />
+          <Icon name="plus" size={16} color={input.trim() ? "var(--bg)" : t.text3} strokeWidth={2.5} />
         </button>
       </div>
     </div>
@@ -203,18 +206,18 @@ function SubtaskRow({ subtask, editingId, editText, setEditText, onToggle, onRem
     <div
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 4px", borderRadius: 7, background: hovered ? t.input : "transparent", transition: "background .1s" }}
+      style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 4px", borderRadius: 7, background: hovered ? "var(--bg-2)" : "transparent", transition: "background .1s" }}
     >
       <button
         onClick={() => onToggle(subtask.id)}
         style={{
-          width: 18, height: 18, borderRadius: 4, flexShrink: 0, border: `2px solid ${subtask.done ? "#22c55e" : t.border}`,
+          width: 18, height: 18, borderRadius: 4, flexShrink: 0, border: `2px solid ${subtask.done ? "#22c55e" : "var(--border-soft)"}`,
           background: subtask.done ? "#22c55e" : "transparent",
           display: "flex", alignItems: "center", justifyContent: "center",
           cursor: "pointer", transition: "all .15s",
         }}
       >
-        {subtask.done && <Icon name="check" size={10} color="#fff" strokeWidth={3} />}
+        {subtask.done && <Icon name="check" size={10} color="var(--bg)" strokeWidth={3} />}
       </button>
 
       {isEditing ? (
@@ -272,6 +275,8 @@ export default function TaskDrawer() {
   const [showNewProject, setShowNewProject] = useState(false);
   const [npName, setNpName] = useState("");
   const [newPhase, setNewPhase] = useState("");
+  const inputBg = "var(--bg-2)";
+  const panelBorder = "var(--border-soft)";
   const toLocalDT = (iso) => {
     if (!iso) return "";
     const d = new Date(iso);
@@ -304,40 +309,40 @@ export default function TaskDrawer() {
 
   return (
     <>
-      <div onClick={() => setTaskDetail(null)} style={{ position: "fixed", inset: 0, background: "#00000040", zIndex: 90 }} />
+      <div onClick={() => setTaskDetail(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(5px)", zIndex: 90 }} />
       <div
         className={isMobile ? "su" : "sr"}
         style={{
           position: "fixed",
           ...(isMobile
-            ? { bottom: 0, left: 0, right: 0, top: "8vh", borderRadius: "16px 16px 0 0", borderTop: `1px solid ${t.border}` }
-            : { top: 0, right: 0, bottom: 0, width: 440, maxWidth: "92vw", borderLeft: `1px solid ${t.border}` }
+            ? { bottom: 0, left: 0, right: 0, top: "8vh", borderRadius: "16px 16px 0 0", borderTop: `1px solid ${panelBorder}` }
+            : { top: 0, right: 0, bottom: 0, width: 540, maxWidth: "95vw", borderLeft: `1px solid ${panelBorder}` }
           ),
-          background: t.bg2,
+          background: isMobile ? t.bg2 : "var(--surface)",
           zIndex: 100,
           display: "flex",
           flexDirection: "column",
-          boxShadow: isMobile ? "0 -8px 40px #0004" : "-8px 0 32px #0003",
+          boxShadow: isMobile ? "0 -8px 40px #0004" : "-16px 0 52px rgba(0,0,0,0.42)",
         }}
       >
         {isMobile && (
           <div style={{ display: "flex", justifyContent: "center", paddingTop: 10, paddingBottom: 4, flexShrink: 0 }}>
-            <div style={{ width: 40, height: 4, borderRadius: 2, background: t.border }} />
+            <div style={{ width: 40, height: 4, borderRadius: 2, background: panelBorder }} />
           </div>
         )}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: isMobile ? "10px 16px 12px" : "18px 20px", borderBottom: `1px solid ${t.border}` }}>
-          <span style={{ fontSize: 12, fontWeight: 700, color: t.text2, fontFamily: "'Outfit',sans-serif" }}>Detail úkolu</span>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: isMobile ? "10px 16px 12px" : "16px 24px", borderBottom: `1px solid ${panelBorder}` }}>
+          <span style={{ fontSize: 10.5, fontWeight: 600, color: t.text3, fontFamily: "'Geist Mono', ui-monospace, monospace", letterSpacing: ".11em", textTransform: "uppercase" }}>Detail úkolu</span>
           <div style={{ display: "flex", gap: 6 }}>
             <button onClick={async () => { if (await confirm("Smazat úkol?")) { setTaskDetail(null); deleteTask(task.id); } }} style={{ background: "transparent", border: "none", color: "#ef4444", fontSize: 12, padding: "4px 8px", borderRadius: 5 }}>
               Smazat
             </button>
-            <button onClick={() => setTaskDetail(null)} style={{ background: t.input, border: `1px solid ${t.border}`, color: t.text2, padding: "5px 8px", borderRadius: 6, display: "flex", alignItems: "center" }}>
+            <button onClick={() => setTaskDetail(null)} style={{ background: inputBg, border: `1px solid ${panelBorder}`, color: t.text2, padding: "5px 8px", borderRadius: 6, display: "flex", alignItems: "center" }}>
               <Icon name="x" size={14} color={t.text2} strokeWidth={2} />
             </button>
           </div>
         </div>
 
-        <div style={{ flex: 1, overflow: "auto", padding: "18px 18px 30px" }}>
+        <div style={{ flex: 1, overflow: "auto", padding: isMobile ? "18px 18px 30px" : "22px 24px 48px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18 }}>
             <button
               onClick={() => s({ starred: !task.starred })}
@@ -362,7 +367,19 @@ export default function TaskDrawer() {
               onChange={(e) => setTitle(e.target.value)}
               onBlur={() => s({ title })}
               placeholder="Název úkolu"
-              style={{ fontSize: 18, fontWeight: 700, border: "none", background: "transparent", color: t.text, outline: "none", width: "100%", fontFamily: "'Outfit',sans-serif" }}
+              style={{
+                fontSize: isMobile ? 22 : 34,
+                fontWeight: 400,
+                border: "none",
+                background: "transparent",
+                color: t.text,
+                outline: "none",
+                width: "100%",
+                fontFamily: "'Instrument Serif', Georgia, serif",
+                fontStyle: "italic",
+                letterSpacing: "-0.015em",
+                lineHeight: 1.08,
+              }}
             />
           </div>
 
@@ -377,7 +394,7 @@ export default function TaskDrawer() {
                     borderRadius: 7,
                     fontSize: 12,
                     fontWeight: 600,
-                    border: `1.5px solid ${task.status === k ? v.color : t.border}`,
+                    border: `1.5px solid ${task.status === k ? v.color : "var(--border-soft)"}`,
                     background: task.status === k ? v.bg : "transparent",
                     color: task.status === k ? v.color : t.text2,
                     display: "inline-flex", alignItems: "center", gap: 5,
@@ -399,7 +416,7 @@ export default function TaskDrawer() {
                   borderRadius: 7,
                   fontSize: 12,
                   fontWeight: 500,
-                  border: `1.5px solid ${!task.priority ? t.accent : t.border}`,
+                  border: `1.5px solid ${!task.priority ? t.accent : "var(--border-soft)"}`,
                   background: !task.priority ? t.accentBg : "transparent",
                   color: !task.priority ? t.accent : t.text3,
                 }}
@@ -415,7 +432,7 @@ export default function TaskDrawer() {
                     borderRadius: 7,
                     fontSize: 12,
                     fontWeight: 700,
-                    border: `1.5px solid ${task.priority === k ? v.color : t.border}`,
+                    border: `1.5px solid ${task.priority === k ? v.color : "var(--border-soft)"}`,
                     background: task.priority === k ? v.bg : "transparent",
                     color: task.priority === k ? v.color : t.text2,
                     display: "flex",
@@ -440,7 +457,7 @@ export default function TaskDrawer() {
                 }
                 s({ projectId: e.target.value || null });
               }}
-              style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: `1px solid ${t.border}`, background: t.input, color: t.text, fontSize: 13, outline: "none" }}
+              style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: `1px solid ${panelBorder}`, background: inputBg, color: t.text, fontSize: 13, outline: "none" }}
             >
               <option value="">Inbox (bez projektu)</option>
               {projects.map((p) => (
@@ -459,12 +476,12 @@ export default function TaskDrawer() {
                   onKeyDown={(e) => e.key === "Enter" && createProjectInline()}
                   placeholder="Název nového projektu"
                   autoFocus
-                  style={{ flex: 1, padding: "7px 12px", borderRadius: 7, border: `1px solid ${t.border}`, background: t.input, color: t.text, fontSize: 12.5, outline: "none" }}
+                  style={{ flex: 1, padding: "7px 12px", borderRadius: 7, border: `1px solid ${panelBorder}`, background: inputBg, color: t.text, fontSize: 12.5, outline: "none" }}
                 />
-                <button onClick={createProjectInline} style={{ padding: "7px 12px", borderRadius: 7, border: "none", background: t.accent, color: "#fff", fontSize: 12, fontWeight: 600 }}>
+                <button onClick={createProjectInline} style={{ padding: "7px 12px", borderRadius: 7, border: "none", background: "var(--accent)", color: "var(--bg)", fontSize: 12, fontWeight: 600 }}>
                   Vytvořit
                 </button>
-                <button onClick={() => setShowNewProject(false)} style={{ padding: "7px 8px", borderRadius: 7, border: `1px solid ${t.border}`, background: "transparent", color: t.text2, display: "flex", alignItems: "center" }}>
+                <button onClick={() => setShowNewProject(false)} style={{ padding: "7px 8px", borderRadius: 7, border: `1px solid ${panelBorder}`, background: "transparent", color: t.text2, display: "flex", alignItems: "center" }}>
                   <Icon name="x" size={13} color={t.text2} strokeWidth={2} />
                 </button>
               </div>
@@ -477,7 +494,7 @@ export default function TaskDrawer() {
                 type="date"
                 value={task.dueDate || ""}
                 onChange={(e) => s({ dueDate: e.target.value || null })}
-                style={{ padding: "7px 12px", borderRadius: 8, border: `1px solid ${t.border}`, background: t.input, color: t.text, fontSize: 12.5, outline: "none", colorScheme: t.bg === "#0c0e14" ? "dark" : "light" }}
+                style={{ padding: "7px 12px", borderRadius: 8, border: `1px solid ${panelBorder}`, background: inputBg, color: t.text, fontSize: 12.5, outline: "none", colorScheme: t.bg === "#0c0e14" ? "dark" : "light" }}
               />
               <span style={{ fontSize: 12, color: t.text3 }}>
                 Založeno:{" "}
@@ -503,7 +520,7 @@ export default function TaskDrawer() {
                       borderRadius: 6,
                       fontSize: 12,
                       fontWeight: 600,
-                      border: `1.5px solid ${active ? tg.color : t.border}`,
+                      border: `1.5px solid ${active ? tg.color : "var(--border-soft)"}`,
                       background: active ? tg.color + "18" : "transparent",
                       color: active ? tg.color : t.text2,
                     }}
@@ -522,7 +539,7 @@ export default function TaskDrawer() {
               onBlur={() => s({ description: desc })}
               rows={4}
               placeholder="Poznámky, kontext, odkazy…"
-              style={{ width: "100%", padding: "10px 14px", borderRadius: 8, border: `1px solid ${t.border}`, background: t.input, color: t.text, outline: "none", fontSize: 13, resize: "vertical", lineHeight: 1.5 }}
+              style={{ width: "100%", padding: "10px 14px", borderRadius: 8, border: `1px solid ${panelBorder}`, background: inputBg, color: t.text, outline: "none", fontSize: 13, resize: "vertical", lineHeight: 1.5 }}
             />
           </Sec>
 
@@ -538,8 +555,8 @@ export default function TaskDrawer() {
                   style={{
                     padding: "10px 12px",
                     borderRadius: 10,
-                    background: t.input,
-                    border: `1px solid ${t.border}`,
+                    background: inputBg,
+                    border: `1px solid ${panelBorder}`,
                     display: "flex",
                     gap: 10,
                     alignItems: "flex-start",
@@ -586,8 +603,8 @@ export default function TaskDrawer() {
                   flex: 1,
                   padding: "10px 12px",
                   borderRadius: 10,
-                  border: `1px solid ${t.border}`,
-                  background: t.input,
+                  border: `1px solid ${panelBorder}`,
+                  background: inputBg,
                   color: t.text,
                   outline: "none",
                   fontSize: 13,
@@ -608,8 +625,8 @@ export default function TaskDrawer() {
                   width: 44,
                   borderRadius: 10,
                   border: "none",
-                  background: t.accent,
-                  color: "#fff",
+                  background: "var(--accent)",
+                  color: "var(--bg)",
                   fontWeight: 800,
                   cursor: "pointer",
                 }}
@@ -630,12 +647,12 @@ export default function TaskDrawer() {
                   const val = e.target.value ? new Date(e.target.value).toISOString() : null;
                   if (val !== (task.remindAt ?? null)) s({ remindAt: val });
                 }}
-                style={{ padding: "7px 12px", borderRadius: 8, border: `1px solid ${t.border}`, background: t.input, color: t.text, fontSize: 12.5, outline: "none", colorScheme: t.bg === "#0c0e14" ? "dark" : "light" }}
+                style={{ padding: "7px 12px", borderRadius: 8, border: `1px solid ${panelBorder}`, background: inputBg, color: t.text, fontSize: 12.5, outline: "none", colorScheme: t.bg === "#0c0e14" ? "dark" : "light" }}
               />
               {task.remindAt && (
                 <button
                   onClick={() => { setRemindAtDraft(""); s({ remindAt: null }); }}
-                  style={{ padding: "7px 10px", borderRadius: 7, border: `1px solid ${t.border}`, background: "transparent", color: "#ef4444", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}
+                  style={{ padding: "7px 10px", borderRadius: 7, border: `1px solid ${panelBorder}`, background: "transparent", color: "#ef4444", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}
                 >
                   <Icon name="x" size={12} color="#ef4444" strokeWidth={2} /> Zrušit
                 </button>
@@ -666,7 +683,7 @@ export default function TaskDrawer() {
                       borderRadius: 6,
                       fontSize: 12,
                       fontWeight: active ? 600 : 400,
-                      border: `1px solid ${active ? t.accent : t.border}`,
+                      border: `1px solid ${active ? t.accent : "var(--border-soft)"}`,
                       background: active ? t.accentBg : "transparent",
                       color: active ? t.accent : t.text2,
                       cursor: "pointer",
@@ -696,7 +713,7 @@ export default function TaskDrawer() {
             <NotesMiniList taskId={task.id} />
           </Sec>
 
-          <div style={{ borderTop: `1px solid ${t.border}`, paddingTop: 12, marginTop: 8, fontSize: 12, color: t.text3 }}>
+          <div style={{ borderTop: `1px solid ${panelBorder}`, paddingTop: 12, marginTop: 8, fontSize: 12, color: t.text3 }}>
             <div>Vytvořeno: {formatDateTime(task.createdAt)}</div>
             <div>Upraveno: {formatDateTime(task.updatedAt)}</div>
             {task.completedAt && <div style={{ color: "#22c55e" }}>Dokončeno: {formatDateTime(task.completedAt)}</div>}

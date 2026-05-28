@@ -116,8 +116,8 @@ export default class ErrorBoundary extends React.Component {
             onClick={() => this.handleReset()}
             style={{
               padding: "10px 24px", borderRadius: 10, border: "none",
-              background: "linear-gradient(135deg,#3b82f6,#8b5cf6)",
-              color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer",
+              background: "linear-gradient(135deg,var(--accent),var(--accent-2))",
+              color: "var(--bg)", fontSize: 14, fontWeight: 600, cursor: "pointer",
             }}
           >
             Zkusit znovu

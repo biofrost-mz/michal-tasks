@@ -56,8 +56,8 @@ function SwipeableRow({ todo, onArchive, onDelete, t, isMobile, hintOffset = 0 }
         transition: swiping ? "none" : "background .2s",
       }}>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
-          <Icon name="check" size={20} color="#fff" strokeWidth={2.5} />
-          <span style={{ fontSize: 12, color: "#fff", fontWeight: 700 }}>Hotovo</span>
+          <Icon name="check" size={20} color="var(--bg)" strokeWidth={2.5} />
+          <span style={{ fontSize: 12, color: "var(--bg)", fontWeight: 700 }}>Hotovo</span>
         </div>
       </div>
 
@@ -70,8 +70,8 @@ function SwipeableRow({ todo, onArchive, onDelete, t, isMobile, hintOffset = 0 }
         style={{
           display: "flex", alignItems: "flex-start", gap: 12,
           padding: "13px 14px",
-          background: t.card,
-          border: `1px solid ${t.border}`,
+          background: "var(--surface)",
+          border: "1px solid var(--border-soft)",
           borderRadius: 12,
           userSelect: "none",
           transform: exiting ? "translateX(-110%)" : `translateX(${offsetX + hintOffset}px)`,
@@ -86,13 +86,13 @@ function SwipeableRow({ todo, onArchive, onDelete, t, isMobile, hintOffset = 0 }
           title="Označit jako hotové"
           style={{
             width: 22, height: 22, borderRadius: "50%", flexShrink: 0, marginTop: 1,
-            border: `2px solid ${pri ? pri.color + "80" : t.border}`,
+            border: `2px solid ${pri ? pri.color + "80" : "var(--border-soft)"}`,
             background: pri ? pri.bg : "transparent",
             display: "flex", alignItems: "center", justifyContent: "center",
             cursor: "pointer", transition: "border-color .15s, background .15s",
           }}
           onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#22c55e"; e.currentTarget.style.background = "#22c55e18"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.borderColor = pri ? pri.color + "80" : t.border; e.currentTarget.style.background = pri ? pri.bg : "transparent"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.borderColor = pri ? pri.color + "80" : "var(--border-soft)"; e.currentTarget.style.background = pri ? pri.bg : "transparent"; }}
         />
 
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -180,7 +180,7 @@ function ArchivedRow({ todo, onRestore, onDelete, t }) {
         <button
           onClick={() => onRestore(todo.id)}
           title="Obnovit"
-          style={{ background: "none", border: `1px solid ${t.border}`, color: t.text2, borderRadius: 5, padding: "3px 8px", fontSize: 12, cursor: "pointer" }}
+          style={{ background: "none", border: "1px solid var(--border-soft)", color: t.text2, borderRadius: 5, padding: "3px 8px", fontSize: 12, cursor: "pointer" }}
         >
           Obnovit
         </button>
@@ -253,40 +253,40 @@ export default function QuickTodosPage() {
   };
 
   const hasExtras = priority || dueDate || tagsRaw || description;
+  const panelBg = "var(--surface)";
+  const panelBorder = "var(--border-soft)";
+  const inputBg = "var(--bg-2)";
 
   return (
-    <div style={{ padding: isMobile ? "16px 14px 100px" : "28px 32px 48px", maxWidth: 640, margin: "0 auto" }} className="fi">
+    <div className="content fi" style={{ maxWidth: 860 }}>
 
-      {/* Header */}
-      <div style={{ marginBottom: isMobile ? 20 : 28 }}>
-        <h1 style={{ fontSize: isMobile ? 24 : 30, fontWeight: 800, letterSpacing: "-0.7px", marginBottom: 4, display: "flex", alignItems: "center", gap: 10 }}>
-          <Icon name="zap" size={isMobile ? 24 : 28} color="#f59e0b" strokeWidth={2} />
-          Rychlý seznam
-        </h1>
-        <p style={{ fontSize: 14, color: t.text3 }}>
-          Nakup, udělej, vyřiď.{isMobile ? " Swipe doleva = hotovo." : ""}
-        </p>
+      <div className="ph">
+        <div>
+          <div className="ph-eyebrow">Nakup · udělej · vyřiď</div>
+          <h1 className="ph-title">Rychlý seznam</h1>
+          <div className="ph-sub"><span>{active.length} položek</span><span className="dot" /><span>swipe doleva = hotovo</span></div>
+        </div>
       </div>
 
       {/* Input card */}
       <div style={{
-        background: t.card,
-        border: `1.5px solid ${t.border}`,
+        background: panelBg,
+        border: `1px solid ${panelBorder}`,
         borderRadius: 16,
         overflow: "hidden",
         marginBottom: 24,
-        boxShadow: "0 2px 12px #0001",
+        boxShadow: "0 10px 24px rgba(0,0,0,.2)",
       }}>
         {/* Main text row */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px 12px" }}>
           <div style={{
             width: 32, height: 32, borderRadius: 9, flexShrink: 0,
-            background: input.trim() ? "#f59e0b20" : t.input,
-            border: `1.5px solid ${input.trim() ? "#f59e0b50" : t.border}`,
+            background: input.trim() ? "var(--accent-soft)" : inputBg,
+            border: `1px solid ${input.trim() ? "var(--accent-2)" : panelBorder}`,
             display: "flex", alignItems: "center", justifyContent: "center",
             transition: "all .15s",
           }}>
-            <Icon name="zap" size={14} color={input.trim() ? "#f59e0b" : t.text3} strokeWidth={2} />
+            <Icon name="zap" size={14} color={input.trim() ? "var(--accent)" : t.text3} strokeWidth={2} />
           </div>
           <input
             ref={inputRef}
@@ -296,15 +296,15 @@ export default function QuickTodosPage() {
             placeholder="Co potřebuješ udělat nebo koupit…"
             style={{
               flex: 1, border: "none", background: "transparent",
-              color: t.text, fontSize: 16, outline: "none",
-              fontFamily: "'Figtree', sans-serif",
+              color: "var(--text)", fontSize: 16, outline: "none",
+              fontFamily: "var(--sans)",
             }}
           />
         </div>
 
         {/* Expanded extras */}
         {expanded && (
-          <div style={{ borderTop: `1px solid ${t.border}`, padding: "12px 16px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ borderTop: `1px solid ${panelBorder}`, padding: "12px 16px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
             {/* Priority */}
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <Icon name="flag" size={13} color={t.text3} strokeWidth={2} />
@@ -316,7 +316,7 @@ export default function QuickTodosPage() {
                     onClick={() => setPriority(priority === key ? null : key)}
                     style={{
                       padding: "4px 12px", borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: "pointer",
-                      border: `1.5px solid ${priority === key ? cfg.color : t.border}`,
+                      border: `1.5px solid ${priority === key ? cfg.color : panelBorder}`,
                       background: priority === key ? cfg.bg : "transparent",
                       color: priority === key ? cfg.color : t.text2,
                       transition: "all .12s",
@@ -337,8 +337,8 @@ export default function QuickTodosPage() {
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
                 style={{
-                  padding: "5px 10px", borderRadius: 7, border: `1px solid ${t.border}`,
-                  background: t.input, color: t.text, fontSize: 13, outline: "none",
+                  padding: "5px 10px", borderRadius: 7, border: `1px solid ${panelBorder}`,
+                  background: inputBg, color: "var(--text)", fontSize: 13, outline: "none",
                 }}
               />
             </div>
@@ -352,9 +352,9 @@ export default function QuickTodosPage() {
                 onChange={(e) => setTagsRaw(e.target.value)}
                 placeholder="nakup, práce, osobní…"
                 style={{
-                  flex: 1, padding: "5px 10px", borderRadius: 7, border: `1px solid ${t.border}`,
-                  background: t.input, color: t.text, fontSize: 13, outline: "none",
-                  fontFamily: "'Figtree', sans-serif",
+                  flex: 1, padding: "5px 10px", borderRadius: 7, border: `1px solid ${panelBorder}`,
+                  background: inputBg, color: "var(--text)", fontSize: 13, outline: "none",
+                  fontFamily: "var(--sans)",
                 }}
               />
             </div>
@@ -369,9 +369,9 @@ export default function QuickTodosPage() {
                 placeholder="Krátká poznámka…"
                 rows={2}
                 style={{
-                  flex: 1, padding: "6px 10px", borderRadius: 7, border: `1px solid ${t.border}`,
-                  background: t.input, color: t.text, fontSize: 13, outline: "none", resize: "vertical",
-                  fontFamily: "'Figtree', sans-serif", lineHeight: 1.5,
+                  flex: 1, padding: "6px 10px", borderRadius: 7, border: `1px solid ${panelBorder}`,
+                  background: inputBg, color: "var(--text)", fontSize: 13, outline: "none", resize: "vertical",
+                  fontFamily: "var(--sans)", lineHeight: 1.5,
                 }}
               />
             </div>
@@ -382,16 +382,16 @@ export default function QuickTodosPage() {
         <div style={{
           display: "flex", alignItems: "center", gap: 8,
           padding: "10px 16px 14px",
-          borderTop: expanded ? "none" : `1px solid ${t.border}`,
+          borderTop: expanded ? "none" : `1px solid ${panelBorder}`,
         }}>
           <button
             onClick={() => setExpanded((v) => !v)}
             style={{
               display: "flex", alignItems: "center", gap: 5,
               padding: "7px 12px", borderRadius: 8, fontSize: 13, fontWeight: 500,
-              border: `1px solid ${expanded || hasExtras ? t.accent + "60" : t.border}`,
-              background: expanded || hasExtras ? t.accentBg : "transparent",
-              color: expanded || hasExtras ? t.accent : t.text3,
+              border: `1px solid ${expanded || hasExtras ? "var(--accent-2)" : panelBorder}`,
+              background: expanded || hasExtras ? "var(--accent-soft)" : "transparent",
+              color: expanded || hasExtras ? "var(--accent)" : "var(--text-3)",
               cursor: "pointer", transition: "all .12s",
             }}
           >
@@ -404,14 +404,14 @@ export default function QuickTodosPage() {
           <button
             onClick={handleAdd}
             disabled={!input.trim()}
+            className={input.trim() ? "btn primary" : "btn"}
             style={{
               display: "flex", alignItems: "center", gap: 7,
-              padding: "9px 20px", borderRadius: 10, border: "none",
-              background: input.trim() ? t.accent : t.input,
-              color: input.trim() ? "#fff" : t.text3,
+              padding: "9px 20px", borderRadius: 10,
               fontSize: 14, fontWeight: 700,
               cursor: input.trim() ? "pointer" : "default",
               transition: "background .15s",
+              opacity: input.trim() ? 1 : 0.8,
             }}
           >
             <Icon name="plus" size={16} color="currentColor" strokeWidth={2.5} />
@@ -467,7 +467,7 @@ export default function QuickTodosPage() {
             >
               <Icon name={archiveOpen ? "chevron-down" : "chevron-right"} size={13} color={t.text3} strokeWidth={2} />
               Archiv
-              <span style={{ background: t.input, borderRadius: 6, padding: "1px 7px", fontSize: 12, fontWeight: 500 }}>
+              <span style={{ background: "var(--bg-2)", border: "1px solid var(--border-soft)", borderRadius: 6, padding: "1px 7px", fontSize: 12, fontWeight: 500 }}>
                 {archived.length}
               </span>
             </button>

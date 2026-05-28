@@ -130,7 +130,7 @@ export default function AIDailyPlan() {
           padding: "13px 16px",
           cursor: "pointer",
           background: open
-            ? `linear-gradient(135deg, #3b82f608, #8b5cf608)`
+            ? `linear-gradient(135deg, var(--accent-soft), transparent)`
             : "transparent",
           borderBottom: open ? `1px solid ${t.border}` : "none",
           transition: "background .15s",
@@ -139,7 +139,7 @@ export default function AIDailyPlan() {
         {/* Icon */}
         <div style={{
           width: 30, height: 30, borderRadius: 8, flexShrink: 0,
-          background: "linear-gradient(135deg, #3b82f6, #8b5cf6)",
+          background: "linear-gradient(135deg, var(--accent), var(--accent-2))",
           display: "flex", alignItems: "center", justifyContent: "center",
         }}>
           <span style={{ fontSize: 15 }}>✨</span>
@@ -150,8 +150,8 @@ export default function AIDailyPlan() {
             AI Denní plán
             <span style={{
               fontSize: 9.5, fontWeight: 700, padding: "1px 6px", borderRadius: 4,
-              background: "linear-gradient(90deg,#3b82f6,#8b5cf6)",
-              color: "#fff", letterSpacing: ".04em",
+              background: "linear-gradient(90deg,var(--accent),var(--accent-2))",
+              color: "var(--bg)", letterSpacing: ".04em",
             }}>AI</span>
           </div>
           <div style={{ fontSize: 12, color: t.text3, marginTop: 1 }}>
@@ -231,9 +231,9 @@ export default function AIDailyPlan() {
                   display: "inline-flex", alignItems: "center", gap: 8,
                   padding: "10px 22px", borderRadius: 10, border: "none",
                   background: activeTasks.length > 0
-                    ? "linear-gradient(135deg, #3b82f6, #8b5cf6)"
+                    ? "linear-gradient(135deg, var(--accent), var(--accent-2))"
                     : t.input,
-                  color: activeTasks.length > 0 ? "#fff" : t.text3,
+                  color: activeTasks.length > 0 ? "var(--bg)" : t.text3,
                   fontSize: 13.5, fontWeight: 600, cursor: activeTasks.length > 0 ? "pointer" : "default",
                 }}
               >

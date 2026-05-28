@@ -108,16 +108,16 @@ export default function AttachmentsMiniList({ taskId, projectId }) {
         onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFiles(e.dataTransfer.files); }}
         onClick={() => fileRef.current?.click()}
         style={{
-          border: `1.5px dashed ${dragOver ? t.accent : t.border}`,
+          border: `1px dashed ${dragOver ? "var(--accent-2)" : "var(--border-soft)"}`,
           borderRadius: 8, padding: "9px 14px", cursor: "pointer",
           display: "flex", alignItems: "center", gap: 8,
-          color: dragOver ? t.accent : t.text2, fontSize: 12,
+          color: dragOver ? "var(--accent)" : t.text2, fontSize: 12,
           marginBottom: relevant.length ? 10 : 0,
           transition: "border-color .15s, color .15s",
-          background: dragOver ? t.accentBg : "transparent",
+          background: dragOver ? "var(--accent-soft)" : "transparent",
         }}
       >
-        <Icon name="upload" size={13} color={dragOver ? t.accent : t.text3} strokeWidth={2} />
+        <Icon name="upload" size={13} color={dragOver ? "var(--accent)" : t.text3} strokeWidth={2} />
         {uploading ? "Nahrávám…" : "Přidat soubor nebo obrázek"}
         <input
           ref={fileRef} type="file" style={{ display: "none" }}
@@ -128,13 +128,13 @@ export default function AttachmentsMiniList({ taskId, projectId }) {
         {relevant.map((att) => {
           const url = getUrl(att);
           return (
-            <div key={att.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 6px", borderRadius: 7, background: t.input }}>
+            <div key={att.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 7px", borderRadius: 8, background: "var(--bg-2)", border: "1px solid var(--border-soft)" }}>
               {isImage(att) && url ? (
                 <a href={url} target="_blank" rel="noreferrer" style={{ flexShrink: 0 }}>
                   <img src={url} alt={att.name} style={{ width: 38, height: 38, borderRadius: 5, objectFit: "cover", display: "block" }} />
                 </a>
               ) : (
-                <div style={{ width: 38, height: 38, borderRadius: 5, background: t.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <div style={{ width: 38, height: 38, borderRadius: 5, background: "var(--surface)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                   <Icon name="file" size={16} color={t.text3} strokeWidth={1.5} />
                 </div>
               )}

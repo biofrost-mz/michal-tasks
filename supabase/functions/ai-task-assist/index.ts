@@ -133,7 +133,7 @@ ${(note.content || "").slice(0, 4000)}`;
               generationConfig: {
                 temperature: 0.4,
                 maxOutputTokens: 600,
-                ...(isJsonAction ? { response_mime_type: "application/json" } : {}),
+                ...(isJsonAction ? { responseMimeType: "application/json" } : {}),
               },
             }),
           }
