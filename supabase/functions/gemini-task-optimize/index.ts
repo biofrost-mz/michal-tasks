@@ -107,15 +107,16 @@ Pravidla:
     }
 
     const geminiResp = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          model: "gemini-2.0-flash",
           contents: [{ role: "user", parts: [{ text: prompt }] }],
           generationConfig: {
-            responseMimeType: "application/json",
-            responseSchema: GEMINI_RESPONSE_SCHEMA,
+            response_mime_type: "application/json",
+            response_schema: GEMINI_RESPONSE_SCHEMA,
             temperature: 0.4,
             maxOutputTokens: 800,
           },
