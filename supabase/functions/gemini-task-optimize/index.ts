@@ -36,7 +36,7 @@ const GEMINI_RESPONSE_SCHEMA = {
   type: "OBJECT",
   properties: {
     optimizedTitle: { type: "STRING" },
-    suggestedProject: { type: "STRING", nullable: true },
+    suggestedProject: { type: "STRING" },
     suggestedTags: { type: "ARRAY", items: { type: "STRING" } },
     timeEstimate: {
       type: "STRING",
@@ -95,7 +95,7 @@ ${tagList}
 
 Pravidla:
 - optimizedTitle: přeformuluj na akční větu začínající slovesem (např. "Aktualizovat...", "Připravit...", "Navrhnout..."). Zachovej klíčové info, buď konkrétnější než vstup.
-- suggestedProject: vyber NEJLEPŠÍ projekt ze seznamu dostupných podle tématu úkolu. Pokud žádný nesedí, vrať null.
+- suggestedProject: vyber NEJLEPŠÍ projekt ze seznamu dostupných podle tématu úkolu. Pokud žádný nesedí, vrať prázdný řetězec "".
 - suggestedTags: vyber 1–3 nejrelevantnější tagy ze seznamu dostupných. Navrhuj pouze existující, přidej nový jen pokud opravdu nic nesedí.
 - timeEstimate: realistický odhad celkového času práce (nejen deadline).
 - subtasks: 3–6 konkrétních, akčních podúkolů pro dokončení tohoto úkolu (česky, každý max 80 znaků).`;
