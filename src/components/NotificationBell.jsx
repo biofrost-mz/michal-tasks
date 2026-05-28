@@ -5,7 +5,7 @@ import { startOfToday } from '../utils.js'
 import { PRIORITIES } from '../constants.js'
 import { formatDateKey } from '../locale.js'
 
-export default function NotificationBell({ compact = false }) {
+export default function NotificationBell({ compact = false, variant = null }) {
   const { t, tasks, projects, setTaskDetail } = useApp();
   const [open, setOpen] = useState(false);
   const [fixedPos, setFixedPos] = useState({ top: 0, right: 0 });
@@ -91,6 +91,77 @@ export default function NotificationBell({ compact = false }) {
   };
 
   const isEmpty = overdue.length === 0 && dueToday.length === 0 && dueTomorrow.length === 0;
+
+  if (variant === "atlas") {
+    return (
+      <div ref={ref} style={{ position: "relative" }}>
+        <button
+          ref={btnRef}
+          className="tb-bell"
+          onClick={handleToggle}
+          aria-label="Notifikace"
+          style={{ cursor: "pointer" }}
+        >
+          <Icon name="bell" size={14} color="currentColor" strokeWidth={1.7} />
+          {urgentCount > 0 && <span className="tb-bell-dot" />}
+        </button>
+
+        {open && (
+          <div
+            className="pop"
+            style={{
+              position: "absolute",
+              top: "calc(100% + 8px)",
+              right: 0,
+              width: 320,
+              background: "var(--bg-2)",
+              border: "1px solid var(--border)",
+              borderRadius: 14,
+              boxShadow: "var(--shadow)",
+              zIndex: 500,
+              overflow: "hidden",
+            }}
+          >
+            {/* Header */}
+            <div style={{ padding: "14px 16px 10px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", display: "flex", alignItems: "center", gap: 7 }}>
+                <Icon name="bell" size={14} color="var(--accent)" strokeWidth={2} />
+                Připomínky
+              </div>
+              <button onClick={() => setOpen(false)} style={{ background: "none", border: "none", color: "var(--text-3)", cursor: "pointer", padding: 2, display: "flex" }}>
+                <Icon name="x" size={14} color="var(--text-3)" strokeWidth={2} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div style={{ padding: "12px 8px", maxHeight: 420, overflowY: "auto" }}>
+              {isEmpty ? (
+                <div style={{ textAlign: "center", padding: "28px 0", color: "var(--text-3)" }}>
+                  <div style={{ opacity: 0.2, display: "flex", justifyContent: "center", marginBottom: 10 }}>
+                    <Icon name="check-circle" size={36} color="var(--text)" strokeWidth={0.75} />
+                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>Vše v pořádku</div>
+                  <div style={{ fontSize: 12 }}>Žádné blížící se ani prošlé termíny.</div>
+                </div>
+              ) : (
+                <>
+                  <Section label="Prošlé termíny" color="#ef4444" items={overdue} icon="alert-circle" />
+                  <Section label="Dnes" color="#f59e0b" items={dueToday} icon="clock" />
+                  <Section label="Zítra" color="#3b82f6" items={dueTomorrow} icon="calendar" />
+                </>
+              )}
+            </div>
+
+            {!isEmpty && (
+              <div style={{ padding: "8px 16px 12px", borderTop: "1px solid var(--border)", fontSize: 12, color: "var(--text-3)" }}>
+                Celkem {urgentCount + dueTomorrow.length} blížících se termínů · Kliknutím otevřeš detail
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div ref={ref} style={{ position: "relative" }}>

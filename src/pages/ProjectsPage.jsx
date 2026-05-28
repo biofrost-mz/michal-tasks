@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useMemo, useRef, useState, useEffect } from "react";
 import { useApp } from "../context/AppContext.jsx";
 import { useToast } from "../components/Toast.jsx";
 import { useConfirm } from "../components/Confirm.jsx";
@@ -286,10 +286,88 @@ export default function ProjectsPage() {
   const [nStatus, setNStatus] = useState("active");
   const newInputRef = useRef(null);
 
-  const filtered = useMemo(() => {
-    if (tab === "all") return projects;
-    return projects.filter((p) => p.status === tab);
-  }, [projects, tab]);
+  const [pGroupBy, setPGroupBy] = useState("none"); // "none", "status"
+  const [pSortBy, setPSortBy] = useState("progress"); // "progress", "alphabetical", "tasksCount"
+  const [pGroupOpen, setPGroupByOpen] = useState(false);
+  const [pSortOpen, setPSortByOpen] = useState(false);
+
+  const pGroupRef = useRef(null);
+  const pSortRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (pGroupRef.current && !pGroupRef.current.contains(e.target)) {
+        setPGroupByOpen(false);
+      }
+      if (pSortRef.current && !pSortRef.current.contains(e.target)) {
+        setPSortByOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const PROJ_GROUP_LABELS = {
+    none: "Bez seskupení",
+    status: "Stavu",
+  };
+
+  const PROJ_SORT_LABELS = {
+    progress: "Progresu",
+    alphabetical: "Abecedy",
+    tasksCount: "Počtu úkolů",
+  };
+
+  const sortedProjects = useMemo(() => {
+    let list = [...projects];
+
+    if (tab !== "all") {
+      list = list.filter((p) => p.status === tab);
+    }
+
+    if (pSortBy === "alphabetical") {
+      list.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (pSortBy === "tasksCount") {
+      list.sort((a, b) => {
+        const countA = tasks.filter((t) => t.projectId === a.id).length;
+        const countB = tasks.filter((t) => t.projectId === b.id).length;
+        return countB - countA;
+      });
+    } else {
+      list.sort((a, b) => {
+        const tasksA = tasks.filter((t) => t.projectId === a.id);
+        const doneA = tasksA.filter((t) => t.status === "done").length;
+        const progressA = tasksA.length ? (doneA / tasksA.length) : 0;
+
+        const tasksB = tasks.filter((t) => t.projectId === b.id);
+        const doneB = tasksB.filter((t) => t.status === "done").length;
+        const progressB = tasksB.length ? (doneB / tasksB.length) : 0;
+
+        return progressB - progressA;
+      });
+    }
+
+    return list;
+  }, [projects, tab, pSortBy, tasks]);
+
+  const groupedProjects = useMemo(() => {
+    if (pGroupBy !== "status") return null;
+
+    const groups = {
+      active: { label: "Aktivní", items: [] },
+      idea: { label: "Nápady", items: [] },
+      done: { label: "Hotové", items: [] },
+      archived: { label: "Archiv", items: [] },
+    };
+
+    sortedProjects.forEach((p) => {
+      if (groups[p.status]) {
+        groups[p.status].items.push(p);
+      }
+    });
+
+    return Object.entries(groups).filter(([k, g]) => g.items.length > 0);
+  }, [sortedProjects, pGroupBy]);
 
   const counts = {
     all: projects.length,
@@ -312,6 +390,38 @@ export default function ProjectsPage() {
   const openNew = () => {
     setShowNew(true);
     setTimeout(() => newInputRef.current?.focus(), 40);
+  };
+
+  const renderProjectCard = (p) => {
+    const projectTasks = tasks.filter((t) => t.projectId === p.id);
+    const done = projectTasks.filter((t) => t.status === "done").length;
+    const doing = projectTasks.filter((t) => t.status === "doing").length;
+    const wait = projectTasks.filter((t) => t.status === "waiting").length;
+    const todo = projectTasks.filter((t) => t.status === "todo").length;
+    const progress = projectTasks.length ? Math.round((done / projectTasks.length) * 100) : 0;
+    const overdueCount = projectTasks.filter((t) => taskOverdue(t)).length;
+
+    return (
+      <div key={p.id} className="pcard" style={{ "--proj-color": projectColor(p.id) }} onClick={() => openProject(p.id)}>
+        <div className="pcard-top">
+          <span className="pcard-stat">{PROJ_STATUS[p.status]?.label || p.status}{overdueCount ? ` · ⚠ ${overdueCount}` : ""}</span>
+          <span style={{ color: "var(--text-3)" }}>›</span>
+        </div>
+        <div className="pcard-name">{p.name}</div>
+        <div className="pcard-sub">{projectTasks.length} úkolů · {done} hotových</div>
+        <div className="pcard-counts">
+          {todo > 0 ? <span className="pcc todo">○ <span className="pcc-v">{todo}</span></span> : null}
+          {doing > 0 ? <span className="pcc doing">◐ <span className="pcc-v">{doing}</span></span> : null}
+          {wait > 0 ? <span className="pcc wait">◑ <span className="pcc-v">{wait}</span></span> : null}
+          {done > 0 ? <span className="pcc done">● <span className="pcc-v">{done}</span></span> : null}
+        </div>
+        <div className="pcard-bar"><div className="pcard-fill" style={{ width: `${progress}%` }} /></div>
+        <div className="pcard-foot">
+          <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--text-3)" }}>progres</span>
+          <span className="pcard-pct">{progress}%</span>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -338,8 +448,95 @@ export default function ProjectsPage() {
           </span>
         ))}
         <span className="chips-sep" />
-        <span className="chip">Seskupit ▾</span>
-        <span className="chip">Řadit: progres ▾</span>
+        <span style={{ position: "relative" }} ref={pGroupRef}>
+          <span className={`chip ${pGroupBy !== "none" ? "active" : ""}`} onClick={() => setPGroupByOpen(!pGroupOpen)}>
+            Seskupit: {PROJ_GROUP_LABELS[pGroupBy]} ▾
+          </span>
+          {pGroupOpen && (
+            <div className="pop" style={{
+              position: "absolute",
+              top: "calc(100% + 6px)",
+              left: 0,
+              background: "var(--bg-2)",
+              border: "1px solid var(--border)",
+              borderRadius: 12,
+              boxShadow: "var(--shadow)",
+              zIndex: 200,
+              minWidth: 180,
+              padding: "6px"
+            }}>
+              {Object.entries(PROJ_GROUP_LABELS).map(([k, label]) => (
+                <button
+                  key={k}
+                  onClick={() => { setPGroupBy(k); setPGroupByOpen(false); }}
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    padding: "8px 12px",
+                    borderRadius: 8,
+                    border: "none",
+                    background: pGroupBy === k ? "var(--accent-soft)" : "transparent",
+                    color: pGroupBy === k ? "var(--accent)" : "var(--text-2)",
+                    fontSize: 13,
+                    fontWeight: pGroupBy === k ? 600 : 400,
+                    cursor: "pointer",
+                    textAlign: "left"
+                  }}
+                  onMouseEnter={(e) => { if (pGroupBy !== k) e.currentTarget.style.background = "var(--card-h)"; }}
+                  onMouseLeave={(e) => { if (pGroupBy !== k) e.currentTarget.style.background = "transparent"; }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+        </span>
+
+        <span style={{ position: "relative" }} ref={pSortRef}>
+          <span className={`chip ${pSortBy !== "progress" ? "active" : ""}`} onClick={() => setPSortByOpen(!pSortOpen)}>
+            Řadit podle: {PROJ_SORT_LABELS[pSortBy]} ▾
+          </span>
+          {pSortOpen && (
+            <div className="pop" style={{
+              position: "absolute",
+              top: "calc(100% + 6px)",
+              right: 0,
+              background: "var(--bg-2)",
+              border: "1px solid var(--border)",
+              borderRadius: 12,
+              boxShadow: "var(--shadow)",
+              zIndex: 200,
+              minWidth: 180,
+              padding: "6px"
+            }}>
+              {Object.entries(PROJ_SORT_LABELS).map(([k, label]) => (
+                <button
+                  key={k}
+                  onClick={() => { setPSortBy(k); setPSortByOpen(false); }}
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    padding: "8px 12px",
+                    borderRadius: 8,
+                    border: "none",
+                    background: pSortBy === k ? "var(--accent-soft)" : "transparent",
+                    color: pSortBy === k ? "var(--accent)" : "var(--text-2)",
+                    fontSize: 13,
+                    fontWeight: pSortBy === k ? 600 : 400,
+                    cursor: "pointer",
+                    textAlign: "left"
+                  }}
+                  onMouseEnter={(e) => { if (pSortBy !== k) e.currentTarget.style.background = "var(--card-h)"; }}
+                  onMouseLeave={(e) => { if (pSortBy !== k) e.currentTarget.style.background = "transparent"; }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+        </span>
       </div>
 
       {showNew ? (
@@ -355,52 +552,51 @@ export default function ProjectsPage() {
         </div>
       ) : null}
 
-      <div className="pgrid">
-        {filtered.map((p) => {
-          const projectTasks = tasks.filter((t) => t.projectId === p.id);
-          const done = projectTasks.filter((t) => t.status === "done").length;
-          const doing = projectTasks.filter((t) => t.status === "doing").length;
-          const wait = projectTasks.filter((t) => t.status === "waiting").length;
-          const todo = projectTasks.filter((t) => t.status === "todo").length;
-          const progress = projectTasks.length ? Math.round((done / projectTasks.length) * 100) : 0;
-          const overdueCount = projectTasks.filter((t) => taskOverdue(t)).length;
-
-          return (
-            <div key={p.id} className="pcard" style={{ "--proj-color": projectColor(p.id) }} onClick={() => openProject(p.id)}>
-              <div className="pcard-top">
-                <span className="pcard-stat">{PROJ_STATUS[p.status]?.label || p.status}{overdueCount ? ` · ⚠ ${overdueCount}` : ""}</span>
-                <span style={{ color: "var(--text-3)" }}>›</span>
+      {pGroupBy === "status" ? (
+        <div>
+          {groupedProjects.map(([key, group]) => (
+            <div key={key} style={{ marginBottom: 32 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                <span style={{ width: 10, height: 10, borderRadius: "50%", background: PROJ_STATUS[key]?.color || "var(--text-3)" }} />
+                <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: "var(--text)" }}>
+                  {group.label} <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-3)", marginLeft: 6 }}>({group.items.length})</span>
+                </h2>
               </div>
-              <div className="pcard-name">{p.name}</div>
-              <div className="pcard-sub">{projectTasks.length} úkolů · {done} hotových</div>
-              <div className="pcard-counts">
-                {todo > 0 ? <span className="pcc todo">○ <span className="pcc-v">{todo}</span></span> : null}
-                {doing > 0 ? <span className="pcc doing">◐ <span className="pcc-v">{doing}</span></span> : null}
-                {wait > 0 ? <span className="pcc wait">◑ <span className="pcc-v">{wait}</span></span> : null}
-                {done > 0 ? <span className="pcc done">● <span className="pcc-v">{done}</span></span> : null}
-              </div>
-              <div className="pcard-bar"><div className="pcard-fill" style={{ width: `${progress}%` }} /></div>
-              <div className="pcard-foot">
-                <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--text-3)" }}>progres</span>
-                <span className="pcard-pct">{progress}%</span>
+              <div className="pgrid">
+                {group.items.map((p) => renderProjectCard(p))}
               </div>
             </div>
-          );
-        })}
+          ))}
+          {!showNew ? (
+            <div className="pgrid" style={{ marginTop: 12 }}>
+              <div
+                className="pcard"
+                style={{ borderStyle: "dashed", borderColor: "var(--border)", borderLeftColor: "var(--border)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", color: "var(--text-3)", minHeight: 180, width: "100%" }}
+                onClick={openNew}
+              >
+                <Icon name="plus" size={14} color="currentColor" strokeWidth={2} />
+                <span style={{ marginTop: 8, fontFamily: "var(--serif)", fontStyle: "italic", fontSize: 17 }}>Nový projekt</span>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        <div className="pgrid">
+          {sortedProjects.map((p) => renderProjectCard(p))}
+          {!showNew ? (
+            <div
+              className="pcard"
+              style={{ borderStyle: "dashed", borderColor: "var(--border)", borderLeftColor: "var(--border)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", color: "var(--text-3)", minHeight: 220 }}
+              onClick={openNew}
+            >
+              <Icon name="plus" size={14} color="currentColor" strokeWidth={2} />
+              <span style={{ marginTop: 8, fontFamily: "var(--serif)", fontStyle: "italic", fontSize: 19 }}>Nový projekt</span>
+            </div>
+          ) : null}
+        </div>
+      )}
 
-        {!showNew ? (
-          <div
-            className="pcard"
-            style={{ borderStyle: "dashed", borderColor: "var(--border)", borderLeftColor: "var(--border)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", color: "var(--text-3)", minHeight: 220 }}
-            onClick={openNew}
-          >
-            <Icon name="plus" size={14} color="currentColor" strokeWidth={2} />
-            <span style={{ marginTop: 8, fontFamily: "var(--serif)", fontStyle: "italic", fontSize: 19 }}>Nový projekt</span>
-          </div>
-        ) : null}
-      </div>
-
-      {!filtered.length ? (
+      {!sortedProjects.length ? (
         <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--text-3)" }}>
           <div style={{ fontSize: 36, marginBottom: 10 }}>◫</div>
           <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Žádné projekty</div>

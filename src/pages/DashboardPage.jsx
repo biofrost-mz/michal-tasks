@@ -1,8 +1,8 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import { useApp } from "../context/AppContext.jsx";
 import Icon from "../components/Icon.jsx";
 import AIDailyPlan from "../components/AIDailyPlan.jsx";
-import { formatDate } from "../locale.js";
+import { formatDate, formatDateKey } from "../locale.js";
 import { parseYMD, projectColor, startOfToday } from "../utils.js";
 import { getNamedayInfo } from "../data/czechNamedays.js";
 import { getSunTimes, getGreeting, getDayPhaseIcon } from "../data/sunCalc.js";
@@ -319,6 +319,20 @@ function scoreTask(task) {
   return s;
 }
 
+const GROUP_LABELS = {
+  status: "Výchozí (Stav)",
+  project: "Projektu",
+  priority: "Priority",
+  dueDate: "Termínu",
+};
+
+const SORT_LABELS = {
+  default: "Výchozí",
+  dueDate: "Termínu",
+  priority: "Priority",
+  title: "Názvu",
+};
+
 export default function DashboardPage() {
   const {
     tasks,
@@ -337,6 +351,27 @@ export default function DashboardPage() {
   const [quickText, setQuickText] = useState("");
   const [showDailyPlan, setShowDailyPlan] = useState(false);
   const [expandedSections, setExpandedSections] = useState({});
+
+  const [groupBy, setGroupBy] = useState("status"); // "status", "project", "priority", "dueDate"
+  const [sortBy, setSortBy] = useState("default"); // "default", "dueDate", "priority", "title"
+  const [groupByOpen, setGroupByOpen] = useState(false);
+  const [sortByOpen, setSortByOpen] = useState(false);
+
+  const groupRef = useRef(null);
+  const sortRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (groupRef.current && !groupRef.current.contains(e.target)) {
+        setGroupByOpen(false);
+      }
+      if (sortRef.current && !sortRef.current.contains(e.target)) {
+        setSortByOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const today = startOfToday();
   const weekAgo = Date.now() - 7 * 86400000;
@@ -401,11 +436,165 @@ export default function DashboardPage() {
     updateTask(id, { starred: !current.starred });
   };
 
-  const show = (k) => filter === "all" || filter === "starred" || filter === k;
+  const show = (k) => groupBy !== "status" || filter === "all" || filter === "starred" || filter === k;
 
-  const sec = (key, title, items, marker, alert = false) => {
+  const tasksToDisplay = useMemo(() => {
+    let list = [...activeTasks];
+
+    // Apply main filter
+    if (filter === "overdue") {
+      list = list.filter((t) => t.overdue);
+    } else if (filter === "doing") {
+      list = list.filter((t) => t.status === "doing" && !t.overdue);
+    } else if (filter === "wait") {
+      list = list.filter((t) => t.status === "waiting");
+    } else if (filter === "todo") {
+      list = list.filter((t) => t.status === "todo");
+    } else if (filter === "starred") {
+      list = list.filter((t) => t.starred);
+    }
+
+    // Apply Search filter
+    list = list.filter(matchesSearch);
+
+    // Apply Sorting
+    if (sortBy === "dueDate") {
+      list.sort((a, b) => {
+        if (!a.due && !b.due) return 0;
+        if (!a.due) return 1;
+        if (!b.due) return -1;
+        const dA = parseYMD(tasks.find(tk => tk.id === a.id)?.dueDate);
+        const dB = parseYMD(tasks.find(tk => tk.id === b.id)?.dueDate);
+        if (!dA && !dB) return 0;
+        if (!dA) return 1;
+        if (!dB) return -1;
+        return dA - dB;
+      });
+    } else if (sortBy === "priority") {
+      const prioWeight = { high: 3, medium: 2, low: 1 };
+      list.sort((a, b) => (prioWeight[b.priority] || 2) - (prioWeight[a.priority] || 2));
+    } else if (sortBy === "title") {
+      list.sort((a, b) => a.title.localeCompare(b.title));
+    } else {
+      list.sort((a, b) => scoreTask(b) - scoreTask(a));
+    }
+
+    return list;
+  }, [activeTasks, filter, sortBy, search, tasks]);
+
+  const groupedByProject = useMemo(() => {
+    const groups = {};
+    const noProjectTasks = [];
+
+    tasksToDisplay.forEach((t) => {
+      if (t.project) {
+        if (!groups[t.project]) groups[t.project] = [];
+        groups[t.project].push(t);
+      } else {
+        noProjectTasks.push(t);
+      }
+    });
+
+    const result = [];
+    projects.forEach((proj) => {
+      if (groups[proj.id] && groups[proj.id].length > 0) {
+        result.push({
+          id: proj.id,
+          title: proj.name,
+          items: groups[proj.id],
+          marker: "doing",
+          customColor: projectColor(proj.id)
+        });
+      }
+    });
+
+    if (noProjectTasks.length > 0) {
+      result.push({
+        id: "no-project",
+        title: "Bez projektu",
+        items: noProjectTasks,
+        marker: "todo",
+        customColor: "var(--text-3)"
+      });
+    }
+
+    return result;
+  }, [tasksToDisplay, projects]);
+
+  const groupedByPriority = useMemo(() => {
+    const groups = { high: [], medium: [], low: [] };
+    tasksToDisplay.forEach((t) => {
+      const p = t.priority || "medium";
+      if (groups[p]) groups[p].push(t);
+    });
+
+    return [
+      { id: "high", title: "Vysoká priorita", items: groups.high, marker: "alert", customColor: "#f87171" },
+      { id: "medium", title: "Střední priorita", items: groups.medium, marker: "wait", customColor: "#fbbf24" },
+      { id: "low", title: "Nízká priorita", items: groups.low, marker: "todo", customColor: "#60a5fa" }
+    ].filter(g => g.items.length > 0);
+  }, [tasksToDisplay]);
+
+  const groupedByDueDate = useMemo(() => {
+    const today = startOfToday();
+    const todayStr = formatDateKey(today);
+    const tomorrow = new Date(today.getTime() + 86400000);
+    const tomorrowStr = formatDateKey(tomorrow);
+    
+    const sunday = new Date(today);
+    const currentDay = today.getDay();
+    const daysToSunday = currentDay === 0 ? 0 : 7 - currentDay;
+    sunday.setDate(today.getDate() + daysToSunday);
+    sunday.setHours(23, 59, 59, 999);
+
+    const groups = {
+      overdue: [],
+      today: [],
+      tomorrow: [],
+      thisWeek: [],
+      later: [],
+      noDue: []
+    };
+
+    tasksToDisplay.forEach((t) => {
+      if (!t.due) {
+        groups.noDue.push(t);
+        return;
+      }
+      
+      const d = parseYMD(tasks.find(tk => tk.id === t.id)?.dueDate);
+      if (!d) {
+        groups.noDue.push(t);
+        return;
+      }
+
+      const dStr = formatDateKey(d);
+      if (t.overdue) {
+        groups.overdue.push(t);
+      } else if (dStr === todayStr) {
+        groups.today.push(t);
+      } else if (dStr === tomorrowStr) {
+        groups.tomorrow.push(t);
+      } else if (d <= sunday) {
+        groups.thisWeek.push(t);
+      } else {
+        groups.later.push(t);
+      }
+    });
+
+    return [
+      { id: "overdue", title: "Po termínu", items: groups.overdue, marker: "alert", customColor: "var(--red)" },
+      { id: "today", title: "Dnes", items: groups.today, marker: "doing", customColor: "var(--blue)" },
+      { id: "tomorrow", title: "Zítra", items: groups.tomorrow, marker: "wait", customColor: "var(--orange)" },
+      { id: "thisWeek", title: "Tento týden", items: groups.thisWeek, marker: "todo", customColor: "#8b5cf6" },
+      { id: "later", title: "Později", items: groups.later, marker: "todo", customColor: "var(--text-3)" },
+      { id: "noDue", title: "Bez termínu", items: groups.noDue, marker: "todo", customColor: "var(--text-4)" }
+    ].filter(g => g.items.length > 0);
+  }, [tasksToDisplay, tasks]);
+
+  const sec = (key, title, items, marker, alert = false, customColor = null) => {
     let displayItems = items;
-    if (filter === "starred") {
+    if (groupBy === "status" && filter === "starred") {
       displayItems = items.filter((t) => t.starred);
     }
     if (!displayItems.length || !show(key)) return null;
@@ -544,15 +733,123 @@ export default function DashboardPage() {
             <span className={`chip ${filter === "starred" ? "active" : ""}`} onClick={() => setFilter("starred")} style={{ cursor: "pointer" }}>
               <span className="chip-dot" style={{ background: "var(--accent)" }} /> Top úkoly <span className="chip-count">{starred.length}</span>
             </span>
-            <span className="chips-sep" />
-            <span className="chip">Seskupit ▾</span>
-            <span className="chip">Řadit ▾</span>
+            <span style={{ position: "relative" }} ref={groupRef}>
+              <span className={`chip ${groupBy !== "status" ? "active" : ""}`} onClick={() => setGroupByOpen(!groupByOpen)}>
+                Seskupit: {GROUP_LABELS[groupBy]} ▾
+              </span>
+              {groupByOpen && (
+                <div className="pop" style={{
+                  position: "absolute",
+                  top: "calc(100% + 6px)",
+                  left: 0,
+                  background: "var(--bg-2)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 12,
+                  boxShadow: "var(--shadow)",
+                  zIndex: 200,
+                  minWidth: 180,
+                  padding: "6px"
+                }}>
+                  {Object.entries(GROUP_LABELS).map(([k, label]) => (
+                    <button
+                      key={k}
+                      onClick={() => { setGroupBy(k); setGroupByOpen(false); }}
+                      style={{
+                        width: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        padding: "8px 12px",
+                        borderRadius: 8,
+                        border: "none",
+                        background: groupBy === k ? "var(--accent-soft)" : "transparent",
+                        color: groupBy === k ? "var(--accent)" : "var(--text-2)",
+                        fontSize: 13,
+                        fontWeight: groupBy === k ? 600 : 400,
+                        cursor: "pointer",
+                        textAlign: "left"
+                      }}
+                      onMouseEnter={(e) => { if (groupBy !== k) e.currentTarget.style.background = "var(--card-h)"; }}
+                      onMouseLeave={(e) => { if (groupBy !== k) e.currentTarget.style.background = "transparent"; }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </span>
+
+            <span style={{ position: "relative" }} ref={sortRef}>
+              <span className={`chip ${sortBy !== "default" ? "active" : ""}`} onClick={() => setSortByOpen(!sortByOpen)}>
+                Řadit podle: {SORT_LABELS[sortBy]} ▾
+              </span>
+              {sortByOpen && (
+                <div className="pop" style={{
+                  position: "absolute",
+                  top: "calc(100% + 6px)",
+                  right: 0,
+                  background: "var(--bg-2)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 12,
+                  boxShadow: "var(--shadow)",
+                  zIndex: 200,
+                  minWidth: 180,
+                  padding: "6px"
+                }}>
+                  {Object.entries(SORT_LABELS).map(([k, label]) => (
+                    <button
+                      key={k}
+                      onClick={() => { setSortBy(k); setSortByOpen(false); }}
+                      style={{
+                        width: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        padding: "8px 12px",
+                        borderRadius: 8,
+                        border: "none",
+                        background: sortBy === k ? "var(--accent-soft)" : "transparent",
+                        color: sortBy === k ? "var(--accent)" : "var(--text-2)",
+                        fontSize: 13,
+                        fontWeight: sortBy === k ? 600 : 400,
+                        cursor: "pointer",
+                        textAlign: "left"
+                      }}
+                      onMouseEnter={(e) => { if (sortBy !== k) e.currentTarget.style.background = "var(--card-h)"; }}
+                      onMouseLeave={(e) => { if (sortBy !== k) e.currentTarget.style.background = "transparent"; }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </span>
           </div>
 
-          {sec("overdue", "Po termínu", overdue, "alert", true)}
-          {sec("doing", "Rozpracováno", doing, "doing")}
-          {sec("wait", "Čekám", wait, "wait")}
-          {sec("todo", "To do", todo, "todo")}
+          {groupBy === "status" && (
+            <>
+              {sec("overdue", "Po termínu", tasksToDisplay.filter(t => t.overdue), "alert", true)}
+              {sec("doing", "Rozpracováno", tasksToDisplay.filter(t => t.status === "doing" && !t.overdue), "doing")}
+              {sec("wait", "Čekám", tasksToDisplay.filter(t => t.status === "waiting"), "wait")}
+              {sec("todo", "To do", tasksToDisplay.filter(t => t.status === "todo"), "todo")}
+            </>
+          )}
+
+          {groupBy === "project" && (
+            <>
+              {groupedByProject.map((g) => sec(g.id, g.title, g.items, g.marker, false, g.customColor))}
+            </>
+          )}
+
+          {groupBy === "priority" && (
+            <>
+              {groupedByPriority.map((g) => sec(g.id, g.title, g.items, g.marker, false, g.customColor))}
+            </>
+          )}
+
+          {groupBy === "dueDate" && (
+            <>
+              {groupedByDueDate.map((g) => sec(g.id, g.title, g.items, g.marker, g.id === "overdue", g.customColor))}
+            </>
+          )}
         </div>
 
         <aside className="rail">

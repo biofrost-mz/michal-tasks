@@ -1542,4 +1542,246 @@ input, textarea { font-family: inherit; color: inherit; background: transparent;
   .content { padding: 16px 14px 82px; }
   .work { grid-template-columns: 1fr; gap: 12px; }
   .rail { order: -1; }
+
+  /* === A. Vstupní hlavička (Headline & Statistiky) === */
+  .headline {
+    padding: 20px 16px;
+    gap: 16px;
+  }
+  .headline::before {
+    width: 200px;
+    height: 200px;
+    right: -60px;
+    top: -60px;
+  }
+  .headline-top {
+    flex-direction: column;
+    gap: 16px;
+    align-items: stretch;
+  }
+  .hl-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .hl-day {
+    padding-bottom: 0;
+    font-size: 22px;
+  }
+  .hl-num {
+    font-size: 64px;
+  }
+  .hl-meta {
+    padding-bottom: 0;
+  }
+  .hl-meta .m-month {
+    font-size: 20px;
+  }
+  .hl-aside {
+    align-items: flex-start;
+    text-align: left;
+    width: 100%;
+    border-top: 1px solid var(--border-soft);
+    padding-top: 12px;
+  }
+  .hl-aside-row {
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .hl-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+    padding-top: 16px;
+  }
+  .hl-stat {
+    padding: 0 8px 0 0;
+    border-right: none;
+    border-bottom: 1px dashed var(--border-soft);
+    padding-bottom: 10px;
+  }
+  .hl-stat:nth-child(even) {
+    padding-right: 0;
+    padding-left: 8px;
+  }
+  .hl-stat:last-child {
+    grid-column: 1 / -1;
+    border-bottom: none;
+    padding-bottom: 0;
+    padding-right: 0;
+    padding-left: 0;
+  }
+  .hl-stat-v {
+    font-size: 34px;
+    margin-top: 4px;
+  }
+  .hl-stat-l {
+    font-size: 9px;
+  }
+  .hl-stat-u {
+    font-size: 10px;
+    margin-top: 2px;
+  }
+
+  /* === B. AI Banner (AI Hero) a návrhy === */
+  .ai-hero {
+    grid-template-columns: 1fr;
+    text-align: center;
+    justify-items: center;
+    padding: 20px 16px;
+    gap: 16px;
+    border-left: none;
+    border-top: 3px solid var(--accent);
+  }
+  .ai-orb {
+    margin: 0 auto;
+  }
+  .ai-text-h {
+    font-size: 17px;
+  }
+  .ai-text-h .num {
+    font-size: 22px;
+  }
+  .ai-act {
+    width: 100%;
+    justify-content: center;
+    padding: 12px;
+  }
+  
+  .aisug {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .aisug-card {
+    grid-template-columns: 32px 1fr;
+    padding: 12px 14px;
+    gap: 12px;
+  }
+  .aisug-tag {
+    grid-column: 1 / -1;
+    justify-self: start;
+    margin-top: 4px;
+  }
+
+  /* === C. Rychlé přidávání a klávesové zkratky === */
+  .quickadd {
+    padding: 12px 14px;
+    gap: 10px;
+  }
+  .quickadd-plus {
+    width: 24px;
+    height: 24px;
+  }
+  .quickadd-kbd {
+    display: none;
+  }
+  .quickadd input {
+    font-size: 13.5px;
+  }
+  .quickadd input::placeholder {
+    font-size: 15px;
+  }
+
+  /* === D. Karty úkolů (.tcard) === */
+  .tcard {
+    grid-template-columns: 28px 1fr;
+    padding: 14px 16px;
+    gap: 12px;
+  }
+  .tcard-acts {
+    grid-column: 1 / -1;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--border-soft);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+  }
+  .tcard-title {
+    font-size: 15px;
+  }
+  .tcard-desc {
+    font-size: 12.5px;
+  }
+  .tcard-meta {
+    margin-top: 10px;
+    gap: 6px;
+  }
+  .proj-pill {
+    padding: 2px 8px 2px 6px;
+    font-size: 11px;
+  }
+  .tag {
+    padding: 2px 8px;
+    font-size: 10.5px;
+  }
+  .prio {
+    padding: 2px 7px;
+    font-size: 10px;
+  }
+  .due {
+    padding: 2px 7px;
+    font-size: 10.5px;
+  }
+
+  /* === E. Mřížka projektů (.pgrid) a Kanban board (.kanban) === */
+  .pgrid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .pcard {
+    padding: 16px;
+    min-height: auto !important;
+  }
+  .kanban {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .kcol {
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-soft);
+  }
+
+  /* === F. Časová osa / Plán (.tl) === */
+  .tl {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .tl-head, .tl-row {
+    min-width: 850px;
+  }
+
+  /* === G. Seznam poznámek (.ngrid) a Detailní editace (.detail) === */
+  .ngrid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .ncard {
+    padding: 16px 18px;
+    min-height: 140px;
+  }
+  .ncard-t {
+    font-size: 22px;
+  }
+
+  .detail {
+    width: 100vw;
+    max-width: 100vw;
+  }
+  .detail-body {
+    padding: 16px 16px 80px;
+  }
+  .detail-title {
+    font-size: 26px;
+  }
+  .detail-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    margin-top: 20px;
+  }
+  .detail-k {
+    padding-top: 0;
+    margin-bottom: -4px;
+  }
 }

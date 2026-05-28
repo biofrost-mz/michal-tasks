@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { useApp } from "../../context/AppContext.jsx";
 import Icon from "../../components/Icon.jsx";
+import NotificationBell from "../../components/NotificationBell.jsx";
 
 const PAGE_LABELS = {
   dashboard: "Přehled",
@@ -47,10 +48,7 @@ export default function AtlasTopBar() {
           <Icon name="plus" size={13} color="currentColor" strokeWidth={2} />
           Nový úkol
         </button>
-        <button className="tb-bell" aria-label="Notifikace">
-          <Icon name="bell" size={14} color="currentColor" strokeWidth={1.7} />
-          <span className="tb-bell-dot" />
-        </button>
+        <NotificationBell variant="atlas" />
       </div>
     </div>
   );
