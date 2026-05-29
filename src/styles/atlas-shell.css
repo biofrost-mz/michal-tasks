@@ -1533,7 +1533,38 @@ input, textarea { font-family: inherit; color: inherit; background: transparent;
   .sb, .tb { display: none; }
   .content { padding: 16px 14px 82px; }
   .work { grid-template-columns: 1fr; gap: 12px; }
-  .rail { order: -1; }
+
+  /* --- Mobile Page Heading and Tables --- */
+  .ph {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+    margin-bottom: 16px !important;
+  }
+  .ph-title {
+    font-size: 38px !important;
+  }
+  .ttable {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  .ttable-row {
+    min-width: 750px !important;
+  }
+  .tagtable {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  .tagrow {
+    min-width: 500px !important;
+  }
+
+  /* --- Mobile Filter Chips --- */
+  .chips {
+    border-radius: var(--r) !important;
+    padding: 10px 12px !important;
+    gap: 8px 6px !important;
+  }
 
   /* === A. Vstupní hlavička (Headline & Statistiky) === */
   .headline {
