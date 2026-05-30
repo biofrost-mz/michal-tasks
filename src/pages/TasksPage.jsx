@@ -73,6 +73,7 @@ export default function TasksPage() {
     tags,
     addTask,
     updateTask,
+    deleteTask,
     setTaskDetail,
     search,
     tasksPageFilter,
@@ -175,6 +176,35 @@ export default function TasksPage() {
     setInlineEditId(null);
   }, [inlineEditVal, updateTask]);
 
+  // Bulk selection
+  const [selected, setSelected] = useState(new Set());
+
+  const toggleSelect = useCallback((id, e) => {
+    e.stopPropagation();
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const selectAll = useCallback(() => {
+    setSelected(new Set(filtered.map((t) => t.id)));
+  }, [filtered]);
+
+  const clearSelected = useCallback(() => setSelected(new Set()), []);
+
+  const bulkDone = useCallback(() => {
+    selected.forEach((id) => updateTask(id, { status: "done" }));
+    clearSelected();
+  }, [selected, updateTask, clearSelected]);
+
+  const bulkDelete = useCallback(() => {
+    selected.forEach((id) => deleteTask(id));
+    clearSelected();
+  }, [selected, deleteTask, clearSelected]);
+
   return (
     <div className="content">
       <div className="ph">
@@ -269,7 +299,12 @@ export default function TasksPage() {
                 onMouseEnter={() => setFocusedId(t.id)}
                 style={isFocused ? { outline: "1px solid var(--accent)", outlineOffset: -1, borderRadius: 8 } : undefined}
               >
-                <input type="checkbox" onClick={(e) => e.stopPropagation()} />
+                <input
+                  type="checkbox"
+                  checked={selected.has(t.id)}
+                  onChange={(e) => toggleSelect(t.id, e)}
+                  onClick={(e) => e.stopPropagation()}
+                />
                 {inlineEditId === t.id ? (
                   <input
                     autoFocus
@@ -363,6 +398,36 @@ export default function TasksPage() {
               J/K navigace · Enter detail · D hotovo · S hvězda
             </div>
           )}
+        </div>
+      )}
+
+      {/* Bulk action floating toolbar */}
+      {selected.size > 0 && (
+        <div style={{
+          position: "fixed",
+          bottom: 32,
+          left: "50%",
+          transform: "translateX(-50%)",
+          zIndex: 300,
+          background: "var(--surface)",
+          border: "1px solid var(--accent)",
+          borderRadius: "var(--r-pill, 999px)",
+          boxShadow: "0 8px 32px rgba(0,0,0,0.45)",
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          padding: "8px 16px",
+          animation: "pop .2s ease-out",
+        }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: "var(--accent)", paddingRight: 8, borderRight: "1px solid var(--border-soft)" }}>
+            {selected.size} vybráno
+          </span>
+          <button className="btn" onClick={selectAll} style={{ fontSize: 12 }}>Vše</button>
+          <button className="btn primary" onClick={bulkDone} style={{ fontSize: 12 }}>✓ Hotovo</button>
+          <button className="btn danger" onClick={() => {
+            if (window.confirm(`Smazat ${selected.size} úkolů?`)) bulkDelete();
+          }} style={{ fontSize: 12 }}>Smazat</button>
+          <button className="icon-btn" onClick={clearSelected} style={{ marginLeft: 4 }}>✕</button>
         </div>
       )}
     </div>
