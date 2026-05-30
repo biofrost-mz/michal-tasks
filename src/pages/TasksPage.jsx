@@ -160,6 +160,21 @@ export default function TasksPage() {
     onStar: toggleStar,
   });
 
+  const [inlineEditId, setInlineEditId] = useState(null);
+  const [inlineEditVal, setInlineEditVal] = useState("");
+
+  const startInlineEdit = useCallback((t, e) => {
+    e.stopPropagation();
+    setInlineEditId(t.id);
+    setInlineEditVal(t.title);
+  }, []);
+
+  const commitInlineEdit = useCallback((id) => {
+    const val = inlineEditVal.trim();
+    if (val) updateTask(id, { title: val });
+    setInlineEditId(null);
+  }, [inlineEditVal, updateTask]);
+
   return (
     <div className="content">
       <div className="ph">
@@ -255,7 +270,27 @@ export default function TasksPage() {
                 style={isFocused ? { outline: "1px solid var(--accent)", outlineOffset: -1, borderRadius: 8 } : undefined}
               >
                 <input type="checkbox" onClick={(e) => e.stopPropagation()} />
-                <div className={`tt-name ${t.status === "done" ? "done" : ""}`}>{t.title}</div>
+                {inlineEditId === t.id ? (
+                  <input
+                    autoFocus
+                    className="detail-input"
+                    value={inlineEditVal}
+                    onChange={(e) => setInlineEditVal(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") { e.preventDefault(); commitInlineEdit(t.id); }
+                      if (e.key === "Escape") setInlineEditId(null);
+                    }}
+                    onBlur={() => commitInlineEdit(t.id)}
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ fontWeight: 600 }}
+                  />
+                ) : (
+                  <div
+                    className={`tt-name ${t.status === "done" ? "done" : ""}`}
+                    onDoubleClick={(e) => startInlineEdit(t, e)}
+                    title="Dvojklik pro úpravu"
+                  >{t.title}</div>
+                )}
                 <div>
                   <span className={`tt-st ${t.statusClass}`}>
                     <span className="d" /> {statusLabel(t.statusClass)}
@@ -282,7 +317,27 @@ export default function TasksPage() {
             >
               <div className="tcard-state" onClick={(e) => { e.stopPropagation(); setStatus(t.id, t.status === "done" ? "todo" : "done"); }} title="Toggle hotovo" />
               <div className="tcard-body">
-                <div className="tcard-title">{t.title}</div>
+                {inlineEditId === t.id ? (
+                  <input
+                    autoFocus
+                    className="detail-input"
+                    value={inlineEditVal}
+                    onChange={(e) => setInlineEditVal(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") { e.preventDefault(); commitInlineEdit(t.id); }
+                      if (e.key === "Escape") setInlineEditId(null);
+                    }}
+                    onBlur={() => commitInlineEdit(t.id)}
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ width: "100%", fontWeight: 600, fontSize: 14 }}
+                  />
+                ) : (
+                  <div
+                    className="tcard-title"
+                    onDoubleClick={(e) => startInlineEdit(t, e)}
+                    title="Dvojklik pro úpravu"
+                  >{t.title}</div>
+                )}
                 {t.desc ? <div className="tcard-desc">{t.desc}</div> : null}
                 <div className="tcard-meta">
                   <ProjectPill projectId={t.project} projectsById={projectsById} />
