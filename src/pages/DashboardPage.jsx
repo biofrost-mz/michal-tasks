@@ -8,6 +8,7 @@ import { parseYMD, projectColor, startOfToday, triggerConfettiBurst } from "../u
 import { getNamedayInfo } from "../data/czechNamedays.js";
 import { getSunTimes, getGreeting, getDayPhaseIcon } from "../data/sunCalc.js";
 import { fetchWeather, hasWeatherApiKey } from "../data/weather.js";
+import { useCountUp } from "../hooks/useCountUp.js";
 
 const STATUS_TO_CLASS = { todo: "todo", doing: "doing", waiting: "wait", done: "done" };
 const CLASS_TO_STATUS = { todo: "todo", doing: "doing", wait: "waiting", done: "done" };
@@ -136,6 +137,12 @@ function TaskCard({ task, onOpen, onStatusChange, onStar, projectsById }) {
 }
 
 function Headline({ overdueCount, activeCount, totalCount, doneWeek, doneWeekAvg, addedToday, activeProjectsCount, doneProjectsCount, totalProjectsCount, streak, navigateToTasks, setPage, doneTodayCount }) {
+  const activeCountAnim = useCountUp(activeCount);
+  const overdueCountAnim = useCountUp(overdueCount);
+  const doneWeekAnim = useCountUp(doneWeek);
+  const streakCurrentAnim = useCountUp(streak.current);
+  const activeProjectsCountAnim = useCountUp(activeProjectsCount);
+  const doneTodayCountAnim = useCountUp(doneTodayCount);
   const now = new Date();
   const dayName = new Intl.DateTimeFormat("cs-CZ", { weekday: "long" }).format(now);
   const monthYear = new Intl.DateTimeFormat("cs-CZ", { month: "long", year: "numeric" }).format(now);
@@ -240,43 +247,21 @@ function Headline({ overdueCount, activeCount, totalCount, doneWeek, doneWeekAvg
         <div
           className="hl-stat"
           onClick={() => navigateToTasks("all")}
-          style={{
-            cursor: "pointer",
-            transition: "opacity 0.2s, transform 0.2s"
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.opacity = "0.85";
-            e.currentTarget.style.transform = "translateY(-1px)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.opacity = "1";
-            e.currentTarget.style.transform = "translateY(0)";
-          }}
+          style={{ "--i": 0 }}
           title="Zobrazit úkoly"
         >
           <div className="hl-stat-l">Aktivní</div>
-          <div className="hl-stat-v">{activeCount}</div>
+          <div className="hl-stat-v">{activeCountAnim}</div>
           <div className="hl-stat-u">z {totalCount}{addedToday > 0 ? ` · ↗ +${addedToday} dnes` : ""}</div>
         </div>
         <div
           className="hl-stat"
           onClick={() => navigateToTasks("all")}
-          style={{
-            cursor: "pointer",
-            transition: "opacity 0.2s, transform 0.2s"
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.opacity = "0.85";
-            e.currentTarget.style.transform = "translateY(-1px)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.opacity = "1";
-            e.currentTarget.style.transform = "translateY(0)";
-          }}
+          style={{ "--i": 1 }}
           title="Zobrazit úkoly po termínu"
         >
           <div className="hl-stat-l">Po termínu</div>
-          <div className="hl-stat-v" style={{ color: "var(--red)" }}>{overdueCount}</div>
+          <div className="hl-stat-v" style={{ color: "var(--red)" }}>{overdueCountAnim}</div>
           <div className="hl-stat-u" style={{ display: "flex", alignItems: "center", gap: 4, color: overdueCount > 0 ? "var(--red)" : "var(--green)" }}>
             {overdueCount > 0 ? (
               <>
@@ -295,37 +280,26 @@ function Headline({ overdueCount, activeCount, totalCount, doneWeek, doneWeekAvg
         <div
           className="hl-stat"
           onClick={() => navigateToTasks("done")}
-          style={{
-            cursor: "pointer",
-            transition: "opacity 0.2s, transform 0.2s"
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.opacity = "0.85";
-            e.currentTarget.style.transform = "translateY(-1px)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.opacity = "1";
-            e.currentTarget.style.transform = "translateY(0)";
-          }}
+          style={{ "--i": 2 }}
           title="Zobrazit dokončené úkoly"
         >
           <div className="hl-stat-l">Hotovo · týden</div>
-          <div className="hl-stat-v" style={{ color: "var(--green)" }}>{doneWeek}</div>
+          <div className="hl-stat-v" style={{ color: "var(--green)" }}>{doneWeekAnim}</div>
           <div className="hl-stat-u" style={{ color: weekDiff >= 0 ? "var(--green)" : "var(--red)" }}>{weekDiffLabel}</div>
         </div>
-        <div className="hl-stat">
+        <div className="hl-stat" style={{ "--i": 3 }}>
           <div className="hl-stat-l">Streak 🔥</div>
-          <div className="hl-stat-v" style={{ color: "var(--accent)" }}>{streak.current}</div>
+          <div className="hl-stat-v" style={{ color: "var(--accent)" }}>{streakCurrentAnim}</div>
           <div className="hl-stat-u">dní · best {streak.best}</div>
         </div>
-        <div className="hl-stat" onClick={() => setPage("projects")} style={{ cursor: "pointer" }} title="Přejít na projekty">
+        <div className="hl-stat" onClick={() => setPage("projects")} style={{ "--i": 4 }} title="Přejít na projekty">
           <div className="hl-stat-l">Projekty</div>
-          <div className="hl-stat-v" style={{ color: "var(--blue)" }}>{activeProjectsCount}</div>
+          <div className="hl-stat-v" style={{ color: "var(--blue)" }}>{activeProjectsCountAnim}</div>
           <div className="hl-stat-u">z {totalProjectsCount} · {doneProjectsCount} hotový</div>
         </div>
-        <div className="hl-stat" title="Úkoly dokončené dnes">
+        <div className="hl-stat" style={{ "--i": 5 }} title="Úkoly dokončené dnes">
           <div className="hl-stat-l">Dnes hotovo</div>
-          <div className="hl-stat-v" style={{ color: "var(--green)" }}>{doneTodayCount}</div>
+          <div className="hl-stat-v" style={{ color: "var(--green)" }}>{doneTodayCountAnim}</div>
           <div className="hl-stat-u">dnes{doneTodayCount > 0 ? " ↑" : ""}</div>
         </div>
       </div>
