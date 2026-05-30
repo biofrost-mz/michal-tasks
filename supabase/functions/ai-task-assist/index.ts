@@ -31,20 +31,23 @@ serve(async (req) => {
 
   try {
     const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 200, headers: CORS });
+    }
     const userClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader! } } }
+      { global: { headers: { Authorization: authHeader } } }
     );
     const { data: { user }, error: authErr } = await userClient.auth.getUser();
     if (authErr || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: CORS });
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 200, headers: CORS });
     }
 
     if (!checkRateLimit(user.id)) {
       return new Response(
         JSON.stringify({ error: `Rate limit exceeded — max ${RATE_LIMIT_MAX} AI calls per hour.` }),
-        { status: 429, headers: { ...CORS, "Retry-After": "3600" } }
+        { status: 200, headers: { ...CORS, "Retry-After": "3600" } }
       );
     }
 
@@ -122,11 +125,12 @@ Obsah:
 ${(note.content || "").slice(0, 4000)}`;
 
     } else {
-      return new Response(JSON.stringify({ error: "Unknown action" }), { status: 400, headers: CORS });
+      return new Response(JSON.stringify({ error: "Unknown action" }), { status: 200, headers: CORS });
     }
 
     let raw = "";
     let success = false;
+    let errorDetails = "";
 
     const apiKey = Deno.env.get("GOOGLE_GENERATIVE_AI_API_KEY");
     if (apiKey) {
@@ -163,16 +167,20 @@ ${(note.content || "").slice(0, 4000)}`;
             console.log(`ai-task-assist: Google Gemini API úspěšně dokončil akci "${action}".`);
           } else {
             console.warn("ai-task-assist: Gemini vrátil prázdnou odpověď.");
+            errorDetails += "[Gemini: prázdná odpověď] ";
           }
         } else {
           const errText = await geminiResp.text();
           console.warn(`ai-task-assist: Gemini API vrátil chybu: ${geminiResp.status} ${errText.slice(0, 300)}`);
+          errorDetails += `[Gemini chybný status ${geminiResp.status}: ${errText.slice(0, 150)}] `;
         }
-      } catch (geminiError) {
+      } catch (geminiError: any) {
         console.warn("ai-task-assist: Selhalo volání Google Gemini API:", geminiError);
+        errorDetails += `[Gemini výjimka: ${geminiError?.message || String(geminiError)}] `;
       }
     } else {
       console.warn("ai-task-assist: Chybí GOOGLE_GENERATIVE_AI_API_KEY, zkouším rovnou zálohu (Claude).");
+      errorDetails += "[Gemini: chybí API klíč] ";
     }
 
     // Fallback na Claude
@@ -180,42 +188,61 @@ ${(note.content || "").slice(0, 4000)}`;
       const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
       if (!anthropicKey) {
         console.error("ai-task-assist: Chybí GOOGLE_GENERATIVE_AI_API_KEY i ANTHROPIC_API_KEY");
-        return new Response(JSON.stringify({ error: "AI API credentials missing" }), { status: 500, headers: CORS });
+        return new Response(
+          JSON.stringify({ error: `AI není dostupné. Detaily chyb: ${errorDetails} + [Claude: chybí API klíč]` }),
+          { status: 200, headers: CORS }
+        );
       }
 
       console.log(`ai-task-assist: Spouštím záložní volání na Anthropic Claude pro akci "${action}"...`);
-      const resp = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "x-api-key": anthropicKey,
-          "anthropic-version": "2023-06-01",
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "claude-haiku-4-5-20251001",
-          max_tokens: 600,
-          system: SYSTEM,
-          messages: [{ role: "user", content: prompt }],
-        }),
-      });
+      try {
+        const resp = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "x-api-key": anthropicKey,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "claude-3-5-haiku-20241022",
+            max_tokens: 600,
+            system: SYSTEM,
+            messages: [{ role: "user", content: prompt }],
+          }),
+        });
 
-      if (!resp.ok) {
-        const err = await resp.text();
-        console.error("ai-task-assist: upstream Claude API error:", err);
-        return new Response(JSON.stringify({ error: "AI API error" }), { status: 500, headers: CORS });
+        if (!resp.ok) {
+          const err = await resp.text();
+          console.error("ai-task-assist: upstream Claude API error:", err);
+          errorDetails += `[Claude chybný status ${resp.status}: ${err.slice(0, 150)}]`;
+          return new Response(
+            JSON.stringify({ error: `AI není dostupné. Detaily chyb: ${errorDetails}` }),
+            { status: 200, headers: CORS }
+          );
+        }
+
+        const data = await resp.json();
+        raw = data.content?.[0]?.text?.trim() ?? "";
+        console.log("ai-task-assist: Anthropic Claude úspěšně vrátil záložní odpověď.");
+      } catch (claudeError: any) {
+        console.error("ai-task-assist: Claude API výjimka:", claudeError);
+        errorDetails += `[Claude výjimka: ${claudeError?.message || String(claudeError)}]`;
+        return new Response(
+          JSON.stringify({ error: `AI není dostupné. Detaily chyb: ${errorDetails}` }),
+          { status: 200, headers: CORS }
+        );
       }
-
-      const data = await resp.json();
-      raw = data.content?.[0]?.text?.trim() ?? "";
-      console.log("ai-task-assist: Anthropic Claude úspěšně vrátil záložní odpověď.");
     }
 
     return new Response(
       JSON.stringify({ result: raw }),
       { headers: { ...CORS, "Content-Type": "application/json" } }
     );
-  } catch (e) {
+  } catch (e: any) {
     console.error("ai-task-assist: unhandled error:", e);
-    return new Response(JSON.stringify({ error: "Internal server error" }), { status: 500, headers: CORS });
+    return new Response(
+      JSON.stringify({ error: `Interní chyba serveru: ${e?.message || String(e)}` }),
+      { status: 200, headers: CORS }
+    );
   }
 });

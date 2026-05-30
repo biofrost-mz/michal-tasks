@@ -101,39 +101,107 @@ function getCondition(code) {
  * @param {number} [lng]
  * @returns {Promise<{ temp: number, feelsLike: number, icon: string, label: string, wind: number, humidity: number, city: string } | null>}
  */
-export async function fetchWeather(lat = DEFAULT_LAT, lng = DEFAULT_LNG) {
-  if (!API_KEY) return null;
+const WMO_MAP = {
+  0: { icon: "sun", label: "jasno" },
+  1: { icon: "sun", label: "skoro jasno" },
+  2: { icon: "cloud", label: "polojasno" },
+  3: { icon: "cloud", label: "zataženo" },
+  45: { icon: "cloud", label: "mlha" },
+  48: { icon: "cloud", label: "mlha" },
+  51: { icon: "cloud-drizzle", label: "mrholení" },
+  53: { icon: "cloud-drizzle", label: "mrholení" },
+  55: { icon: "cloud-drizzle", label: "silné mrholení" },
+  56: { icon: "cloud-drizzle", label: "mrznoucí mrholení" },
+  57: { icon: "cloud-drizzle", label: "mrznoucí mrholení" },
+  61: { icon: "cloud-rain", label: "lehký déšť" },
+  63: { icon: "cloud-rain", label: "déšť" },
+  65: { icon: "cloud-rain", label: "silný déšť" },
+  66: { icon: "cloud-snow", label: "mrznoucí déšť" },
+  67: { icon: "cloud-snow", label: "silný mrznoucí déšť" },
+  71: { icon: "cloud-snow", label: "sněžení" },
+  73: { icon: "cloud-snow", label: "sněžení" },
+  75: { icon: "cloud-snow", label: "silné sněžení" },
+  77: { icon: "cloud-snow", label: "krupice" },
+  80: { icon: "cloud-rain", label: "přeháňky" },
+  81: { icon: "cloud-rain", label: "přeháňky" },
+  82: { icon: "cloud-rain", label: "silné přeháňky" },
+  85: { icon: "cloud-snow", label: "sněhové přeháňky" },
+  86: { icon: "cloud-snow", label: "silné sněhové přeháňky" },
+  95: { icon: "cloud-lightning", label: "bouřka" },
+  96: { icon: "cloud-lightning", label: "bouřka s kroupami" },
+  99: { icon: "cloud-lightning", label: "bouřka s kroupami" },
+};
 
+/**
+ * Načte aktuální počasí z OpenWeatherMap.
+ * Pokud selže nebo není klíč, použije se bezplatný fallback Open-Meteo.
+ *
+ * @param {number} [lat]
+ * @param {number} [lng]
+ * @returns {Promise<{ temp: number, feelsLike: number, icon: string, label: string, wind: number, humidity: number, city: string } | null>}
+ */
+export async function fetchWeather(lat = DEFAULT_LAT, lng = DEFAULT_LNG) {
   // Cache hit
   if (cache && Date.now() - cacheTime < CACHE_MS) return cache;
 
-  try {
-    const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lng}&units=metric&lang=cs&appid=${API_KEY}`;
-    const res = await fetch(url);
-    if (!res.ok) {
-      console.warn("[weather] OWM response:", res.status);
-      return cache; // vrať starý cache pokud existuje
+  // 1. Zkusit OpenWeatherMap (pokud je klíč)
+  if (API_KEY) {
+    try {
+      const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lng}&units=metric&lang=cs&appid=${API_KEY}`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        const w = data.weather?.[0];
+        const cond = getCondition(w?.id);
+
+        cache = {
+          temp: Math.round(data.main?.temp ?? 0),
+          feelsLike: Math.round(data.main?.feels_like ?? 0),
+          icon: cond.icon,
+          label: cond.label,
+          wind: Math.round((data.wind?.speed ?? 0) * 3.6), // m/s → km/h
+          humidity: data.main?.humidity ?? 0,
+          city: data.name || "Brno",
+        };
+        cacheTime = Date.now();
+        return cache;
+      } else {
+        console.warn("[weather] OWM response:", res.status);
+      }
+    } catch (err) {
+      console.warn("[weather] OWM fetch error:", err);
     }
-
-    const data = await res.json();
-    const w = data.weather?.[0];
-    const cond = getCondition(w?.id);
-
-    cache = {
-      temp: Math.round(data.main?.temp ?? 0),
-      feelsLike: Math.round(data.main?.feels_like ?? 0),
-      icon: cond.icon,
-      label: cond.label,
-      wind: Math.round((data.wind?.speed ?? 0) * 3.6), // m/s → km/h
-      humidity: data.main?.humidity ?? 0,
-      city: data.name || "Praha",
-    };
-    cacheTime = Date.now();
-    return cache;
-  } catch (err) {
-    console.warn("[weather] fetch error:", err);
-    return cache; // fallback na cache
   }
+
+  // 2. Bezplatný fallback Open-Meteo (nevyžaduje API klíč)
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m`;
+    const res = await fetch(url);
+    if (res.ok) {
+      const data = await res.json();
+      const curr = data.current;
+      const code = curr?.weather_code ?? 0;
+      const cond = WMO_MAP[code] || { icon: "cloud", label: "oblačno" };
+
+      cache = {
+        temp: Math.round(curr?.temperature_2m ?? 0),
+        feelsLike: Math.round(curr?.apparent_temperature ?? curr?.temperature_2m ?? 0),
+        icon: cond.icon,
+        label: cond.label,
+        wind: Math.round(curr?.wind_speed_10m ?? 0),
+        humidity: curr?.relative_humidity_2m ?? 0,
+        city: "Brno",
+      };
+      cacheTime = Date.now();
+      return cache;
+    } else {
+      console.warn("[weather] Open-Meteo response:", res.status);
+    }
+  } catch (err) {
+    console.warn("[weather] Open-Meteo fetch error:", err);
+  }
+
+  return cache; // Vrátí starý cache, nebo null
 }
 
 /**
@@ -146,8 +214,8 @@ export function getCachedWeather() {
 }
 
 /**
- * Zjistí, zda je API klíč nakonfigurovaný.
+ * Zjistí, zda je API klíč nakonfigurovaný (zde vracíme true, protože máme funkční free fallback).
  */
 export function hasWeatherApiKey() {
-  return !!API_KEY;
+  return true;
 }

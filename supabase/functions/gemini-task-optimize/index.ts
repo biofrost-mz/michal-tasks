@@ -53,7 +53,7 @@ serve(async (req) => {
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: CORS });
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 200, headers: CORS });
     }
     const userClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -62,20 +62,20 @@ serve(async (req) => {
     );
     const { data: { user }, error: authErr } = await userClient.auth.getUser();
     if (authErr || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: CORS });
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 200, headers: CORS });
     }
 
     if (!checkRateLimit(user.id)) {
       return new Response(
         JSON.stringify({ error: `Rate limit exceeded — max ${RATE_LIMIT_MAX} optimalizací za hodinu.` }),
-        { status: 429, headers: { ...CORS, "Retry-After": "3600" } }
+        { status: 200, headers: { ...CORS, "Retry-After": "3600" } }
       );
     }
 
     const { currentTitle, currentDescription, availableProjects, availableTags } = await req.json();
 
     if (!currentTitle?.trim()) {
-      return new Response(JSON.stringify({ error: "currentTitle je povinný." }), { status: 400, headers: CORS });
+      return new Response(JSON.stringify({ error: "currentTitle je povinný." }), { status: 200, headers: CORS });
     }
 
     const projectList = Array.isArray(availableProjects) && availableProjects.length > 0
@@ -102,6 +102,7 @@ Pravidla:
 
     let rawText = "";
     let success = false;
+    let errorDetails = "";
 
     const apiKey = Deno.env.get("GOOGLE_GENERATIVE_AI_API_KEY");
     if (apiKey) {
@@ -133,16 +134,20 @@ Pravidla:
             console.log("gemini-task-optimize: Google Gemini API úspěšně vrátil odpověď.");
           } else {
             console.warn("gemini-task-optimize: Gemini vrátil prázdnou odpověď.");
+            errorDetails += "[Gemini: prázdná odpověď] ";
           }
         } else {
           const errText = await geminiResp.text();
           console.warn(`gemini-task-optimize: Gemini API vrátil chybu: ${geminiResp.status} ${errText.slice(0, 300)}`);
+          errorDetails += `[Gemini chybný status ${geminiResp.status}: ${errText.slice(0, 150)}] `;
         }
-      } catch (e) {
+      } catch (e: any) {
         console.warn("gemini-task-optimize: Selhalo volání Google Gemini API:", e);
+        errorDetails += `[Gemini výjimka: ${e?.message || String(e)}] `;
       }
     } else {
       console.warn("gemini-task-optimize: Chybí GOOGLE_GENERATIVE_AI_API_KEY, zkouším rovnou zálohu (Claude).");
+      errorDetails += "[Gemini: chybí API klíč] ";
     }
 
     // Fallback na Claude, pokud Gemini selhalo nebo nebylo úspěšné
@@ -150,7 +155,10 @@ Pravidla:
       const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
       if (!anthropicKey) {
         console.error("gemini-task-optimize: Chybí GOOGLE_GENERATIVE_AI_API_KEY i ANTHROPIC_API_KEY");
-        return new Response(JSON.stringify({ error: "AI API credentials missing" }), { status: 500, headers: CORS });
+        return new Response(
+          JSON.stringify({ error: `AI není dostupné. Detaily chyb: ${errorDetails} + [Claude: chybí API klíč]` }),
+          { status: 200, headers: CORS }
+        );
       }
 
       console.log("gemini-task-optimize: Spouštím záložní volání na Anthropic Claude...");
@@ -167,30 +175,43 @@ Vrať výsledek jako JSON objekt s touto strukturou:
   "subtasks": ["podúkol1", "podúkol2", "podúkol3"]
 }`;
 
-      const claudeResp = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "x-api-key": anthropicKey,
-          "anthropic-version": "2023-06-01",
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "claude-haiku-4-5-20251001",
-          max_tokens: 800,
-          system: claudeSystem,
-          messages: [{ role: "user", content: claudePrompt }],
-        }),
-      });
+      try {
+        const claudeResp = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "x-api-key": anthropicKey,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "claude-3-5-haiku-20241022",
+            max_tokens: 800,
+            system: claudeSystem,
+            messages: [{ role: "user", content: claudePrompt }],
+          }),
+        });
 
-      if (!claudeResp.ok) {
-        const errText = await claudeResp.text();
-        console.error("gemini-task-optimize: Claude API error:", errText);
-        return new Response(JSON.stringify({ error: "AI služba nedostupná" }), { status: 502, headers: CORS });
+        if (!claudeResp.ok) {
+          const errText = await claudeResp.text();
+          console.error("gemini-task-optimize: Claude API error:", errText);
+          errorDetails += `[Claude chybný status ${claudeResp.status}: ${errText.slice(0, 150)}]`;
+          return new Response(
+            JSON.stringify({ error: `AI služba nedostupná. Detaily chyb: ${errorDetails}` }),
+            { status: 200, headers: CORS }
+          );
+        }
+
+        const claudeData = await claudeResp.json();
+        rawText = claudeData.content?.[0]?.text?.trim() ?? "";
+        console.log("gemini-task-optimize: Anthropic Claude úspěšně vrátil záložní odpověď.");
+      } catch (claudeError: any) {
+        console.error("gemini-task-optimize: Claude API výjimka:", claudeError);
+        errorDetails += `[Claude výjimka: ${claudeError?.message || String(claudeError)}]`;
+        return new Response(
+          JSON.stringify({ error: `AI služba nedostupná. Detaily chyb: ${errorDetails}` }),
+          { status: 200, headers: CORS }
+        );
       }
-
-      const claudeData = await claudeResp.json();
-      rawText = claudeData.content?.[0]?.text?.trim() ?? "";
-      console.log("gemini-task-optimize: Anthropic Claude úspěšně vrátil záložní odpověď.");
     }
 
     // Odstranění případných markdown bloků \`\`\`json, pokud by je Claude přesto přidal
@@ -204,22 +225,31 @@ Vrať výsledek jako JSON objekt s touto strukturou:
       parsed = JSON.parse(cleanedText);
     } catch {
       console.error("gemini-task-optimize: JSON parse error:", cleanedText);
-      return new Response(JSON.stringify({ error: "AI vrátila neplatný JSON formát" }), { status: 500, headers: CORS });
+      return new Response(
+        JSON.stringify({ error: `AI vrátila neplatný JSON formát. Detaily chyb: ${errorDetails}` }),
+        { status: 200, headers: CORS }
+      );
     }
 
     const validated = TaskOptimizationSchema.safeParse(parsed);
     if (!validated.success) {
       console.error("gemini-task-optimize: Zod validation error:", JSON.stringify(validated.error.flatten()));
       console.error("gemini-task-optimize: raw parsed data:", JSON.stringify(parsed));
-      return new Response(JSON.stringify({ error: "AI vrátila neočekávanou strukturu dat" }), { status: 500, headers: CORS });
+      return new Response(
+        JSON.stringify({ error: `AI vrátila neočekávanou strukturu dat. Detaily chyb: ${errorDetails}` }),
+        { status: 200, headers: CORS }
+      );
     }
 
     return new Response(
       JSON.stringify({ result: validated.data }),
       { headers: { ...CORS, "Content-Type": "application/json" } }
     );
-  } catch (e) {
+  } catch (e: any) {
     console.error("gemini-task-optimize: unhandled error:", e);
-    return new Response(JSON.stringify({ error: "Interní chyba serveru" }), { status: 500, headers: CORS });
+    return new Response(
+      JSON.stringify({ error: `Interní chyba serveru: ${e?.message || String(e)}` }),
+      { status: 200, headers: CORS }
+    );
   }
 });

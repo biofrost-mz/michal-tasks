@@ -98,7 +98,7 @@ export default function AIDailyPlan() {
       if (data?.error) {
         setError(data.error.includes("Rate limit")
           ? "Příliš mnoho generování — zkus to za hodinu."
-          : "Nepodařilo se vygenerovat plán");
+          : `Chyba: ${data.error}`);
         return;
       }
       setPlan(data.plan);
