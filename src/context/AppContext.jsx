@@ -181,7 +181,7 @@ export function AppProvider({ children }) {
   const [tasks, setTasks] = useState([]);
   const [deletedTasks, setDeletedTasks] = useState([]);
   const tasksRef = useRef([]);
-  useEffect(() => { tasksRef.current = tasks; }, [tasks]);
+  tasksRef.current = tasks;
   const [tags, setTags] = useState([]);
   const [notes, setNotes] = useState([]);
   const [deletedNotes, setDeletedNotes] = useState([]);

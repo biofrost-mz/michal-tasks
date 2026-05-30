@@ -24,6 +24,13 @@ export const NOTE_STATUSES = {
 
 export const NOTE_STATUS_KEYS = Object.keys(NOTE_STATUSES);
 
+export const PROJ_STATUS = {
+  idea:     { label: "Nápad",   color: "#94a3b8" },
+  active:   { label: "Aktivní", color: "#3b82f6" },
+  done:     { label: "Hotový",  color: "#22c55e" },
+  archived: { label: "Archiv",  color: "#64748b" },
+};
+
 export const NOTE_TEMPLATES = [
   { id: "blank", label: "Prázdná", icon: "file-text", desc: "Začni od nuly", title: "", content: "" },
   { id: "meeting", label: "Meeting notes", icon: "users", desc: "Agenda, zápis, akční body",

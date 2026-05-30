@@ -6,17 +6,10 @@ import Icon from './Icon.jsx'
 import AttachmentsMiniList from './AttachmentsMiniList.jsx'
 import NotesMiniList from './NotesMiniList.jsx'
 import AITaskAssist from './AITaskAssist.jsx'
-import { STATUSES, PRIORITIES } from '../constants.js'
+import { STATUSES, PRIORITIES, PROJ_STATUS } from '../constants.js'
 import { formatDate, formatDateTime } from '../locale.js'
 import { projectColor } from '../utils.js'
 import { PrioChip } from './atlas/AtlasTaskCard.jsx'
-
-const PROJ_STATUS = {
-  idea: { label: "Nápad", color: "#94a3b8" },
-  active: { label: "Aktivní", color: "#3b82f6" },
-  done: { label: "Hotový", color: "#22c55e" },
-  archived: { label: "Archiv", color: "#64748b" },
-};
 
 /* ─────────────────────────────────────────────
    AssigneeSelector — unchanged production component
@@ -255,7 +248,20 @@ export default function TaskDrawer() {
   const toast = useToast();
   const confirm = useConfirm();
 
+  // ── All hooks must be declared before any early return ──
   const [newTagName, setNewTagName] = useState("");
+  const [title, setTitle] = useState("");
+  const [desc, setDesc] = useState("");
+  const [showNewProject, setShowNewProject] = useState(false);
+  const [npName, setNpName] = useState("");
+  const [newPhase, setNewPhase] = useState("");
+  const [remindAtDraft, setRemindAtDraft] = useState("");
+
+  // Mobile swipe-to-dismiss state
+  const [dragY, setDragY] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const dragStartRef = useRef(null);
+  const DISMISS_THRESHOLD = 150;
 
   const task = tasks.find((x) => x.id === taskDetail) ?? null;
 
@@ -266,12 +272,63 @@ export default function TaskDrawer() {
         counts[tid] = (counts[tid] || 0) + 1;
       });
     });
-    // Sort all tags by their usage frequency
     return tags
       .map((tg) => ({ ...tg, count: counts[tg.id] || 0 }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 6);
   }, [tags, tasks]);
+
+  const toLocalDT = (iso) => {
+    if (!iso) return "";
+    const d = new Date(iso);
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  };
+
+  useEffect(() => {
+    if (!task) return;
+    setTitle(task.title);
+    setDesc(task.description || "");
+    setShowNewProject(false);
+    setNpName("");
+    setRemindAtDraft(toLocalDT(task?.remindAt));
+  }, [task?.id, task?.title, task?.description, task?.remindAt]);
+
+  const onDragStart = useCallback((e) => {
+    if (!isMobile) return;
+    dragStartRef.current = e.touches[0].clientY;
+    setDragging(true);
+  }, [isMobile]);
+
+  const onDragMove = useCallback((e) => {
+    if (dragStartRef.current === null) return;
+    const dy = e.touches[0].clientY - dragStartRef.current;
+    if (dy > 0) setDragY(dy);
+  }, []);
+
+  const onDragEnd = useCallback(() => {
+    setDragging(false);
+    if (dragY > DISMISS_THRESHOLD) {
+      setTaskDetail(null);
+    }
+    setDragY(0);
+    dragStartRef.current = null;
+  }, [dragY, setTaskDetail]);
+
+  if (!task) return null;
+
+  // Save shorthand — used only when task is guaranteed non-null
+  const s = (u) => { updateTask(task.id, u); toast("Uloženo", "success"); };
+
+  const addPhase = () => {
+    const text = newPhase.trim();
+    if (!text) return;
+    const next = [
+      ...(task.phases || []),
+      { id: crypto.randomUUID?.() || String(Date.now()), text, date: Date.now() },
+    ];
+    s({ phases: next });
+    setNewPhase("");
+  };
 
   const handleCreateTagInline = (name) => {
     const trimmed = name.trim();
@@ -296,32 +353,6 @@ export default function TaskDrawer() {
     }
     setNewTagName("");
   };
-  const [title, setTitle] = useState(task?.title ?? "");
-  const [desc, setDesc] = useState(task?.description ?? "");
-  const [showNewProject, setShowNewProject] = useState(false);
-  const [npName, setNpName] = useState("");
-  const [newPhase, setNewPhase] = useState("");
-
-  const toLocalDT = (iso) => {
-    if (!iso) return "";
-    const d = new Date(iso);
-    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-  };
-
-  const [remindAtDraft, setRemindAtDraft] = useState(toLocalDT(task?.remindAt));
-
-  useEffect(() => {
-    if (!task) return;
-    setTitle(task.title);
-    setDesc(task.description || "");
-    setShowNewProject(false);
-    setNpName("");
-    setRemindAtDraft(toLocalDT(task?.remindAt));
-  }, [task?.id, task?.title, task?.description, task?.remindAt]);
-
-  if (!task) return null;
-
-  const s = (u) => { updateTask(task.id, u); toast("Uloženo", "success"); };
 
   const createProjectInline = () => {
     if (!npName.trim()) return;
@@ -332,35 +363,8 @@ export default function TaskDrawer() {
     toast("Projekt vytvořen a přiřazen", "success");
   };
 
-  const taskNumber = String(task.id).padStart(4, "0");
+  const taskNumber = String(task.id).slice(0, 8);
   const projectObj = projects.find((p) => p.id === task.projectId);
-
-  // Mobile swipe-to-dismiss
-  const [dragY, setDragY] = useState(0);
-  const [dragging, setDragging] = useState(false);
-  const dragStartRef = useRef(null);
-  const DISMISS_THRESHOLD = 150;
-
-  const onDragStart = useCallback((e) => {
-    if (!isMobile) return;
-    dragStartRef.current = e.touches[0].clientY;
-    setDragging(true);
-  }, [isMobile]);
-
-  const onDragMove = useCallback((e) => {
-    if (dragStartRef.current === null) return;
-    const dy = e.touches[0].clientY - dragStartRef.current;
-    if (dy > 0) setDragY(dy); // only allow downward drag
-  }, []);
-
-  const onDragEnd = useCallback(() => {
-    setDragging(false);
-    if (dragY > DISMISS_THRESHOLD) {
-      setTaskDetail(null);
-    }
-    setDragY(0);
-    dragStartRef.current = null;
-  }, [dragY, setTaskDetail]);
 
   return (
     <div className="overlay" onClick={() => setTaskDetail(null)}>
@@ -715,36 +719,10 @@ export default function TaskDrawer() {
                 className="detail-input"
                 value={newPhase}
                 onChange={(e) => setNewPhase(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    const text = newPhase.trim();
-                    if (!text) return;
-                    const next = [
-                      ...(task.phases || []),
-                      { id: crypto.randomUUID?.() || String(Date.now()), text, date: Date.now() },
-                    ];
-                    s({ phases: next });
-                    setNewPhase("");
-                  }
-                }}
+                onKeyDown={(e) => { if (e.key === "Enter") addPhase(); }}
                 placeholder="Nová fáze / záznam průběhu…"
               />
-              <button
-                className="btn primary"
-                onClick={() => {
-                  const text = newPhase.trim();
-                  if (!text) return;
-                  const next = [
-                    ...(task.phases || []),
-                    { id: crypto.randomUUID?.() || String(Date.now()), text, date: Date.now() },
-                  ];
-                  s({ phases: next });
-                  setNewPhase("");
-                }}
-                style={{ flexShrink: 0 }}
-              >
-                +
-              </button>
+              <button className="btn primary" onClick={addPhase} style={{ flexShrink: 0 }}>+</button>
             </div>
           </div>
 

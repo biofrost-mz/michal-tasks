@@ -7,13 +7,7 @@ import NotesMiniList from "../components/NotesMiniList.jsx";
 import ProjectChatPanel from "../components/ProjectChatPanel.jsx";
 import QuickAdd from "../components/QuickAdd.jsx";
 import { projectColor, parseYMD, startOfToday } from "../utils.js";
-
-const PROJ_STATUS = {
-  idea: { label: "Nápad", color: "#8b8f9c" },
-  active: { label: "Aktivní", color: "#3b82f6" },
-  done: { label: "Hotový", color: "#22c55e" },
-  archived: { label: "Archiv", color: "#64748b" },
-};
+import { PROJ_STATUS } from "../constants.js";
 
 const PROJECT_COLORS = [
   "#3b82f6", "#22c55e", "#f59e0b", "#8b5cf6", "#ef4444",
@@ -641,7 +635,7 @@ export default function ProjectsPage() {
         </span>
 
         <span style={{ position: "relative" }} ref={pSortRef}>
-          <span className={`chip ${pSortBy !== "progress" ? "active" : ""}`} onClick={() => setPSortByOpen(!pSortOpen)}>
+          <span className={`chip ${pSortBy !== "newest" ? "active" : ""}`} onClick={() => setPSortByOpen(!pSortOpen)}>
             Řadit podle: {PROJ_SORT_LABELS[pSortBy]} ▾
           </span>
           {pSortOpen && (

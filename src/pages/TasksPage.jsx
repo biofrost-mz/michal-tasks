@@ -6,6 +6,7 @@ import {
   PrioChip,
   CLASS_TO_STATUS,
 } from "../components/atlas/AtlasTaskCard.jsx";
+import { STATUSES } from "../constants.js";
 import { parseYMD, startOfToday } from "../utils.js";
 import QuickAdd from "../components/QuickAdd.jsx";
 
@@ -18,18 +19,16 @@ const STATUS_LABELS = {
   done: "Hotovo",
 };
 
-function statusColor(statusClass) {
-  if (statusClass === "doing") return "var(--blue)";
-  if (statusClass === "wait") return "var(--orange)";
-  if (statusClass === "done") return "var(--green)";
-  return "var(--gray)";
-}
+const STATUS_CLASS_COLOR = {
+  doing: "var(--blue)",
+  wait:  "var(--orange)",
+  done:  "var(--green)",
+  todo:  "var(--gray)",
+};
 
 function statusLabel(statusClass) {
-  if (statusClass === "doing") return "Rozpracováno";
-  if (statusClass === "wait") return "Čekám";
-  if (statusClass === "done") return "Hotovo";
-  return "To do";
+  const realKey = CLASS_TO_STATUS[statusClass] || statusClass;
+  return STATUSES[realKey]?.label ?? STATUS_LABELS[statusClass] ?? "To do";
 }
 
 export function ViewToggle({ view, setView, modes }) {
@@ -124,10 +123,7 @@ export default function TasksPage() {
     }
 
     if (tagFilter !== "all") {
-      list = list.filter((t) => {
-        const originalTask = tasks.find((tk) => tk.id === t.id);
-        return originalTask?.tagIds?.includes(tagFilter);
-      });
+      list = list.filter((t) => t.tagIds.includes(tagFilter));
     }
 
     return list;
@@ -169,7 +165,7 @@ export default function TasksPage() {
       <div className="chips">
         {CHIP_STATUSES.map((k) => (
           <span key={k} className={`chip ${statusFilter === k ? "active" : ""}`} onClick={() => setStatusFilter(k)}>
-            {k === "all" ? <span className="chip-dot" style={{ background: "var(--text-2)" }} /> : <span className="chip-dot" style={{ background: statusColor(k) }} />}
+            {k === "all" ? <span className="chip-dot" style={{ background: "var(--text-2)" }} /> : <span className="chip-dot" style={{ background: STATUS_CLASS_COLOR[k] || "var(--gray)" }} />}
             {STATUS_LABELS[k]}
             <span className="chip-count">{k === "all" ? filtered.length : filtered.filter((t) => t.statusClass === k).length}</span>
           </span>
