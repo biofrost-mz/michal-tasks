@@ -130,10 +130,12 @@ export default function AuthGate({ children }) {
   const [signMode, setSignMode] = useState("signin");   // "signin" | "signup"
   const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [showPw,   setShowPw]   = useState(false);
   const [sending,  setSending]  = useState(false);
   const [sent,     setSent]     = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const [mouseCoords, setMouseCoords] = useState({ x: 50, y: 50 });
 
   useEffect(() => {
@@ -147,9 +149,17 @@ export default function AuthGate({ children }) {
   }, []);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("reset") === "1" || window.location.hash.includes("type=recovery")) {
+      setIsResetting(true);
+    }
+
     supabase.auth.getSession().then(({ data }) => setSession(data.session ?? null));
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, newSession) => {
       setSession(newSession ?? null);
+      if (event === "PASSWORD_RECOVERY") {
+        setIsResetting(true);
+      }
     });
     return () => sub?.subscription?.unsubscribe?.();
   }, []);
@@ -202,7 +212,22 @@ export default function AuthGate({ children }) {
     toast("Odkaz pro reset hesla odeslán", "success");
   };
 
-  if (session) {
+  const handleUpdatePassword = async (e) => {
+    e.preventDefault();
+    if (!newPassword) return;
+    setSending(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    setSending(false);
+    if (error) {
+      toast(error.message || "Chyba při změně hesla", "error");
+    } else {
+      toast("Heslo bylo úspěšně změněno!", "success");
+      setIsResetting(false);
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  };
+
+  if (session && !isResetting) {
     return <div style={{ height: "100%" }}>{children}</div>;
   }
 
@@ -413,120 +438,65 @@ export default function AuthGate({ children }) {
             e.currentTarget.style.boxShadow = "0 40px 80px -20px rgba(0, 0, 0, 0.95), 0 0 40px rgba(251, 191, 36, 0.06)";
           }}
         >
-          {/* Header text inside card */}
-          <h2 style={{ fontSize: "24px", fontWeight: "700", margin: "0 0 6px", color: "#ffffff" }}>
-            {signMode === "signup" ? "✨ Vytvořit účet zdarma" : "👋 Vítejte zpět"}
-          </h2>
-          <p style={{ fontSize: "13.5px", color: "#9ca3af", margin: "0 0 28px" }}>
-            {signMode === "signup" ? "Začněte pracovat chytřeji ještě dnes." : "Pokračujte tam, kde jste včera skončili."}
-          </p>
+          {isResetting ? (
+            <>
+              {/* Header text inside card */}
+              <h2 style={{ fontSize: "24px", fontWeight: "700", margin: "0 0 6px", color: "#ffffff" }}>
+                🔒 Nastavit nové heslo
+              </h2>
+              <p style={{ fontSize: "13.5px", color: "#9ca3af", margin: "0 0 28px" }}>
+                Zadejte své nové přístupové heslo.
+              </p>
 
-          {/* Two-way Auth Mode Switcher */}
-          <div style={{ display: "flex", background: "rgba(255, 255, 255, 0.04)", borderRadius: "12px", padding: "4px", marginBottom: "28px", border: "1px solid rgba(255, 255, 255, 0.06)" }}>
-            {[["magic", "🪄 Magic link"], ["password", "🔑 Přihlášení"]].map(([m, label]) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => { setAuthMode(m); setSent(false); }}
-                style={{
-                  flex: 1,
-                  padding: "9px 0",
-                  borderRadius: "8px",
-                  border: "none",
-                  background: authMode === m ? "rgba(251, 191, 36, 0.12)" : "transparent",
-                  color: authMode === m ? "#fbbf24" : "#9ca3af",
-                  fontSize: "13px",
-                  fontWeight: authMode === m ? "700" : "400",
-                  cursor: "pointer",
-                  transition: "all 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
-                  outline: "none",
-                }}
-                onMouseEnter={e => {
-                  if (authMode !== m) {
-                    e.currentTarget.style.color = "#ffffff";
-                    e.currentTarget.style.background = "rgba(255, 255, 255, 0.02)";
-                  }
-                }}
-                onMouseLeave={e => {
-                  if (authMode !== m) {
-                    e.currentTarget.style.color = "#9ca3af";
-                    e.currentTarget.style.background = "transparent";
-                  }
-                }}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
-          {/* Form rendering */}
-          {authMode === "magic" ? (
-            sent ? (
-              /* Sent Confirmation Screen */
-              <div style={{
-                textAlign: "center",
-                padding: "24px 16px",
-                background: "rgba(255, 255, 255, 0.03)",
-                border: "1px solid rgba(255, 255, 255, 0.08)",
-                borderRadius: "16px",
-              }}>
-                <div style={{ fontSize: "40px", marginBottom: "12px" }}>📬</div>
-                <h3 style={{ fontSize: "17px", fontWeight: "700", color: "#ffffff", margin: "0 0 6px" }}>Odkaz odeslán!</h3>
-                <p style={{ fontSize: "13px", color: "#9ca3af", lineHeight: "1.6", margin: "0 0 20px" }}>
-                  Zkontrolujte schránku e-mailu<br />
-                  <strong style={{ color: "#fbbf24" }}>{email}</strong><br />
-                  a kliknutím na odkaz se ihned přihlaste.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => { setSent(false); setEmail(""); }}
-                  style={{
-                    background: "rgba(255, 255, 255, 0.05)",
-                    border: "1px solid rgba(255, 255, 255, 0.1)",
-                    color: "#ffffff",
-                    padding: "8px 20px",
-                    borderRadius: "10px",
-                    fontSize: "12.5px",
-                    fontWeight: "600",
-                    cursor: "pointer",
-                    transition: "background 0.2s ease",
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background = "rgba(255, 255, 255, 0.1)"}
-                  onMouseLeave={e => e.currentTarget.style.background = "rgba(255, 255, 255, 0.05)"}
-                >
-                  ← Zpět
-                </button>
-              </div>
-            ) : (
-              /* Magic Link Form */
-              <form onSubmit={e => { e.preventDefault(); sendMagicLink(); }} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+              <form onSubmit={handleUpdatePassword} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
                 <div>
                   <label style={{ display: "block", fontSize: "11px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.08em", color: "#9ca3af", marginBottom: "8px" }}>
-                    E-mailová adresa
+                    Nové heslo
                   </label>
-                  <input
-                    type="email"
-                    placeholder="jmeno@domena.cz"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    required
-                    style={inputFieldStyle}
-                    onFocus={e => {
-                      e.target.style.borderColor = "#fbbf24";
-                      e.target.style.background = "rgba(255, 255, 255, 0.08)";
-                    }}
-                    onBlur={e => {
-                      e.target.style.borderColor = "rgba(255, 255, 255, 0.1)";
-                      e.target.style.background = "rgba(255, 255, 255, 0.05)";
-                    }}
-                  />
+                  <div style={{ position: "relative" }}>
+                    <input
+                      type={showPw ? "text" : "password"}
+                      placeholder="••••••••"
+                      value={newPassword}
+                      onChange={e => setNewPassword(e.target.value)}
+                      required
+                      style={{ ...inputFieldStyle, paddingRight: "44px" }}
+                      onFocus={e => {
+                        e.target.style.borderColor = "#fbbf24";
+                        e.target.style.background = "rgba(255, 255, 255, 0.08)";
+                      }}
+                      onBlur={e => {
+                        e.target.style.borderColor = "rgba(255, 255, 255, 0.1)";
+                        e.target.style.background = "rgba(255, 255, 255, 0.05)";
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPw(v => !v)}
+                      style={{
+                        position: "absolute",
+                        right: "12px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        color: "#9ca3af",
+                        display: "flex",
+                        padding: "4px",
+                      }}
+                    >
+                      <Icon name={showPw ? "eye-off" : "eye"} size={16} color="currentColor" strokeWidth={1.8} />
+                    </button>
+                  </div>
                 </div>
+
                 <button
                   type="submit"
-                  disabled={!email.trim() || sending}
-                  style={{ ...btnPrimaryStyle, opacity: !email.trim() || sending ? 0.6 : 1 }}
+                  disabled={!newPassword || sending}
+                  style={{ ...btnPrimaryStyle, opacity: !newPassword || sending ? 0.6 : 1 }}
                   onMouseEnter={e => {
-                    if (email.trim() && !sending) {
+                    if (newPassword && !sending) {
                       e.currentTarget.style.transform = "translateY(-1px)";
                       e.currentTarget.style.boxShadow = "0 10px 20px rgba(251, 191, 36, 0.3)";
                     }
@@ -536,31 +506,71 @@ export default function AuthGate({ children }) {
                     e.currentTarget.style.boxShadow = "0 10px 20px rgba(251, 191, 36, 0.15)";
                   }}
                 >
-                  {sending ? "Odesílám…" : "Poslat přihlašovací odkaz"}
+                  {sending ? "Ukládám…" : "Změnit heslo a vstoupit"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await supabase.auth.signOut();
+                    setIsResetting(false);
+                    window.history.replaceState({}, "", window.location.pathname);
+                  }}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#9ca3af",
+                    fontSize: "13px",
+                    cursor: "pointer",
+                    marginTop: "4px",
+                    textDecoration: "underline",
+                  }}
+                >
+                  Zrušit a odhlásit se
                 </button>
               </form>
-            )
+            </>
           ) : (
-            /* Email + Password Form */
-            <form onSubmit={e => { e.preventDefault(); handlePassword(); }} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-              {/* Tabs for password signin vs signup */}
-              <div style={{ display: "flex", gap: "16px", borderBottom: "1px solid rgba(255, 255, 255, 0.08)", paddingBottom: "0" }}>
-                {[["signin", "Přihlásit se"], ["signup", "Registrovat"]].map(([m, label]) => (
+            <>
+              {/* Header text inside card */}
+              <h2 style={{ fontSize: "24px", fontWeight: "700", margin: "0 0 6px", color: "#ffffff" }}>
+                {signMode === "signup" ? "✨ Vytvořit účet zdarma" : "👋 Vítejte zpět"}
+              </h2>
+              <p style={{ fontSize: "13.5px", color: "#9ca3af", margin: "0 0 28px" }}>
+                {signMode === "signup" ? "Začněte pracovat chytřeji ještě dnes." : "Pokračujte tam, kde jste včera skončili."}
+              </p>
+
+              {/* Two-way Auth Mode Switcher */}
+              <div style={{ display: "flex", background: "rgba(255, 255, 255, 0.04)", borderRadius: "12px", padding: "4px", marginBottom: "28px", border: "1px solid rgba(255, 255, 255, 0.06)" }}>
+                {[["magic", "🪄 Magic link"], ["password", "🔑 Přihlášení"]].map(([m, label]) => (
                   <button
                     key={m}
                     type="button"
-                    onClick={() => setSignMode(m)}
+                    onClick={() => { setAuthMode(m); setSent(false); }}
                     style={{
-                      background: "none",
+                      flex: 1,
+                      padding: "9px 0",
+                      borderRadius: "8px",
                       border: "none",
-                      color: signMode === m ? "#fbbf24" : "#9ca3af",
+                      background: authMode === m ? "rgba(251, 191, 36, 0.12)" : "transparent",
+                      color: authMode === m ? "#fbbf24" : "#9ca3af",
                       fontSize: "13px",
-                      fontWeight: signMode === m ? "700" : "400",
+                      fontWeight: authMode === m ? "700" : "400",
                       cursor: "pointer",
-                      padding: "0 4px 8px",
-                      borderBottom: `2px solid ${signMode === m ? "#fbbf24" : "transparent"}`,
-                      marginBottom: "-1px",
-                      transition: "all 0.2s ease",
+                      transition: "all 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
+                      outline: "none",
+                    }}
+                    onMouseEnter={e => {
+                      if (authMode !== m) {
+                        e.currentTarget.style.color = "#ffffff";
+                        e.currentTarget.style.background = "rgba(255, 255, 255, 0.02)";
+                      }
+                    }}
+                    onMouseLeave={e => {
+                      if (authMode !== m) {
+                        e.currentTarget.style.color = "#9ca3af";
+                        e.currentTarget.style.background = "transparent";
+                      }
                     }}
                   >
                     {label}
@@ -568,159 +578,270 @@ export default function AuthGate({ children }) {
                 ))}
               </div>
 
-              {signMode === "signup" && (
-                <div>
-                  <label style={{ display: "block", fontSize: "11px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.08em", color: "#9ca3af", marginBottom: "8px" }}>
-                    Jméno a Příjmení
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Michal Zich"
-                    value={fullName}
-                    onChange={e => setFullName(e.target.value)}
-                    required
-                    style={inputFieldStyle}
-                    onFocus={e => {
-                      e.target.style.borderColor = "#fbbf24";
-                      e.target.style.background = "rgba(255, 255, 255, 0.08)";
-                    }}
-                    onBlur={e => {
-                      e.target.style.borderColor = "rgba(255, 255, 255, 0.1)";
-                      e.target.style.background = "rgba(255, 255, 255, 0.05)";
-                    }}
-                  />
-                </div>
-              )}
-
-              <div>
-                <label style={{ display: "block", fontSize: "11px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.08em", color: "#9ca3af", marginBottom: "8px" }}>
-                  E-mailová adresa
-                </label>
-                <input
-                  type="email"
-                  placeholder="jmeno@domena.cz"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  required
-                  style={inputFieldStyle}
-                  onFocus={e => {
-                    e.target.style.borderColor = "#fbbf24";
-                    e.target.style.background = "rgba(255, 255, 255, 0.08)";
-                  }}
-                  onBlur={e => {
-                    e.target.style.borderColor = "rgba(255, 255, 255, 0.1)";
-                    e.target.style.background = "rgba(255, 255, 255, 0.05)";
-                  }}
-                />
-              </div>
-
-              <div>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
-                  <label style={{ display: "block", fontSize: "11px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.08em", color: "#9ca3af" }}>
-                    Heslo
-                  </label>
-                  {signMode === "signin" && (
+              {/* Form rendering */}
+              {authMode === "magic" ? (
+                sent ? (
+                  /* Sent Confirmation Screen */
+                  <div style={{
+                    textAlign: "center",
+                    padding: "24px 16px",
+                    background: "rgba(255, 255, 255, 0.03)",
+                    border: "1px solid rgba(255, 255, 255, 0.08)",
+                    borderRadius: "16px",
+                  }}>
+                    <div style={{ fontSize: "40px", marginBottom: "12px" }}>📬</div>
+                    <h3 style={{ fontSize: "17px", fontWeight: "700", color: "#ffffff", margin: "0 0 6px" }}>Odkaz odeslán!</h3>
+                    <p style={{ fontSize: "13px", color: "#9ca3af", lineHeight: "1.6", margin: "0 0 20px" }}>
+                      Zkontrolujte schránku e-mailu<br />
+                      <strong style={{ color: "#fbbf24" }}>{email}</strong><br />
+                      a kliknutím na odkaz se ihned přihlaste.
+                    </p>
                     <button
                       type="button"
-                      onClick={handleForgotPassword}
-                      style={{ background: "none", border: "none", color: "#fbbf24", fontSize: "11px", cursor: "pointer", padding: "0" }}
-                      onMouseEnter={e => e.currentTarget.style.textDecoration = "underline"}
-                      onMouseLeave={e => e.currentTarget.style.textDecoration = "none"}
+                      onClick={() => { setSent(false); setEmail(""); }}
+                      style={{
+                        background: "rgba(255, 255, 255, 0.05)",
+                        border: "1px solid rgba(255, 255, 255, 0.1)",
+                        color: "#ffffff",
+                        padding: "8px 20px",
+                        borderRadius: "10px",
+                        fontSize: "12.5px",
+                        fontWeight: "600",
+                        cursor: "pointer",
+                        transition: "background 0.2s ease",
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = "rgba(255, 255, 255, 0.1)"}
+                      onMouseLeave={e => e.currentTarget.style.background = "rgba(255, 255, 255, 0.05)"}
                     >
-                      Zapomněli jste?
+                      ← Zpět
                     </button>
-                  )}
-                </div>
-                <div style={{ position: "relative" }}>
-                  <input
-                    type={showPw ? "text" : "password"}
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    required
-                    style={{ ...inputFieldStyle, paddingRight: "44px" }}
-                    onFocus={e => {
-                      e.target.style.borderColor = "#fbbf24";
-                      e.target.style.background = "rgba(255, 255, 255, 0.08)";
-                    }}
-                    onBlur={e => {
-                      e.target.style.borderColor = "rgba(255, 255, 255, 0.1)";
-                      e.target.style.background = "rgba(255, 255, 255, 0.05)";
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPw(v => !v)}
-                    style={{
-                      position: "absolute",
-                      right: "12px",
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      background: "none",
-                      border: "none",
-                      cursor: "pointer",
-                      color: "#9ca3af",
-                      display: "flex",
-                      padding: "4px",
-                    }}
-                  >
-                    <Icon name={showPw ? "eye-off" : "eye"} size={16} color="currentColor" strokeWidth={1.8} />
-                  </button>
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={!email.trim() || !password || (signMode === "signup" && !fullName.trim()) || sending}
-                style={{ ...btnPrimaryStyle, opacity: !email.trim() || !password || (signMode === "signup" && !fullName.trim()) || sending ? 0.6 : 1 }}
-                onMouseEnter={e => {
-                  if (email.trim() && password && (signMode !== "signup" || fullName.trim()) && !sending) {
-                    e.currentTarget.style.transform = "translateY(-1px)";
-                    e.currentTarget.style.boxShadow = "0 10px 20px rgba(251, 191, 36, 0.3)";
-                  }
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.transform = "none";
-                  e.currentTarget.style.boxShadow = "0 10px 20px rgba(251, 191, 36, 0.15)";
-                }}
-              >
-                {sending ? "Čekejte…" : signMode === "signup" ? "Registrovat se do Zentero" : "Přihlásit se do Zentero"}
-              </button>
-            </form>
-          )}
-
-          {/* Toggle between login or free creation */}
-          <div style={{ textAlign: "center", marginTop: "24px" }}>
-            <p style={{ fontSize: "13.5px", color: "#6b7280", margin: 0 }}>
-              {signMode === "signup" ? (
-                <>
-                  Již máte účet?{" "}
-                  <button
-                    type="button"
-                    onClick={() => { setSignMode("signin"); setAuthMode("password"); }}
-                    style={{ background: "none", border: "none", color: "#ffffff", fontWeight: "600", cursor: "pointer", padding: "0" }}
-                    onMouseEnter={e => e.currentTarget.style.color = "#fbbf24"}
-                    onMouseLeave={e => e.currentTarget.style.color = "#ffffff"}
-                  >
-                    Přihlásit se
-                  </button>
-                </>
+                  </div>
+                ) : (
+                  /* Magic Link Form */
+                  <form onSubmit={e => { e.preventDefault(); sendMagicLink(); }} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+                    <div>
+                      <label style={{ display: "block", fontSize: "11px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.08em", color: "#9ca3af", marginBottom: "8px" }}>
+                        E-mailová adresa
+                      </label>
+                      <input
+                        type="email"
+                        placeholder="jmeno@domena.cz"
+                        value={email}
+                        onChange={e => setEmail(e.target.value)}
+                        required
+                        style={inputFieldStyle}
+                        onFocus={e => {
+                          e.target.style.borderColor = "#fbbf24";
+                          e.target.style.background = "rgba(255, 255, 255, 0.08)";
+                        }}
+                        onBlur={e => {
+                          e.target.style.borderColor = "rgba(255, 255, 255, 0.1)";
+                          e.target.style.background = "rgba(255, 255, 255, 0.05)";
+                        }}
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={!email.trim() || sending}
+                      style={{ ...btnPrimaryStyle, opacity: !email.trim() || sending ? 0.6 : 1 }}
+                      onMouseEnter={e => {
+                        if (email.trim() && !sending) {
+                          e.currentTarget.style.transform = "translateY(-1px)";
+                          e.currentTarget.style.boxShadow = "0 10px 20px rgba(251, 191, 36, 0.3)";
+                        }
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.transform = "none";
+                        e.currentTarget.style.boxShadow = "0 10px 20px rgba(251, 191, 36, 0.15)";
+                      }}
+                    >
+                      {sending ? "Odesílám…" : "Poslat přihlašovací odkaz"}
+                    </button>
+                  </form>
+                )
               ) : (
-                <>
-                  Ještě nemáte účet?{" "}
+                /* Email + Password Form */
+                <form onSubmit={e => { e.preventDefault(); handlePassword(); }} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+                  {/* Tabs for password signin vs signup */}
+                  <div style={{ display: "flex", gap: "16px", borderBottom: "1px solid rgba(255, 255, 255, 0.08)", paddingBottom: "0" }}>
+                    {[["signin", "Přihlásit se"], ["signup", "Registrovat"]].map(([m, label]) => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => setSignMode(m)}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          color: signMode === m ? "#fbbf24" : "#9ca3af",
+                          fontSize: "13px",
+                          fontWeight: signMode === m ? "700" : "400",
+                          cursor: "pointer",
+                          padding: "0 4px 8px",
+                          borderBottom: `2px solid ${signMode === m ? "#fbbf24" : "transparent"}`,
+                          marginBottom: "-1px",
+                          transition: "all 0.2s ease",
+                        }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {signMode === "signup" && (
+                    <div>
+                      <label style={{ display: "block", fontSize: "11px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.08em", color: "#9ca3af", marginBottom: "8px" }}>
+                        Jméno a Příjmení
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Michal Zich"
+                        value={fullName}
+                        onChange={e => setFullName(e.target.value)}
+                        required
+                        style={inputFieldStyle}
+                        onFocus={e => {
+                          e.target.style.borderColor = "#fbbf24";
+                          e.target.style.background = "rgba(255, 255, 255, 0.08)";
+                        }}
+                        onBlur={e => {
+                          e.target.style.borderColor = "rgba(255, 255, 255, 0.1)";
+                          e.target.style.background = "rgba(255, 255, 255, 0.05)";
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  <div>
+                    <label style={{ display: "block", fontSize: "11px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.08em", color: "#9ca3af", marginBottom: "8px" }}>
+                      E-mailová adresa
+                    </label>
+                    <input
+                      type="email"
+                      placeholder="jmeno@domena.cz"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      required
+                      style={inputFieldStyle}
+                      onFocus={e => {
+                        e.target.style.borderColor = "#fbbf24";
+                        e.target.style.background = "rgba(255, 255, 255, 0.08)";
+                      }}
+                      onBlur={e => {
+                        e.target.style.borderColor = "rgba(255, 255, 255, 0.1)";
+                        e.target.style.background = "rgba(255, 255, 255, 0.05)";
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
+                      <label style={{ display: "block", fontSize: "11px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.08em", color: "#9ca3af" }}>
+                        Heslo
+                      </label>
+                      {signMode === "signin" && (
+                        <button
+                          type="button"
+                          onClick={handleForgotPassword}
+                          style={{ background: "none", border: "none", color: "#fbbf24", fontSize: "11px", cursor: "pointer", padding: "0" }}
+                          onMouseEnter={e => e.currentTarget.style.textDecoration = "underline"}
+                          onMouseLeave={e => e.currentTarget.style.textDecoration = "none"}
+                        >
+                          Zapomněli jste?
+                        </button>
+                      )}
+                    </div>
+                    <div style={{ position: "relative" }}>
+                      <input
+                        type={showPw ? "text" : "password"}
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={e => setPassword(e.target.value)}
+                        required
+                        style={{ ...inputFieldStyle, paddingRight: "44px" }}
+                        onFocus={e => {
+                          e.target.style.borderColor = "#fbbf24";
+                          e.target.style.background = "rgba(255, 255, 255, 0.08)";
+                        }}
+                        onBlur={e => {
+                          e.target.style.borderColor = "rgba(255, 255, 255, 0.1)";
+                          e.target.style.background = "rgba(255, 255, 255, 0.05)";
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPw(v => !v)}
+                        style={{
+                          position: "absolute",
+                          right: "12px",
+                          top: "50%",
+                          transform: "translateY(-50%)",
+                          background: "none",
+                          border: "none",
+                          cursor: "pointer",
+                          color: "#9ca3af",
+                          display: "flex",
+                          padding: "4px",
+                        }}
+                      >
+                        <Icon name={showPw ? "eye-off" : "eye"} size={16} color="currentColor" strokeWidth={1.8} />
+                      </button>
+                    </div>
+                  </div>
+
                   <button
-                    type="button"
-                    onClick={() => { setSignMode("signup"); setAuthMode("password"); }}
-                    style={{ background: "none", border: "none", color: "#ffffff", fontWeight: "600", cursor: "pointer", padding: "0" }}
-                    onMouseEnter={e => e.currentTarget.style.color = "#fbbf24"}
-                    onMouseLeave={e => e.currentTarget.style.color = "#ffffff"}
+                    type="submit"
+                    disabled={!email.trim() || !password || (signMode === "signup" && !fullName.trim()) || sending}
+                    style={{ ...btnPrimaryStyle, opacity: !email.trim() || !password || (signMode === "signup" && !fullName.trim()) || sending ? 0.6 : 1 }}
+                    onMouseEnter={e => {
+                      if (email.trim() && password && (signMode !== "signup" || fullName.trim()) && !sending) {
+                        e.currentTarget.style.transform = "translateY(-1px)";
+                        e.currentTarget.style.boxShadow = "0 10px 20px rgba(251, 191, 36, 0.3)";
+                      }
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.transform = "none";
+                      e.currentTarget.style.boxShadow = "0 10px 20px rgba(251, 191, 36, 0.15)";
+                    }}
                   >
-                    Vytvořit zdarma
+                    {sending ? "Čekejte…" : signMode === "signup" ? "Registrovat se do Zentero" : "Přihlásit se do Zentero"}
                   </button>
-                </>
+                </form>
               )}
-            </p>
-          </div>
+
+              {/* Toggle between login or free creation */}
+              <div style={{ textAlign: "center", marginTop: "24px" }}>
+                <p style={{ fontSize: "13.5px", color: "#6b7280", margin: 0 }}>
+                  {signMode === "signup" ? (
+                    <>
+                      Již máte účet?{" "}
+                      <button
+                        type="button"
+                        onClick={() => { setSignMode("signin"); setAuthMode("password"); }}
+                        style={{ background: "none", border: "none", color: "#ffffff", fontWeight: "600", cursor: "pointer", padding: "0" }}
+                        onMouseEnter={e => e.currentTarget.style.color = "#fbbf24"}
+                        onMouseLeave={e => e.currentTarget.style.color = "#ffffff"}
+                      >
+                        Přihlásit se
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      Ještě nemáte účet?{" "}
+                      <button
+                        type="button"
+                        onClick={() => { setSignMode("signup"); setAuthMode("password"); }}
+                        style={{ background: "none", border: "none", color: "#ffffff", fontWeight: "600", cursor: "pointer", padding: "0" }}
+                        onMouseEnter={e => e.currentTarget.style.color = "#fbbf24"}
+                        onMouseLeave={e => e.currentTarget.style.color = "#ffffff"}
+                      >
+                        Vytvořit zdarma
+                      </button>
+                    </>
+                  )}
+                </p>
+              </div>
+            </>
+          )}
 
         </div>
 

@@ -60,7 +60,8 @@ serve(async (req) => {
     });
     const { data: { user }, error: authErr } = await userClient.auth.getUser();
     if (authErr || !user) {
-      return new Response(JSON.stringify({ error: "Invalid token" }), {
+      console.error("ai-daily-plan auth error:", authErr);
+      return new Response(JSON.stringify({ error: `Invalid token: ${authErr?.message || "User not found"}` }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
