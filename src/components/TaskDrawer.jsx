@@ -316,8 +316,8 @@ export default function TaskDrawer() {
 
   if (!task) return null;
 
-  // Save shorthand — used only when task is guaranteed non-null
-  const s = (u) => { updateTask(task.id, u); toast("Uloženo", "success"); };
+  // Silent auto-save — no toast for field-level changes (title, desc, status, etc.)
+  const s = (u) => { updateTask(task.id, u); };
 
   const addPhase = () => {
     const text = newPhase.trim();
