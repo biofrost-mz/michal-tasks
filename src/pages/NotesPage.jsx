@@ -507,6 +507,8 @@ function NoteEditor({ note, onSave, t, isMobile, showProps, onToggleProps, onDel
         const msg = error.message || String(error);
         if (msg.includes("non-2xx") || error.status === 401) {
           setAiResult("Chyba: AI služba je momentálně nedostupná (problém s přihlášením nebo vypršela relace). Zkus se odhlásit a znovu přihlásit.");
+        } else if (error.status === 429 || msg.includes("Rate limit")) {
+          setAiResult("Chyba: Příliš mnoho AI dotazů — zkus to za hodinu.");
         } else {
           setAiResult("Chyba: " + msg);
         }
@@ -516,6 +518,8 @@ function NoteEditor({ note, onSave, t, isMobile, showProps, onToggleProps, onDel
         const dErr = data.error;
         if (dErr.includes("non-2xx") || dErr.includes("Unauthorized")) {
           setAiResult("Chyba: AI služba je momentálně nedostupná (problém s přihlášením nebo vypršela relace). Zkus se odhlásit a znovu přihlásit.");
+        } else if (dErr.includes("Rate limit") || dErr.includes("429")) {
+          setAiResult("Chyba: Příliš mnoho AI dotazů — zkus to za hodinu.");
         } else {
           setAiResult("Chyba: " + dErr);
         }
@@ -901,6 +905,7 @@ function NoteEditor({ note, onSave, t, isMobile, showProps, onToggleProps, onDel
 /* ─── NotePropertiesPanel ───────────────────── */
 function NotePropertiesPanel({ note, onClose, t, isMobile, onExportMD, projects, tasks, addTask, activeWorkspaceId }) {
   const { updateNote, tags: globalTags, addTag: createGlobalTag } = useApp();
+  const toast = useToast();
   const [tagInput,        setTagInput]        = useState("");
   const [showAllProjects, setShowAllProjects] = useState(true);
   const [showAllTasks,    setShowAllTasks]    = useState(false);
@@ -942,18 +947,60 @@ function NotePropertiesPanel({ note, onClose, t, isMobile, onExportMD, projects,
       const { data, error } = await supabase.functions.invoke("ai-task-assist", {
         body: { action:"note_extract_tasks", note:{ title:note.title, content }, workspaceId: activeWorkspaceId },
       });
-      if (error) throw error;
+      if (error) {
+        const msg = error.message || String(error);
+        if (msg.includes("non-2xx") || error.status === 401) {
+          toast("AI služba je momentálně nedostupná (problém s přihlášením nebo vypršela relace). Zkus se odhlásit a znovu přihlásit.", "error");
+        } else if (error.status === 429 || msg.includes("Rate limit")) {
+          toast("Příliš mnoho AI dotazů — zkus to za hodinu.", "error");
+        } else {
+          toast(`Chyba AI extrakce: ${msg}`, "error");
+        }
+        return;
+      }
       if (data?.error) {
-        console.error("AI extract error:", data.error);
+        const msg = data.error;
+        if (msg.includes("non-2xx") || msg.includes("Unauthorized")) {
+          toast("AI služba je momentálně nedostupná (problém s přihlášením nebo vypršela relace). Zkus se odhlásit a znovu přihlásit.", "error");
+        } else if (msg.includes("Rate limit") || msg.includes("429")) {
+          toast("Příliš mnoho AI dotazů — zkus to za hodinu.", "error");
+        } else {
+          toast(`Chyba AI extrakce: ${msg}`, "error");
+        }
         return;
       }
       const raw = data?.result ?? "";
       try {
         const c = raw.replace(/^```[a-z]*\n?/i,"").replace(/```$/,"").trim();
         const extracted = JSON.parse(c);
-        extracted.forEach(text => { if (typeof text==="string"&&text.trim()) addTask({ title:text.trim() }); });
-      } catch { if (raw.trim()) addTask({ title: raw.trim() }); }
-    } catch {}
+        let count = 0;
+        extracted.forEach(text => {
+          if (typeof text === "string" && text.trim()) {
+            addTask({ title: text.trim() });
+            count++;
+          }
+        });
+        if (count > 0) {
+          toast(`Úspěšně vytvořeno ${count} úkolů z textu ✨`, "success");
+        } else {
+          toast("V textu nebyly nalezeny žádné úkoly", "info");
+        }
+      } catch {
+        if (raw.trim()) {
+          addTask({ title: raw.trim() });
+          toast("Vytvořen úkol z textu ✨", "success");
+        } else {
+          toast("V textu nebyly nalezeny žádné úkoly", "info");
+        }
+      }
+    } catch (e) {
+      const errMsg = e?.message || String(e);
+      if (errMsg.includes("non-2xx")) {
+        toast("Chyba přihlášení k AI službám. Odhlaste se a znovu přihlaste.", "error");
+      } else {
+        toast("Chyba extrakce úkolů — zkus to znovu", "error");
+      }
+    }
   };
 
   const toggleExtraProject = (id) => {
