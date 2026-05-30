@@ -103,8 +103,8 @@ export default function AIDailyPlan() {
         const dErr = data.error;
         if (dErr.includes("Rate limit")) {
           setError("Příliš mnoho generování — zkus to za hodinu.");
-        } else if (dErr.includes("non-2xx") || dErr.includes("Unauthorized")) {
-          setError("AI služba je momentálně nedostupná (problém s přihlášením nebo vypršela relace). Zkus se odhlásit a znovu přihlásit.");
+        } else if (dErr.includes("non-2xx") || dErr.includes("Unauthorized") || dErr.includes("Invalid token")) {
+          setError("AI služba je momentálně nedostupná (vypršela tvá přihlašovací relace). Otevři si nastavení a zkus se odhlásit a znovu přihlásit.");
         } else {
           setError(`Chyba: ${dErr}`);
         }

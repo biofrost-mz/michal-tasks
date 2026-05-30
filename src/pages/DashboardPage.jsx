@@ -133,7 +133,7 @@ function TaskCard({ task, onOpen, onStatusChange, onStar, projectsById }) {
   );
 }
 
-function Headline({ overdueCount, activeCount, totalCount, doneWeek, doneWeekAvg, addedToday, activeProjectsCount, doneProjectsCount, totalProjectsCount, streak }) {
+function Headline({ overdueCount, activeCount, totalCount, doneWeek, doneWeekAvg, addedToday, activeProjectsCount, doneProjectsCount, totalProjectsCount, streak, navigateToTasks, setPage }) {
   const now = new Date();
   const dayName = new Intl.DateTimeFormat("cs-CZ", { weekday: "long" }).format(now);
   const monthYear = new Intl.DateTimeFormat("cs-CZ", { month: "long", year: "numeric" }).format(now);
@@ -748,6 +748,8 @@ export default function DashboardPage() {
         doneProjectsCount={doneProjects.length}
         totalProjectsCount={projects.length}
         streak={streak}
+        navigateToTasks={navigateToTasks}
+        setPage={setPage}
       />
 
       <div className="work">
