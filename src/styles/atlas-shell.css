@@ -1917,7 +1917,7 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
     font-size: 14px;
   }
   .hl-num {
-    font-size: 42px;
+    font-size: 36px;
     line-height: 1;
   }
   .hl-meta {
@@ -1943,31 +1943,32 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
     padding: 6px 0 0;
     flex-wrap: wrap;
   }
-  .hl-mob-strip span { white-space: nowrap; }
+  .hl-mob-strip span {
+    white-space: nowrap;
+    background: var(--bg-2);
+    border-radius: var(--r-pill);
+    padding: 2px 8px;
+  }
 
   .hl-stats {
-    display: flex;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    gap: 0;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
     padding-top: 10px;
-    scrollbar-width: none;
+    overflow-x: unset;
   }
   .hl-stats::-webkit-scrollbar { display: none; }
   .hl-stat {
-    flex: 0 0 auto;
-    min-width: 90px;
-    padding: 0 14px 0 0;
+    flex: unset;
+    min-width: 0;
+    padding: 10px 8px;
     border-right: 1px dashed var(--border-soft);
-    border-bottom: none;
+    border-bottom: 1px dashed var(--border-soft);
+    animation: none;
   }
-  .hl-stat:last-child {
-    border-right: none;
-    padding-right: 0;
-  }
-  .hl-stat:nth-child(even) {
-    padding-left: 0;
-  }
+  .hl-stat:first-child { padding-left: 8px; }
+  .hl-stat:last-child { padding-right: 8px; border-right: none; }
+  .hl-stat:nth-child(3n) { border-right: none; }
+  .hl-stat:nth-child(n+4) { border-bottom: none; }
   .hl-stat-v {
     font-size: 26px;
     margin-top: 2px;
@@ -2004,7 +2005,17 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
     justify-content: center;
     padding: 12px;
   }
-  
+  button.ai-hero {
+    grid-template-columns: 32px 1fr 20px;
+    border-radius: var(--r-pill);
+    padding: 10px 16px;
+    gap: 12px;
+    border-top: none;
+    border: 1px solid var(--border-soft);
+    text-align: left;
+    justify-items: start;
+  }
+
   .aisug {
     grid-template-columns: 1fr;
     gap: 10px;
@@ -2018,6 +2029,9 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
     grid-column: 1 / -1;
     justify-self: start;
     margin-top: 4px;
+  }
+  .aisug {
+    display: none;
   }
 
   /* === C. Rychlé přidávání a klávesové zkratky === */
@@ -2563,4 +2577,10 @@ body, p, li, td, th {
   display: none !important;
 }
 
-
+@media (prefers-reduced-motion: reduce) {
+  .headline,
+  .hl-stat,
+  .work > * {
+    animation: none !important;
+  }
+}
