@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState, useEffect } from "react";
+import React, { useMemo, useRef, useState, useEffect, useCallback } from "react";
 import { useApp } from "../context/AppContext.jsx";
 import { useToast } from "../components/Toast.jsx";
 import { useConfirm } from "../components/Confirm.jsx";
@@ -9,6 +9,23 @@ import QuickAdd from "../components/QuickAdd.jsx";
 import { projectColor, parseYMD, startOfToday } from "../utils.js";
 import { PROJ_STATUS } from "../constants.js";
 import EmptyState from "../components/EmptyState.jsx";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+  useDroppable,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 const PROJECT_COLORS = [
   "#3b82f6", "#22c55e", "#f59e0b", "#8b5cf6", "#ef4444",
@@ -42,6 +59,62 @@ function TaskStatusButton({ current, target, onClick, label }) {
   );
 }
 
+function DroppableCol({ colId, color, isOver, children }) {
+  const { setNodeRef } = useDroppable({ id: colId });
+  return (
+    <div
+      ref={setNodeRef}
+      className={`kcol${isOver ? " drag-over" : ""}`}
+      style={{ "--col-color": color }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function SortableKCard({ t }) {
+  const { setTaskDetail, updateTask } = useApp();
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: t.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.3 : 1,
+    cursor: isDragging ? "grabbing" : "grab",
+    touchAction: "none",
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className="kcard"
+      onClick={() => setTaskDetail(t.id)}
+    >
+      <div className="kcard-t">{t.title || "Bez názvu"}</div>
+      <div className="kcard-m">
+        {t.priority === "high" ? <span className="prio" style={{ "--prio-color": "#f87171" }}>↑ Vysoká</span> : null}
+        {t.dueDate ? <span className={`due ${taskOverdue(t) ? "overdue" : ""}`}>{taskDue(t)}</span> : null}
+      </div>
+      {Array.isArray(t.subtasks) && t.subtasks.length > 0 ? <div className="kcard-sub">≡ {t.subtasks.length} podúkoly</div> : null}
+      <div className="kcard-quick" onClick={(e) => e.stopPropagation()}>
+        <TaskStatusButton current={t.status} target="todo" label="To do" onClick={() => updateTask(t.id, { status: "todo" })} />
+        <TaskStatusButton current={t.status} target={t.status === "waiting" ? "waiting" : "doing"} label={t.status === "waiting" ? "Čekám" : "Doing"} onClick={() => updateTask(t.id, { status: t.status === "doing" ? "waiting" : "doing" })} />
+        <TaskStatusButton current={t.status} target="done" label="Hotovo" onClick={() => updateTask(t.id, { status: "done" })} />
+      </div>
+    </div>
+  );
+}
+
 export function ProjectDetailPage() {
   const {
     projects,
@@ -51,6 +124,7 @@ export function ProjectDetailPage() {
     setPage,
     addTask,
     updateTask,
+    reorderTasks,
     updateProject,
     deleteProject,
     setTaskDetail,
@@ -71,10 +145,13 @@ export function ProjectDetailPage() {
   const [inlineVal, setInlineVal] = useState("");
   const [showAllDone, setShowAllDone] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [activeId, setActiveId] = useState(null);
+  const [overId, setOverId] = useState(null);
 
-  const touchTaskIdRef = useRef(null);
-  const touchStartRef = useRef(null);
-  const touchElementRef = useRef(null);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
+  );
 
   const project = projects.find((p) => p.id === selProject);
   if (!project) return <div className="content"><div className="ph-title">Projekt nenalezen</div></div>;
@@ -99,6 +176,45 @@ export function ProjectDetailPage() {
     setInlineVal("");
     setInlineAdd(null);
   };
+
+  const handleDragStart = useCallback(({ active }) => {
+    setActiveId(active.id);
+  }, []);
+
+  const handleDragOver = useCallback(({ over }) => {
+    setOverId(over?.id ?? null);
+  }, []);
+
+  const handleDragEnd = useCallback(({ active, over }) => {
+    setActiveId(null);
+    setOverId(null);
+    if (!over || active.id === over.id) return;
+
+    const activeTask = projectTasks.find((t) => t.id === active.id);
+    if (!activeTask) return;
+
+    const targetCol = TASK_COLS.find((c) => c.id === over.id);
+    if (targetCol) {
+      if (activeTask.status !== targetCol.id) {
+        updateTask(activeTask.id, { status: targetCol.id });
+      }
+      return;
+    }
+
+    const overTask = projectTasks.find((t) => t.id === over.id);
+    if (!overTask) return;
+
+    if (activeTask.status === overTask.status) {
+      const colTasks = projectTasks
+        .filter((t) => t.status === activeTask.status)
+        .sort((a, b) => (a.position || 0) - (b.position || 0));
+      const oldIdx = colTasks.findIndex((t) => t.id === active.id);
+      const newIdx = colTasks.findIndex((t) => t.id === over.id);
+      if (oldIdx !== newIdx) reorderTasks(arrayMove(colTasks, oldIdx, newIdx));
+    } else {
+      updateTask(activeTask.id, { status: overTask.status });
+    }
+  }, [projectTasks, updateTask, reorderTasks]);
 
   return (
     <div className="content">
@@ -228,167 +344,112 @@ export function ProjectDetailPage() {
         <span className="quickadd-kbd">Enter</span>
       </div>
 
-      <div className="kanban">
-        {TASK_COLS.map((col) => {
-          const listAll = projectTasks.filter((t) => t.status === col.id);
-          const list = col.id === "done" && !showAllDone ? listAll.slice(0, 5) : listAll;
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragEnd={handleDragEnd}
+      >
+        <div className="kanban">
+          {TASK_COLS.map((col) => {
+            const listAll = projectTasks
+              .filter((t) => t.status === col.id)
+              .sort((a, b) => (a.position || 0) - (b.position || 0));
+            const list = col.id === "done" && !showAllDone ? listAll.slice(0, 5) : listAll;
+            const colIsOver = overId === col.id;
 
-          return (
-            <div
-              key={col.id}
-              className="kcol"
-              style={{ "--col-color": col.color }}
-              data-col-id={col.id}
-              onDragOver={(e) => { e.preventDefault(); }}
-              onDragEnter={(e) => { e.preventDefault(); e.currentTarget.classList.add("drag-over"); }}
-              onDragLeave={(e) => { e.currentTarget.classList.remove("drag-over"); }}
-              onDrop={(e) => {
-                e.preventDefault();
-                e.currentTarget.classList.remove("drag-over");
-                const taskId = e.dataTransfer.getData("text/plain");
-                if (taskId) {
-                  updateTask(taskId, { status: col.id });
-                }
-              }}
-            >
-              <div className="kcol-head">
-                <span className="kcol-name">{col.label}</span>
-                <span className="kcol-count">{listAll.length}</span>
-                <span className="kcol-add" onClick={() => { setInlineAdd(col.id); setInlineVal(""); }}><Icon name="plus" size={12} color="currentColor" strokeWidth={2} /></span>
-              </div>
-
-              {list.map((t) => (
-                <div
-                  key={t.id}
-                  className="kcard"
-                  onClick={() => setTaskDetail(t.id)}
-                  draggable={true}
-                  onDragStart={(e) => {
-                    e.dataTransfer.setData("text/plain", t.id);
-                    e.currentTarget.classList.add("dragging");
-                  }}
-                  onDragEnd={(e) => {
-                    e.currentTarget.classList.remove("dragging");
-                  }}
-                  onTouchStart={(e) => {
-                    touchTaskIdRef.current = t.id;
-                    touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-                    touchElementRef.current = e.currentTarget;
-                  }}
-                  onTouchMove={(e) => {
-                    if (!touchStartRef.current || !touchElementRef.current) return;
-                    const dx = e.touches[0].clientX - touchStartRef.current.x;
-                    const dy = e.touches[0].clientY - touchStartRef.current.y;
-                    if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
-                      if (e.cancelable) e.preventDefault();
-                      touchElementRef.current.style.transform = `translate3d(${dx}px, ${dy}px, 10px)`;
-                      touchElementRef.current.style.zIndex = "1000";
-                      touchElementRef.current.classList.add("dragging");
-
-                      const elem = document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY);
-                      const colElem = elem?.closest(".kcol");
-                      document.querySelectorAll(".kcol").forEach((col) => {
-                        if (col === colElem) {
-                          col.classList.add("drag-over");
-                        } else {
-                          col.classList.remove("drag-over");
-                        }
-                      });
-                    }
-                  }}
-                  onTouchEnd={(e) => {
-                    if (!touchElementRef.current) return;
-                    const clientX = e.changedTouches[0].clientX;
-                    const clientY = e.changedTouches[0].clientY;
-                    const elem = document.elementFromPoint(clientX, clientY);
-                    const colElem = elem?.closest(".kcol");
-                    if (colElem) {
-                      const colId = colElem.getAttribute("data-col-id");
-                      if (colId && colId !== t.status) {
-                        updateTask(touchTaskIdRef.current, { status: colId });
-                      }
-                    }
-                    touchElementRef.current.style.transform = "";
-                    touchElementRef.current.style.zIndex = "";
-                    touchElementRef.current.classList.remove("dragging");
-                    document.querySelectorAll(".kcol").forEach((col) => {
-                      col.classList.remove("drag-over");
-                    });
-                    touchTaskIdRef.current = null;
-                    touchStartRef.current = null;
-                    touchElementRef.current = null;
-                  }}
-                >
-                  <div className="kcard-t">{t.title || "Bez názvu"}</div>
-                  <div className="kcard-m">
-                    {t.priority === "high" ? <span className="prio" style={{ "--prio-color": "#f87171" }}>↑ Vysoká</span> : null}
-                    {t.dueDate ? <span className={`due ${taskOverdue(t) ? "overdue" : ""}`}>{taskDue(t)}</span> : null}
-                  </div>
-                  {Array.isArray(t.subtasks) && t.subtasks.length > 0 ? <div className="kcard-sub">≡ {t.subtasks.length} podúkoly</div> : null}
-                  <div className="kcard-quick" onClick={(e) => e.stopPropagation()}>
-                    <TaskStatusButton current={t.status} target="todo" label="To do" onClick={() => updateTask(t.id, { status: "todo" })} />
-                    <TaskStatusButton current={t.status} target={t.status === "waiting" ? "waiting" : "doing"} label={t.status === "waiting" ? "Čekám" : "Doing"} onClick={() => updateTask(t.id, { status: t.status === "doing" ? "waiting" : "doing" })} />
-                    <TaskStatusButton current={t.status} target="done" label="Hotovo" onClick={() => updateTask(t.id, { status: "done" })} />
-                  </div>
+            return (
+              <DroppableCol key={col.id} colId={col.id} color={col.color} isOver={colIsOver}>
+                <div className="kcol-head">
+                  <span className="kcol-name">{col.label}</span>
+                  <span className="kcol-count">{listAll.length}</span>
+                  <span className="kcol-add" onClick={() => { setInlineAdd(col.id); setInlineVal(""); }}>
+                    <Icon name="plus" size={12} color="currentColor" strokeWidth={2} />
+                  </span>
                 </div>
-              ))}
 
-              {col.id === "done" && listAll.length > 5 ? (
-                <button className="btn" style={{ width: "100%", marginTop: 6 }} onClick={() => setShowAllDone((v) => !v)}>
-                  {showAllDone ? "Skrýt dokončené" : `+ ${listAll.length - 5} dalších`}
-                </button>
-              ) : null}
+                <SortableContext items={list.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+                  {list.map((t) => <SortableKCard key={t.id} t={t} />)}
+                </SortableContext>
 
-              {listAll.length > 0 && inlineAdd !== col.id ? (
-                <button
-                  className="btn"
-                  style={{
-                    width: "100%",
-                    marginTop: 8,
-                    borderStyle: "dashed",
-                    borderColor: "var(--border-soft)",
-                    background: "transparent",
-                    color: "var(--text-3)",
-                    fontSize: 12.5,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 6
-                  }}
-                  onClick={() => { setInlineAdd(col.id); setInlineVal(""); }}
-                >
-                  <Icon name="plus" size={12} color="currentColor" strokeWidth={2} />
-                  Přidat úkol
-                </button>
-              ) : null}
+                {col.id === "done" && listAll.length > 5 ? (
+                  <button className="btn" style={{ width: "100%", marginTop: 6 }} onClick={() => setShowAllDone((v) => !v)}>
+                    {showAllDone ? "Skrýt dokončené" : `+ ${listAll.length - 5} dalších`}
+                  </button>
+                ) : null}
 
-              {inlineAdd === col.id ? (
-                <div style={{ marginTop: 6 }}>
-                  <input
-                    autoFocus
-                    value={inlineVal}
-                    onChange={(e) => setInlineVal(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") createTask(col.id, inlineVal);
-                      if (e.key === "Escape") { setInlineAdd(null); setInlineVal(""); }
+                {listAll.length > 0 && inlineAdd !== col.id ? (
+                  <button
+                    className="btn"
+                    style={{
+                      width: "100%",
+                      marginTop: 8,
+                      borderStyle: "dashed",
+                      borderColor: "var(--border-soft)",
+                      background: "transparent",
+                      color: "var(--text-3)",
+                      fontSize: 12.5,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 6,
                     }}
-                    onBlur={() => createTask(col.id, inlineVal)}
-                    placeholder="Název úkolu… (Enter)"
-                    className="detail-input"
-                    style={{ width: "100%" }}
-                  />
-                </div>
-              ) : null}
+                    onClick={() => { setInlineAdd(col.id); setInlineVal(""); }}
+                  >
+                    <Icon name="plus" size={12} color="currentColor" strokeWidth={2} />
+                    Přidat úkol
+                  </button>
+                ) : null}
 
-              {listAll.length === 0 && inlineAdd !== col.id ? (
-                <div className="kcard" style={{ borderStyle: "dashed", textAlign: "center", color: "var(--text-3)", padding: "18px" }} onClick={() => { setInlineAdd(col.id); setInlineVal(""); }}>
-                  + Přidat úkol
+                {inlineAdd === col.id ? (
+                  <div style={{ marginTop: 6 }}>
+                    <input
+                      autoFocus
+                      value={inlineVal}
+                      onChange={(e) => setInlineVal(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") createTask(col.id, inlineVal);
+                        if (e.key === "Escape") { setInlineAdd(null); setInlineVal(""); }
+                      }}
+                      onBlur={() => createTask(col.id, inlineVal)}
+                      placeholder="Název úkolu… (Enter)"
+                      className="detail-input"
+                      style={{ width: "100%" }}
+                    />
+                  </div>
+                ) : null}
+
+                {listAll.length === 0 && inlineAdd !== col.id ? (
+                  <div
+                    className="kcard"
+                    style={{ borderStyle: "dashed", textAlign: "center", color: "var(--text-3)", padding: "18px" }}
+                    onClick={() => { setInlineAdd(col.id); setInlineVal(""); }}
+                  >
+                    + Přidat úkol
+                  </div>
+                ) : null}
+              </DroppableCol>
+            );
+          })}
+        </div>
+
+        <DragOverlay>
+          {activeId ? (() => {
+            const t = projectTasks.find((tk) => tk.id === activeId);
+            if (!t) return null;
+            return (
+              <div className="kcard" style={{ opacity: 0.95, cursor: "grabbing", boxShadow: "0 8px 32px rgba(0,0,0,.4)", pointerEvents: "none" }}>
+                <div className="kcard-t">{t.title || "Bez názvu"}</div>
+                <div className="kcard-m">
+                  {t.priority === "high" ? <span className="prio" style={{ "--prio-color": "#f87171" }}>↑ Vysoká</span> : null}
+                  {t.dueDate ? <span className={`due ${taskOverdue(t) ? "overdue" : ""}`}>{taskDue(t)}</span> : null}
                 </div>
-              ) : null}
-            </div>
-          );
-        })}
-      </div>
+              </div>
+            );
+          })() : null}
+        </DragOverlay>
+      </DndContext>
 
       <div style={{ marginTop: 32, borderTop: "1px solid var(--border)", paddingTop: 24 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
