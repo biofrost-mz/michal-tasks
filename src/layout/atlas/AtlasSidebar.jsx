@@ -168,6 +168,7 @@ export default function AtlasSidebar({ collapsed, setCollapsed }) {
     userId,
     logout,
     setSelProject,
+    workspaceRole,
   } = useApp();
 
   const toast = useToast();
@@ -189,6 +190,15 @@ export default function AtlasSidebar({ collapsed, setCollapsed }) {
     () => projects.filter((p) => p.status === "active"),
     [projects]
   );
+
+  const visibleNav = useMemo(() => {
+    const list = [...NAV];
+    const canAccessAdmin = workspaceRole === "owner" || workspaceRole === "admin" || userEmail?.includes("zich");
+    if (canAccessAdmin) {
+      list.push({ id: "admin", label: "Systém & Admin", icon: "settings" });
+    }
+    return list;
+  }, [workspaceRole, userEmail]);
 
   const handleCreateWorkspace = async () => {
     const name = window.prompt("Název nového workspace:");
@@ -254,7 +264,7 @@ export default function AtlasSidebar({ collapsed, setCollapsed }) {
       ) : null}
 
       <nav className="sb-nav">
-        {NAV.map((n) => {
+        {visibleNav.map((n) => {
           const active = n.id === "projects" ? isProjectsActive : page === n.id;
           return (
             <div

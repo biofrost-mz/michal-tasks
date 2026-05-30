@@ -7,7 +7,7 @@ import { WorkspaceSwitcher } from './Sidebar.jsx'
 import { formatDateKey } from '../locale.js'
 
 export default function MobileNav({ toggleDk }) {
-  const { t, dk, page, setPage, tasks, projects, quickTodos, setCmdOpen, setTaskDetail, userEmail, workspaceMembers, userId, logout } = useApp();
+  const { t, dk, page, setPage, tasks, projects, quickTodos, setCmdOpen, setTaskDetail, userEmail, workspaceMembers, userId, logout, workspaceRole } = useApp();
   const confirm = useConfirm();
   const [moreOpen, setMoreOpen] = useState(false);
 
@@ -26,11 +26,18 @@ export default function MobileNav({ toggleDk }) {
     { id: "projects",    label: "Projekty", icon: "folder"       },
   ];
 
-  const more = [
-    { id: "notes",     label: "Poznámky", icon: "file-text"    },
-    { id: "timeline",  label: "Plán",     icon: "calendar"     },
-    { id: "tags",      label: "Tagy",     icon: "tag"          },
-  ];
+  const moreList = React.useMemo(() => {
+    const list = [
+      { id: "notes",     label: "Poznámky", icon: "file-text"    },
+      { id: "timeline",  label: "Plán",     icon: "calendar"     },
+      { id: "tags",      label: "Tagy",     icon: "tag"          },
+    ];
+    const canAccessAdmin = workspaceRole === "owner" || workspaceRole === "admin" || userEmail?.includes("zich");
+    if (canAccessAdmin) {
+      list.push({ id: "admin", label: "Admin", icon: "settings" });
+    }
+    return list;
+  }, [workspaceRole, userEmail]);
 
   const me = workspaceMembers.find((m) => m.userId === userId);
   const displayName = me?.displayName || me?.email || userEmail || "Uživatel";
@@ -95,7 +102,7 @@ export default function MobileNav({ toggleDk }) {
 
             {/* More nav items */}
             <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-              {more.map((n) => {
+              {moreList.map((n) => {
                 const act = page === n.id;
                 return (
                   <button key={n.id} onClick={() => handleNav(n.id)} style={{

@@ -19,6 +19,7 @@ import TagsPage from "./pages/TagsPage.jsx";
 import WorkspaceSettingsPage from "./pages/WorkspaceSettingsPage.jsx";
 import UserProfilePage from "./pages/UserProfilePage.jsx";
 import QuickTodosPage from "./pages/QuickTodosPage.jsx";
+import AdminPage from "./pages/AdminPage.jsx";
 import { applyDocumentMetadata } from "./appMeta.js";
 import "./styles/atlas-shell.css";
 
@@ -143,6 +144,7 @@ function AppShell() {
             {page === "workspace-settings" && <PageErrorBoundary label="Nastavení">       <WorkspaceSettingsPage /> </PageErrorBoundary>}
             {page === "user-profile"       && <PageErrorBoundary label="Profil">          <UserProfilePage />       </PageErrorBoundary>}
             {page === "quick-todos"        && <PageErrorBoundary label="Rychlý seznam">   <QuickTodosPage />        </PageErrorBoundary>}
+            {page === "admin"              && <PageErrorBoundary label="Administrace">    <AdminPage />             </PageErrorBoundary>}
           </main>
 
           {/* TaskDrawer — vlastní boundary, chyba v draweru nerozhodí celou stránku */}

@@ -14,6 +14,7 @@ export const PAGE_TITLES = {
   notes: "Poznámky",
   "workspace-settings": "Nastavení workspace",
   "user-profile": "Profil",
+  admin: "Systém & Admin",
 };
 
 export function getDocumentTitle(page) {
