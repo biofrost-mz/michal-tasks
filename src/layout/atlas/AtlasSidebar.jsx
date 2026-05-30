@@ -227,9 +227,9 @@ export default function AtlasSidebar({ collapsed, setCollapsed }) {
       </button>
 
       <div className="sb-brand">
-        <div className="sb-logo">A</div>
+        <div className="sb-logo">Z</div>
         <div className="sb-brand-text">
-          <div className="sb-brand-name">Atlas</div>
+          <div className="sb-brand-name">Zentero</div>
           <div className="sb-brand-tag">personal OS · v2</div>
         </div>
       </div>

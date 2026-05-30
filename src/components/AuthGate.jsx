@@ -8,10 +8,29 @@ import { supabase } from '../supabase.js'
 /* Decorative mock card shown in the brand panel */
 function MockTaskCard() {
   return (
-    <div style={{
-      background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)",
-      borderRadius: 14, padding: "14px 16px", marginTop: 36,
-    }}>
+    <div 
+      style={{
+        background: "rgba(255, 255, 255, 0.03)", 
+        border: "1.5px solid rgba(251, 191, 36, 0.2)",
+        borderRadius: 14, 
+        padding: "14px 16px", 
+        marginTop: 36,
+        transition: "all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
+        boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
+      }}
+      onMouseEnter={e => {
+        e.currentTarget.style.borderColor = "rgba(251, 191, 36, 0.55)";
+        e.currentTarget.style.transform = "translateY(-4px) scale(1.02)";
+        e.currentTarget.style.background = "rgba(255, 255, 255, 0.05)";
+        e.currentTarget.style.boxShadow = "0 15px 40px rgba(251, 191, 36, 0.1)";
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.borderColor = "rgba(251, 191, 36, 0.2)";
+        e.currentTarget.style.transform = "none";
+        e.currentTarget.style.background = "rgba(255, 255, 255, 0.03)";
+        e.currentTarget.style.boxShadow = "0 10px 30px rgba(0,0,0,0.5)";
+      }}
+    >
       <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 10 }}>
         Dnešní plán · AI
       </div>
@@ -52,13 +71,24 @@ export default function AuthGate({ children }) {
   const toast = useToast();
 
   const [session,  setSession]  = useState(null);
-  const [authMode, setAuthMode] = useState("magic");    // "magic" | "password"
+  const [authMode, setAuthMode] = useState("password");    // "magic" | "password"
   const [signMode, setSignMode] = useState("signin");   // "signin" | "signup"
   const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
   const [showPw,   setShowPw]   = useState(false);
   const [sending,  setSending]  = useState(false);
   const [sent,     setSent]     = useState(false);
+  const [mouseCoords, setMouseCoords] = useState({ x: 50, y: 50 });
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      const x = (e.clientX / window.innerWidth) * 100;
+      const y = (e.clientY / window.innerHeight) * 100;
+      setMouseCoords({ x, y });
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, []);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session ?? null));
@@ -113,20 +143,21 @@ export default function AuthGate({ children }) {
   }
 
   const glassCardStyle = {
-    background: "rgba(20, 20, 20, 0.6)",
-    backdropFilter: "blur(12px)",
-    WebkitBackdropFilter: "blur(12px)",
-    border: "1px solid rgba(255, 255, 255, 0.1)",
+    background: "rgba(8, 8, 8, 0.65)",
+    backdropFilter: "blur(32px)",
+    WebkitBackdropFilter: "blur(32px)",
+    border: "1.5px solid rgba(251, 191, 36, 0.35)",
     borderRadius: "24px",
     padding: isMobile ? "24px" : "48px",
-    boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
+    boxShadow: "0 40px 80px -20px rgba(0, 0, 0, 0.95), 0 0 40px rgba(251, 191, 36, 0.06)",
     display: "flex",
     flexDirection: "column",
+    transition: "transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.4s ease, box-shadow 0.4s ease",
   };
 
   const inputFieldStyle = {
-    background: "rgba(255, 255, 255, 0.05)",
-    border: "1px solid rgba(255, 255, 255, 0.1)",
+    background: "rgba(255, 255, 255, 0.03)",
+    border: "1px solid rgba(255, 255, 255, 0.12)",
     borderRadius: "12px",
     padding: "12px 16px",
     color: "#ffffff",
@@ -134,19 +165,19 @@ export default function AuthGate({ children }) {
     fontSize: "14px",
     outline: "none",
     boxSizing: "border-box",
-    transition: "all 0.3s ease",
+    transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
   };
 
   const btnPrimaryStyle = {
     background: "linear-gradient(135deg, #fbbf24 0%, #d97706 100%)",
     color: "#000000",
-    fontWeight: "600",
+    fontWeight: "700",
     borderRadius: "12px",
     padding: "16px",
     border: "none",
     fontSize: "15px",
     cursor: "pointer",
-    transition: "transform 0.2s ease, box-shadow 0.2s ease",
+    transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease, filter 0.2s ease",
     boxShadow: "0 10px 20px rgba(251, 191, 36, 0.15)",
   };
 
@@ -157,7 +188,7 @@ export default function AuthGate({ children }) {
       alignItems: "center",
       justifyContent: "center",
       minHeight: "100vh",
-      background: "#050505",
+      background: "#030303",
       color: "#ffffff",
       fontFamily: "'Inter', sans-serif",
       position: "relative",
@@ -165,16 +196,39 @@ export default function AuthGate({ children }) {
       boxSizing: "border-box",
       padding: isMobile ? "24px 16px" : "40px 32px",
     }}>
-      {/* Decorative Glow */}
+      {/* Interactive Aurora Mouse Glow Background with parralax depth */}
       <div style={{
         position: "absolute",
-        width: "600px",
-        height: "600px",
-        background: "radial-gradient(circle, rgba(251, 191, 36, 0.08) 0%, rgba(0, 0, 0, 0) 70%)",
-        top: "-200px",
-        left: "-200px",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: `
+          radial-gradient(circle 450px at ${mouseCoords.x}% ${mouseCoords.y}%, rgba(251, 191, 36, 0.16) 0%, rgba(249, 115, 22, 0.08) 30%, rgba(139, 92, 246, 0.05) 60%, rgba(0, 0, 0, 0) 100%),
+          radial-gradient(circle 600px at ${100 - mouseCoords.x}% ${100 - mouseCoords.y}%, rgba(168, 85, 247, 0.08) 0%, rgba(236, 72, 153, 0.03) 40%, rgba(0, 0, 0, 0) 100%),
+          radial-gradient(circle 800px at 100% 0%, rgba(251, 191, 36, 0.06) 0%, rgba(0, 0, 0, 0) 80%),
+          radial-gradient(circle 800px at 0% 100%, rgba(139, 92, 246, 0.06) 0%, rgba(0, 0, 0, 0) 80%),
+          #030303
+        `,
         zIndex: 0,
         pointerEvents: "none",
+        transition: "background 0.1s ease-out",
+      }} />
+
+      {/* Grid Pattern Overlay - Golden and localized */}
+      <div style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundImage: "radial-gradient(rgba(251, 191, 36, 0.08) 1.5px, transparent 1.5px)",
+        backgroundSize: "28px 24px",
+        opacity: 0.8,
+        zIndex: 0,
+        pointerEvents: "none",
+        maskImage: "radial-gradient(ellipse at 50% 50%, black 50%, transparent 100%)",
+        WebkitMaskImage: "radial-gradient(ellipse at 50% 50%, black 50%, transparent 100%)",
       }} />
 
       <div style={{
@@ -198,7 +252,25 @@ export default function AuthGate({ children }) {
         <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: "28px" }}>
           <div>
             {/* Logo */}
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "24px" }}>
+            <div 
+              style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "24px", cursor: "pointer", width: "fit-content" }}
+              onMouseEnter={e => {
+                const logo = e.currentTarget.firstChild;
+                logo.style.transform = "rotate(15deg) scale(1.1)";
+                logo.style.boxShadow = "0 8px 24px rgba(251, 191, 36, 0.6)";
+                const text = e.currentTarget.lastChild;
+                text.style.color = "#fbbf24";
+                text.style.textShadow = "0 0 10px rgba(251, 191, 36, 0.3)";
+              }}
+              onMouseLeave={e => {
+                const logo = e.currentTarget.firstChild;
+                logo.style.transform = "none";
+                logo.style.boxShadow = "0 4px 14px rgba(251, 191, 36, 0.4)";
+                const text = e.currentTarget.lastChild;
+                text.style.color = "#ffffff";
+                text.style.textShadow = "none";
+              }}
+            >
               <div style={{
                 width: "34px",
                 height: "34px",
@@ -211,11 +283,12 @@ export default function AuthGate({ children }) {
                 color: "#000000",
                 fontSize: "19px",
                 boxShadow: "0 4px 14px rgba(251, 191, 36, 0.4)",
+                transition: "all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
               }}>
-                A
+                Z
               </div>
-              <span style={{ fontSize: "20px", fontWeight: "750", tracking: "-0.5px", textTransform: "uppercase" }}>
-                Atlas <span style={{ fontWeight: "300", color: "#6b7280" }}>OS</span>
+              <span style={{ fontSize: "20px", fontWeight: "850", letterSpacing: "1px", textTransform: "uppercase", transition: "all 0.3s ease" }}>
+                ZENTERO
               </span>
             </div>
 
@@ -238,7 +311,7 @@ export default function AuthGate({ children }) {
               margin: 0,
               maxWidth: "420px",
             }}>
-              Atlas není jen úkolovník. Je to váš digitální mozek, který automatizuje chaos a nechává vám prostor na to podstatné.
+              Zentero není jen úkolovník. Je to váš digitální mozek, který automatizuje chaos a nechává vám prostor na to podstatné.
             </p>
           </div>
 
@@ -247,7 +320,7 @@ export default function AuthGate({ children }) {
             <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
               <div style={{ color: "#fbbf24", fontSize: "16px", marginTop: "1px" }}>✦</div>
               <p style={{ fontSize: "13.5px", color: "#d1d5db", margin: 0, lineHeight: "1.5" }}>
-                <strong>AI Prioritizace:</strong> Atlas ví, co hoří a co počká.
+                <strong>AI Prioritizace:</strong> Zentero ví, co hoří a co počká.
               </p>
             </div>
             <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
@@ -263,10 +336,22 @@ export default function AuthGate({ children }) {
         </div>
 
         {/* RIGHT COLUMN: Glass login card */}
-        <div style={glassCardStyle}>
+        <div 
+          style={glassCardStyle}
+          onMouseEnter={e => {
+            e.currentTarget.style.transform = "translateY(-6px)";
+            e.currentTarget.style.borderColor = "rgba(251, 191, 36, 0.6)";
+            e.currentTarget.style.boxShadow = "0 50px 100px -20px rgba(0, 0, 0, 0.95), 0 0 50px rgba(251, 191, 36, 0.15)";
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.transform = "none";
+            e.currentTarget.style.borderColor = "rgba(251, 191, 36, 0.35)";
+            e.currentTarget.style.boxShadow = "0 40px 80px -20px rgba(0, 0, 0, 0.95), 0 0 40px rgba(251, 191, 36, 0.06)";
+          }}
+        >
           {/* Header text inside card */}
           <h2 style={{ fontSize: "24px", fontWeight: "700", margin: "0 0 6px", color: "#ffffff" }}>
-            {signMode === "signup" ? "Vytvořit účet zdarma" : "Vítejte zpět"}
+            {signMode === "signup" ? "✨ Vytvořit účet zdarma" : "👋 Vítejte zpět"}
           </h2>
           <p style={{ fontSize: "13.5px", color: "#9ca3af", margin: "0 0 28px" }}>
             {signMode === "signup" ? "Začněte pracovat chytřeji ještě dnes." : "Pokračujte tam, kde jste včera skončili."}
@@ -274,7 +359,7 @@ export default function AuthGate({ children }) {
 
           {/* Two-way Auth Mode Switcher */}
           <div style={{ display: "flex", background: "rgba(255, 255, 255, 0.04)", borderRadius: "12px", padding: "4px", marginBottom: "28px", border: "1px solid rgba(255, 255, 255, 0.06)" }}>
-            {[["magic", "✉ Magic link"], ["password", "🔒 Heslo"]].map(([m, label]) => (
+            {[["magic", "🪄 Magic link"], ["password", "🔑 Přihlášení"]].map(([m, label]) => (
               <button
                 key={m}
                 type="button"
@@ -284,12 +369,25 @@ export default function AuthGate({ children }) {
                   padding: "9px 0",
                   borderRadius: "8px",
                   border: "none",
-                  background: authMode === m ? "rgba(255, 255, 255, 0.08)" : "transparent",
-                  color: authMode === m ? "#ffffff" : "#9ca3af",
+                  background: authMode === m ? "rgba(251, 191, 36, 0.12)" : "transparent",
+                  color: authMode === m ? "#fbbf24" : "#9ca3af",
                   fontSize: "13px",
                   fontWeight: authMode === m ? "700" : "400",
                   cursor: "pointer",
-                  transition: "all 0.2s ease",
+                  transition: "all 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
+                  outline: "none",
+                }}
+                onMouseEnter={e => {
+                  if (authMode !== m) {
+                    e.currentTarget.style.color = "#ffffff";
+                    e.currentTarget.style.background = "rgba(255, 255, 255, 0.02)";
+                  }
+                }}
+                onMouseLeave={e => {
+                  if (authMode !== m) {
+                    e.currentTarget.style.color = "#9ca3af";
+                    e.currentTarget.style.background = "transparent";
+                  }
                 }}
               >
                 {label}
@@ -498,7 +596,7 @@ export default function AuthGate({ children }) {
                   e.currentTarget.style.boxShadow = "0 10px 20px rgba(251, 191, 36, 0.15)";
                 }}
               >
-                {sending ? "Čekejte…" : signMode === "signup" ? "Registrovat se do Atlas OS" : "Přihlásit se do Atlas OS"}
+                {sending ? "Čekejte…" : signMode === "signup" ? "Registrovat se do Zentero" : "Přihlásit se do Zentero"}
               </button>
             </form>
           )}
@@ -541,12 +639,10 @@ export default function AuthGate({ children }) {
       </main>
       </div>
 
-      {/* Footer section separated by thin line */}
+      {/* Footer section - smaller, single-line, borderless, no arrow */}
       <footer style={{
         width: "100%",
         maxWidth: "1024px",
-        borderTop: "1px solid rgba(255, 255, 255, 0.08)",
-        paddingTop: "24px",
         marginTop: isMobile ? "24px" : "40px",
         display: "flex",
         justifyContent: "center",
@@ -559,28 +655,17 @@ export default function AuthGate({ children }) {
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "12px",
+            gap: "8px",
             textDecoration: "none",
-            borderRadius: "12px",
-            padding: "8px 16px",
-            background: "rgba(255, 255, 255, 0.02)",
-            border: "1px solid rgba(255, 255, 255, 0.04)",
-            transition: "all 0.2s ease",
+            transition: "opacity 0.2s ease",
+            fontSize: "12px",
+            color: "#6b7280",
           }}
-          onMouseEnter={e => {
-            e.currentTarget.style.borderColor = "rgba(251, 191, 36, 0.3)";
-            e.currentTarget.style.background = "rgba(255, 255, 255, 0.04)";
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.04)";
-            e.currentTarget.style.background = "rgba(255, 255, 255, 0.02)";
-          }}
+          onMouseEnter={e => e.currentTarget.style.opacity = "0.7"}
+          onMouseLeave={e => e.currentTarget.style.opacity = "1"}
         >
-          <MZLogo size={28} />
-          <div>
-            <div style={{ fontSize: "12.5px", fontWeight: "700", color: "#ffffff", lineHeight: "1.3" }}>Michal Zich</div>
-            <div style={{ fontSize: "11px", color: "#9ca3af" }}>zichmicha.cz ↗</div>
-          </div>
+          <MZLogo size={18} />
+          <span style={{ fontWeight: "500" }}>Vytvořil Michal Zich · zichmicha.cz</span>
         </a>
       </footer>
     </div>

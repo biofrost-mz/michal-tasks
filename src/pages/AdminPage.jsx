@@ -804,7 +804,7 @@ ${debugInfo}
               </div>
 
               <p style={{ fontSize: "13px", color: "var(--text-2)", lineHeight: 1.4 }}>
-                Lokální paměť slouží k rychlému ukládání stavů, chache dat z AI asistentů, nastavení a offline záloh systému Atlas.
+                Lokální paměť slouží k rychlému ukládání stavů, chache dat z AI asistentů, nastavení a offline záloh systému Zentero.
               </p>
             </div>
 

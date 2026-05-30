@@ -221,6 +221,7 @@ const BG_COLORS = [
 
 /* ─── NoteEditor ────────────────────────────── */
 function NoteEditor({ note, onSave, t, isMobile, showProps, onToggleProps, onDelete, onTogglePin, projects, tasks, addTask, activeWorkspaceId }) {
+  const { tags: globalTags } = useApp();
   const editorRef   = useRef(null);
   const titleRef    = useRef(null);
   const saveTimer   = useRef(null);
@@ -1191,6 +1192,7 @@ function NoteProjectPill({ projectId, projectsById }) {
 }
 
 function NotesAtlasGrid({ notes, onOpenNote, onCreate, projects }) {
+  const { tags: globalTags } = useApp();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const [sortBy, setSortBy] = useState("updated");
