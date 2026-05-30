@@ -76,7 +76,9 @@ export default function ProjectChatPanel({ project, tasks, notes, onClose }) {
 
       if (error || !data?.reply) {
         const msg2 = data?.error || error?.message || "Neznámá chyba";
-        if (msg2.toLowerCase().includes("rate limit")) {
+        if (msg2.includes("non-2xx") || msg2.includes("Unauthorized") || error?.status === 401) {
+          toast("Chyba přihlášení k AI službám. Odhlaste se a znovu přihlaste.", "error");
+        } else if (msg2.toLowerCase().includes("rate limit")) {
           toast("Příliš mnoho zpráv — zkus to za hodinu.", "error");
         } else {
           toast(`Chat selhal: ${msg2}`, "error");
@@ -88,8 +90,13 @@ export default function ProjectChatPanel({ project, tasks, notes, onClose }) {
       const withReply = [...next, aiMsg];
       setMessages(withReply);
       saveMessages(project.id, withReply);
-    } catch {
-      toast("Chyba chatu — zkus to znovu", "error");
+    } catch (err) {
+      const errMsg = err?.message || String(err);
+      if (errMsg.includes("non-2xx")) {
+        toast("Chyba přihlášení k AI službám. Odhlaste se a znovu přihlaste.", "error");
+      } else {
+        toast("Chyba chatu — zkus to znovu", "error");
+      }
     } finally {
       setLoading(false);
       if (!isMobile) inputRef.current?.focus();

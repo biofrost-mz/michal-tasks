@@ -42,7 +42,9 @@ export default function AITaskAssist({ task, onTitleChange }) {
         });
         if (error || !data?.result) {
           const msg = data?.error || error?.message || String(error);
-          if (msg.includes("Rate limit") || msg.includes("429")) {
+          if (msg.includes("non-2xx") || msg.includes("Unauthorized") || error?.status === 401) {
+            toast("Chyba přihlášení k AI službám. Odhlaste se a znovu přihlaste.", "error");
+          } else if (msg.includes("Rate limit") || msg.includes("429")) {
             toast("Příliš mnoho AI dotazů — zkus to za hodinu.", "error");
           } else if (msg.includes("Server configuration")) {
             toast("Chyba konfigurace serveru — kontaktuj správce.", "error");
@@ -71,10 +73,12 @@ export default function AITaskAssist({ task, onTitleChange }) {
         });
         if (error) {
           const msg = data?.error || error.message || String(error);
-          if (error.status === 429 || msg.includes("Rate limit")) {
+          if (msg.includes("non-2xx") || msg.includes("Unauthorized") || error.status === 401) {
+            toast("Chyba přihlášení k AI službám. Odhlaste se a znovu přihlaste.", "error");
+          } else if (error.status === 429 || msg.includes("Rate limit")) {
             toast("Příliš mnoho AI dotazů — zkus to za hodinu.", "error");
           } else {
-            toast("Chyba AI", "error");
+            toast(`Chyba AI: ${msg || "neznámá chyba"}`, "error");
           }
           setActiveAction(null);
           return;
@@ -93,7 +97,12 @@ export default function AITaskAssist({ task, onTitleChange }) {
         }
       }
     } catch (e) {
-      toast("Chyba AI — zkus to znovu", "error");
+      const msg = e?.message || String(e);
+      if (msg.includes("non-2xx")) {
+        toast("Chyba přihlášení k AI službám. Odhlaste se a znovu přihlaste.", "error");
+      } else {
+        toast("Chyba AI — zkus to znovu", "error");
+      }
       setResult(null);
       setActiveAction(null);
     } finally {

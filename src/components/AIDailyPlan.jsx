@@ -90,15 +90,24 @@ export default function AIDailyPlan() {
       });
       if (fnErr) {
         const msg = fnErr.message || "";
-        setError(msg.includes("Rate limit") || fnErr.status === 429
-          ? "Příliš mnoho generování — zkus to za hodinu."
-          : "Nepodařilo se vygenerovat plán");
+        if (msg.includes("Rate limit") || fnErr.status === 429) {
+          setError("Příliš mnoho generování — zkus to za hodinu.");
+        } else if (msg.includes("non-2xx") || fnErr.status === 401) {
+          setError("AI služba je momentálně nedostupná (problém s přihlášením nebo vypršela relace). Zkus se odhlásit a znovu přihlásit.");
+        } else {
+          setError("Nepodařilo se vygenerovat plán: " + msg);
+        }
         return;
       }
       if (data?.error) {
-        setError(data.error.includes("Rate limit")
-          ? "Příliš mnoho generování — zkus to za hodinu."
-          : `Chyba: ${data.error}`);
+        const dErr = data.error;
+        if (dErr.includes("Rate limit")) {
+          setError("Příliš mnoho generování — zkus to za hodinu.");
+        } else if (dErr.includes("non-2xx") || dErr.includes("Unauthorized")) {
+          setError("AI služba je momentálně nedostupná (problém s přihlášením nebo vypršela relace). Zkus se odhlásit a znovu přihlásit.");
+        } else {
+          setError(`Chyba: ${dErr}`);
+        }
         return;
       }
       setPlan(data.plan);

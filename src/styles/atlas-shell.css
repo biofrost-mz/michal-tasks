@@ -519,6 +519,9 @@ input, textarea { font-family: inherit; color: inherit; background: transparent;
   white-space: nowrap;
   flex-shrink: 0;
 }
+.hl-mob-strip {
+  display: none;
+}
 
 /* HUD tiles inside headline */
 .hl-stats {

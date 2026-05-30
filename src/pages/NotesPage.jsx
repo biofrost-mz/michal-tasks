@@ -492,13 +492,37 @@ function NoteEditor({ note, onSave, t, isMobile, showProps, onToggleProps, onDel
       const { data, error } = await supabase.functions.invoke("ai-task-assist", {
         body: { action, note: { title: note.title, content: editorRef.current?.innerText || "" }, workspaceId: activeWorkspaceId },
       });
-      if (error) throw error;
+      if (error) {
+        const msg = error.message || String(error);
+        if (msg.includes("non-2xx") || error.status === 401) {
+          setAiResult("Chyba: AI služba je momentálně nedostupná (problém s přihlášením nebo vypršela relace). Zkus se odhlásit a znovu přihlásit.");
+        } else {
+          setAiResult("Chyba: " + msg);
+        }
+        return;
+      }
+      if (data?.error) {
+        const dErr = data.error;
+        if (dErr.includes("non-2xx") || dErr.includes("Unauthorized")) {
+          setAiResult("Chyba: AI služba je momentálně nedostupná (problém s přihlášením nebo vypršela relace). Zkus se odhlásit a znovu přihlásit.");
+        } else {
+          setAiResult("Chyba: " + dErr);
+        }
+        return;
+      }
       const raw = data?.result ?? "";
       if (action === "note_extract_tasks") {
         try { const c = raw.replace(/^```[a-z]*\n?/i,"").replace(/```$/,"").trim(); setAiResult(JSON.parse(c)); }
         catch { setAiResult([raw]); }
       } else setAiResult(raw);
-    } catch (e) { setAiResult("Chyba: " + (e.message || String(e))); }
+    } catch (e) {
+      const msg = e.message || String(e);
+      if (msg.includes("non-2xx")) {
+        setAiResult("Chyba: AI služba je momentálně nedostupná (problém s přihlášením nebo vypršela relace). Zkus se odhlásit a znovu přihlásit.");
+      } else {
+        setAiResult("Chyba: " + msg);
+      }
+    }
     finally { setAiLoading(null); }
   };
 
@@ -891,6 +915,10 @@ function NotePropertiesPanel({ note, onClose, t, isMobile, onExportMD, projects,
         body: { action:"note_extract_tasks", note:{ title:note.title, content }, workspaceId: activeWorkspaceId },
       });
       if (error) throw error;
+      if (data?.error) {
+        console.error("AI extract error:", data.error);
+        return;
+      }
       const raw = data?.result ?? "";
       try {
         const c = raw.replace(/^```[a-z]*\n?/i,"").replace(/```$/,"").trim();

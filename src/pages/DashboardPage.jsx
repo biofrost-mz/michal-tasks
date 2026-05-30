@@ -189,6 +189,19 @@ function Headline({ overdueCount, activeCount, totalCount, doneWeek, doneWeekAvg
                   <Icon name="sunset" size={11} color="currentColor" strokeWidth={1.5} /> soumrak {sunTimes.sunset}
                 </div>
               )}
+              {weather ? (
+                <div className="m-row" style={{ marginTop: 4 }}>
+                  <Icon name={weather.icon} size={11} color="var(--accent)" strokeWidth={1.5} />
+                  <span>Počasí: {weather.temp} °C ({weather.label})</span>
+                  <span style={{ margin: "0 6px", color: "var(--text-4)" }}>·</span>
+                  <Icon name="wind" size={11} color="currentColor" strokeWidth={1.5} />
+                  <span>{weather.wind} km/h</span>
+                </div>
+              ) : (
+                <div className="m-row" style={{ marginTop: 4 }}>
+                  <span style={{ fontSize: "10.5px", color: "var(--text-4)" }}>Načítání počasí...</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -207,7 +220,7 @@ function Headline({ overdueCount, activeCount, totalCount, doneWeek, doneWeekAvg
           </div>
         </div>
         {/* Mobile compact strip (visible only on mobile via CSS) */}
-        <div className="hl-mob-strip" style={{ display: "none" }}>
+        <div className="hl-mob-strip">
           {weather && <span>{weather.temp}°C {weather.label}</span>}
           <span>{namedayName}</span>
           {sunTimes && <span>☀ {sunTimes.sunrise}–{sunTimes.sunset}</span>}
