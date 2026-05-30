@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useApp, AppProvider } from "./context/AppContext.jsx";
 import Icon from "./components/Icon.jsx";
 import { ToastProvider, useToast } from "./components/Toast.jsx";
@@ -94,6 +94,24 @@ function MobileFAB() {
   );
 }
 
+function PageTransition({ pageKey, children }) {
+  const [animKey, setAnimKey] = useState(pageKey);
+  const prevPageRef = useRef(pageKey);
+
+  useEffect(() => {
+    if (pageKey !== prevPageRef.current) {
+      prevPageRef.current = pageKey;
+      setAnimKey(pageKey + "_" + Date.now());
+    }
+  }, [pageKey]);
+
+  return (
+    <div key={animKey} className="page-enter" style={{ height: "100%" }}>
+      {children}
+    </div>
+  );
+}
+
 function AppShell() {
   const { dk, setDk, isMobile, page, taskDetail, cmdOpen, setCmdOpen } = useApp();
   const [collapsed, setCollapsed] = useState(false);
@@ -121,10 +139,12 @@ function AppShell() {
         @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
         @keyframes logoIn{0%{opacity:0;transform:scale(0.7) translateY(12px)}100%{opacity:1;transform:scale(1) translateY(0)}}
         @keyframes textIn{0%{opacity:0;transform:translateY(8px)}100%{opacity:1;transform:translateY(0)}}
+        @keyframes pageIn{0%{opacity:0;transform:translateY(6px)}100%{opacity:1;transform:translateY(0)}}
         .fi{animation:fadeIn .2s ease-out}
         .sr{animation:slideRight .2s ease-out}
         .su{animation:slideUp .28s cubic-bezier(.32,1,.4,1)}
         .pop{animation:pop .2s ease-out}
+        .page-enter{animation:pageIn .18s cubic-bezier(.4,0,.2,1)}
         .mobile-nav-bar{padding-bottom:env(safe-area-inset-bottom,0px)}
       `}</style>
 
@@ -134,17 +154,19 @@ function AppShell() {
         <div className={!isMobile ? "main" : undefined} style={isMobile ? { flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden" } : undefined}>
           {!isMobile && <AtlasTopBar />}
           <main style={isMobile ? { flex: 1, minWidth: 0, width: "100%", overflow: "auto", position: "relative", paddingBottom: 66 } : undefined}>
-            {page === "dashboard"          && <PageErrorBoundary label="Přehled">         <DashboardPage />         </PageErrorBoundary>}
-            {page === "projects"           && <PageErrorBoundary label="Projekty">        <ProjectsPage />          </PageErrorBoundary>}
-            {page === "project-detail"     && <PageErrorBoundary label="Detail projektu"> <ProjectDetailPage />     </PageErrorBoundary>}
-            {page === "tasks"              && <PageErrorBoundary label="Úkoly">           <TasksPage />             </PageErrorBoundary>}
-            {page === "timeline"           && <PageErrorBoundary label="Plán">            <TimelinePage />          </PageErrorBoundary>}
-            {page === "tags"               && <PageErrorBoundary label="Tagy">            <TagsPage />              </PageErrorBoundary>}
-            {page === "notes"              && <PageErrorBoundary label="Poznámky">        <NotesPage />             </PageErrorBoundary>}
-            {page === "workspace-settings" && <PageErrorBoundary label="Nastavení">       <WorkspaceSettingsPage /> </PageErrorBoundary>}
-            {page === "user-profile"       && <PageErrorBoundary label="Profil">          <UserProfilePage />       </PageErrorBoundary>}
-            {page === "quick-todos"        && <PageErrorBoundary label="Rychlý seznam">   <QuickTodosPage />        </PageErrorBoundary>}
-            {page === "admin"              && <PageErrorBoundary label="Administrace">    <AdminPage />             </PageErrorBoundary>}
+            <PageTransition pageKey={page}>
+              {page === "dashboard"          && <PageErrorBoundary label="Přehled">         <DashboardPage />         </PageErrorBoundary>}
+              {page === "projects"           && <PageErrorBoundary label="Projekty">        <ProjectsPage />          </PageErrorBoundary>}
+              {page === "project-detail"     && <PageErrorBoundary label="Detail projektu"> <ProjectDetailPage />     </PageErrorBoundary>}
+              {page === "tasks"              && <PageErrorBoundary label="Úkoly">           <TasksPage />             </PageErrorBoundary>}
+              {page === "timeline"           && <PageErrorBoundary label="Plán">            <TimelinePage />          </PageErrorBoundary>}
+              {page === "tags"               && <PageErrorBoundary label="Tagy">            <TagsPage />              </PageErrorBoundary>}
+              {page === "notes"              && <PageErrorBoundary label="Poznámky">        <NotesPage />             </PageErrorBoundary>}
+              {page === "workspace-settings" && <PageErrorBoundary label="Nastavení">       <WorkspaceSettingsPage /> </PageErrorBoundary>}
+              {page === "user-profile"       && <PageErrorBoundary label="Profil">          <UserProfilePage />       </PageErrorBoundary>}
+              {page === "quick-todos"        && <PageErrorBoundary label="Rychlý seznam">   <QuickTodosPage />        </PageErrorBoundary>}
+              {page === "admin"              && <PageErrorBoundary label="Administrace">    <AdminPage />             </PageErrorBoundary>}
+            </PageTransition>
           </main>
 
           {/* TaskDrawer — vlastní boundary, chyba v draweru nerozhodí celou stránku */}
