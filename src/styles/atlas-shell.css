@@ -1632,7 +1632,11 @@ input, textarea { font-family: inherit; color: inherit; background: transparent;
   padding-top: 6px;
 }
 .detail-v { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.detail-sect { margin-top: 28px; }
+.detail-sect {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border-soft);
+}
 .detail-h {
   font-family: var(--serif);
   font-size: 20px;
@@ -1646,8 +1650,23 @@ input, textarea { font-family: inherit; color: inherit; background: transparent;
   border-radius: var(--r);
   padding: 10px 14px;
   font-size: 14px;
+  color: var(--text);
+  outline: none;
 }
 .detail-input:focus { border-color: var(--accent); }
+.detail-input option {
+  background: var(--bg-2);
+  color: var(--text);
+}
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: invert(1);
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
 
 .btn {
   display: inline-flex; align-items: center; gap: 6px;

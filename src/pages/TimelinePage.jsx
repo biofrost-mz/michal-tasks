@@ -47,7 +47,7 @@ function QuickAddPopover({ project, defaultDate, onAdd, onClose }) {
       <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Název úkolu…" className="detail-input" autoFocus />
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-          <input type="date" value={dueDate || ""} onChange={(e) => setDueDate(e.target.value)} className="detail-input" />
+          <input type="date" value={dueDate || ""} onChange={(e) => setDueDate(e.target.value)} className="detail-input" onClick={(e) => { try { e.target.showPicker(); } catch(err) {} }} onFocus={(e) => { try { e.target.showPicker(); } catch(err) {} }} />
           <select value={priority} onChange={(e) => setPriority(e.target.value)} className="detail-input">
             <option value="">Priorita</option>
             <option value="low">Nízká</option>
@@ -129,6 +129,8 @@ function CellAddModal({ addingForCell, onClose, onAdd, projects }) {
                   className="detail-input"
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
+                  onClick={(e) => { try { e.target.showPicker(); } catch(err) {} }}
+                  onFocus={(e) => { try { e.target.showPicker(); } catch(err) {} }}
                 />
               </div>
             </div>

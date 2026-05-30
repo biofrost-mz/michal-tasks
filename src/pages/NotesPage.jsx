@@ -8,6 +8,16 @@ import { projectColor, relTime } from '../utils.js'
 import { supabase } from '../supabase.js'
 import { compareText, formatDate, formatDateTime } from '../locale.js'
 
+
+const CURATED_TAG_COLORS = ["#38bdf8", "#34d399", "#fb7185", "#f472b6", "#fbbf24", "#a78bfa", "#c084fc", "#60a5fa", "#2dd4bf", "#fb923c"];
+const getRandomTagColor = () => CURATED_TAG_COLORS[Math.floor(Math.random() * CURATED_TAG_COLORS.length)];
+
+const getTagColor = (tagName, globalTags) => {
+  if (!tagName || !globalTags) return null;
+  const match = globalTags.find(gt => gt.name.trim().toLowerCase() === tagName.trim().toLowerCase());
+  return match ? match.color : null;
+};
+
 /* ─── Note CSS injected once ─────────────────── */
 const NOTE_CSS_ID = "note-editor-css";
 function injectNoteCSS(dk) {
@@ -835,11 +845,14 @@ function NoteEditor({ note, onSave, t, isMobile, showProps, onToggleProps, onDel
             <span style={{ background:statusInfo.bg, color:statusInfo.color, border:`1px solid ${statusInfo.color}40`, padding:"3px 9px", borderRadius:999, fontWeight:700, fontSize:12 }}>
               {statusInfo.label}
             </span>
-            {note.tags?.length > 0 && note.tags.slice(0, 4).map(tag => (
-              <span key={tag} style={{ color:t.text3, background:"rgba(255,255,255,.06)", border:`1px solid rgba(255,255,255,.06)`, padding:"3px 7px", borderRadius:999, fontSize:11.5 }}>
-                #{tag}
-              </span>
-            ))}
+            {note.tags?.length > 0 && note.tags.slice(0, 4).map(tag => {
+              const col = getTagColor(tag, globalTags) || t.text3;
+              return (
+                <span key={tag} style={{ color:col, background:`${col}15`, border:`1px solid ${col}25`, padding:"3px 7px", borderRadius:999, fontSize:11.5, fontWeight:600 }}>
+                  #{tag}
+                </span>
+              );
+            })}
           </div>
 
           {/* Contenteditable */}
@@ -886,7 +899,7 @@ function NoteEditor({ note, onSave, t, isMobile, showProps, onToggleProps, onDel
 
 /* ─── NotePropertiesPanel ───────────────────── */
 function NotePropertiesPanel({ note, onClose, t, isMobile, onExportMD, projects, tasks, addTask, activeWorkspaceId }) {
-  const { updateNote } = useApp();
+  const { updateNote, tags: globalTags, addTag: createGlobalTag } = useApp();
   const [tagInput,        setTagInput]        = useState("");
   const [showAllProjects, setShowAllProjects] = useState(true);
   const [showAllTasks,    setShowAllTasks]    = useState(false);
@@ -897,9 +910,23 @@ function NotePropertiesPanel({ note, onClose, t, isMobile, onExportMD, projects,
   const linkedTask    = note.primaryTaskId    ? tasks.find(tk => tk.id === note.primaryTaskId)     : null;
 
   const addTag = (raw) => {
-    const tag = raw.trim().toLowerCase().replace(/\s+/g, "-");
-    if (!tag || note.tags.includes(tag)) return;
-    updateNote(note.id, { tags: [...note.tags, tag] });
+    const rawClean = raw.trim().replace(/\s+/g, "-");
+    if (!rawClean) return;
+    
+    if (note.tags?.some(t2 => t2.trim().toLowerCase() === rawClean.toLowerCase())) return;
+
+    const matchedGlobal = globalTags?.find(gt => gt.name.trim().toLowerCase() === rawClean.toLowerCase());
+    
+    let tagNameForNote = rawClean;
+    if (matchedGlobal) {
+      tagNameForNote = matchedGlobal.name;
+    } else {
+      const randomColor = getRandomTagColor();
+      createGlobalTag({ name: rawClean, color: randomColor });
+    }
+
+    const nextTags = [...(note.tags || []), tagNameForNote];
+    updateNote(note.id, { tags: nextTags });
   };
   const removeTag = (tag) => updateNote(note.id, { tags: note.tags.filter(t2 => t2 !== tag) });
 
@@ -975,14 +1002,17 @@ function NotePropertiesPanel({ note, onClose, t, isMobile, onExportMD, projects,
           </PRow>
           <PRow t={t} label="Štítky">
             <div style={{ display:"flex", flexWrap:"wrap", gap:4 }}>
-              {note.tags.map(tag=>(
-                <span key={tag} style={{ display:"inline-flex", alignItems:"center", gap:3, padding:"1px 6px", borderRadius:20, fontSize:11, fontWeight:600, background:t.accentBg, color:t.accent, border:`1px solid ${t.accent}30` }}>
-                  #{tag}
-                  <button onClick={()=>removeTag(tag)} style={{ background:"none", border:"none", cursor:"pointer", padding:0, display:"flex", color:t.text3 }}>
-                    <Icon name="x" size={8} color={t.text3} strokeWidth={2.5} />
-                  </button>
-                </span>
-              ))}
+              {note.tags.map(tag => {
+                const col = getTagColor(tag, globalTags) || t.accent;
+                return (
+                  <span key={tag} style={{ display:"inline-flex", alignItems:"center", gap:3, padding:"1px 6px", borderRadius:20, fontSize:11, fontWeight:600, background:`${col}18`, color:col, border:`1px solid ${col}35` }}>
+                    #{tag}
+                    <button onClick={()=>removeTag(tag)} style={{ background:"none", border:"none", cursor:"pointer", padding:0, display:"flex", color:col }}>
+                      <Icon name="x" size={8} color="currentColor" strokeWidth={2.5} />
+                    </button>
+                  </span>
+                );
+              })}
               <input
                 value={tagInput}
                 onChange={e=>setTagInput(e.target.value)}
@@ -1290,11 +1320,14 @@ function NotesAtlasGrid({ notes, onOpenNote, onCreate, projects }) {
                 <div className="ncard-x">{excerpt || "Prázdná poznámka..."}</div>
                 {n.tags?.length > 0 && (
                   <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 12 }}>
-                    {n.tags.slice(0, 4).map(tag => (
-                      <span key={tag} style={{ fontFamily: "var(--mono)", fontSize: 10.5, color: "var(--text-3)", border: "1px solid var(--border-soft)", background: "var(--bg-2)", borderRadius: 999, padding: "3px 7px" }}>
-                        #{tag}
-                      </span>
-                    ))}
+                    {n.tags.slice(0, 4).map(tag => {
+                      const col = getTagColor(tag, globalTags) || "var(--text-3)";
+                      return (
+                        <span key={tag} style={{ fontFamily: "var(--mono)", fontSize: 10.5, color: col, border: `1px solid ${col}30`, background: `${col}12`, borderRadius: 999, padding: "3px 7px", fontWeight: 600 }}>
+                          #{tag}
+                        </span>
+                      );
+                    })}
                     {n.tags.length > 4 && (
                       <span style={{ fontFamily: "var(--mono)", fontSize: 10.5, color: "var(--text-4)" }}>+{n.tags.length - 4}</span>
                     )}
@@ -1311,6 +1344,7 @@ function NotesAtlasGrid({ notes, onOpenNote, onCreate, projects }) {
 
 /* ─── NotesSidebar ──────────────────────────── */
 function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects }) {
+  const { tags: globalTags } = useApp();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const [sortBy, setSortBy] = useState("updated");
@@ -1473,11 +1507,14 @@ function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects }) {
                   )}
                   {n.tags?.length > 0 && (
                     <div style={{ display:"flex", gap:4, flexWrap:"nowrap", overflow:"hidden" }}>
-                      {n.tags.slice(0,3).map(tag=>(
-                        <span key={tag} style={{ fontSize:10.5, padding:"3px 6px", borderRadius:999, background:"rgba(255,255,255,.065)", color:"#aeb9d2", border:"1px solid rgba(255,255,255,.04)", whiteSpace:"nowrap" }}>
-                          {tag}
-                        </span>
-                      ))}
+                      {n.tags.slice(0,3).map(tag => {
+                        const col = getTagColor(tag, globalTags) || "#aeb9d2";
+                        return (
+                          <span key={tag} style={{ fontSize:10.5, padding:"2px 6px", borderRadius:999, background:`${col}15`, color:col, border:`1px solid ${col}25`, whiteSpace:"nowrap" }}>
+                            {tag}
+                          </span>
+                        );
+                      })}
                       {n.tags.length>3 && <span style={{ fontSize:10, color:t.text3 }}>+{n.tags.length-3}</span>}
                     </div>
                   )}
@@ -1497,7 +1534,7 @@ function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects }) {
 
 /* ─── NotesPage ─────────────────────────────── */
 export default function NotesPage() {
-  const { t, dk, notes, addNote, updateNote, deleteNote, projects, tasks, addTask, openNoteId, setOpenNoteId, isMobile, activeWorkspaceId } = useApp();
+  const { t, dk, notes, addNote, updateNote, deleteNote, projects, tasks, addTask, openNoteId, setOpenNoteId, isMobile, activeWorkspaceId, tags: globalTags } = useApp();
   const toast   = useToast();
   const confirm = useConfirm();
 

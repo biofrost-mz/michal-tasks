@@ -204,6 +204,8 @@ export default function QuickAdd({ defaultProjectId = null }) {
                 type="date"
                 value={task.dueDate || ""}
                 onChange={(e) => upd({ dueDate: e.target.value || null })}
+                onClick={(e) => { try { e.target.showPicker(); } catch(err) {} }}
+                onFocus={(e) => { try { e.target.showPicker(); } catch(err) {} }}
                 style={{
                   padding: "5px 10px",
                   borderRadius: 7,

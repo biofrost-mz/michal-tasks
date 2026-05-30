@@ -274,6 +274,8 @@ export default function QuickTodosPage() {
             <input
               type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
               className="detail-input" style={{ maxWidth: 180 }}
+              onClick={(e) => { try { e.target.showPicker(); } catch(err) {} }}
+              onFocus={(e) => { try { e.target.showPicker(); } catch(err) {} }}
             />
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

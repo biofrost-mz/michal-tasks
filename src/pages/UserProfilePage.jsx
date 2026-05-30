@@ -6,7 +6,7 @@ import Icon from '../components/Icon.jsx'
 import { supabase } from '../supabase.js'
 
 export default function UserProfilePage() {
-  const { setPage, isMobile, userEmail, userId, workspaceMembers, logout } = useApp();
+  const { setPage, isMobile, userEmail, userId, workspaceMembers, logout, updateProfileDisplayName } = useApp();
   const toast = useToast();
   const confirm = useConfirm();
 
@@ -19,11 +19,7 @@ export default function UserProfilePage() {
     if (!displayName.trim()) return;
     setSaving(true);
     try {
-      const { error } = await supabase.from("user_profiles").upsert(
-        { id: userId, display_name: displayName.trim(), email: userEmail },
-        { onConflict: "id" }
-      );
-      if (error) throw error;
+      await updateProfileDisplayName(displayName.trim());
       toast("Jméno uloženo", "success");
     } catch (e) {
       toast(e.message || "Chyba", "error");

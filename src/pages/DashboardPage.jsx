@@ -180,15 +180,8 @@ function Headline({ overdueCount, activeCount, totalCount, doneWeek, doneWeekAvg
               <span className="m-month">{monthYear}</span>
               <div>týden K{String(cw).padStart(2, "0")} · CW{String(cw).padStart(2, "0")}</div>
               <div>
-                <span className="accent">{isHoliday ? "svátek:" : "jmeniny:"}</span> {namedayName}
+                <span className="accent">Svátek:</span> {namedayName}
               </div>
-              {sunTimes && (
-                <div className="m-row">
-                  <Icon name="sunrise" size={11} color="currentColor" strokeWidth={1.5} /> svítání {sunTimes.sunrise}
-                  <span style={{ margin: "0 6px", color: "var(--text-4)" }}>·</span>
-                  <Icon name="sunset" size={11} color="currentColor" strokeWidth={1.5} /> soumrak {sunTimes.sunset}
-                </div>
-              )}
               {weather ? (
                 <div className="m-row" style={{ marginTop: 4 }}>
                   <Icon name={weather.icon} size={11} color="var(--accent)" strokeWidth={1.5} />
@@ -215,9 +208,19 @@ function Headline({ overdueCount, activeCount, totalCount, doneWeek, doneWeekAvg
               ) : (
                 <><Icon name={dayPhase.icon} size={11} color="currentColor" strokeWidth={1.5} /> {dayPhase.label}</>
               )}
-              {sunTimes ? ` · délka dne ${sunTimes.dayLength}` : ""}
             </span>
           </div>
+          {sunTimes && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6, color: "var(--text-3)", fontSize: 11, marginTop: 4 }}>
+              <Icon name="sunrise" size={11} color="currentColor" strokeWidth={1.5} />
+              <span>svítání {sunTimes.sunrise}</span>
+              <span style={{ color: "var(--text-4)" }}>·</span>
+              <Icon name="sunset" size={11} color="currentColor" strokeWidth={1.5} />
+              <span>soumrak {sunTimes.sunset}</span>
+              <span style={{ color: "var(--text-4)" }}>·</span>
+              <span>délka dne {sunTimes.dayLength}</span>
+            </div>
+          )}
         </div>
         {/* Mobile compact strip (visible only on mobile via CSS) */}
         <div className="hl-mob-strip">

@@ -933,6 +933,20 @@ export function AppProvider({ children }) {
     setTaskDetail(null);
   }, []);
 
+  const updateProfileDisplayName = useCallback(async (displayName) => {
+    const trimmed = displayName.trim();
+    if (!trimmed) return;
+    if (!userId) return;
+    const { error } = await supabase.from("user_profiles").upsert(
+      { id: userId, display_name: trimmed, email: session?.user?.email },
+      { onConflict: "id" }
+    );
+    if (error) throw error;
+    setWorkspaceMembers((prev) =>
+      prev.map((m) => (m.userId === userId ? { ...m, displayName: trimmed } : m))
+    );
+  }, [userId, session]);
+
   const t = theme(dk);
   const openProject = (id) => {
     setSelProject(id);
@@ -947,6 +961,7 @@ export function AppProvider({ children }) {
     loadError,
     setLoadError,
     setLoaded,
+    updateProfileDisplayName,
     projects,
     tasks,
     tags,

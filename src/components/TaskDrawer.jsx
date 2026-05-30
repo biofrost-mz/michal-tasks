@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useApp } from '../context/AppContext.jsx'
 import { useToast } from './Toast.jsx'
 import { useConfirm } from './Confirm.jsx'
@@ -27,7 +27,16 @@ function AssigneeSelector({ currentAssigneeId, onChange }) {
 
   const currentMember = workspaceMembers.find((m) => m.userId === currentAssigneeId);
   const getLabel = (m) => m?.displayName || m?.email || `${m?.userId?.slice(0, 8)}…`;
-  const getInitials = (m) => (m?.email || m?.userId || "?").slice(0, 2).toUpperCase();
+  const getInitials = (m) => {
+    if (m?.displayName) {
+      const parts = m.displayName.trim().split(/\s+/);
+      if (parts.length >= 2) {
+        return (parts[0][0] + parts[1][0]).toUpperCase();
+      }
+      return m.displayName.slice(0, 2).toUpperCase();
+    }
+    return (m?.email || m?.userId || "?").slice(0, 2).toUpperCase();
+  };
 
   return (
     <div style={{ position: "relative" }}>
@@ -242,11 +251,51 @@ function SubtaskRow({ subtask, editingId, editText, setEditText, onToggle, onRem
    TaskDrawer — Atlas .overlay + .detail design
 ───────────────────────────────────────────── */
 export default function TaskDrawer() {
-  const { t, tasks, projects, tags, updateTask, deleteTask, addProject, taskDetail, setTaskDetail, isMobile } = useApp();
+  const { t, tasks, projects, tags, addTag, updateTask, deleteTask, addProject, taskDetail, setTaskDetail, isMobile } = useApp();
   const toast = useToast();
   const confirm = useConfirm();
 
+  const [newTagName, setNewTagName] = useState("");
+
   const task = tasks.find((x) => x.id === taskDetail) ?? null;
+
+  const quickTags = useMemo(() => {
+    const counts = {};
+    tasks.forEach((t) => {
+      (t.tagIds || []).forEach((tid) => {
+        counts[tid] = (counts[tid] || 0) + 1;
+      });
+    });
+    // Sort all tags by their usage frequency
+    return tags
+      .map((tg) => ({ ...tg, count: counts[tg.id] || 0 }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 6);
+  }, [tags, tasks]);
+
+  const handleCreateTagInline = (name) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const match = tags.find((tg) => tg.name.trim().toLowerCase() === trimmed.toLowerCase());
+    if (match) {
+      if (!(task.tagIds || []).includes(match.id)) {
+        s({ tagIds: [...(task.tagIds || []), match.id] });
+      }
+      toast("Tag přiřazen", "success");
+    } else {
+      const BRAND_COLORS = [
+        "#e11d48", "#db2777", "#c084fc", "#6366f1", "#3b82f6",
+        "#06b6d4", "#14b8a6", "#10b981", "#f59e0b", "#f97316"
+      ];
+      const randomColor = BRAND_COLORS[Math.floor(Math.random() * BRAND_COLORS.length)];
+      const newTg = addTag({ name: trimmed, color: randomColor });
+      if (newTg) {
+        s({ tagIds: [...(task.tagIds || []), newTg.id] });
+        toast("Tag vytvořen a přiřazen", "success");
+      }
+    }
+    setNewTagName("");
+  };
   const [title, setTitle] = useState(task?.title ?? "");
   const [desc, setDesc] = useState(task?.description ?? "");
   const [showNewProject, setShowNewProject] = useState(false);
@@ -449,6 +498,8 @@ export default function TaskDrawer() {
                 className="detail-input"
                 value={task.dueDate || ""}
                 onChange={(e) => s({ dueDate: e.target.value || null })}
+                onClick={(e) => { try { e.target.showPicker(); } catch(err) {} }}
+                onFocus={(e) => { try { e.target.showPicker(); } catch(err) {} }}
                 style={{ maxWidth: 180, width: "auto" }}
               />
               <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--text-3)" }}>
@@ -498,29 +549,98 @@ export default function TaskDrawer() {
             </div>
 
             <div className="detail-k">Tagy</div>
-            <div className="detail-v">
-              {tags.map((tg) => {
-                const active = (task.tagIds || []).includes(tg.id);
-                return (
-                  <span
-                    key={tg.id}
-                    className="tag"
-                    onClick={() =>
-                      s({
-                        tagIds: active ? task.tagIds.filter((id) => id !== tg.id) : [...(task.tagIds || []), tg.id],
-                      })
+            <div className="detail-v" style={{ flexDirection: "column", alignItems: "stretch", gap: 10 }}>
+              {/* Active Task Tags */}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {(task.tagIds || []).length > 0 ? (
+                  tags.filter(tg => (task.tagIds || []).includes(tg.id)).map((tg) => (
+                    <span
+                      key={tg.id}
+                      className="tag"
+                      onClick={() =>
+                        s({
+                          tagIds: task.tagIds.filter((id) => id !== tg.id),
+                        })
+                      }
+                      style={{
+                        cursor: "pointer",
+                        background: "var(--accent-soft)",
+                        color: "var(--accent)",
+                        borderColor: "color-mix(in srgb, var(--accent) 30%, transparent)",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 4,
+                      }}
+                    >
+                      {tg.name}
+                      <Icon name="x" size={10} color="var(--accent)" strokeWidth={2.5} />
+                    </span>
+                  ))
+                ) : (
+                  <span style={{ fontSize: 12, color: "var(--text-4)" }}>Žádné štítky</span>
+                )}
+              </div>
+
+              {/* Tag Input Creator */}
+              <div style={{ display: "flex", gap: 6, alignItems: "center", width: "100%" }}>
+                <input
+                  className="detail-input"
+                  style={{ padding: "6px 12px", fontSize: 13, flex: 1 }}
+                  value={newTagName}
+                  onChange={(e) => setNewTagName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleCreateTagInline(newTagName);
                     }
-                    style={{
-                      cursor: "pointer",
-                      background: active ? "var(--accent-soft)" : undefined,
-                      color: active ? "var(--accent)" : undefined,
-                      borderColor: active ? "color-mix(in srgb, var(--accent) 30%, transparent)" : undefined,
-                    }}
-                  >
-                    {tg.name}
-                  </span>
-                );
-              })}
+                  }}
+                  placeholder="Zadej název štítku…"
+                />
+                <button
+                  type="button"
+                  className="btn primary"
+                  style={{ padding: "6px 12px", fontSize: 12, height: 34, borderRadius: "var(--r)", flexShrink: 0 }}
+                  onClick={() => handleCreateTagInline(newTagName)}
+                >
+                  Přidat
+                </button>
+              </div>
+
+              {/* Most Used Tags Suggestions */}
+              {quickTags.length > 0 && (
+                <div style={{ marginTop: 4 }}>
+                  <div style={{ fontSize: 10.5, fontFamily: "var(--mono)", color: "var(--text-4)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    Nejpoužívanější tagy:
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    {quickTags.map((tg) => {
+                      const active = (task.tagIds || []).includes(tg.id);
+                      return (
+                        <span
+                          key={tg.id}
+                          className="tag"
+                          onClick={() =>
+                            s({
+                              tagIds: active ? task.tagIds.filter((id) => id !== tg.id) : [...(task.tagIds || []), tg.id],
+                            })
+                          }
+                          style={{
+                            cursor: "pointer",
+                            background: active ? "var(--accent-soft)" : "rgba(255,255,255,.03)",
+                            color: active ? "var(--accent)" : "var(--text-2)",
+                            borderColor: active ? "color-mix(in srgb, var(--accent) 30%, transparent)" : "var(--border-soft)",
+                            fontSize: 11,
+                            padding: "3px 8px",
+                            borderRadius: 6,
+                          }}
+                        >
+                          #{tg.name}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="detail-k">Přiřazeno</div>
