@@ -244,7 +244,7 @@ function SubtaskRow({ subtask, editingId, editText, setEditText, onToggle, onRem
    TaskDrawer — Atlas .overlay + .detail design
 ───────────────────────────────────────────── */
 export default function TaskDrawer() {
-  const { t, tasks, projects, tags, addTag, updateTask, deleteTask, addProject, taskDetail, setTaskDetail, isMobile } = useApp();
+  const { t, tasks, projects, tags, addTag, updateTask, deleteTask, addProject, taskDetail, setTaskDetail, isMobile, workspaceMembers } = useApp();
   const toast = useToast();
   const confirm = useConfirm();
 
@@ -316,8 +316,42 @@ export default function TaskDrawer() {
 
   if (!task) return null;
 
-  // Silent auto-save — no toast for field-level changes (title, desc, status, etc.)
-  const s = (u) => { updateTask(task.id, u); };
+  // Auto-save with beautiful visual toasts for field-level changes
+  const s = (u) => {
+    updateTask(task.id, u);
+    if (u.status !== undefined) {
+      const label = STATUSES[u.status]?.label || u.status;
+      toast(`Stav úkolu změněn na "${label}"`, "success");
+    } else if (u.priority !== undefined) {
+      const prioLabels = { low: "Nízká", medium: "Střední", high: "Vysoká" };
+      const label = prioLabels[u.priority] || "Žádná";
+      toast(`Priorita úkolu změněna na "${label}"`, "success");
+    } else if (u.projectId !== undefined) {
+      const proj = projects.find(p => p.id === u.projectId);
+      const label = proj ? proj.name : "Inbox";
+      toast(`Úkol přesunut do projektu "${label}"`, "success");
+    } else if (u.dueDate !== undefined) {
+      if (u.dueDate) {
+        toast(`Termín splnění nastaven na ${u.dueDate}`, "success");
+      } else {
+        toast("Termín splnění byl odebrán", "success");
+      }
+    } else if (u.assigneeUserId !== undefined) {
+      const member = workspaceMembers?.find(m => m.userId === u.assigneeUserId);
+      const label = member?.displayName || member?.email || "nepřiřazeno";
+      toast(`Řešitel změněn na "${label}"`, "success");
+    } else if (u.title !== undefined) {
+      toast("Název úkolu byl uložen", "success");
+    } else if (u.description !== undefined) {
+      toast("Popis úkolu byl uložen", "success");
+    } else if (u.remindAt !== undefined) {
+      if (u.remindAt) {
+        toast("Připomenutí bylo nastaveno", "success");
+      } else {
+        toast("Připomenutí bylo zrušeno", "success");
+      }
+    }
+  };
 
   const addPhase = () => {
     const text = newPhase.trim();
@@ -585,11 +619,11 @@ export default function TaskDrawer() {
                 )}
               </div>
 
-              {/* Tag Input Creator */}
-              <div style={{ display: "flex", gap: 6, alignItems: "center", width: "100%" }}>
+              {/* Tag Search / Add Input */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%" }}>
                 <input
                   className="detail-input"
-                  style={{ padding: "6px 12px", fontSize: 13, flex: 1 }}
+                  style={{ padding: "8px 12px", fontSize: 13, width: "100%", boxSizing: "border-box" }}
                   value={newTagName}
                   onChange={(e) => setNewTagName(e.target.value)}
                   onKeyDown={(e) => {
@@ -598,53 +632,101 @@ export default function TaskDrawer() {
                       handleCreateTagInline(newTagName);
                     }
                   }}
-                  placeholder="Zadej název štítku…"
+                  placeholder="Hledat nebo vytvořit štítek…"
                 />
-                <button
-                  type="button"
-                  className="btn primary"
-                  style={{ padding: "6px 12px", fontSize: 12, height: 34, borderRadius: "var(--r)", flexShrink: 0 }}
-                  onClick={() => handleCreateTagInline(newTagName)}
-                >
-                  Přidat
-                </button>
               </div>
 
-              {/* Most Used Tags Suggestions */}
-              {quickTags.length > 0 && (
-                <div style={{ marginTop: 4 }}>
-                  <div style={{ fontSize: 10.5, fontFamily: "var(--mono)", color: "var(--text-4)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                    Nejpoužívanější tagy:
-                  </div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                    {quickTags.map((tg) => {
-                      const active = (task.tagIds || []).includes(tg.id);
-                      return (
-                        <span
-                          key={tg.id}
-                          className="tag"
-                          onClick={() =>
-                            s({
-                              tagIds: active ? task.tagIds.filter((id) => id !== tg.id) : [...(task.tagIds || []), tg.id],
-                            })
-                          }
+              {/* Interactive Filtered Tag List */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {(() => {
+                  const searchLower = newTagName.trim().toLowerCase();
+                  const filteredTags = searchLower
+                    ? tags.filter(tg => tg.name.toLowerCase().includes(searchLower))
+                    : tags;
+
+                  return (
+                    <>
+                      {filteredTags.length > 0 ? (
+                        <div style={{
+                          display: "flex",
+                          flexWrap: "wrap",
+                          gap: 6,
+                          maxHeight: 120,
+                          overflowY: "auto",
+                          padding: "6px 8px",
+                          border: "1px solid var(--border-soft)",
+                          borderRadius: 8,
+                          background: "var(--bg-3)"
+                        }}>
+                          {filteredTags.map((tg) => {
+                            const active = (task.tagIds || []).includes(tg.id);
+                            return (
+                              <span
+                                key={tg.id}
+                                className="tag"
+                                onClick={() =>
+                                  s({
+                                    tagIds: active ? task.tagIds.filter((id) => id !== tg.id) : [...(task.tagIds || []), tg.id],
+                                  })
+                                }
+                                style={{
+                                  cursor: "pointer",
+                                  background: active ? "var(--accent-soft)" : "transparent",
+                                  color: active ? "var(--accent)" : "var(--text-2)",
+                                  borderColor: active ? "color-mix(in srgb, var(--accent) 30%, transparent)" : "var(--border-soft)",
+                                  fontSize: 11.5,
+                                  padding: "4px 10px",
+                                  borderRadius: 8,
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 6,
+                                  transition: "all 0.15s ease",
+                                }}
+                              >
+                                <span style={{
+                                  width: 8,
+                                  height: 8,
+                                  borderRadius: "50%",
+                                  background: tg.color || "var(--accent)",
+                                  display: "inline-block",
+                                }} />
+                                {tg.name}
+                                {active ? " ✓" : " +"}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        newTagName.trim() && (
+                          <div style={{ fontSize: 12, color: "var(--text-4)", fontStyle: "italic", padding: "4px 0" }}>
+                            Nenalezen žádný existující štítek
+                          </div>
+                        )
+                      )}
+
+                      {searchLower && !tags.some(tg => tg.name.toLowerCase() === searchLower) && (
+                        <button
+                          type="button"
+                          className="btn primary"
                           style={{
-                            cursor: "pointer",
-                            background: active ? "var(--accent-soft)" : "rgba(255,255,255,.03)",
-                            color: active ? "var(--accent)" : "var(--text-2)",
-                            borderColor: active ? "color-mix(in srgb, var(--accent) 30%, transparent)" : "var(--border-soft)",
-                            fontSize: 11,
-                            padding: "3px 8px",
-                            borderRadius: 6,
+                            alignSelf: "flex-start",
+                            fontSize: 11.5,
+                            padding: "6px 12px",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 6,
+                            marginTop: 2
                           }}
+                          onClick={() => handleCreateTagInline(newTagName)}
                         >
-                          #{tg.name}
-                        </span>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+                          <Icon name="plus" size={11} color="currentColor" strokeWidth={2.5} />
+                          Vytvořit štítek "{newTagName.trim()}"
+                        </button>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
             </div>
 
             <div className="detail-k">Přiřazeno</div>

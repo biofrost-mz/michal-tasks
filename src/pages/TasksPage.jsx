@@ -13,9 +13,10 @@ import QuickAdd from "../components/QuickAdd.jsx";
 import EmptyState from "../components/EmptyState.jsx";
 import { useTaskKeyboard } from "../hooks/useTaskKeyboard.js";
 
-const CHIP_STATUSES = ["all", "todo", "doing", "wait", "done"];
+const CHIP_STATUSES = ["all", "active", "todo", "doing", "wait", "done"];
 const STATUS_LABELS = {
   all: "Vše",
+  active: "Aktivní",
   todo: "To do",
   doing: "Rozpracováno",
   wait: "Čekám",
@@ -24,6 +25,7 @@ const STATUS_LABELS = {
 
 
 function statusColor(statusClass) {
+  if (statusClass === "active") return "var(--accent)";
   return STATUSES[CLASS_TO_STATUS[statusClass]]?.color;
 }
 
@@ -99,12 +101,12 @@ export default function TasksPage() {
   } = useApp();
 
   const [view, setView] = useState("table");
-  const [statusFilter, setStatusFilter] = useState(() => tasksPageFilter || "all");
+  const [statusFilter, setStatusFilter] = useState(() => tasksPageFilter || "active");
 
   useEffect(() => {
-    if (tasksPageFilter && tasksPageFilter !== "all") {
+    if (tasksPageFilter && tasksPageFilter !== "all" && tasksPageFilter !== "active") {
       setStatusFilter(tasksPageFilter);
-      setTasksPageFilter("all");
+      setTasksPageFilter("active");
     }
   }, [tasksPageFilter, setTasksPageFilter]);
   const [projectFilter, setProjectFilter] = useState("all");
@@ -121,17 +123,12 @@ export default function TasksPage() {
     [tasks, projectsById, tagsById, today]
   );
 
-  const filtered = useMemo(() => {
+  const baseFiltered = useMemo(() => {
     let list = mappedTasks;
 
     if (search) {
       const s = search.toLowerCase();
       list = list.filter((t) => t.title.toLowerCase().includes(s) || t.desc.toLowerCase().includes(s) || t.tags.join(" ").toLowerCase().includes(s));
-    }
-
-    if (statusFilter !== "all") {
-      const realStatus = CLASS_TO_STATUS[statusFilter] || statusFilter;
-      list = list.filter((t) => t.status === realStatus);
     }
 
     if (projectFilter !== "all") {
@@ -148,7 +145,20 @@ export default function TasksPage() {
     }
 
     return list;
-  }, [mappedTasks, search, statusFilter, projectFilter, priorityFilter, tagFilter, tasks]);
+  }, [mappedTasks, search, projectFilter, priorityFilter, tagFilter]);
+
+  const filtered = useMemo(() => {
+    let list = baseFiltered;
+
+    if (statusFilter === "active") {
+      list = list.filter((t) => t.status !== "done");
+    } else if (statusFilter !== "all") {
+      const realStatus = CLASS_TO_STATUS[statusFilter] || statusFilter;
+      list = list.filter((t) => t.status === realStatus);
+    }
+
+    return list;
+  }, [baseFiltered, statusFilter]);
 
   const doneCount = mappedTasks.filter((t) => t.status === "done").length;
   const activeCount = mappedTasks.length - doneCount;
@@ -242,9 +252,21 @@ export default function TasksPage() {
       <div className="chips">
         {CHIP_STATUSES.map((k) => (
           <span key={k} className={`chip ${statusFilter === k ? "active" : ""}`} onClick={() => setStatusFilter(k)}>
-            {k === "all" ? <span className="chip-dot" style={{ background: "var(--text-2)" }} /> : <span className="chip-dot" style={{ background: statusColor(k) }} />}
+            {k === "all" ? (
+              <span className="chip-dot" style={{ background: "var(--text-2)" }} />
+            ) : k === "active" ? (
+              <span className="chip-dot" style={{ background: "var(--accent)" }} />
+            ) : (
+              <span className="chip-dot" style={{ background: statusColor(k) }} />
+            )}
             {STATUS_LABELS[k]}
-            <span className="chip-count">{k === "all" ? filtered.length : filtered.filter((t) => t.statusClass === k).length}</span>
+            <span className="chip-count">
+              {k === "all"
+                ? baseFiltered.length
+                : k === "active"
+                ? baseFiltered.filter((t) => t.status !== "done").length
+                : baseFiltered.filter((t) => t.statusClass === k).length}
+            </span>
           </span>
         ))}
         <span className="chips-div" />

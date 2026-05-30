@@ -282,6 +282,20 @@ export function ProjectDetailPage() {
             💬 Chat
           </button>
           <button
+            className="btn"
+            onClick={() => {
+              const isArchived = project.status === "archived";
+              const nextStatus = isArchived ? "active" : "archived";
+              updateProject(project.id, { status: nextStatus });
+              toast(isArchived ? "Projekt byl obnoven" : "Projekt byl archivován", "success");
+              setPage("projects");
+            }}
+            style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+          >
+            <Icon name={project.status === "archived" ? "refresh-cw" : "archive"} size={13} color="currentColor" strokeWidth={1.8} />
+            {project.status === "archived" ? "Obnovit" : "Archivovat"}
+          </button>
+          <button
             className="btn danger"
             onClick={async () => {
               if (!(await confirm("Opravdu smazat projekt? Úkoly přejdou do Inboxu."))) return;
@@ -481,7 +495,7 @@ export function ProjectDetailPage() {
 }
 
 export default function ProjectsPage() {
-  const { projects, tasks, addProject, openProject } = useApp();
+  const { projects, tasks, addProject, openProject, updateProject } = useApp();
   const toast = useToast();
 
   const [tab, setTab] = useState("active");
@@ -618,7 +632,40 @@ export default function ProjectsPage() {
       <div key={p.id} className="pcard" style={{ "--proj-color": projectColor(p.id) }} onClick={() => openProject(p.id)}>
         <div className="pcard-top">
           <span className="pcard-stat">{PROJ_STATUS[p.status]?.label || p.status}{overdueCount ? ` · ⚠ ${overdueCount}` : ""}</span>
-          <span style={{ color: "var(--text-3)" }}>›</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                const nextStatus = p.status === "archived" ? "active" : "archived";
+                updateProject(p.id, { status: nextStatus });
+                toast(p.status === "archived" ? "Projekt byl obnoven" : "Projekt byl archivován", "success");
+              }}
+              title={p.status === "archived" ? "Obnovit z archivu" : "Archivovat projekt"}
+              style={{
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                padding: "4px",
+                borderRadius: "50%",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "var(--text-3)",
+                transition: "color 0.2s, background 0.2s",
+              }}
+              onMouseEnter={(el) => {
+                el.currentTarget.style.color = "var(--accent)";
+                el.currentTarget.style.background = "var(--bg-3)";
+              }}
+              onMouseLeave={(el) => {
+                el.currentTarget.style.color = "var(--text-3)";
+                el.currentTarget.style.background = "transparent";
+              }}
+            >
+              <Icon name={p.status === "archived" ? "refresh-cw" : "archive"} size={13} color="currentColor" strokeWidth={1.8} />
+            </button>
+            <span style={{ color: "var(--text-3)" }}>›</span>
+          </div>
         </div>
         <div className="pcard-name">{p.name}</div>
         <div className="pcard-sub">{projectTasks.length} úkolů · {done} hotových</div>

@@ -88,9 +88,9 @@
   --red: #d32f2f;
   --red-soft: rgba(211, 47, 47, 0.08);
   --red-glow: rgba(211, 47, 47, 0.2);
-  --orange: #e65100;
-  --orange-soft: rgba(230, 81, 0, 0.08);
-  --orange-glow: rgba(230, 81, 0, 0.2);
+  --orange: #ca8a04;
+  --orange-soft: rgba(202, 138, 4, 0.08);
+  --orange-glow: rgba(202, 138, 4, 0.18);
   --blue: #1565c0;
   --blue-soft: rgba(21, 101, 192, 0.08);
   --blue-glow: rgba(21, 101, 192, 0.2);
@@ -139,7 +139,7 @@ input, textarea { background: transparent; border: 0; outline: 0; }
 /* === App grid === */
 .app {
   display: grid;
-  grid-template-columns: 270px 1fr;
+  grid-template-columns: 300px 1fr;
   height: 100vh;
   overflow: hidden;
   transition: grid-template-columns .25s ease;

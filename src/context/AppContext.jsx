@@ -190,7 +190,7 @@ export function AppProvider({ children }) {
   const [workspaces, setWorkspaces] = useState([]);
   const [activeWorkspaceId, setActiveWorkspaceIdRaw] = useState(null);
   const [workspaceMembers, setWorkspaceMembers] = useState([]);
-  const [tasksPageFilter, setTasksPageFilter] = useState("all");
+  const [tasksPageFilter, setTasksPageFilter] = useState("active");
 
   useEffect(() => {
     setGlobalProjects(projects);
@@ -961,6 +961,19 @@ export function AppProvider({ children }) {
     })();
   }, [quickTodos, reportError]);
 
+  const updateQuickTodo = useCallback((id, payload) => {
+    const prevTodos = quickTodos;
+    setQuickTodos((prev) => prev.map((q) => q.id === id ? { ...q, ...payload } : q));
+    (async () => {
+      try {
+        await quickTodoService.updateQuickTodoDB(id, payload);
+      } catch {
+        setQuickTodos(prevTodos);
+        reportError("Rychlý úkol se nepodařilo aktualizovat");
+      }
+    })();
+  }, [quickTodos, reportError]);
+
   const clearArchivedQuickTodos = useCallback(() => {
     const ids = quickTodos.filter((q) => q.done).map((q) => q.id);
     if (!ids.length) return;
@@ -1209,6 +1222,7 @@ export function AppProvider({ children }) {
     archiveQuickTodo,
     restoreQuickTodo,
     deleteQuickTodo,
+    updateQuickTodo,
     clearArchivedQuickTodos,
     cmdOpen,
     setCmdOpen,
