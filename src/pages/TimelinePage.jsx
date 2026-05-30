@@ -3,8 +3,6 @@ import { useApp } from "../context/AppContext.jsx";
 import { parseYMD, projectColor, startOfToday } from "../utils.js";
 import { formatDate, formatDateKey } from "../locale.js";
 
-const DAYS = 28;
-
 function assignLanes(tasks, startDate) {
   const indexed = tasks
     .map((task) => {
@@ -23,6 +21,12 @@ function assignLanes(tasks, startDate) {
     laneEnds[lane] = it.idx + it.span - 1;
     return { ...it, lane };
   });
+}
+
+function taskDue(task) {
+  const d = parseYMD(task.dueDate);
+  if (!d) return null;
+  return `${d.getDate()}.${d.getMonth() + 1}.`;
 }
 
 function QuickAddPopover({ project, defaultDate, onAdd, onClose }) {
@@ -60,6 +64,112 @@ function QuickAddPopover({ project, defaultDate, onAdd, onClose }) {
   );
 }
 
+function CellAddModal({ addingForCell, onClose, onAdd, projects }) {
+  const [title, setTitle] = useState("");
+  const [projectId, setProjectId] = useState(addingForCell?.projectId || "");
+  const [dueDate, setDueDate] = useState(addingForCell?.dateKey || "");
+  const [priority, setPriority] = useState("");
+  const [description, setDescription] = useState("");
+
+  const submit = (e) => {
+    e.preventDefault();
+    const clean = title.trim();
+    if (!clean) return;
+    onAdd({
+      title: clean,
+      projectId: projectId || null,
+      dueDate: dueDate || null,
+      priority: priority || null,
+      description: description.trim() || "",
+    });
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-container" onClick={(e) => e.stopPropagation()}>
+        <form onSubmit={submit}>
+          <div className="modal-header">
+            <h3 className="modal-title">Připravit úkol</h3>
+            <button type="button" className="icon-btn" onClick={onClose} style={{ border: "1px solid var(--border-soft)", borderRadius: "var(--r-sm)", padding: "2px 6px" }}>
+              ✕
+            </button>
+          </div>
+          <div className="modal-body" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div>
+              <label style={{ display: "block", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-3)", marginBottom: 6, fontWeight: 500 }}>Název úkolu</label>
+              <input
+                className="detail-input"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Co je potřeba udělat?…"
+                autoFocus
+                required
+              />
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div>
+                <label style={{ display: "block", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-3)", marginBottom: 6, fontWeight: 500 }}>Projekt</label>
+                <select
+                  className="detail-input"
+                  value={projectId || ""}
+                  onChange={(e) => setProjectId(e.target.value)}
+                >
+                  <option value="">Bez projektu</option>
+                  {projects.filter(p => p.status === "active").map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-3)", marginBottom: 6, fontWeight: 500 }}>Termín</label>
+                <input
+                  type="date"
+                  className="detail-input"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div>
+                <label style={{ display: "block", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-3)", marginBottom: 6, fontWeight: 500 }}>Priorita</label>
+                <select
+                  className="detail-input"
+                  value={priority}
+                  onChange={(e) => setPriority(e.target.value)}
+                >
+                  <option value="">Žádná</option>
+                  <option value="low">Nízká</option>
+                  <option value="medium">Střední</option>
+                  <option value="high">Vysoká</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label style={{ display: "block", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-3)", marginBottom: 6, fontWeight: 500 }}>Poznámky / Popis</label>
+              <textarea
+                className="detail-input"
+                style={{ resize: "none", height: 80 }}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Bližší podrobnosti k úkolu…"
+              />
+            </div>
+          </div>
+          <div className="modal-footer">
+            <button type="button" className="btn" onClick={onClose}>Zrušit</button>
+            <button type="submit" className="btn primary">Uložit úkol</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function TimelinePage() {
   const {
     tasks,
@@ -71,7 +181,14 @@ export default function TimelinePage() {
     setTimelineOffsetDays: setOffsetDays,
   } = useApp();
 
+  const [daysCount, setDaysCount] = useState(() => Number(localStorage.getItem("mt3:timeline_days") || 7));
   const [addingFor, setAddingFor] = useState(null);
+  const [addingForCell, setAddingForCell] = useState(null);
+
+  const handleSetDaysCount = (val) => {
+    setDaysCount(val);
+    localStorage.setItem("mt3:timeline_days", val);
+  };
 
   const today = startOfToday();
   const startDate = useMemo(() => {
@@ -82,14 +199,19 @@ export default function TimelinePage() {
   }, [today, offsetDays]);
 
   const days = useMemo(() => {
-    return Array.from({ length: DAYS }, (_, i) => {
+    return Array.from({ length: daysCount }, (_, i) => {
       const d = new Date(startDate);
       d.setDate(startDate.getDate() + i);
       return d;
     });
-  }, [startDate]);
+  }, [startDate, daysCount]);
 
   const todayKey = formatDateKey(today);
+  const selectedDateKey = useMemo(() => {
+    const d = new Date(today);
+    d.setDate(d.getDate() + offsetDays);
+    return formatDateKey(d);
+  }, [today, offsetDays]);
 
   const activeProjects = projects.filter((p) => p.status === "active");
   const scheduled = tasks.filter((t) => t.dueDate && t.status !== "done");
@@ -129,7 +251,25 @@ export default function TimelinePage() {
     setAddingFor(null);
   };
 
-  const rangeLabel = `${formatDate(days[0], { day: "numeric", month: "long" })} → ${formatDate(days[DAYS - 1], { day: "numeric", month: "long", year: "numeric" })}`;
+  const handleAddForCell = (payload) => {
+    addTask({
+      title: payload.title,
+      dueDate: payload.dueDate,
+      priority: payload.priority,
+      projectId: payload.projectId,
+      description: payload.description,
+      status: "todo",
+    });
+    setAddingForCell(null);
+  };
+
+  const handleClickHeaderDay = (d) => {
+    const diffTime = d.getTime() - today.getTime();
+    const diffDays = Math.round(diffTime / 86400000);
+    setOffsetDays(diffDays);
+  };
+
+  const rangeLabel = `${formatDate(days[0], { day: "numeric", month: "long" })} → ${formatDate(days[daysCount - 1], { day: "numeric", month: "long", year: "numeric" })}`;
 
   if (isMobile) {
     return (
@@ -142,10 +282,17 @@ export default function TimelinePage() {
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
-          <button className="btn" onClick={() => setOffsetDays((v) => v - DAYS)}>←</button>
-          <button className="btn primary" onClick={() => setOffsetDays(0)}>dnes</button>
-          <button className="btn" onClick={() => setOffsetDays((v) => v + DAYS)}>→</button>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
+          <div className="segmented-control" style={{ width: "100%" }}>
+            <button style={{ flex: 1 }} className={`sc-btn ${daysCount === 7 ? "active" : ""}`} onClick={() => handleSetDaysCount(7)}>7 dní</button>
+            <button style={{ flex: 1 }} className={`sc-btn ${daysCount === 14 ? "active" : ""}`} onClick={() => handleSetDaysCount(14)}>14 dní</button>
+            <button style={{ flex: 1 }} className={`sc-btn ${daysCount === 30 ? "active" : ""}`} onClick={() => handleSetDaysCount(30)}>30 dní</button>
+          </div>
+          <div style={{ display: "flex", gap: 6 }}>
+            <button style={{ flex: 1 }} className="btn" onClick={() => setOffsetDays((v) => v - daysCount)}>←</button>
+            <button style={{ flex: 1 }} className="btn primary" onClick={() => setOffsetDays(0)}>dnes</button>
+            <button style={{ flex: 1 }} className="btn" onClick={() => setOffsetDays((v) => v + daysCount)}>→</button>
+          </div>
         </div>
 
         {rows.map((row) => {
@@ -190,27 +337,43 @@ export default function TimelinePage() {
     <div className="content">
       <div className="ph">
         <div>
-          <div className="ph-eyebrow">{rangeLabel} · {DAYS} dní</div>
+          <div className="ph-eyebrow">{rangeLabel} · {daysCount} dní</div>
           <h1 className="ph-title">Plán</h1>
           <div className="ph-sub"><span>{overdueCount} po termínu</span><span className="dot" /><span>{activeProjects.length} projektů</span></div>
         </div>
-        <div className="row">
-          <button className="btn" onClick={() => setOffsetDays((v) => v - DAYS)}>← zpět</button>
-          <button className="btn primary" onClick={() => setOffsetDays(0)}>dnes</button>
-          <button className="btn" onClick={() => setOffsetDays((v) => v + DAYS)}>vpřed →</button>
+        <div className="row" style={{ gap: 12, alignItems: "center" }}>
+          <div className="segmented-control">
+            <button className={`sc-btn ${daysCount === 7 ? "active" : ""}`} onClick={() => handleSetDaysCount(7)}>7 dní</button>
+            <button className={`sc-btn ${daysCount === 14 ? "active" : ""}`} onClick={() => handleSetDaysCount(14)}>14 dní</button>
+            <button className={`sc-btn ${daysCount === 30 ? "active" : ""}`} onClick={() => handleSetDaysCount(30)}>30 dní</button>
+          </div>
+          <div className="row" style={{ gap: 6 }}>
+            <button className="btn" onClick={() => setOffsetDays((v) => v - daysCount)}>← zpět</button>
+            <button className="btn primary" onClick={() => setOffsetDays(0)}>dnes</button>
+            <button className="btn" onClick={() => setOffsetDays((v) => v + daysCount)}>vpřed →</button>
+          </div>
         </div>
       </div>
 
       <div className="tl">
         <div className="tl-head">
           <div className="tl-head-l">Projekt</div>
-          <div className="tl-days">
+          <div className="tl-days" style={{ gridTemplateColumns: `repeat(${daysCount}, 1fr)` }}>
             {days.map((d, i) => {
-              const isToday = formatDateKey(d) === todayKey;
+              const dateKey = formatDateKey(d);
+              const isToday = dateKey === todayKey;
+              const isSelected = dateKey === selectedDateKey;
               const dow = d.getDay();
               const isWeekend = dow === 0 || dow === 6;
               return (
-                <div key={i} className={`tl-day ${isToday ? "today" : ""} ${isWeekend ? "we" : ""}`}>{d.getDate()}.{d.getMonth() + 1}</div>
+                <div
+                  key={i}
+                  className={`tl-day ${isToday ? "today" : ""} ${isSelected ? "selected" : ""} ${isWeekend ? "we" : ""}`}
+                  style={{ cursor: "pointer" }}
+                  onClick={() => handleClickHeaderDay(d)}
+                >
+                  {d.getDate()}.{d.getMonth() + 1}
+                </div>
               );
             })}
           </div>
@@ -239,13 +402,29 @@ export default function TimelinePage() {
                 ) : null}
               </div>
 
-              <div className="tl-grid">
-                {days.map((d, i) => (
-                  <div key={i} className={`tl-cell ${formatDateKey(d) === todayKey ? "today" : ""}`} />
-                ))}
+              <div className="tl-grid" style={{ gridTemplateColumns: `repeat(${daysCount}, 1fr)` }}>
+                {days.map((d, i) => {
+                  const dateKey = formatDateKey(d);
+                  const isToday = dateKey === todayKey;
+                  const isSelected = dateKey === selectedDateKey;
+                  return (
+                    <div
+                      key={i}
+                      className={`tl-cell clickable ${isToday ? "today" : ""} ${isSelected ? "selected" : ""}`}
+                      onClick={() => {
+                        setAddingForCell({
+                          projectId: row.projectId,
+                          projectName: row.name,
+                          dateKey: dateKey,
+                        });
+                      }}
+                      title={`Připravit úkol pro ${row.name} na ${d.getDate()}.${d.getMonth() + 1}.`}
+                    />
+                  );
+                })}
 
                 {lanes.map(({ task, idx, span, lane }) => {
-                  if (idx < 0 || idx > DAYS - 1) return null;
+                  if (idx < 0 || idx > daysCount - 1) return null;
                   const d = parseYMD(task.dueDate);
                   const isOverdue = d && d < today;
                   return (
@@ -253,8 +432,8 @@ export default function TimelinePage() {
                       key={task.id}
                       className={`tl-task ${isOverdue ? "overdue" : ""}`}
                       style={{
-                        left: `calc(${(idx / DAYS) * 100}% + 3px)`,
-                        width: `calc(${(span / DAYS) * 100}% - 6px)`,
+                        left: `calc(${(idx / daysCount) * 100}% + 3px)`,
+                        width: `calc(${(span / daysCount) * 100}% - 6px)`,
                         top: 11 + lane * 30,
                         background: row.color,
                       }}
@@ -270,6 +449,15 @@ export default function TimelinePage() {
           );
         })}
       </div>
+
+      {addingForCell ? (
+        <CellAddModal
+          addingForCell={addingForCell}
+          projects={projects}
+          onClose={() => setAddingForCell(null)}
+          onAdd={handleAddForCell}
+        />
+      ) : null}
     </div>
   );
 }

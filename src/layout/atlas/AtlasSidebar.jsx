@@ -21,7 +21,7 @@ const MONTH_NAMES_CZ = [
 ];
 
 function MiniCal() {
-  const { setPage, setTimelineOffsetDays, tasks = [] } = useApp();
+  const { setPage, timelineOffsetDays, setTimelineOffsetDays, tasks = [] } = useApp();
 
   const today = useMemo(() => {
     const d = new Date();
@@ -87,10 +87,17 @@ function MiniCal() {
   const pad0 = (num) => String(num).padStart(2, "0");
   const todayStr = `${today.getFullYear()}-${pad0(today.getMonth() + 1)}-${pad0(today.getDate())}`;
 
+  const selectedDateStr = useMemo(() => {
+    const d = new Date(today);
+    d.setDate(d.getDate() + (timelineOffsetDays || 0));
+    return `${d.getFullYear()}-${pad0(d.getMonth() + 1)}-${pad0(d.getDate())}`;
+  }, [today, timelineOffsetDays]);
+
   const cellsWithStatus = useMemo(() => {
     return cells.map((cell) => {
       const dateStr = `${cell.year}-${pad0(cell.month + 1)}-${pad0(cell.d)}`;
       const isToday = dateStr === todayStr;
+      const isSelected = dateStr === selectedDateStr;
 
       // Filter active tasks
       const activeTasksOnDay = tasks.filter(
@@ -102,11 +109,12 @@ function MiniCal() {
       return {
         ...cell,
         isToday,
+        isSelected,
         has,
         overdue,
       };
     });
-  }, [cells, tasks, todayStr]);
+  }, [cells, tasks, todayStr, selectedDateStr]);
 
   const handleClickDay = (c) => {
     const cellDate = new Date(c.year, c.month, c.d, 0, 0, 0, 0);
@@ -131,7 +139,7 @@ function MiniCal() {
         {cellsWithStatus.map((c, i) => (
           <div
             key={i}
-            className={`sb-cal-d ${c.muted ? "muted" : ""} ${c.isToday ? "today" : ""} ${c.has ? "has" : ""} ${c.overdue ? "overdue" : ""}`}
+            className={`sb-cal-d ${c.muted ? "muted" : ""} ${c.isToday ? "today" : ""} ${c.isSelected ? "selected" : ""} ${c.has ? "has" : ""} ${c.overdue ? "overdue" : ""}`}
             style={{ cursor: "pointer" }}
             onClick={() => handleClickDay(c)}
           >
