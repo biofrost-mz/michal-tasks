@@ -287,7 +287,7 @@ function Headline({ overdueCount, activeCount, totalCount, doneWeek, doneWeekAvg
           <div className="hl-stat-v" style={{ color: "var(--green)" }}>{doneWeekAnim}</div>
           <div className="hl-stat-u" style={{ color: weekDiff >= 0 ? "var(--green)" : "var(--red)" }}>{weekDiffLabel}</div>
         </div>
-        <div className="hl-stat" style={{ "--i": 3 }}>
+        <div className="hl-stat" style={{ "--i": 3, cursor: "default" }}>
           <div className="hl-stat-l">Streak 🔥</div>
           <div className="hl-stat-v" style={{ color: "var(--accent)" }}>{streakCurrentAnim}</div>
           <div className="hl-stat-u">dní · best {streak.best}</div>
@@ -297,7 +297,7 @@ function Headline({ overdueCount, activeCount, totalCount, doneWeek, doneWeekAvg
           <div className="hl-stat-v" style={{ color: "var(--blue)" }}>{activeProjectsCountAnim}</div>
           <div className="hl-stat-u">z {totalProjectsCount} · {doneProjectsCount} hotový</div>
         </div>
-        <div className="hl-stat" style={{ "--i": 5 }} title="Úkoly dokončené dnes">
+        <div className="hl-stat" style={{ "--i": 5, cursor: "default" }} title="Úkoly dokončené dnes">
           <div className="hl-stat-l">Dnes hotovo</div>
           <div className="hl-stat-v" style={{ color: "var(--green)" }}>{doneTodayCountAnim}</div>
           <div className="hl-stat-u">dnes{doneTodayCount > 0 ? " ↑" : ""}</div>
