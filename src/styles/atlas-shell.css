@@ -1286,6 +1286,22 @@ input, textarea { font-family: inherit; color: inherit; background: transparent;
 .kcard-quick button.cur.wait { color: var(--orange); background: var(--orange-soft); }
 .kcard-quick button.cur.done { color: var(--green); background: var(--green-soft); }
 
+.kcol.drag-over {
+  background: var(--surface-2) !important;
+  border-left: 2px dashed var(--accent) !important;
+  border-right: 2px dashed var(--accent) !important;
+  border-bottom: 2px dashed var(--accent) !important;
+  box-shadow: 0 0 24px color-mix(in srgb, var(--accent) 15%, transparent) !important;
+}
+
+.kcard.dragging {
+  opacity: 0.5 !important;
+  transform: scale(0.96) rotate(-1deg) !important;
+  border-color: var(--accent) !important;
+  box-shadow: var(--shadow) !important;
+  cursor: grabbing !important;
+}
+
 /* === Timeline === */
 .tl {
   background: var(--surface);
@@ -1559,91 +1575,139 @@ input, textarea { font-family: inherit; color: inherit; background: transparent;
     min-width: 500px !important;
   }
 
-  /* --- Mobile Filter Chips --- */
+  /* --- Mobile Filter Chips (sticky) --- */
   .chips {
     border-radius: var(--r) !important;
     padding: 10px 12px !important;
     gap: 8px 6px !important;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    margin-left: -14px;
+    margin-right: -14px;
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+    border-bottom: 1px solid var(--border-soft);
   }
+
+  /* --- FAB (floating action button) --- */
+  .fab {
+    position: fixed;
+    bottom: calc(66px + env(safe-area-inset-bottom, 0px) + 12px);
+    right: 16px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.35), 0 0 12px var(--accent-glow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 190;
+    cursor: pointer;
+    transition: transform .15s, box-shadow .15s;
+  }
+  .fab:active { transform: scale(0.92); }
+  .fab.open { transform: rotate(45deg); }
 
   /* === A. Vstupní hlavička (Headline & Statistiky) === */
   .headline {
-    padding: 20px 16px;
-    gap: 16px;
+    padding: 16px 14px;
+    gap: 10px;
   }
   .headline::before {
-    width: 200px;
-    height: 200px;
-    right: -60px;
-    top: -60px;
+    width: 150px;
+    height: 150px;
+    right: -50px;
+    top: -50px;
   }
   .headline-top {
-    flex-direction: column;
-    gap: 16px;
-    align-items: stretch;
+    flex-direction: row;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .hl-greet {
+    font-size: 11px;
   }
   .hl-row {
-    flex-direction: column;
+    flex-direction: row;
     align-items: flex-start;
-    gap: 8px;
+    gap: 10px;
+  }
+  .hl-daynum {
+    flex-shrink: 0;
   }
   .hl-day {
     padding-bottom: 0;
-    font-size: 22px;
+    font-size: 14px;
   }
   .hl-num {
-    font-size: 64px;
+    font-size: 42px;
+    line-height: 1;
   }
   .hl-meta {
     padding-bottom: 0;
+    font-size: 11px;
   }
   .hl-meta .m-month {
-    font-size: 20px;
+    font-size: 15px;
+  }
+  .hl-meta .m-row {
+    font-size: 10.5px;
   }
   .hl-aside {
-    align-items: flex-start;
-    text-align: left;
-    width: 100%;
-    border-top: 1px solid var(--border-soft);
-    padding-top: 12px;
+    display: none;
   }
-  .hl-aside-row {
-    justify-content: flex-start;
-    width: 100%;
+  /* Compact weather strip on mobile */
+  .hl-mob-strip {
+    display: flex !important;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--text-3);
+    padding: 6px 0 0;
+    flex-wrap: wrap;
   }
+  .hl-mob-strip span { white-space: nowrap; }
 
   .hl-stats {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 14px;
-    padding-top: 16px;
+    display: flex;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 0;
+    padding-top: 10px;
+    scrollbar-width: none;
   }
+  .hl-stats::-webkit-scrollbar { display: none; }
   .hl-stat {
-    padding: 0 8px 0 0;
-    border-right: none;
-    border-bottom: 1px dashed var(--border-soft);
-    padding-bottom: 10px;
-  }
-  .hl-stat:nth-child(even) {
-    padding-right: 0;
-    padding-left: 8px;
+    flex: 0 0 auto;
+    min-width: 90px;
+    padding: 0 14px 0 0;
+    border-right: 1px dashed var(--border-soft);
+    border-bottom: none;
   }
   .hl-stat:last-child {
-    grid-column: 1 / -1;
-    border-bottom: none;
-    padding-bottom: 0;
+    border-right: none;
     padding-right: 0;
+  }
+  .hl-stat:nth-child(even) {
     padding-left: 0;
   }
   .hl-stat-v {
-    font-size: 34px;
-    margin-top: 4px;
+    font-size: 26px;
+    margin-top: 2px;
   }
   .hl-stat-l {
     font-size: 9px;
   }
   .hl-stat-u {
-    font-size: 10px;
-    margin-top: 2px;
+    font-size: 9.5px;
+    margin-top: 1px;
   }
 
   /* === B. AI Banner (AI Hero) a návrhy === */

@@ -488,16 +488,21 @@ export function AppProvider({ children }) {
         if (u.status === "done" && prevTask?.status !== "done" && VALID_RECURRENCE.includes(nextTask.recurrence)) {
           const rec = nextTask.recurrence;
           let nextDue = null;
+          let baseDate = null;
           if (nextTask.dueDate) {
             const parsed = parseYMD(nextTask.dueDate);
             if (parsed && !isNaN(parsed)) {
-              const d = new Date(parsed);
-              if (rec === "daily") d.setDate(d.getDate() + 1);
-              else if (rec === "weekly") d.setDate(d.getDate() + 7);
-              else if (rec === "monthly") d.setMonth(d.getMonth() + 1);
-              nextDue = formatDateKey(d);
+              baseDate = new Date(parsed);
             }
           }
+          if (!baseDate) {
+            baseDate = new Date();
+          }
+          const d = new Date(baseDate);
+          if (rec === "daily") d.setDate(d.getDate() + 1);
+          else if (rec === "weekly") d.setDate(d.getDate() + 7);
+          else if (rec === "monthly") d.setMonth(d.getMonth() + 1);
+          nextDue = formatDateKey(d);
           const newId = uuid4();
           const newTask = {
             id: newId,

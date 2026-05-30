@@ -176,9 +176,11 @@ function TemplatePickerModal({ onSelect, onClose }) {
 
 /* ─── AI Panel actions ──────────────────────── */
 const NOTE_AI_ACTIONS = [
-  { id:"note_summary",       icon:"align-left",  label:"Shrnutí"    },
-  { id:"note_continue",      icon:"edit-2",       label:"Pokračovat" },
-  { id:"note_extract_tasks", icon:"check-square", label:"Úkoly"      },
+  { id:"note_summary",        icon:"align-left",   label:"Shrnutí" },
+  { id:"note_summary_bullet", icon:"list",         label:"Do odrážek" },
+  { id:"note_fix_tone",       icon:"check",        label:"Gramatika a tón" },
+  { id:"note_continue",       icon:"edit-2",       label:"Pokračovat" },
+  { id:"note_extract_tasks",  icon:"check-square", label:"Úkoly" },
 ];
 
 /* ─── Slash commands ────────────────────────── */
@@ -501,7 +503,7 @@ function NoteEditor({ note, onSave, t, isMobile, showProps, onToggleProps, onDel
   };
 
   const applyAI = () => {
-    if (aiAction === "note_continue" && typeof aiResult === "string") {
+    if (typeof aiResult === "string" && aiResult.trim()) {
       insertHtml("<p>" + aiResult.replace(/\n/g, "<br>") + "</p>");
     } else if (aiAction === "note_extract_tasks" && Array.isArray(aiResult)) {
       aiResult.forEach(text => { if (typeof text === "string" && text.trim()) addTask({ title: text.trim() }); });
@@ -674,11 +676,9 @@ function NoteEditor({ note, onSave, t, isMobile, showProps, onToggleProps, onDel
                 </div>
               )}
               <div style={{ display:"flex", gap:6, marginTop:8 }}>
-                {aiAction !== "note_summary" && (
-                  <button onClick={applyAI} style={{ padding:"5px 14px", borderRadius:6, border:"none", background:t.accent, color:"#fff", fontSize:12, fontWeight:600, cursor:"pointer" }}>
-                    {aiAction==="note_extract_tasks" ? "Přidat jako úkoly" : "Přidat do poznámky"}
-                  </button>
-                )}
+                <button onClick={applyAI} style={{ padding:"5px 14px", borderRadius:6, border:"none", background:t.accent, color:"#fff", fontSize:12, fontWeight:600, cursor:"pointer" }}>
+                  {aiAction==="note_extract_tasks" ? "Přidat jako úkoly" : "Přidat do poznámky"}
+                </button>
                 <button onClick={()=>{setAiResult(null);setAiAction(null);}} style={{ padding:"5px 12px", borderRadius:6, border:`1px solid ${t.border}`, background:"transparent", color:t.text2, fontSize:12, cursor:"pointer" }}>Zahodit</button>
               </div>
             </div>

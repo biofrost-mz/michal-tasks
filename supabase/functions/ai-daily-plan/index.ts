@@ -1,9 +1,5 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") || "";
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") || "";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -40,10 +36,14 @@ const PRIORITY_LABELS: Record<string, string> = {
   low: "🟢 Nízká",
 };
 
-Deno.serve(async (req) => {
+serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
+
+  const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
+  const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") || "";
+  const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 
   // Auth — vyber user z JWT
   const authHeader = req.headers.get("authorization");
@@ -213,7 +213,7 @@ Pokud některá kategorie nemá žádné úkoly, vynech ji. Buď konkrétní —
 
   // Fallback na Claude, pokud Gemini selhalo nebo nebylo úspěšné
   if (!success) {
-    const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY") || ANTHROPIC_API_KEY;
+    const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY") || "";
     if (!anthropicKey) {
       console.error("ai-daily-plan: Chybí GOOGLE_GENERATIVE_AI_API_KEY i ANTHROPIC_API_KEY");
       return new Response(

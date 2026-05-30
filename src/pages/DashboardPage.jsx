@@ -206,6 +206,12 @@ function Headline({ overdueCount, activeCount, totalCount, doneWeek, doneWeekAvg
             </span>
           </div>
         </div>
+        {/* Mobile compact strip (visible only on mobile via CSS) */}
+        <div className="hl-mob-strip" style={{ display: "none" }}>
+          {weather && <span>{weather.temp}°C {weather.label}</span>}
+          <span>{namedayName}</span>
+          {sunTimes && <span>☀ {sunTimes.sunrise}–{sunTimes.sunset}</span>}
+        </div>
       </div>
 
       <div className="hl-stats">
@@ -239,6 +245,11 @@ function Headline({ overdueCount, activeCount, totalCount, doneWeek, doneWeekAvg
   );
 }
 
+/** Local date → "YYYY-MM-DD" (timezone-safe, no UTC shift) */
+function localDateKey(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 function buildStreak(tasks) {
   const done = tasks.filter((t) => t.status === "done" && t.updatedAt);
   const dayMap = new Map();
@@ -246,7 +257,7 @@ function buildStreak(tasks) {
   done.forEach((t) => {
     const d = new Date(t.updatedAt);
     d.setHours(0, 0, 0, 0);
-    const key = d.toISOString().slice(0, 10);
+    const key = localDateKey(d);
     dayMap.set(key, (dayMap.get(key) || 0) + 1);
   });
 
@@ -255,7 +266,7 @@ function buildStreak(tasks) {
   for (let i = 0; i < 365; i++) {
     const d = new Date(today);
     d.setDate(today.getDate() - i);
-    const key = d.toISOString().slice(0, 10);
+    const key = localDateKey(d);
     if ((dayMap.get(key) || 0) > 0) current += 1;
     else break;
   }
@@ -267,7 +278,7 @@ function buildStreak(tasks) {
     const start = new Date(days[0]);
     const end = today;
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      const key = d.toISOString().slice(0, 10);
+      const key = localDateKey(d);
       if ((dayMap.get(key) || 0) > 0) {
         run += 1;
         if (run > best) best = run;
@@ -279,13 +290,13 @@ function buildStreak(tasks) {
 
   const weeks = [];
   const end = new Date(today);
-  end.setDate(end.getDate() - ((end.getDay() + 6) % 7));
+  end.setDate(end.getDate() - ((end.getDay() + 6) % 7)); // Monday of current week
   for (let w = 11; w >= 0; w--) {
     const week = [];
     for (let d = 0; d < 7; d++) {
       const dt = new Date(end);
       dt.setDate(end.getDate() - w * 7 + d);
-      const key = dt.toISOString().slice(0, 10);
+      const key = localDateKey(dt);
       const c = dayMap.get(key) || 0;
       const level = c >= 4 ? 4 : c >= 3 ? 3 : c >= 2 ? 2 : c >= 1 ? 1 : 0;
       week.push(level);
@@ -346,11 +357,13 @@ export default function DashboardPage() {
     openProject,
     setPage,
     search,
+    isMobile,
   } = useApp();
 
   const [filter, setFilter] = useState("all");
   const [quickText, setQuickText] = useState("");
   const [showDailyPlan, setShowDailyPlan] = useState(false);
+  const [aiExpanded, setAiExpanded] = useState(false);
   const [expandedSections, setExpandedSections] = useState({});
 
   const [groupBy, setGroupBy] = useState("status"); // "status", "project", "priority", "dueDate"
@@ -669,40 +682,67 @@ export default function DashboardPage() {
 
       <div className="work">
         <div>
-          <div className="ai-hero">
-            <div className="ai-orb">✦</div>
-            <div>
-              <div className="ai-text-h">
-                Mám pro tebe <span className="num">{aiSuggestions.length}</span> návrhů, jak začít dnešní den.
-              </div>
-              <div className="ai-text-sub">
-                {activeTasks.length} aktivních · {overdue.length} po termínu · streak {streak.current} dní · Gemini 2.0
-              </div>
-            </div>
-            <button className="ai-act" onClick={() => setShowDailyPlan((p) => !p)}>
-              <Icon name="zap" size={13} color="currentColor" strokeWidth={1.9} />
-              {showDailyPlan ? "Skrýt plán" : "Vygenerovat plán"}
-            </button>
-          </div>
-
-          {showDailyPlan && (
-            <div className="fi" style={{ marginBottom: 18 }}>
-              <AIDailyPlan />
-            </div>
-          )}
-
-          <div className="aisug">
-            {aiSuggestions.map((t, i) => (
-              <div key={t.id} className="aisug-card" onClick={() => setTaskDetail(t.id)}>
-                <span className="aisug-num">{String(i + 1).padStart(2, "0")}</span>
-                <div>
-                  <div className="aisug-title">{t.title}</div>
-                  <div className="aisug-reason">{railSuggestion(t)}</div>
+          {/* AI hero — collapsible on mobile */}
+          {isMobile && !aiExpanded ? (
+            <button
+              className="ai-hero"
+              onClick={() => setAiExpanded(true)}
+              style={{ cursor: "pointer", width: "100%", textAlign: "left" }}
+            >
+              <div className="ai-orb" style={{ fontSize: 16 }}>✦</div>
+              <div style={{ flex: 1 }}>
+                <div className="ai-text-h" style={{ fontSize: 14 }}>
+                  <span className="num">{aiSuggestions.length}</span> návrhů pro dnešek
                 </div>
-                <span className="aisug-tag">{railWeight(t)}</span>
+                <div className="ai-text-sub" style={{ fontSize: 11 }}>
+                  {activeTasks.length} aktivních · {overdue.length} po termínu · tap pro detail
+                </div>
               </div>
-            ))}
-          </div>
+              <Icon name="chevron-down" size={16} color="var(--text-3)" strokeWidth={2} />
+            </button>
+          ) : (
+            <>
+              <div className="ai-hero">
+                <div className="ai-orb">✦</div>
+                <div>
+                  <div className="ai-text-h">
+                    Mám pro tebe <span className="num">{aiSuggestions.length}</span> návrhů, jak začít dnešní den.
+                  </div>
+                  <div className="ai-text-sub">
+                    {activeTasks.length} aktivních · {overdue.length} po termínu · streak {streak.current} dní · Gemini 2.0
+                  </div>
+                </div>
+                <button className="ai-act" onClick={() => setShowDailyPlan((p) => !p)}>
+                  <Icon name="zap" size={13} color="currentColor" strokeWidth={1.9} />
+                  {showDailyPlan ? "Skrýt plán" : "Vygenerovat plán"}
+                </button>
+                {isMobile && (
+                  <button onClick={() => setAiExpanded(false)} style={{ position: "absolute", top: 8, right: 8, background: "none", border: "none", color: "var(--text-3)", padding: 4 }}>
+                    <Icon name="chevron-up" size={14} color="currentColor" strokeWidth={2} />
+                  </button>
+                )}
+              </div>
+
+              {showDailyPlan && (
+                <div className="fi" style={{ marginBottom: 18 }}>
+                  <AIDailyPlan />
+                </div>
+              )}
+
+              <div className="aisug">
+                {aiSuggestions.map((t, i) => (
+                  <div key={t.id} className="aisug-card" onClick={() => setTaskDetail(t.id)}>
+                    <span className="aisug-num">{String(i + 1).padStart(2, "0")}</span>
+                    <div>
+                      <div className="aisug-title">{t.title}</div>
+                      <div className="aisug-reason">{railSuggestion(t)}</div>
+                    </div>
+                    <span className="aisug-tag">{railWeight(t)}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
 
           <div style={{ marginBottom: 18 }}>
             <QuickAdd />

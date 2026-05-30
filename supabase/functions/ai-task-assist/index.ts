@@ -97,6 +97,21 @@ Název: ${note.title || "Bez názvu"}
 Obsah:
 ${(note.content || "").slice(-2000)}`;
 
+    } else if (action === "note_summary_bullet") {
+      prompt = `Převeď tuto poznámku do stručných, přehledných odrážek (bullet-points) v češtině. Použij standardní odrážky (pomlčky nebo tečky). Vrať POUZE text s odrážkami, bez jakéhokoli jiného komentáře.
+
+Název: ${note.title || "Bez názvu"}
+Obsah:
+${(note.content || "").slice(0, 4000)}`;
+
+    } else if (action === "note_fix_tone") {
+      prompt = `Oprav v této poznámce gramatické, pravopisné a stylistické chyby. Přepiš text do spisovné, profesionální a vkusné češtiny, aniž bys měnil původní význam.
+Vrať POUZE opravený a upravený text poznámky bez jakýchkoli vysvětlivek, uvozovek nebo komentářů okolo.
+
+Název: ${note.title || "Bez názvu"}
+Obsah:
+${(note.content || "").slice(0, 4000)}`;
+
     } else if (action === "note_extract_tasks") {
       prompt = `Z této poznámky vytáhni konkrétní akční body nebo úkoly k udělání.
 Vrať POUZE JSON pole stringů, žádný jiný text.

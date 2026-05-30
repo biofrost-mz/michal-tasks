@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useState, useRef, useCallback } from "react";
 import Icon from "../Icon.jsx";
 import { parseYMD, projectColor } from "../../utils.js";
+import { useApp } from "../../context/AppContext.jsx";
 
 export const STATUS_TO_CLASS = { todo: "todo", doing: "doing", waiting: "wait", done: "done" };
 export const CLASS_TO_STATUS = { todo: "todo", doing: "doing", wait: "waiting", done: "done" };
@@ -89,8 +90,53 @@ export function Stepper({ statusClass, onChange }) {
 }
 
 export default function AtlasTaskCard({ task, onOpen, onStatusChange, onStar, projectsById }) {
-  return (
-    <div className={`tcard ${task.statusClass} ${task.overdue ? "alert" : ""}`} onClick={() => onOpen(task.id)}>
+  const { isMobile } = useApp();
+  const [offsetX, setOffsetX] = useState(0);
+  const [swiping, setSwiping] = useState(false);
+  const [exiting, setExiting] = useState(false);
+  const startXRef = useRef(null);
+  const THRESHOLD = 80;
+
+  const onTouchStart = useCallback((e) => {
+    startXRef.current = e.touches[0].clientX;
+    setSwiping(true);
+  }, []);
+
+  const onTouchMove = useCallback((e) => {
+    if (startXRef.current === null) return;
+    const dx = e.touches[0].clientX - startXRef.current;
+    if (dx > 0) { setOffsetX(0); return; } // only swipe left
+    setOffsetX(Math.max(dx, -160));
+  }, []);
+
+  const onTouchEnd = useCallback(() => {
+    setSwiping(false);
+    if (offsetX < -THRESHOLD) {
+      setExiting(true);
+      if (navigator.vibrate) navigator.vibrate(10);
+      setTimeout(() => onStatusChange(task.id, "done"), 260);
+    } else {
+      setOffsetX(0);
+    }
+    startXRef.current = null;
+  }, [offsetX, task.id, onStatusChange]);
+
+  const bgOpacity = Math.min(Math.abs(offsetX) / THRESHOLD, 1);
+
+  const card = (
+    <div
+      className={`tcard ${task.statusClass} ${task.overdue ? "alert" : ""}`}
+      onClick={() => onOpen(task.id)}
+      onTouchStart={isMobile ? onTouchStart : undefined}
+      onTouchMove={isMobile ? onTouchMove : undefined}
+      onTouchEnd={isMobile ? onTouchEnd : undefined}
+      style={isMobile ? {
+        transform: exiting ? "translateX(-110%)" : `translateX(${offsetX}px)`,
+        opacity: exiting ? 0 : 1,
+        transition: swiping ? "none" : "transform .5s cubic-bezier(.4,0,.2,1), opacity .22s",
+        willChange: "transform",
+      } : undefined}
+    >
       <div
         className="tcard-state"
         onClick={(e) => {
@@ -116,6 +162,26 @@ export default function AtlasTaskCard({ task, onOpen, onStatusChange, onStar, pr
           <Icon name="star" size={15} color="currentColor" strokeWidth={1.6} fill={task.starred ? "currentColor" : "none"} />
         </button>
       </div>
+    </div>
+  );
+
+  if (!isMobile) return card;
+
+  return (
+    <div style={{ position: "relative", overflow: "hidden", borderRadius: "var(--r, 14px)" }}>
+      <div style={{
+        position: "absolute", inset: 0,
+        background: `rgba(34,197,94,${bgOpacity * 0.85})`,
+        display: "flex", alignItems: "center", justifyContent: "flex-end", paddingRight: 20,
+        transition: swiping ? "none" : "background .2s",
+        borderRadius: "inherit",
+      }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+          <Icon name="check" size={20} color="var(--bg)" strokeWidth={2.5} />
+          <span style={{ fontSize: 12, color: "var(--bg)", fontWeight: 700 }}>Hotovo</span>
+        </div>
+      </div>
+      {card}
     </div>
   );
 }

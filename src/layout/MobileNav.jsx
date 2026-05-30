@@ -23,10 +23,11 @@ export default function MobileNav({ toggleDk }) {
     { id: "dashboard",   label: "Přehled",  icon: "home"         },
     { id: "quick-todos", label: "Seznam",   icon: "zap",          count: quickTodos.filter((q) => !q.done).length || null },
     { id: "tasks",       label: "Úkoly",    icon: "check-square", count: tasks.filter((x) => x.status !== "done").length },
-    { id: "notes",       label: "Poznámky", icon: "file-text"    },
+    { id: "projects",    label: "Projekty", icon: "folder"       },
   ];
 
   const more = [
+    { id: "notes",     label: "Poznámky", icon: "file-text"    },
     { id: "timeline",  label: "Plán",     icon: "calendar"     },
     { id: "tags",      label: "Tagy",     icon: "tag"          },
   ];

@@ -71,6 +71,10 @@ export function ProjectDetailPage() {
   const [showAllDone, setShowAllDone] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
 
+  const touchTaskIdRef = useRef(null);
+  const touchStartRef = useRef(null);
+  const touchElementRef = useRef(null);
+
   const project = projects.find((p) => p.id === selProject);
   if (!project) return <div className="content"><div className="ph-title">Projekt nenalezen</div></div>;
 
@@ -198,7 +202,23 @@ export function ProjectDetailPage() {
           const list = col.id === "done" && !showAllDone ? listAll.slice(0, 5) : listAll;
 
           return (
-            <div key={col.id} className="kcol" style={{ "--col-color": col.color }}>
+            <div
+              key={col.id}
+              className="kcol"
+              style={{ "--col-color": col.color }}
+              data-col-id={col.id}
+              onDragOver={(e) => { e.preventDefault(); }}
+              onDragEnter={(e) => { e.preventDefault(); e.currentTarget.classList.add("drag-over"); }}
+              onDragLeave={(e) => { e.currentTarget.classList.remove("drag-over"); }}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.currentTarget.classList.remove("drag-over");
+                const taskId = e.dataTransfer.getData("text/plain");
+                if (taskId) {
+                  updateTask(taskId, { status: col.id });
+                }
+              }}
+            >
               <div className="kcol-head">
                 <span className="kcol-name">{col.label}</span>
                 <span className="kcol-count">{listAll.length}</span>
@@ -206,7 +226,67 @@ export function ProjectDetailPage() {
               </div>
 
               {list.map((t) => (
-                <div key={t.id} className="kcard" onClick={() => setTaskDetail(t.id)}>
+                <div
+                  key={t.id}
+                  className="kcard"
+                  onClick={() => setTaskDetail(t.id)}
+                  draggable={true}
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData("text/plain", t.id);
+                    e.currentTarget.classList.add("dragging");
+                  }}
+                  onDragEnd={(e) => {
+                    e.currentTarget.classList.remove("dragging");
+                  }}
+                  onTouchStart={(e) => {
+                    touchTaskIdRef.current = t.id;
+                    touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                    touchElementRef.current = e.currentTarget;
+                  }}
+                  onTouchMove={(e) => {
+                    if (!touchStartRef.current || !touchElementRef.current) return;
+                    const dx = e.touches[0].clientX - touchStartRef.current.x;
+                    const dy = e.touches[0].clientY - touchStartRef.current.y;
+                    if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+                      if (e.cancelable) e.preventDefault();
+                      touchElementRef.current.style.transform = `translate3d(${dx}px, ${dy}px, 10px)`;
+                      touchElementRef.current.style.zIndex = "1000";
+                      touchElementRef.current.classList.add("dragging");
+
+                      const elem = document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY);
+                      const colElem = elem?.closest(".kcol");
+                      document.querySelectorAll(".kcol").forEach((col) => {
+                        if (col === colElem) {
+                          col.classList.add("drag-over");
+                        } else {
+                          col.classList.remove("drag-over");
+                        }
+                      });
+                    }
+                  }}
+                  onTouchEnd={(e) => {
+                    if (!touchElementRef.current) return;
+                    const clientX = e.changedTouches[0].clientX;
+                    const clientY = e.changedTouches[0].clientY;
+                    const elem = document.elementFromPoint(clientX, clientY);
+                    const colElem = elem?.closest(".kcol");
+                    if (colElem) {
+                      const colId = colElem.getAttribute("data-col-id");
+                      if (colId && colId !== t.status) {
+                        updateTask(touchTaskIdRef.current, { status: colId });
+                      }
+                    }
+                    touchElementRef.current.style.transform = "";
+                    touchElementRef.current.style.zIndex = "";
+                    touchElementRef.current.classList.remove("dragging");
+                    document.querySelectorAll(".kcol").forEach((col) => {
+                      col.classList.remove("drag-over");
+                    });
+                    touchTaskIdRef.current = null;
+                    touchStartRef.current = null;
+                    touchElementRef.current = null;
+                  }}
+                >
                   <div className="kcard-t">{t.title || "Bez názvu"}</div>
                   <div className="kcard-m">
                     {t.priority === "high" ? <span className="prio" style={{ "--prio-color": "#f87171" }}>↑ Vysoká</span> : null}

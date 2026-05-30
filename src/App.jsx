@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useApp, AppProvider } from "./context/AppContext.jsx";
+import Icon from "./components/Icon.jsx";
 import { ToastProvider, useToast } from "./components/Toast.jsx";
 import { ConfirmProvider } from "./components/Confirm.jsx";
 import ErrorBoundary, { PageErrorBoundary } from "./components/ErrorBoundary.jsx";
@@ -30,6 +31,66 @@ function AppErrorReporter() {
     clearErrors();
   }, [errorQueue]);
   return null;
+}
+
+function MobileFAB() {
+  const { addTask, addQuickTodo, page } = useApp();
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  const inputRef = React.useRef(null);
+
+  React.useEffect(() => { if (open) setTimeout(() => inputRef.current?.focus(), 100); }, [open]);
+
+  const handleAdd = () => {
+    const val = text.trim();
+    if (!val) return;
+    if (page === "quick-todos") {
+      addQuickTodo(val);
+    } else {
+      addTask({ title: val });
+    }
+    setText("");
+    setOpen(false);
+  };
+
+  return (
+    <>
+      {open && (
+        <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)", zIndex: 189 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{
+            position: "fixed", bottom: "calc(66px + env(safe-area-inset-bottom, 0px) + 76px)",
+            left: 16, right: 16,
+            background: "var(--surface)", border: "1px solid var(--border-soft)",
+            borderRadius: "var(--r, 14px)", padding: "12px 14px",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+            display: "flex", gap: 8, zIndex: 191,
+          }}>
+            <input
+              ref={inputRef}
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); }}
+              placeholder={page === "quick-todos" ? "Nová položka…" : "Nový úkol…"}
+              style={{
+                flex: 1, padding: "10px 14px", borderRadius: 10,
+                border: "1px solid var(--border-soft)", background: "var(--bg-2)",
+                color: "var(--text)", fontSize: 16, outline: "none",
+              }}
+            />
+            <button onClick={handleAdd} disabled={!text.trim()} style={{
+              width: 44, borderRadius: 10, border: "none",
+              background: text.trim() ? "var(--accent)" : "var(--bg-2)",
+              color: text.trim() ? "var(--bg)" : "var(--text-3)",
+              fontWeight: 700, fontSize: 18,
+            }}>+</button>
+          </div>
+        </div>
+      )}
+      <button className={`fab ${open ? "open" : ""}`} onClick={() => setOpen((v) => !v)}>
+        <Icon name="plus" size={28} color="currentColor" strokeWidth={2.5} />
+      </button>
+    </>
+  );
 }
 
 function AppShell() {
@@ -97,6 +158,7 @@ function AppShell() {
             </ErrorBoundary>
           )}
         </div>
+        {isMobile && <MobileFAB />}
         {isMobile && <MobileNav toggleDk={() => setDk(!dk)} />}
       </div>
     </>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useApp } from '../context/AppContext.jsx'
 import { useToast } from './Toast.jsx'
 import { useConfirm } from './Confirm.jsx'
@@ -286,9 +286,65 @@ export default function TaskDrawer() {
   const taskNumber = String(task.id).padStart(4, "0");
   const projectObj = projects.find((p) => p.id === task.projectId);
 
+  // Mobile swipe-to-dismiss
+  const [dragY, setDragY] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const dragStartRef = useRef(null);
+  const DISMISS_THRESHOLD = 150;
+
+  const onDragStart = useCallback((e) => {
+    if (!isMobile) return;
+    dragStartRef.current = e.touches[0].clientY;
+    setDragging(true);
+  }, [isMobile]);
+
+  const onDragMove = useCallback((e) => {
+    if (dragStartRef.current === null) return;
+    const dy = e.touches[0].clientY - dragStartRef.current;
+    if (dy > 0) setDragY(dy); // only allow downward drag
+  }, []);
+
+  const onDragEnd = useCallback(() => {
+    setDragging(false);
+    if (dragY > DISMISS_THRESHOLD) {
+      setTaskDetail(null);
+    }
+    setDragY(0);
+    dragStartRef.current = null;
+  }, [dragY, setTaskDetail]);
+
   return (
     <div className="overlay" onClick={() => setTaskDetail(null)}>
-      <div className="detail" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="detail"
+        onClick={(e) => e.stopPropagation()}
+        style={isMobile ? {
+          transform: `translateY(${dragY}px)`,
+          transition: dragging ? "none" : "transform .3s cubic-bezier(.4,0,.2,1)",
+          borderRadius: "16px 16px 0 0",
+          top: "6vh",
+          position: "fixed",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          width: "100%",
+          maxWidth: "100%",
+        } : undefined}
+      >
+        {/* Mobile drag handle */}
+        {isMobile && (
+          <div
+            onTouchStart={onDragStart}
+            onTouchMove={onDragMove}
+            onTouchEnd={onDragEnd}
+            style={{
+              display: "flex", justifyContent: "center", padding: "10px 0 4px",
+              cursor: "grab", touchAction: "none",
+            }}
+          >
+            <div style={{ width: 40, height: 4, borderRadius: 2, background: "var(--border-soft)" }} />
+          </div>
+        )}
 
         {/* ── Header ── */}
         <div className="detail-top">
