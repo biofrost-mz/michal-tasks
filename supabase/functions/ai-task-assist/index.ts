@@ -32,26 +32,41 @@ serve(async (req) => {
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 200, headers: CORS });
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...CORS, "Content-Type": "application/json" } });
     }
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+    const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
     const userClient = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
+      SUPABASE_URL,
+      SUPABASE_ANON_KEY,
       { global: { headers: { Authorization: authHeader } } }
     );
     const { data: { user }, error: authErr } = await userClient.auth.getUser();
     if (authErr || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 200, headers: CORS });
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...CORS, "Content-Type": "application/json" } });
     }
 
     if (!checkRateLimit(user.id)) {
       return new Response(
         JSON.stringify({ error: `Rate limit exceeded — max ${RATE_LIMIT_MAX} AI calls per hour.` }),
-        { status: 200, headers: { ...CORS, "Retry-After": "3600" } }
+        { status: 429, headers: { ...CORS, "Retry-After": "3600", "Content-Type": "application/json" } }
       );
     }
 
-    const { action, task, note, availableTags } = await req.json();
+    let action, task, note, availableTags;
+    try {
+      const body = await req.json();
+      action = body?.action;
+      task = body?.task;
+      note = body?.note;
+      availableTags = body?.availableTags;
+    } catch (parseErr) {
+      console.error("ai-task-assist: JSON parse error:", parseErr);
+      return new Response(
+        JSON.stringify({ error: "Neplatný požadavek. Tělo musí být platný JSON." }),
+        { status: 400, headers: { ...CORS, "Content-Type": "application/json" } }
+      );
+    }
 
     let prompt = "";
 
@@ -242,7 +257,7 @@ ${(note.content || "").slice(0, 4000)}`;
     console.error("ai-task-assist: unhandled error:", e);
     return new Response(
       JSON.stringify({ error: `Interní chyba serveru: ${e?.message || String(e)}` }),
-      { status: 200, headers: CORS }
+      { status: 500, headers: { ...CORS, "Content-Type": "application/json" } }
     );
   }
 });
