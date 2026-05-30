@@ -9,6 +9,7 @@ import {
 import { STATUSES } from "../constants.js";
 import { parseYMD, startOfToday } from "../utils.js";
 import QuickAdd from "../components/QuickAdd.jsx";
+import EmptyState from "../components/EmptyState.jsx";
 
 const CHIP_STATUSES = ["all", "todo", "doing", "wait", "done"];
 const STATUS_LABELS = {
@@ -202,7 +203,21 @@ export default function TasksPage() {
         <span className="chip">{filtered.length} položek</span>
       </div>
 
-      {view === "table" ? (
+      {filtered.length === 0 ? (
+        tasks.length === 0 ? (
+          <EmptyState
+            type="tasks"
+            title="Zatím žádné úkoly"
+            description="Přidej svůj první úkol pomocí pole výše nebo klávesové zkratky."
+          />
+        ) : (
+          <EmptyState
+            type="filter"
+            title="Žádné výsledky"
+            description="Žádný úkol neodpovídá zvoleným filtrům. Zkus změnit nebo resetovat filtry."
+          />
+        )
+      ) : view === "table" ? (
         <div className="ttable">
           <div className="ttable-row head">
             <div />

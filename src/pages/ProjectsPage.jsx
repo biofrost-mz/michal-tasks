@@ -8,6 +8,7 @@ import ProjectChatPanel from "../components/ProjectChatPanel.jsx";
 import QuickAdd from "../components/QuickAdd.jsx";
 import { projectColor, parseYMD, startOfToday } from "../utils.js";
 import { PROJ_STATUS } from "../constants.js";
+import EmptyState from "../components/EmptyState.jsx";
 
 const PROJECT_COLORS = [
   "#3b82f6", "#22c55e", "#f59e0b", "#8b5cf6", "#ef4444",
@@ -767,12 +768,16 @@ export default function ProjectsPage() {
         </div>
       )}
 
-      {!sortedProjects.length ? (
-        <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--text-3)" }}>
-          <div style={{ fontSize: 36, marginBottom: 10 }}>◫</div>
-          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Žádné projekty</div>
-          <div style={{ fontSize: 13 }}>V této kategorii nejsou žádné projekty.</div>
-        </div>
+      {!sortedProjects.length && !showNew ? (
+        <EmptyState
+          type="projects"
+          title={tab === "all" ? "Zatím žádné projekty" : `Žádné projekty ve stavu „${PROJ_STATUS[tab]?.label ?? tab}"`}
+          description={tab === "all"
+            ? "Vytvoř svůj první projekt a začni organizovat úkoly."
+            : "V této kategorii nejsou žádné projekty."}
+          action={tab === "all" ? openNew : undefined}
+          actionLabel="Nový projekt"
+        />
       ) : null}
     </div>
   );

@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react'
 import { useApp } from '../context/AppContext.jsx'
 import Icon from '../components/Icon.jsx'
 import { PrioChip, TagPill } from '../components/atlas/AtlasTaskCard.jsx'
+import EmptyState from '../components/EmptyState.jsx'
 
 const PRIORITY_CONFIG = {
   low:    { label: "Nízká",   color: "#22c55e", bg: "#22c55e18" },
@@ -318,13 +319,11 @@ export default function QuickTodosPage() {
 
       {/* Active todos — Atlas .tcard cards */}
       {active.length === 0 && archived.length === 0 && (
-        <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--text-3)" }}>
-          <div style={{ marginBottom: 14, opacity: 0.2 }}>
-            <Icon name="zap" size={48} color="var(--text-3)" strokeWidth={1.5} />
-          </div>
-          <div style={{ fontSize: 16, fontWeight: 600, color: "var(--text-2)", marginBottom: 6 }}>Prázdno</div>
-          <div style={{ fontSize: 14 }}>Napiš co potřebuješ a stiskni Enter</div>
-        </div>
+        <EmptyState
+          type="todos"
+          title="Žádné položky"
+          description="Napiš co potřebuješ a stiskni Enter nebo klikni na + Přidat."
+        />
       )}
 
       {active.length === 0 && archived.length > 0 && (
