@@ -135,7 +135,7 @@ function TaskCard({ task, onOpen, onStatusChange, onStar, projectsById }) {
   );
 }
 
-function Headline({ overdueCount, activeCount, totalCount, doneWeek, doneWeekAvg, addedToday, activeProjectsCount, doneProjectsCount, totalProjectsCount, streak, navigateToTasks, setPage }) {
+function Headline({ overdueCount, activeCount, totalCount, doneWeek, doneWeekAvg, addedToday, activeProjectsCount, doneProjectsCount, totalProjectsCount, streak, navigateToTasks, setPage, doneTodayCount }) {
   const now = new Date();
   const dayName = new Intl.DateTimeFormat("cs-CZ", { weekday: "long" }).format(now);
   const monthYear = new Intl.DateTimeFormat("cs-CZ", { month: "long", year: "numeric" }).format(now);
@@ -277,7 +277,20 @@ function Headline({ overdueCount, activeCount, totalCount, doneWeek, doneWeekAvg
         >
           <div className="hl-stat-l">Po termínu</div>
           <div className="hl-stat-v" style={{ color: "var(--red)" }}>{overdueCount}</div>
-          <div className="hl-stat-u" style={{ color: "var(--red)" }}>{overdueCount > 0 ? "⚠ vyřeš dnes" : "✓ vše ok"}</div>
+          <div className="hl-stat-u" style={{ display: "flex", alignItems: "center", gap: 4, color: overdueCount > 0 ? "var(--red)" : "var(--green)" }}>
+            {overdueCount > 0 ? (
+              <>
+                <span className="hl-live-dot-red" />
+                <Icon name="alert-triangle" size={11} color="var(--red)" strokeWidth={2} />
+                <span>vyřeš dnes</span>
+              </>
+            ) : (
+              <>
+                <Icon name="check-circle" size={11} color="var(--green)" strokeWidth={2} />
+                <span>vše ok</span>
+              </>
+            )}
+          </div>
         </div>
         <div
           className="hl-stat"
@@ -309,6 +322,11 @@ function Headline({ overdueCount, activeCount, totalCount, doneWeek, doneWeekAvg
           <div className="hl-stat-l">Projekty</div>
           <div className="hl-stat-v" style={{ color: "var(--blue)" }}>{activeProjectsCount}</div>
           <div className="hl-stat-u">z {totalProjectsCount} · {doneProjectsCount} hotový</div>
+        </div>
+        <div className="hl-stat" title="Úkoly dokončené dnes">
+          <div className="hl-stat-l">Dnes hotovo</div>
+          <div className="hl-stat-v" style={{ color: "var(--green)" }}>{doneTodayCount}</div>
+          <div className="hl-stat-u">dnes{doneTodayCount > 0 ? " ↑" : ""}</div>
         </div>
       </div>
     </div>
@@ -499,6 +517,7 @@ export default function DashboardPage() {
   // Tasks added today
   const todayStart = today.getTime();
   const addedToday = tasks.filter((t) => t.createdAt && t.createdAt >= todayStart).length;
+  const doneTodayCount = tasks.filter((t) => t.status === "done" && t.updatedAt >= todayStart).length;
 
   const aiSuggestions = useMemo(
     () => activeTasks
@@ -752,6 +771,7 @@ export default function DashboardPage() {
         streak={streak}
         navigateToTasks={navigateToTasks}
         setPage={setPage}
+        doneTodayCount={doneTodayCount}
       />
 
       <div className="work">
@@ -797,7 +817,7 @@ export default function DashboardPage() {
                 )}
               </div>
 
-              {showDailyPlan && (
+              {!isMobile && showDailyPlan && (
                 <div className="fi" style={{ marginBottom: 18 }}>
                   <AIDailyPlan />
                 </div>
@@ -806,7 +826,7 @@ export default function DashboardPage() {
               <div className="aisug">
                 {aiSuggestions.map((t, i) => (
                   <div key={t.id} className="aisug-card" onClick={() => setTaskDetail(t.id)}>
-                    <span className="aisug-num">{String(i + 1).padStart(2, "0")}</span>
+                    <span className={`aisug-num${i === 0 ? " aisug-num-top" : ""}`}>{String(i + 1).padStart(2, "0")}</span>
                     <div>
                       <div className="aisug-title">{t.title}</div>
                       <div className="aisug-reason">{railSuggestion(t)}</div>
