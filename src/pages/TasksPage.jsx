@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useCallback } from "react";
 import { useApp } from "../context/AppContext.jsx";
 import {
   mapTaskForAtlas,
@@ -10,6 +10,7 @@ import { STATUSES } from "../constants.js";
 import { parseYMD, startOfToday } from "../utils.js";
 import QuickAdd from "../components/QuickAdd.jsx";
 import EmptyState from "../components/EmptyState.jsx";
+import { useTaskKeyboard } from "../hooks/useTaskKeyboard.js";
 
 const CHIP_STATUSES = ["all", "todo", "doing", "wait", "done"];
 const STATUS_LABELS = {
@@ -141,12 +142,23 @@ export default function TasksPage() {
     setQuickText("");
   };
 
-  const setStatus = (id, status) => updateTask(id, { status });
-  const toggleStar = (id) => {
+  const [focusedId, setFocusedId] = useState(null);
+
+  const setStatus = useCallback((id, status) => updateTask(id, { status }), [updateTask]);
+  const toggleStar = useCallback((id) => {
     const current = tasks.find((t) => t.id === id);
     if (!current) return;
     updateTask(id, { starred: !current.starred });
-  };
+  }, [tasks, updateTask]);
+
+  useTaskKeyboard({
+    tasks: filtered,
+    focusedId,
+    setFocusedId,
+    onOpen: setTaskDetail,
+    onStatusChange: setStatus,
+    onStar: toggleStar,
+  });
 
   return (
     <div className="content">
@@ -232,9 +244,16 @@ export default function TasksPage() {
             const due = t.due;
             const dueDate = parseYMD(tasks.find((x) => x.id === t.id)?.dueDate);
             const isOverdue = dueDate && t.status !== "done" && dueDate < today;
+            const isFocused = focusedId === t.id;
 
             return (
-              <div key={t.id} className="ttable-row" onClick={() => setTaskDetail(t.id)}>
+              <div
+                key={t.id}
+                className="ttable-row"
+                onClick={() => { setFocusedId(t.id); setTaskDetail(t.id); }}
+                onMouseEnter={() => setFocusedId(t.id)}
+                style={isFocused ? { outline: "1px solid var(--accent)", outlineOffset: -1, borderRadius: 8 } : undefined}
+              >
                 <input type="checkbox" onClick={(e) => e.stopPropagation()} />
                 <div className={`tt-name ${t.status === "done" ? "done" : ""}`}>{t.title}</div>
                 <div>
@@ -251,8 +270,16 @@ export default function TasksPage() {
         </div>
       ) : (
         <div className="tcards" style={{ marginTop: 8 }}>
-          {filtered.map((t) => (
-            <div key={t.id} className={`tcard ${t.statusClass} ${t.overdue ? "alert" : ""}`} onClick={() => setTaskDetail(t.id)}>
+          {filtered.map((t) => {
+            const isFocused = focusedId === t.id;
+            return (
+            <div
+              key={t.id}
+              className={`tcard ${t.statusClass} ${t.overdue ? "alert" : ""}`}
+              onClick={() => { setFocusedId(t.id); setTaskDetail(t.id); }}
+              onMouseEnter={() => setFocusedId(t.id)}
+              style={isFocused ? { outline: "1px solid var(--accent)", outlineOffset: -1 } : undefined}
+            >
               <div className="tcard-state" onClick={(e) => { e.stopPropagation(); setStatus(t.id, t.status === "done" ? "todo" : "done"); }} title="Toggle hotovo" />
               <div className="tcard-body">
                 <div className="tcard-title">{t.title}</div>
@@ -274,7 +301,13 @@ export default function TasksPage() {
                 <button className={`icon-btn star ${t.starred ? "on" : ""}`} onClick={() => toggleStar(t.id)} title="Top úkol">★</button>
               </div>
             </div>
-          ))}
+          );})}
+          {/* Keyboard shortcut hint */}
+          {filtered.length > 0 && (
+            <div style={{ textAlign: "center", padding: "12px 0 4px", fontSize: 11.5, color: "var(--text-4)", fontFamily: "var(--mono)" }}>
+              J/K navigace · Enter detail · D hotovo · S hvězda
+            </div>
+          )}
         </div>
       )}
     </div>
