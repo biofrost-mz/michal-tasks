@@ -2484,3 +2484,30 @@ body, p, li, td, th {
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.12) !important;
 }
 
+/* --- 6. Prevent editing cards from lifting on hover or squishing in grid --- */
+.tcard.editing {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  cursor: default !important;
+  transform: none !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25) !important;
+  border-color: var(--accent) !important;
+  pointer-events: auto !important;
+  transition: none !important;
+}
+.tcard.editing:hover {
+  transform: none !important;
+  background: var(--surface) !important;
+  border-color: var(--accent) !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25) !important;
+}
+.tcard.editing:active {
+  transform: none !important;
+  transition: none !important;
+}
+.tcard.editing::before {
+  display: none !important;
+}
+
+

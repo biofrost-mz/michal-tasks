@@ -51,39 +51,39 @@ function ToastList({ toasts }) {
         
         /* Success Toast style */
         .toast-item.success {
-          background: rgba(34, 197, 94, 0.15);
+          background: rgba(14, 22, 16, 0.94);
           color: #22c55e;
-          border: 1px solid rgba(34, 197, 94, 0.35);
+          border: 1px solid rgba(34, 197, 94, 0.4);
         }
         :root.light .toast-item.success {
-          background: rgba(21, 128, 61, 0.08);
+          background: rgba(240, 253, 244, 0.96);
           color: #15803d;
-          border: 1px solid rgba(21, 128, 61, 0.25);
+          border: 1px solid rgba(21, 128, 61, 0.3);
         }
         
         /* Error Toast style */
         .toast-item.error {
-          background: rgba(239, 68, 68, 0.15);
+          background: rgba(26, 14, 14, 0.94);
           color: #ef4444;
-          border: 1px solid rgba(239, 68, 68, 0.35);
+          border: 1px solid rgba(239, 68, 68, 0.4);
         }
         :root.light .toast-item.error {
-          background: rgba(185, 28, 28, 0.08);
+          background: rgba(254, 242, 242, 0.96);
           color: #b91c1c;
-          border: 1px solid rgba(185, 28, 28, 0.25);
+          border: 1px solid rgba(185, 28, 28, 0.3);
         }
         
         /* Info/Default Toast style */
         .toast-item.info {
-          background: rgba(20, 24, 34, 0.85);
+          background: rgba(18, 22, 33, 0.94);
           color: #ededf2;
-          border: 1px solid rgba(38, 44, 60, 0.8);
+          border: 1px solid rgba(38, 44, 60, 0.85);
         }
         :root.light .toast-item.info {
-          background: rgba(255, 255, 255, 0.9);
+          background: rgba(255, 255, 255, 0.96);
           color: #1e293b;
-          border: 1px solid rgba(226, 232, 240, 0.8);
-          box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
+          border: 1px solid rgba(226, 232, 240, 0.9);
+          box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
         }
         
         .toast-icon {

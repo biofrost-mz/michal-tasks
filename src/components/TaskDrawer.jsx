@@ -8,7 +8,7 @@ import NotesMiniList from './NotesMiniList.jsx'
 import AITaskAssist from './AITaskAssist.jsx'
 import { STATUSES, PRIORITIES, PROJ_STATUS } from '../constants.js'
 import { formatDate, formatDateTime } from '../locale.js'
-import { projectColor } from '../utils.js'
+import { projectColor, triggerConfettiBurst } from '../utils.js'
 import { PrioChip } from './atlas/AtlasTaskCard.jsx'
 
 /* ─────────────────────────────────────────────
@@ -466,7 +466,12 @@ export default function TaskDrawer() {
                 <span
                   key={k}
                   className={`chip ${task.status === k ? "active" : ""}`}
-                  onClick={() => s({ status: k })}
+                  onClick={(e) => {
+                    if (k === "done" && task.status !== "done") {
+                      triggerConfettiBurst(e);
+                    }
+                    s({ status: k });
+                  }}
                   style={task.status === k ? { borderColor: v.color, color: v.color, background: v.bg } : undefined}
                 >
                   <Icon name={v.icon} size={11} color="currentColor" strokeWidth={2} />

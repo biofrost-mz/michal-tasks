@@ -956,6 +956,7 @@ export function AppProvider({ children }) {
       description: extras.description ?? null,
     };
     setQuickTodos((prev) => [qt, ...prev]);
+    toast("Položka byla přidána", "success");
     (async () => {
       if (!userId) return;
       try {
@@ -966,11 +967,12 @@ export function AppProvider({ children }) {
       }
     })();
     return qt;
-  }, [userId, activeWorkspaceId, reportError]);
+  }, [userId, activeWorkspaceId, reportError, toast]);
 
   const archiveQuickTodo = useCallback((id) => {
     const prevTodos = quickTodos;
     setQuickTodos((prev) => prev.map((q) => q.id === id ? { ...q, done: true } : q));
+    toast("Položka označena jako hotová ✓", "success");
     (async () => {
       try {
         await quickTodoService.updateQuickTodoDB(id, { done: true });
@@ -979,11 +981,12 @@ export function AppProvider({ children }) {
         reportError("Rychlý úkol se nepodařilo archivovat");
       }
     })();
-  }, [quickTodos, reportError]);
+  }, [quickTodos, reportError, toast]);
 
   const restoreQuickTodo = useCallback((id) => {
     const prevTodos = quickTodos;
     setQuickTodos((prev) => prev.map((q) => q.id === id ? { ...q, done: false } : q));
+    toast("Položka byla obnovena", "success");
     (async () => {
       try {
         await quickTodoService.updateQuickTodoDB(id, { done: false });
@@ -992,11 +995,12 @@ export function AppProvider({ children }) {
         reportError("Rychlý úkol se nepodařilo obnovit");
       }
     })();
-  }, [quickTodos, reportError]);
+  }, [quickTodos, reportError, toast]);
 
   const deleteQuickTodo = useCallback((id) => {
     const prevTodo = quickTodos.find((q) => q.id === id) ?? null;
     setQuickTodos((prev) => prev.filter((q) => q.id !== id));
+    toast("Položka byla smazána", "success");
     (async () => {
       try {
         await quickTodoService.deleteQuickTodoDB(id);
@@ -1005,11 +1009,12 @@ export function AppProvider({ children }) {
         reportError("Rychlý úkol se nepodařilo smazat");
       }
     })();
-  }, [quickTodos, reportError]);
+  }, [quickTodos, reportError, toast]);
 
   const updateQuickTodo = useCallback((id, payload) => {
     const prevTodos = quickTodos;
     setQuickTodos((prev) => prev.map((q) => q.id === id ? { ...q, ...payload } : q));
+    toast("Změny uloženy", "success");
     (async () => {
       try {
         await quickTodoService.updateQuickTodoDB(id, payload);
@@ -1018,7 +1023,7 @@ export function AppProvider({ children }) {
         reportError("Rychlý úkol se nepodařilo aktualizovat");
       }
     })();
-  }, [quickTodos, reportError]);
+  }, [quickTodos, reportError, toast]);
 
   const clearArchivedQuickTodos = useCallback(() => {
     const ids = quickTodos.filter((q) => q.done).map((q) => q.id);

@@ -20,6 +20,7 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
   const [swiping, setSwiping] = useState(false);
   const [exiting, setExiting] = useState(false);
   const startXRef = useRef(null);
+  const hasSwipedRef = useRef(false);
   const THRESHOLD = 80;
 
   const [isEditing, setIsEditing] = useState(false);
@@ -34,11 +35,18 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
     setTimeout(() => onArchive(todo.id), 260);
   }, [onArchive, todo.id]);
 
-  const onTouchStart = (e) => { startXRef.current = e.touches[0].clientX; setSwiping(true); };
+  const onTouchStart = (e) => {
+    startXRef.current = e.touches[0].clientX;
+    hasSwipedRef.current = false;
+    setSwiping(true);
+  };
   const onTouchMove = (e) => {
     if (startXRef.current == null) return;
     const dx = e.touches[0].clientX - startXRef.current;
     if (dx > 0) return;
+    if (Math.abs(dx) > 15) {
+      hasSwipedRef.current = true;
+    }
     setOffsetX(Math.max(dx, -160));
   };
   const onTouchEnd = () => {
@@ -62,7 +70,7 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
   if (isEditing) {
     return (
       <div
-        className="tcard todo"
+        className="tcard todo editing"
         style={{
           display: "flex",
           flexDirection: "column",
@@ -236,6 +244,7 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
         onTouchMove={isMobile ? onTouchMove : undefined}
         onTouchEnd={isMobile ? onTouchEnd : undefined}
         onClick={() => {
+          if (hasSwipedRef.current) return;
           if (Math.abs(offsetX) > 5) return;
           setIsEditing(true);
         }}
