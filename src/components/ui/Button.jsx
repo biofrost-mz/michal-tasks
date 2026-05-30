@@ -95,7 +95,7 @@ export default function Button({
         color,
         fontSize: fs,
         fontWeight: 600,
-        fontFamily: "'Figtree',sans-serif",
+        fontFamily: "var(--font-ui)",
         cursor: isDisabled ? "not-allowed" : "pointer",
         opacity: isDisabled ? 0.55 : 1,
         transition: "all .12s",

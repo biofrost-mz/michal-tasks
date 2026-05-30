@@ -72,7 +72,7 @@ export default class ErrorBoundary extends React.Component {
         background: "#0c0e14",
         display: "flex", flexDirection: "column",
         alignItems: "center", justifyContent: "center",
-        padding: 32, fontFamily: "'Figtree', sans-serif",
+        padding: 32, fontFamily: "var(--font-ui)",
       }}>
         {/* Icon */}
         <div style={{
@@ -85,7 +85,7 @@ export default class ErrorBoundary extends React.Component {
         </div>
 
         <h1 style={{
-          fontFamily: "'Outfit', sans-serif",
+          fontFamily: "var(--font-ui)",
           fontSize: 22, fontWeight: 800, color: "#e8ecf4",
           marginBottom: 8, textAlign: "center",
         }}>

@@ -32,9 +32,9 @@ function injectNoteCSS(dk) {
   const accent= dk ? "#e3a850" : "#d4923a";
   el.textContent = `
 .note-ce { color: ${text}; font-size: 16px; line-height: 1.75; outline: none; min-height: 460px; }
-.note-ce h1 { font-family:var(--serif); font-size: 2em; font-weight: 400; margin: 1.2em 0 .35em; letter-spacing: -.02em; }
-.note-ce h2 { font-family:var(--serif); font-size: 1.35em; font-weight: 400; margin: 1.1em 0 .3em; letter-spacing: -.01em; color: ${text}; }
-.note-ce h3 { font-family:var(--sans); font-size: 1.1em; font-weight: 600; margin: .9em 0 .25em; color: ${text2}; }
+.note-ce h1 { font-family:var(--font-ui); font-size: 2em; font-weight: 700; margin: 1.2em 0 .35em; letter-spacing: -.02em; }
+.note-ce h2 { font-family:var(--font-ui); font-size: 1.35em; font-weight: 600; margin: 1.1em 0 .3em; letter-spacing: -.01em; color: ${text}; }
+.note-ce h3 { font-family:var(--font-ui); font-size: 1.1em; font-weight: 600; margin: .9em 0 .25em; color: ${text2}; }
 .note-ce p  { margin: 8px 0; }
 .note-ce a  { color: ${accent}; text-decoration: underline; }
 .note-ce strong { font-weight: 700; }
@@ -154,7 +154,7 @@ function TemplatePickerModal({ onSelect, onClose }) {
       <div onClick={e=>e.stopPropagation()} style={{ background:"var(--surface)", border:"1px solid var(--border-soft)", borderRadius:16, padding:28, maxWidth:560, width:"calc(100% - 32px)", maxHeight:"88vh", overflowY:"auto", boxShadow:t.shadow }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20 }}>
           <div>
-            <div style={{ fontSize:28, fontWeight:400, fontFamily:"var(--serif)", marginBottom:4, lineHeight:1 }}>Nová poznámka</div>
+            <div style={{ fontSize:28, fontWeight:700, fontFamily:"var(--font-ui)", marginBottom:4, lineHeight:1 }}>Nová poznámka</div>
             <div style={{ fontSize:12, color:t.text3 }}>Vyber šablonu nebo začni prázdnou stránkou</div>
           </div>
           <button onClick={onClose} style={{ background:"var(--bg-2)", border:"1px solid var(--border-soft)", borderRadius:8, padding:6, cursor:"pointer", display:"flex" }}>
@@ -824,7 +824,7 @@ function NoteEditor({ note, onSave, t, isMobile, showProps, onToggleProps, onDel
             placeholder="Bez názvu"
             style={{
               width:"100%", border:"none", background:"transparent", color:t.text, outline:"none",
-              fontFamily:"var(--serif)",
+              fontFamily:"var(--font-ui)",
               fontSize:"clamp(32px, 4vw, 50px)", fontWeight:900, letterSpacing:"-.04em", lineHeight:1.04,
               marginBottom:12, display:"block",
             }}
@@ -1299,7 +1299,8 @@ function NotesAtlasGrid({ notes, onOpenNote, onCreate, projects }) {
       ) : (
         <div className="ngrid">
           {sorted.map((n) => {
-            const excerpt = (n.content || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+            const rawExcerpt = (n.content || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+            const excerpt = rawExcerpt.length > 100 ? rawExcerpt.slice(0, 100) + "…" : rawExcerpt;
             return (
               <button
                 key={n.id}
@@ -1399,7 +1400,7 @@ function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects }) {
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
           <div style={{ display:"flex", alignItems:"center", gap:7 }}>
             <Icon name="file-text" size={16} color={t.accent} strokeWidth={2} />
-            <span style={{ fontSize:15, fontWeight:850, fontFamily:"var(--sans)", letterSpacing:"-.3px" }}>Poznámky</span>
+            <span style={{ fontSize:15, fontWeight:850, fontFamily:"var(--font-ui)", letterSpacing:"-.3px" }}>Poznámky</span>
             <span style={{ fontSize:11, color:t.text3, background:"rgba(255,255,255,.07)", padding:"1px 7px", borderRadius:99, fontWeight:700 }}>{activeCount}</span>
           </div>
           <button onClick={onCreate} style={{ display:"flex", alignItems:"center", gap:5, padding:"7px 12px", borderRadius:9, border:"none", background:`linear-gradient(135deg, var(--accent), var(--accent-2))`, color:"var(--bg)", fontSize:12, fontWeight:800, cursor:"pointer", boxShadow:"0 6px 16px var(--accent-glow)" }}>
@@ -1477,7 +1478,8 @@ function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects }) {
             {group.items.map(n => {
               const accentCol = noteAccentColor(n, projects);
               const isActive  = n.id === selId;
-              const preview   = n.content.replace(/<[^>]+>/g," ").replace(/#{1,3} /g,"").replace(/\*\*/g,"").replace(/\*/g,"").trim().slice(0,120);
+              const rawPreview = (n.content || "").replace(/<[^>]+>/g," ").replace(/#{1,3} /g,"").replace(/\*\*/g,"").replace(/\*/g,"").trim();
+              const preview   = rawPreview.length > 100 ? rawPreview.slice(0, 100) + "…" : rawPreview;
 
               return (
                 <button key={n.id} onClick={()=>onSelect(n.id)} style={{
@@ -1737,7 +1739,7 @@ export default function NotesPage() {
             ) : (
               <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: t.text3, gap: 12 }}>
                 <div style={{ opacity: 0.08 }}><Icon name="file-text" size={72} color={t.text} strokeWidth={0.75} /></div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: t.text2, fontFamily: "var(--sans)" }}>Žádná poznámka vybrána</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: t.text2, fontFamily: "var(--font-ui)" }}>Žádná poznámka vybrána</div>
                 <div style={{ fontSize: 13 }}>Vyber ze seznamu nebo vytvoř novou</div>
                 <button onClick={handleCreate} style={{ marginTop: 4, padding: "9px 22px", borderRadius: 10, border: "none", background: "var(--accent)", color: "var(--bg)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                   + Nová poznámka

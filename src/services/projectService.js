@@ -1,15 +1,23 @@
 import { supabase } from "../supabase.js";
 
 export function normalizeProject(p, i = 0) {
+  let color = null;
+  let desc = p.description || "";
+  const match = desc.match(/\[color:(#[a-fA-F0-9]{6})\]/);
+  if (match) {
+    color = match[1];
+    desc = desc.replace(/\[color:(#[a-fA-F0-9]{6})\]/, "").trim();
+  }
   return {
     id: p.id,
     name: p.name,
-    description: p.description || "",
+    description: desc,
     status: p.status || "active",
     tags: [],
     position: p.position ?? (i + 1) * 1000,
     createdAt: p.created_at ? new Date(p.created_at).getTime() : Date.now(),
     updatedAt: p.updated_at ? new Date(p.updated_at).getTime() : Date.now(),
+    color: color,
   };
 }
 

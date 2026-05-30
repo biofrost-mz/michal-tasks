@@ -155,7 +155,7 @@ export default function WorkspaceSettingsPage() {
             </div>
           ) : (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-              <div style={{ fontFamily: "var(--serif)", fontSize: 30, lineHeight: 1.05 }}>{active?.name || "Bez názvu"}</div>
+              <div style={{ fontFamily: "var(--font-ui)", fontSize: 30, lineHeight: 1.05 }}>{active?.name || "Bez názvu"}</div>
               {isOwner && <button className="btn" onClick={() => { setEditingName(true); setNewWsName(active?.name ?? ""); }}>Přejmenovat</button>}
             </div>
           )}

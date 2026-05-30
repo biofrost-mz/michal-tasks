@@ -74,10 +74,19 @@ export default function TasksPage() {
     updateTask,
     setTaskDetail,
     search,
+    tasksPageFilter,
+    setTasksPageFilter,
   } = useApp();
 
   const [view, setView] = useState("table");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState(() => tasksPageFilter || "all");
+
+  React.useEffect(() => {
+    if (tasksPageFilter && tasksPageFilter !== "all") {
+      setStatusFilter(tasksPageFilter);
+      setTasksPageFilter("all");
+    }
+  }, [tasksPageFilter, setTasksPageFilter]);
   const [projectFilter, setProjectFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [tagFilter, setTagFilter] = useState("all");

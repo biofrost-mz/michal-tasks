@@ -169,6 +169,8 @@ export default function AtlasSidebar({ collapsed, setCollapsed }) {
     logout,
     setSelProject,
     workspaceRole,
+    dk,
+    setDk,
   } = useApp();
 
   const toast = useToast();
@@ -192,13 +194,8 @@ export default function AtlasSidebar({ collapsed, setCollapsed }) {
   );
 
   const visibleNav = useMemo(() => {
-    const list = [...NAV];
-    const canAccessAdmin = workspaceRole === "owner" || workspaceRole === "admin" || userEmail?.includes("zich");
-    if (canAccessAdmin) {
-      list.push({ id: "admin", label: "Systém & Admin", icon: "settings" });
-    }
-    return list;
-  }, [workspaceRole, userEmail]);
+    return NAV;
+  }, []);
 
   const handleCreateWorkspace = async () => {
     const name = window.prompt("Název nového workspace:");
@@ -305,14 +302,23 @@ export default function AtlasSidebar({ collapsed, setCollapsed }) {
       </div>
 
       <div className="sb-foot" style={{ position: "relative" }}>
-        <button style={{ display: "contents" }} onClick={() => setUserOpen((v) => !v)}>
+        <button style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, textAlign: "left", background: "none", border: "none" }} onClick={() => setUserOpen((v) => !v)}>
           <div className="sb-foot-av">{displayName.slice(0, 2).toUpperCase()}</div>
           <div className="sb-foot-meta">
             <div className="sb-foot-name">{displayName}</div>
-            <div className="sb-foot-sub">v2 · tmavý režim</div>
+            <div className="sb-foot-sub">v2 · {dk ? "tmavý" : "světlý"}</div>
           </div>
-          <div className="sb-foot-toggle" />
         </button>
+        {!collapsed && (
+          <div
+            className={`sb-foot-toggle ${dk ? "active" : ""}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              setDk(!dk);
+            }}
+            title={dk ? "Přepnout na světlý režim" : "Přepnout na tmavý režim"}
+          />
+        )}
 
         {userOpen && !collapsed ? (
           <div style={{ position: "absolute", bottom: "calc(100% + 6px)", left: 6, right: 6, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r)", padding: 6, zIndex: 30 }}>

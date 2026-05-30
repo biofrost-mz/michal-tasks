@@ -91,7 +91,7 @@ export default function Input({
           outline: "none",
           color: t.text,
           fontSize: fs,
-          fontFamily: "'Figtree',sans-serif",
+          fontFamily: "var(--font-ui)",
           minWidth: 0,
           ...inputStyle,
         }}

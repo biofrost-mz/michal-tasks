@@ -53,8 +53,15 @@ const PROJECT_COLORS = [
   "#06b6d4", "#ec4899", "#84cc16", "#6366f1", "#f97316",
 ];
 
+let globalProjectsList = [];
+export function setGlobalProjects(list) {
+  globalProjectsList = list || [];
+}
+
 export function projectColor(projectId) {
   if (!projectId) return "#64748b";
+  const gp = globalProjectsList.find((p) => p.id === projectId);
+  if (gp && gp.color) return gp.color;
   let h = 0;
   for (let i = 0; i < projectId.length; i++) h = (h * 31 + projectId.charCodeAt(i)) >>> 0;
   return PROJECT_COLORS[h % PROJECT_COLORS.length];

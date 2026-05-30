@@ -22,6 +22,15 @@ export default function AdminPage() {
     activeWorkspaceId,
     userEmail,
     addTask,
+    deletedProjects = [],
+    deletedTasks = [],
+    deletedNotes = [],
+    restoreProject,
+    restoreTask,
+    restoreNote,
+    hardDeleteProject,
+    hardDeleteTask,
+    hardDeleteNote,
   } = useApp();
 
   const toast = useToast();
@@ -281,6 +290,104 @@ ${debugInfo}
     }
   };
 
+  // --- GLOBÁLNÍ SPRÁVA UŽIVATELŮ ---
+  const [globalProfiles, setGlobalProfiles] = useState([]);
+  const [loadingProfiles, setLoadingProfiles] = useState(false);
+
+  useEffect(() => {
+    async function loadGlobalProfiles() {
+      setLoadingProfiles(true);
+      try {
+        const [profilesRes, membersRes] = await Promise.all([
+          supabase.from("user_profiles").select("*"),
+          supabase.from("workspace_members").select("*")
+        ]);
+        
+        if (profilesRes.error) throw profilesRes.error;
+        if (membersRes.error) throw membersRes.error;
+
+        const loadedProfiles = profilesRes.data || [];
+        const loadedMembers = membersRes.data || [];
+
+        const combined = loadedProfiles.map((p) => {
+          let memberRecord = loadedMembers.find(
+            (m) => m.user_id === p.id && m.workspace_id === activeWorkspaceId
+          );
+          if (!memberRecord) {
+            memberRecord = loadedMembers.find((m) => m.user_id === p.id);
+          }
+          return {
+            id: p.id,
+            displayName: p.display_name || "Bez jména",
+            email: p.email,
+            role: memberRecord ? memberRecord.role : "member",
+          };
+        });
+
+        setGlobalProfiles(combined);
+      } catch (err) {
+        console.error("Global profiles loading error:", err);
+        toast("Chyba při načítání uživatelských profilů: " + err.message, "error");
+      } finally {
+        setLoadingProfiles(false);
+      }
+    }
+
+    if (activeTab === "users") {
+      loadGlobalProfiles();
+    }
+  }, [activeTab, activeWorkspaceId]);
+
+  // --- SPRÁVA KOŠE ---
+  const combinedTrash = useMemo(() => {
+    const items = [];
+    deletedProjects.forEach((p) => {
+      items.push({ id: p.id, type: "project", title: p.name || "Bez názvu", updatedAt: p.updatedAt });
+    });
+    deletedTasks.forEach((t) => {
+      items.push({ id: t.id, type: "task", title: t.title || "Bez názvu", updatedAt: t.updatedAt });
+    });
+    deletedNotes.forEach((n) => {
+      items.push({ id: n.id, type: "note", title: n.title || "Bez názvu", updatedAt: n.updatedAt });
+    });
+    return items.sort((a, b) => b.updatedAt - a.updatedAt);
+  }, [deletedProjects, deletedTasks, deletedNotes]);
+
+  const handleRestore = (item) => {
+    try {
+      if (item.type === "project") {
+        restoreProject(item.id);
+      } else if (item.type === "task") {
+        restoreTask(item.id);
+      } else if (item.type === "note") {
+        restoreNote(item.id);
+      }
+      toast("Položka byla úspěšně obnovena", "success");
+    } catch (err) {
+      toast("Chyba při obnovení: " + err.message, "error");
+    }
+  };
+
+  const handleHardDelete = (item) => {
+    const confirm = window.confirm(
+      `Opravdu chcete tuto položku (${item.title}) smazat natrvalo? Tato akce je zcela nevratná.`
+    );
+    if (!confirm) return;
+
+    try {
+      if (item.type === "project") {
+        hardDeleteProject(item.id);
+      } else if (item.type === "task") {
+        hardDeleteTask(item.id);
+      } else if (item.type === "note") {
+        hardDeleteNote(item.id);
+      }
+      toast("Položka byla natrvalo smazána", "success");
+    } catch (err) {
+      toast("Chyba při mazání: " + err.message, "error");
+    }
+  };
+
   return (
     <div style={{ padding: "24px", maxWidth: 1200, margin: "0 auto", animation: "fadeIn .25s ease-out" }}>
       {/* Záhlaví */}
@@ -320,7 +427,7 @@ ${debugInfo}
       </div>
 
       {/* Navigace v tabech */}
-      <div style={{ display: "flex", borderBottom: "1px solid var(--border)", gap: "16px", marginBottom: "28px" }}>
+      <div style={{ display: "flex", borderBottom: "1px solid var(--border)", gap: "16px", marginBottom: "28px", overflowX: "auto" }}>
         <button
           onClick={() => setActiveTab("overview")}
           style={{
@@ -331,7 +438,8 @@ ${debugInfo}
             fontSize: "14.5px",
             display: "flex",
             alignItems: "center",
-            gap: "8px"
+            gap: "8px",
+            whiteSpace: "nowrap"
           }}
         >
           <Icon name="home" size={16} color="currentColor" />
@@ -347,7 +455,8 @@ ${debugInfo}
             fontSize: "14.5px",
             display: "flex",
             alignItems: "center",
-            gap: "8px"
+            gap: "8px",
+            whiteSpace: "nowrap"
           }}
         >
           <Icon name="alert-circle" size={16} color="currentColor" />
@@ -363,7 +472,8 @@ ${debugInfo}
             fontSize: "14.5px",
             display: "flex",
             alignItems: "center",
-            gap: "8px"
+            gap: "8px",
+            whiteSpace: "nowrap"
           }}
         >
           <Icon name="file-text" size={16} color="currentColor" />
@@ -379,6 +489,53 @@ ${debugInfo}
               marginLeft: "4px"
             }}>
               {errorLogs.length}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={() => setActiveTab("users")}
+          style={{
+            padding: "12px 6px",
+            color: activeTab === "users" ? "var(--accent)" : "var(--text-3)",
+            borderBottom: activeTab === "users" ? "2px solid var(--accent)" : "2px solid transparent",
+            fontWeight: activeTab === "users" ? 600 : 500,
+            fontSize: "14.5px",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            whiteSpace: "nowrap"
+          }}
+        >
+          <Icon name="users" size={16} color="currentColor" />
+          Všechny účty
+        </button>
+        <button
+          onClick={() => setActiveTab("trash")}
+          style={{
+            padding: "12px 6px",
+            color: activeTab === "trash" ? "var(--accent)" : "var(--text-3)",
+            borderBottom: activeTab === "trash" ? "2px solid var(--accent)" : "2px solid transparent",
+            fontWeight: activeTab === "trash" ? 600 : 500,
+            fontSize: "14.5px",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            whiteSpace: "nowrap"
+          }}
+        >
+          <Icon name="trash" size={16} color="currentColor" />
+          Koš
+          {combinedTrash.length > 0 && (
+            <span style={{
+              background: "var(--accent)",
+              color: "var(--bg)",
+              fontSize: "11px",
+              fontWeight: 700,
+              borderRadius: "999px",
+              padding: "1px 6px",
+              marginLeft: "4px"
+            }}>
+              {combinedTrash.length}
             </span>
           )}
         </button>
@@ -1220,6 +1377,301 @@ ${debugInfo}
               </button>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* 4. TAB: VŠECHNY ÚČTY */}
+      {activeTab === "users" && (
+        <div style={{
+          background: "rgba(20, 24, 34, 0.6)",
+          backdropFilter: "blur(12px)",
+          border: "1px solid var(--border-soft)",
+          borderRadius: "var(--r-lg)",
+          padding: "24px",
+          animation: "fadeIn .2s ease-out"
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+            <div>
+              <h3 style={{ fontSize: "18px", fontWeight: 700, color: "var(--text)" }}>
+                Globální adresář účtů
+              </h3>
+              <p style={{ color: "var(--text-3)", fontSize: "13px", marginTop: "4px" }}>
+                Přehled všech registrovaných uživatelských profilů a jejich přiřazených oprávnění v systému Zentero.
+              </p>
+            </div>
+            {loadingProfiles && (
+              <span style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--text-3)", fontSize: "13px" }}>
+                <span style={{ animation: "spin 1s linear infinite", display: "inline-block" }}>
+                  <Icon name="refresh-cw" size={13} color="currentColor" />
+                </span>
+                Aktualizuji...
+              </span>
+            )}
+          </div>
+
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: "0 8px" }}>
+              <thead>
+                <tr>
+                  <th style={{ textAlign: "left", padding: "12px 16px", color: "var(--text-3)", fontSize: "12px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Uživatel</th>
+                  <th style={{ textAlign: "left", padding: "12px 16px", color: "var(--text-3)", fontSize: "12px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Email</th>
+                  <th style={{ textAlign: "left", padding: "12px 16px", color: "var(--text-3)", fontSize: "12px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Role (Active Workspace)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {globalProfiles.length === 0 && !loadingProfiles ? (
+                  <tr>
+                    <td colSpan="3" style={{ textAlign: "center", padding: "40px", color: "var(--text-3)" }}>
+                      Žádné účty nenalezeny.
+                    </td>
+                  </tr>
+                ) : (
+                  globalProfiles.map((p) => {
+                    const roleColors = { owner: "var(--accent)", admin: "var(--blue)", member: "var(--green)", viewer: "var(--text-3)" };
+                    return (
+                      <tr key={p.id} style={{
+                        background: "rgba(255, 255, 255, 0.02)",
+                        border: "1px solid var(--border-soft)",
+                        borderRadius: "var(--r)",
+                      }}>
+                        {/* Uživatel */}
+                        <td style={{ padding: "14px 16px", borderTopLeftRadius: "var(--r)", borderBottomLeftRadius: "var(--r)", borderTop: "1px solid var(--border-soft)", borderBottom: "1px solid var(--border-soft)", borderLeft: "1px solid var(--border-soft)" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                            <div style={{
+                              width: "36px",
+                              height: "36px",
+                              borderRadius: "50%",
+                              background: (roleColors[p.role] || "var(--accent)") + "1a",
+                              border: `1px solid ${(roleColors[p.role] || "var(--accent)")}44`,
+                              color: roleColors[p.role] || "var(--accent)",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontWeight: 700,
+                              fontSize: "13px",
+                              fontFamily: "var(--mono)"
+                            }}>
+                              {(p.displayName || p.email || "U").slice(0, 2).toUpperCase()}
+                            </div>
+                            <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--text)" }}>
+                              {p.displayName}
+                            </span>
+                          </div>
+                        </td>
+                        {/* Email */}
+                        <td style={{ padding: "14px 16px", fontFamily: "var(--mono)", fontSize: "13px", color: "var(--text-2)", borderTop: "1px solid var(--border-soft)", borderBottom: "1px solid var(--border-soft)" }}>
+                          {p.email}
+                        </td>
+                        {/* Role */}
+                        <td style={{ padding: "14px 16px", borderTopRightRadius: "var(--r)", borderBottomRightRadius: "var(--r)", borderTop: "1px solid var(--border-soft)", borderBottom: "1px solid var(--border-soft)", borderRight: "1px solid var(--border-soft)" }}>
+                          <span style={{
+                            fontSize: "10px",
+                            fontWeight: 700,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.08em",
+                            color: roleColors[p.role] || "var(--text-3)",
+                            background: (roleColors[p.role] || "var(--text-3)") + "12",
+                            padding: "4px 10px",
+                            borderRadius: "99px",
+                            border: `1px solid ${(roleColors[p.role] || "var(--text-3)")}33`,
+                            display: "inline-block"
+                          }}>
+                            {p.role || "member"}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* 5. TAB: KOŠ */}
+      {activeTab === "trash" && (
+        <div style={{
+          background: "rgba(20, 24, 34, 0.6)",
+          backdropFilter: "blur(12px)",
+          border: "1px solid var(--border-soft)",
+          borderRadius: "var(--r-lg)",
+          padding: "24px",
+          animation: "fadeIn .2s ease-out"
+        }}>
+          <div style={{ marginBottom: "20px" }}>
+            <h3 style={{ fontSize: "18px", fontWeight: 700, color: "var(--text)" }}>
+              Koš a obnovení dat
+            </h3>
+            <p style={{ color: "var(--text-3)", fontSize: "13px", marginTop: "4px" }}>
+              Smazané úkoly, projekty a poznámky jsou zde bezpečně uchovány po dobu 30 dní, než dojde k jejich trvalému odstranění.
+            </p>
+          </div>
+
+          {combinedTrash.length === 0 ? (
+            <div style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "60px 20px",
+              color: "var(--text-3)"
+            }}>
+              <div style={{
+                width: "56px",
+                height: "56px",
+                borderRadius: "50%",
+                background: "rgba(255, 255, 255, 0.03)",
+                color: "var(--text-4)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: "16px",
+                border: "1px solid var(--border-soft)"
+              }}>
+                <Icon name="trash" size={24} color="currentColor" />
+              </div>
+              <span style={{ fontSize: "15px", fontWeight: 600, color: "var(--text-2)" }}>Koš je prázdný</span>
+              <span style={{ fontSize: "13px", color: "var(--text-3)", textAlign: "center", marginTop: "4px", maxWidth: "340px" }}>
+                Smazáním projektů, úkolů nebo poznámek se zde objeví možnost jejich okamžitého obnovení.
+              </span>
+            </div>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: "0 8px" }}>
+                <thead>
+                  <tr>
+                    <th style={{ textAlign: "left", padding: "12px 16px", color: "var(--text-3)", fontSize: "12px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Název a Typ</th>
+                    <th style={{ textAlign: "left", padding: "12px 16px", color: "var(--text-3)", fontSize: "12px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Smazáno dne</th>
+                    <th style={{ textAlign: "left", padding: "12px 16px", color: "var(--text-3)", fontSize: "12px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Zbývá dní</th>
+                    <th style={{ textAlign: "right", padding: "12px 16px", color: "var(--text-3)", fontSize: "12px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Akce</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {combinedTrash.map((item) => {
+                    const daysRemaining = Math.max(1, 30 - Math.floor((Date.now() - item.updatedAt) / 86400000));
+                    const isUrgent = daysRemaining <= 7;
+                    const typeLabels = { project: "Projekt", task: "Úkol", note: "Poznámka" };
+                    const typeIcons = { project: "folder", task: "check-square", note: "file-text" };
+                    const typeColors = { project: "var(--accent)", task: "var(--blue)", note: "var(--red)" };
+
+                    return (
+                      <tr key={`${item.type}-${item.id}`} style={{
+                        background: "rgba(255, 255, 255, 0.02)",
+                        border: "1px solid var(--border-soft)",
+                        borderRadius: "var(--r)",
+                      }}>
+                        {/* Název a Typ */}
+                        <td style={{ padding: "14px 16px", borderTopLeftRadius: "var(--r)", borderBottomLeftRadius: "var(--r)", borderTop: "1px solid var(--border-soft)", borderBottom: "1px solid var(--border-soft)", borderLeft: "1px solid var(--border-soft)" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                            <div style={{
+                              padding: "6px",
+                              borderRadius: "var(--r-sm)",
+                              background: typeColors[item.type] + "1a",
+                              color: typeColors[item.type],
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center"
+                            }}>
+                              <Icon name={typeIcons[item.type]} size={16} color="currentColor" />
+                            </div>
+                            <div>
+                              <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--text)", display: "block" }}>
+                                {item.title}
+                              </span>
+                              <span style={{ fontSize: "11px", color: "var(--text-3)" }}>
+                                {typeLabels[item.type]}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+                        {/* Smazáno dne */}
+                        <td style={{ padding: "14px 16px", fontSize: "13px", color: "var(--text-2)", borderTop: "1px solid var(--border-soft)", borderBottom: "1px solid var(--border-soft)" }}>
+                          {new Date(item.updatedAt).toLocaleDateString("cs-CZ", { day: "numeric", month: "long", year: "numeric" })}
+                        </td>
+                        {/* Zbývá dní */}
+                        <td style={{ padding: "14px 16px", borderTop: "1px solid var(--border-soft)", borderBottom: "1px solid var(--border-soft)" }}>
+                          <span style={{
+                            fontSize: "12.5px",
+                            fontWeight: 700,
+                            color: isUrgent ? "var(--red)" : "var(--green)",
+                            fontFamily: "var(--mono)"
+                          }}>
+                            {daysRemaining} {daysRemaining === 1 ? "den" : daysRemaining < 5 ? "dny" : "dní"}
+                          </span>
+                        </td>
+                        {/* Akce */}
+                        <td style={{ padding: "14px 16px", borderTopRightRadius: "var(--r)", borderBottomRightRadius: "var(--r)", borderTop: "1px solid var(--border-soft)", borderBottom: "1px solid var(--border-soft)", borderRight: "1px solid var(--border-soft)" }}>
+                          <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+                            <button
+                              onClick={() => handleRestore(item)}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "6px",
+                                padding: "6px 12px",
+                                background: "rgba(255, 255, 255, 0.04)",
+                                border: "1px solid var(--border-soft)",
+                                borderRadius: "var(--r)",
+                                color: "var(--text-2)",
+                                fontSize: "12.5px",
+                                fontWeight: 600,
+                                cursor: "pointer",
+                                transition: "all 0.15s ease",
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = "var(--accent-soft)";
+                                e.currentTarget.style.color = "var(--accent)";
+                                e.currentTarget.style.borderColor = "rgba(var(--accent-rgb), 0.2)";
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = "rgba(255, 255, 255, 0.04)";
+                                e.currentTarget.style.color = "var(--text-2)";
+                                e.currentTarget.style.borderColor = "var(--border-soft)";
+                              }}
+                            >
+                              <Icon name="refresh-cw" size={12} color="currentColor" />
+                              Obnovit
+                            </button>
+                            <button
+                              onClick={() => handleHardDelete(item)}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "6px",
+                                padding: "6px 12px",
+                                background: "var(--red-soft)",
+                                border: "1px solid rgba(239, 68, 68, 0.15)",
+                                borderRadius: "var(--r)",
+                                color: "var(--red)",
+                                fontSize: "12.5px",
+                                fontWeight: 600,
+                                cursor: "pointer",
+                                transition: "all 0.15s ease",
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = "var(--red)";
+                                e.currentTarget.style.color = "#fff";
+                                e.currentTarget.style.borderColor = "var(--red)";
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = "var(--red-soft)";
+                                e.currentTarget.style.color = "var(--red)";
+                                e.currentTarget.style.borderColor = "rgba(239, 68, 68, 0.15)";
+                              }}
+                            >
+                              <Icon name="trash" size={12} color="currentColor" />
+                              Smazat natrvalo
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
     </div>

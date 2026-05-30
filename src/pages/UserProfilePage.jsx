@@ -91,7 +91,7 @@ export default function UserProfilePage() {
             {initials}
           </div>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontFamily: "var(--serif)", fontSize: 30, lineHeight: 1.05, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            <div style={{ fontFamily: "var(--font-ui)", fontSize: 30, lineHeight: 1.05, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
               {me?.displayName || "Bez jména"}
             </div>
             <div style={{ fontSize: 13, color: "var(--text-2)" }}>{userEmail}</div>
@@ -117,6 +117,19 @@ export default function UserProfilePage() {
           </div>
           <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 7 }}>Tohle jméno vidí ostatní členové workspace.</div>
         </section>
+
+        {(me?.role === "owner" || me?.role === "admin" || userEmail?.includes("zich")) && (
+          <section style={{ ...panel, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, borderLeft: "4px solid var(--accent)" }}>
+            <div>
+              <div style={sectionLabel}>Správa Systému</div>
+              <div style={{ fontSize: 13, color: "var(--text-1)", fontWeight: 600, marginBottom: 4 }}>Administrace systému Zentero</div>
+              <div style={{ fontSize: 12, color: "var(--text-3)" }}>Globální správa uživatelů, profilů a obnovení smazaných dat z koše.</div>
+            </div>
+            <button className="btn primary" onClick={() => setPage("admin")} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <Icon name="settings" size={14} /> Vstoupit do administrace
+            </button>
+          </section>
+        )}
 
         <section style={panel}>
           <div style={sectionLabel}>Heslo</div>

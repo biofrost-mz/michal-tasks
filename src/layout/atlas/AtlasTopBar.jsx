@@ -22,20 +22,43 @@ export default function AtlasTopBar() {
   const crumbs = useMemo(() => {
     if (page === "project-detail") {
       const name = projects.find((p) => p.id === selProject)?.name;
-      return ["Workspace", "Projekty", name || "Detail projektu"];
+      return [
+        { label: "Workspace", pageId: "dashboard" },
+        { label: "Projekty", pageId: "projects" },
+        { label: name || "Detail projektu", pageId: null }
+      ];
     }
-    return ["Workspace", PAGE_LABELS[page] || "Přehled"];
+    return [
+      { label: "Workspace", pageId: "dashboard" },
+      { label: PAGE_LABELS[page] || "Přehled", pageId: null }
+    ];
   }, [page, projects, selProject]);
 
   return (
     <div className="tb">
       <div className="tb-crumbs">
-        {crumbs.map((c, i) => (
-          <React.Fragment key={i}>
-            <span className={i === crumbs.length - 1 ? "active" : ""}>{c}</span>
-            {i < crumbs.length - 1 ? <span className="sep">›</span> : null}
-          </React.Fragment>
-        ))}
+        {crumbs.map((c, i) => {
+          const isLast = i === crumbs.length - 1;
+          const isClickable = c.pageId && !isLast;
+          return (
+            <React.Fragment key={i}>
+              <span
+                className={isLast ? "active" : ""}
+                style={{
+                  cursor: isClickable ? "pointer" : "default",
+                  transition: "color 0.15s ease",
+                  userSelect: "none"
+                }}
+                onClick={isClickable ? () => setPage(c.pageId) : undefined}
+                onMouseEnter={isClickable ? (e) => { e.currentTarget.style.color = "var(--accent)"; } : undefined}
+                onMouseLeave={isClickable ? (e) => { e.currentTarget.style.color = ""; } : undefined}
+              >
+                {c.label}
+              </span>
+              {!isLast ? <span className="sep">›</span> : null}
+            </React.Fragment>
+          );
+        })}
       </div>
 
       <div className="tb-acts">

@@ -64,12 +64,121 @@ function QuickAddPopover({ project, defaultDate, onAdd, onClose }) {
   );
 }
 
-function CellAddModal({ addingForCell, onClose, onAdd, projects }) {
+function CellAddModal({ addingForCell, onClose, onAdd }) {
+  const { projects, tasks, tags: allTags, addProject, addTag } = useApp();
   const [title, setTitle] = useState("");
   const [projectId, setProjectId] = useState(addingForCell?.projectId || "");
   const [dueDate, setDueDate] = useState(addingForCell?.dateKey || "");
   const [priority, setPriority] = useState("");
+  const [status, setStatus] = useState("todo");
   const [description, setDescription] = useState("");
+  const [selectedTagIds, setSelectedTagIds] = useState([]);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  
+  // Projects inline creator states
+  const [newProjName, setNewProjName] = useState("");
+  const [isCreatingProj, setIsCreatingProj] = useState(false);
+  
+  // Tags inline creator states
+  const [tagQuery, setTagQuery] = useState("");
+  const [isTagInputFocused, setIsTagInputFocused] = useState(false);
+
+  // Top 3 most frequent projects
+  const topProjects = useMemo(() => {
+    const active = projects.filter((p) => p.status === "active");
+    const counts = {};
+    active.forEach((p) => { counts[p.id] = 0; });
+    tasks.forEach((t) => {
+      if (t.projectId && counts[t.projectId] !== undefined) {
+        counts[t.projectId] += 1;
+      }
+    });
+    return active
+      .sort((a, b) => counts[b.id] - counts[a.id])
+      .slice(0, 3);
+  }, [projects, tasks]);
+
+  // Top 4 most frequent tags
+  const topTags = useMemo(() => {
+    const counts = {};
+    allTags.forEach((tg) => { counts[tg.id] = 0; });
+    tasks.forEach((t) => {
+      if (Array.isArray(t.tagIds)) {
+        t.tagIds.forEach((id) => {
+          if (counts[id] !== undefined) {
+            counts[id] += 1;
+          }
+        });
+      }
+    });
+    return [...allTags]
+      .sort((a, b) => counts[b.id] - counts[a.id])
+      .slice(0, 4);
+  }, [allTags, tasks]);
+
+  // Filter unselected tags matching query
+  const filteredTags = useMemo(() => {
+    const q = tagQuery.toLowerCase().trim();
+    return allTags.filter((t) => {
+      const notSelected = !selectedTagIds.includes(t.id);
+      const matchesQuery = t.name.toLowerCase().includes(q);
+      return notSelected && matchesQuery;
+    });
+  }, [allTags, selectedTagIds, tagQuery]);
+
+  const handleProjKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const name = newProjName.trim();
+      if (name) {
+        const np = addProject({ name, status: "active" });
+        if (np?.id) {
+          setProjectId(np.id);
+        }
+      }
+      setNewProjName("");
+      setIsCreatingProj(false);
+    } else if (e.key === "Escape") {
+      setIsCreatingProj(false);
+      setNewProjName("");
+    }
+  };
+
+  const handleTagSearchKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const val = tagQuery.trim();
+      if (!val) return;
+      
+      if (filteredTags.length > 0 && filteredTags[0].name.toLowerCase() === val.toLowerCase()) {
+        setSelectedTagIds((prev) => [...prev, filteredTags[0].id]);
+        setTagQuery("");
+      } else {
+        const tagColors = ["#ef4444", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4"];
+        const randColor = tagColors[Math.floor(Math.random() * tagColors.length)];
+        const nt = addTag({ name: val, color: randColor });
+        if (nt?.id) {
+          setSelectedTagIds((prev) => [...prev, nt.id]);
+        }
+        setTagQuery("");
+      }
+    }
+  };
+
+  const setPresetDate = (preset) => {
+    const today = new Date();
+    if (preset === "today") {
+      setDueDate(formatDateKey(today));
+    } else if (preset === "tomorrow") {
+      const tomorrow = new Date();
+      tomorrow.setDate(today.getDate() + 1);
+      setDueDate(formatDateKey(tomorrow));
+    } else if (preset === "nextWeek") {
+      const nextWeek = new Date();
+      nextWeek.setDate(today.getDate() + 7);
+      setDueDate(formatDateKey(nextWeek));
+    }
+  };
 
   const submit = (e) => {
     e.preventDefault();
@@ -80,91 +189,641 @@ function CellAddModal({ addingForCell, onClose, onAdd, projects }) {
       projectId: projectId || null,
       dueDate: dueDate || null,
       priority: priority || null,
+      status: status,
       description: description.trim() || "",
+      tagIds: selectedTagIds,
     });
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-container" onClick={(e) => e.stopPropagation()}>
-        <form onSubmit={submit}>
-          <div className="modal-header">
-            <h3 className="modal-title">Připravit úkol</h3>
-            <button type="button" className="icon-btn" onClick={onClose} style={{ border: "1px solid var(--border-soft)", borderRadius: "var(--r-sm)", padding: "2px 6px" }}>
+    <div className="modal-overlay" onClick={onClose} style={{ backdropFilter: "blur(8px)", background: "rgba(0,0,0,0.6)" }}>
+      <div
+        className="modal-container"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: 500,
+          maxWidth: "95%",
+          background: "rgba(10, 10, 10, 0.8)",
+          border: "1px solid rgba(255, 255, 255, 0.1)",
+          borderRadius: 16,
+          boxShadow: "0 20px 40px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.05)",
+          padding: 24,
+          display: "flex",
+          flexDirection: "column",
+          gap: 20,
+          overflow: "visible",
+        }}
+      >
+        <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+          {/* Header */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: "#fff", display: "flex", alignItems: "center", gap: 8 }}>
+              <span>✨</span> Připravit nový úkol
+            </h3>
+            <button
+              type="button"
+              className="icon-btn"
+              onClick={onClose}
+              style={{
+                background: "transparent",
+                border: "1px solid rgba(255, 255, 255, 0.1)",
+                borderRadius: "50%",
+                width: 28,
+                height: 22,
+                color: "#999",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 11,
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "#fff"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.1)"; e.currentTarget.style.color = "#999"; }}
+            >
               ✕
             </button>
           </div>
-          <div className="modal-body" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+
+          {/* Section 1: Základní */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <div>
-              <label style={{ display: "block", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-3)", marginBottom: 6, fontWeight: 500 }}>Název úkolu</label>
+              <label style={{ display: "block", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-3)", marginBottom: 6, fontWeight: 600 }}>
+                Název úkolu
+              </label>
               <input
                 className="detail-input"
+                style={{
+                  width: "100%",
+                  fontSize: 15,
+                  padding: "10px 14px",
+                  background: "rgba(255, 255, 255, 0.04)",
+                  border: "1px solid rgba(255, 255, 255, 0.1)",
+                  borderRadius: 10,
+                  color: "#fff",
+                  outline: "none",
+                  transition: "all 0.2s",
+                }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.boxShadow = "0 0 0 2px var(--accent-soft)"; }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.1)"; e.currentTarget.style.boxShadow = "none"; }}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Co je potřeba udělat?…"
+                placeholder="Co máte v plánu udělat?…"
                 autoFocus
                 required
               />
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <div>
-                <label style={{ display: "block", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-3)", marginBottom: 6, fontWeight: 500 }}>Projekt</label>
-                <select
-                  className="detail-input"
-                  value={projectId || ""}
-                  onChange={(e) => setProjectId(e.target.value)}
-                >
-                  <option value="">Bez projektu</option>
-                  {projects.filter(p => p.status === "active").map((p) => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
-                  ))}
-                </select>
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <label style={{ display: "block", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-3)", fontWeight: 600 }}>
+                  Projekt
+                </label>
+                {isCreatingProj ? (
+                  <span style={{ fontSize: 11, color: "var(--accent)", cursor: "pointer" }} onClick={() => setIsCreatingProj(false)}>Zrušit</span>
+                ) : (
+                  <span style={{ fontSize: 11, color: "var(--accent)", cursor: "pointer" }} onClick={() => setIsCreatingProj(true)}>+ Nový projekt</span>
+                )}
               </div>
 
-              <div>
-                <label style={{ display: "block", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-3)", marginBottom: 6, fontWeight: 500 }}>Termín</label>
+              {isCreatingProj ? (
+                <input
+                  className="detail-input"
+                  style={{
+                    width: "100%",
+                    fontSize: 13,
+                    padding: "8px 12px",
+                    background: "rgba(255, 150, 0, 0.05)",
+                    border: "1px solid var(--accent)",
+                    borderRadius: 8,
+                    color: "#fff",
+                    outline: "none",
+                  }}
+                  autoFocus
+                  placeholder="Zadejte název projektu a stiskněte Enter…"
+                  value={newProjName}
+                  onChange={(e) => setNewProjName(e.target.value)}
+                  onKeyDown={handleProjKeyDown}
+                />
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <select
+                    className="detail-input"
+                    style={{
+                      width: "100%",
+                      fontSize: 13.5,
+                      padding: "8px 12px",
+                      background: "rgba(255, 255, 255, 0.04)",
+                      border: "1px solid rgba(255, 255, 255, 0.1)",
+                      borderRadius: 10,
+                      color: "#fff",
+                    }}
+                    value={projectId || ""}
+                    onChange={(e) => setProjectId(e.target.value)}
+                  >
+                    <option value="" style={{ background: "#111" }}>Bez projektu</option>
+                    {projects.filter(p => p.status === "active").map((p) => (
+                      <option key={p.id} value={p.id} style={{ background: "#111" }}>{p.name}</option>
+                    ))}
+                  </select>
+
+                  {/* Top Projects Pills */}
+                  {topProjects.length > 0 && (
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                      <span style={{ fontSize: 11, color: "var(--text-4)" }}>Rychlá volba:</span>
+                      {topProjects.map((p) => {
+                        const isSel = projectId === p.id;
+                        const col = projectColor(p.id);
+                        return (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => setProjectId(p.id)}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 6,
+                              padding: "4px 10px",
+                              borderRadius: "var(--r-pill)",
+                              fontSize: 11,
+                              fontWeight: isSel ? 600 : 400,
+                              cursor: "pointer",
+                              border: `1px solid ${isSel ? col : "rgba(255, 255, 255, 0.08)"}`,
+                              background: isSel ? `${col}15` : "rgba(255, 255, 255, 0.02)",
+                              color: isSel ? "#fff" : "var(--text-3)",
+                              transition: "all 0.15s",
+                            }}
+                            onMouseEnter={(e) => { if (!isSel) { e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.2)"; e.currentTarget.style.background = "rgba(255, 255, 255, 0.05)"; } }}
+                            onMouseLeave={(e) => { if (!isSel) { e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.08)"; e.currentTarget.style.background = "rgba(255, 255, 255, 0.02)"; } }}
+                          >
+                            <span style={{ width: 6, height: 6, borderRadius: "50%", background: col }} />
+                            {p.name}
+                          </button>
+                        );
+                      })}
+                      {projectId && (
+                        <button
+                          type="button"
+                          onClick={() => setProjectId("")}
+                          style={{
+                            padding: "4px 8px",
+                            borderRadius: "var(--r-pill)",
+                            fontSize: 11,
+                            cursor: "pointer",
+                            border: "1px solid transparent",
+                            background: "transparent",
+                            color: "var(--red)",
+                          }}
+                        >
+                          odebrat
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Section 2: Parametry */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 14, borderTop: "1px solid rgba(255, 255, 255, 0.06)", paddingTop: 16 }}>
+            {/* Status (Stav) Selector as segment switch */}
+            <div>
+              <label style={{ display: "block", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-3)", marginBottom: 6, fontWeight: 600 }}>
+                Stav úkolu
+              </label>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(4, 1fr)",
+                  background: "rgba(255, 255, 255, 0.03)",
+                  border: "1px solid rgba(255, 255, 255, 0.08)",
+                  borderRadius: 10,
+                  padding: 3,
+                }}
+              >
+                {[
+                  { id: "todo", label: "To do", col: "var(--text-2)" },
+                  { id: "doing", label: "Doing", col: "var(--blue)" },
+                  { id: "waiting", label: "Čekám", col: "var(--orange)" },
+                  { id: "done", label: "Hotovo", col: "var(--green)" },
+                ].map((st) => {
+                  const isAct = status === st.id;
+                  return (
+                    <button
+                      key={st.id}
+                      type="button"
+                      onClick={() => setStatus(st.id)}
+                      style={{
+                        padding: "6px 2px",
+                        border: "none",
+                        borderRadius: 8,
+                        fontSize: 12,
+                        fontWeight: isAct ? 600 : 400,
+                        cursor: "pointer",
+                        background: isAct ? "rgba(255, 255, 255, 0.08)" : "transparent",
+                        color: isAct ? st.col : "var(--text-3)",
+                        boxShadow: isAct ? "0 1px 3px rgba(0,0,0,0.2)" : "none",
+                        transition: "all 0.15s",
+                      }}
+                    >
+                      {st.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Priority Selector as segment switch */}
+            <div>
+              <label style={{ display: "block", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-3)", marginBottom: 6, fontWeight: 600 }}>
+                Priorita
+              </label>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(4, 1fr)",
+                  background: "rgba(255, 255, 255, 0.03)",
+                  border: "1px solid rgba(255, 255, 255, 0.08)",
+                  borderRadius: 10,
+                  padding: 3,
+                }}
+              >
+                {[
+                  { id: "", label: "Žádná", bg: "transparent", borderCol: "transparent", txtCol: "var(--text-3)", actBg: "rgba(255, 255, 255, 0.08)" },
+                  { id: "low", label: "Nízká", bg: "#22c55e15", borderCol: "#22c55e40", txtCol: "#22c55e", actBg: "#22c55e20" },
+                  { id: "medium", label: "Střední", bg: "#f59e0b15", borderCol: "#f59e0b40", txtCol: "#f59e0b", actBg: "#f59e0b20" },
+                  { id: "high", label: "Vysoká", bg: "#ef444415", borderCol: "#ef444440", txtCol: "#ef4444", actBg: "#ef444420" },
+                ].map((pr) => {
+                  const isAct = priority === pr.id;
+                  return (
+                    <button
+                      key={pr.id}
+                      type="button"
+                      onClick={() => setPriority(pr.id)}
+                      style={{
+                        padding: "6px 2px",
+                        border: isAct ? `1px solid ${pr.borderCol}` : "1px solid transparent",
+                        borderRadius: 8,
+                        fontSize: 12,
+                        fontWeight: isAct ? 600 : 400,
+                        cursor: "pointer",
+                        background: isAct ? pr.actBg : "transparent",
+                        color: isAct ? pr.txtCol : "var(--text-3)",
+                        boxShadow: isAct ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+                        transition: "all 0.15s",
+                      }}
+                    >
+                      {pr.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Due date and preset shortcuts */}
+            <div>
+              <label style={{ display: "block", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-3)", marginBottom: 6, fontWeight: 600 }}>
+                Termín dokončení
+              </label>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <input
                   type="date"
                   className="detail-input"
+                  style={{
+                    width: "100%",
+                    fontSize: 13.5,
+                    padding: "8px 12px",
+                    background: "rgba(255, 255, 255, 0.04)",
+                    border: "1px solid rgba(255, 255, 255, 0.1)",
+                    borderRadius: 10,
+                    color: "#fff",
+                  }}
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
                   onClick={(e) => { try { e.target.showPicker(); } catch(err) {} }}
                   onFocus={(e) => { try { e.target.showPicker(); } catch(err) {} }}
                 />
-              </div>
-            </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <div>
-                <label style={{ display: "block", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-3)", marginBottom: 6, fontWeight: 500 }}>Priorita</label>
-                <select
-                  className="detail-input"
-                  value={priority}
-                  onChange={(e) => setPriority(e.target.value)}
-                >
-                  <option value="">Žádná</option>
-                  <option value="low">Nízká</option>
-                  <option value="medium">Střední</option>
-                  <option value="high">Vysoká</option>
-                </select>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                  <span style={{ fontSize: 11, color: "var(--text-4)" }}>Rychlé termíny:</span>
+                  {[
+                    { id: "today", label: "Dnes" },
+                    { id: "tomorrow", label: "Zítra" },
+                    { id: "nextWeek", label: "Příští týden" },
+                  ].map((pres) => {
+                    const todayDate = new Date();
+                    let expectedVal = formatDateKey(todayDate);
+                    if (pres.id === "tomorrow") {
+                      todayDate.setDate(todayDate.getDate() + 1);
+                      expectedVal = formatDateKey(todayDate);
+                    } else if (pres.id === "nextWeek") {
+                      todayDate.setDate(todayDate.getDate() + 7);
+                      expectedVal = formatDateKey(todayDate);
+                    }
+                    const isSelected = dueDate === expectedVal;
+                    return (
+                      <button
+                        key={pres.id}
+                        type="button"
+                        onClick={() => setPresetDate(pres.id)}
+                        style={{
+                          padding: "3px 8px",
+                          borderRadius: "var(--r-pill)",
+                          fontSize: 11,
+                          cursor: "pointer",
+                          border: `1px solid ${isSelected ? "var(--accent)" : "rgba(255, 255, 255, 0.08)"}`,
+                          background: isSelected ? "var(--accent-soft)" : "rgba(255, 255, 255, 0.02)",
+                          color: isSelected ? "var(--accent)" : "var(--text-3)",
+                          transition: "all 0.1s",
+                        }}
+                      >
+                        {pres.label}
+                      </button>
+                    );
+                  })}
+                  {dueDate && (
+                    <button
+                      type="button"
+                      onClick={() => setDueDate("")}
+                      style={{
+                        padding: "3px 8px",
+                        borderRadius: "var(--r-pill)",
+                        fontSize: 11,
+                        cursor: "pointer",
+                        border: "1px solid transparent",
+                        background: "transparent",
+                        color: "var(--red)",
+                      }}
+                    >
+                      zrušit
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-
-            <div>
-              <label style={{ display: "block", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-3)", marginBottom: 6, fontWeight: 500 }}>Poznámky / Popis</label>
-              <textarea
-                className="detail-input"
-                style={{ resize: "none", height: 80 }}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Bližší podrobnosti k úkolu…"
-              />
             </div>
           </div>
-          <div className="modal-footer">
-            <button type="button" className="btn" onClick={onClose}>Zrušit</button>
-            <button type="submit" className="btn primary">Uložit úkol</button>
+
+          {/* Section 3: Rozšiřující (Advanced) - Collapsible toggle */}
+          <div style={{ borderTop: "1px solid rgba(255, 255, 255, 0.06)", paddingTop: 12 }}>
+            <button
+              type="button"
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "var(--text-3)",
+                fontSize: 12.5,
+                fontWeight: 500,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "4px 8px",
+                marginLeft: -8,
+                borderRadius: 6,
+                transition: "color 0.2s",
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.color = "var(--text-2)"}
+              onMouseLeave={(e) => e.currentTarget.style.color = "var(--text-3)"}
+            >
+              <span>{showAdvanced ? "▾" : "▸"}</span> Další možnosti (Popis, Tagy)
+            </button>
+
+            {showAdvanced && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 12, padding: "4px 0" }}>
+                {/* Description */}
+                <div>
+                  <label style={{ display: "block", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-3)", marginBottom: 6, fontWeight: 600 }}>
+                    Poznámky / Popis
+                  </label>
+                  <textarea
+                    className="detail-input"
+                    style={{
+                      width: "100%",
+                      fontSize: 13,
+                      resize: "none",
+                      height: 70,
+                      padding: "8px 12px",
+                      background: "rgba(255, 255, 255, 0.04)",
+                      border: "1px solid rgba(255, 255, 255, 0.1)",
+                      borderRadius: 10,
+                      color: "#fff",
+                    }}
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Bližší podrobnosti k úkolu…"
+                  />
+                </div>
+
+                {/* Tags autocomplete selector */}
+                <div style={{ position: "relative" }}>
+                  <label style={{ display: "block", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-3)", marginBottom: 6, fontWeight: 600 }}>
+                    Tagy (Štítky)
+                  </label>
+                  
+                  {/* Selected Tags Pills */}
+                  {selectedTagIds.length > 0 && (
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
+                      {selectedTagIds.map((tid) => {
+                        const tg = allTags.find(x => x.id === tid);
+                        if (!tg) return null;
+                        return (
+                          <span
+                            key={tid}
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 6,
+                              background: `${tg.color}20`,
+                              border: `1px solid ${tg.color}40`,
+                              color: tg.color,
+                              fontSize: 11.5,
+                              padding: "2px 8px",
+                              borderRadius: 6,
+                              fontWeight: 500,
+                            }}
+                          >
+                            #{tg.name}
+                            <span
+                              onClick={() => setSelectedTagIds((p) => p.filter(id => id !== tid))}
+                              style={{ cursor: "pointer", opacity: 0.7, fontSize: 10, paddingLeft: 2 }}
+                              onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
+                              onMouseLeave={(e) => e.currentTarget.style.opacity = 0.7}
+                            >
+                              ✕
+                            </span>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Search / Create Input */}
+                  <input
+                    className="detail-input"
+                    style={{
+                      width: "100%",
+                      fontSize: 13,
+                      padding: "8px 12px",
+                      background: "rgba(255, 255, 255, 0.04)",
+                      border: "1px solid rgba(255, 255, 255, 0.1)",
+                      borderRadius: 10,
+                      color: "#fff",
+                    }}
+                    placeholder="Vyhledat nebo napsat název štítku a stisknout Enter…"
+                    value={tagQuery}
+                    onChange={(e) => setTagQuery(e.target.value)}
+                    onKeyDown={handleTagSearchKeyDown}
+                    onFocus={() => setIsTagInputFocused(true)}
+                    onBlur={() => setTimeout(() => setIsTagInputFocused(false), 200)} // delay to allow clicks
+                  />
+
+                  {/* Suggestions Dropdown */}
+                  {isTagInputFocused && filteredTags.length > 0 && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: "100%",
+                        left: 0,
+                        right: 0,
+                        background: "#121212",
+                        border: "1px solid rgba(255, 255, 255, 0.15)",
+                        borderRadius: 10,
+                        boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
+                        maxHeight: 150,
+                        overflowY: "auto",
+                        zIndex: 100,
+                        marginTop: 4,
+                        padding: 4,
+                      }}
+                    >
+                      {filteredTags.map((tg) => (
+                        <div
+                          key={tg.id}
+                          onClick={() => {
+                            setSelectedTagIds((p) => [...p, tg.id]);
+                            setTagQuery("");
+                          }}
+                          style={{
+                            padding: "6px 10px",
+                            borderRadius: 6,
+                            cursor: "pointer",
+                            fontSize: 12.5,
+                            color: tg.color,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                            transition: "background 0.15s",
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255, 255, 255, 0.05)"}
+                          onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                        >
+                          <span style={{ width: 6, height: 6, borderRadius: "50%", background: tg.color }} />
+                          #{tg.name}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Tag Query Creation Info */}
+                  {tagQuery.trim() && !allTags.some(t => t.name.toLowerCase() === tagQuery.trim().toLowerCase()) && (
+                    <div style={{ fontSize: 11, color: "var(--accent)", marginTop: 4 }}>
+                      Stiskněte Enter pro vytvoření nového štítku: <strong style={{ color: "#fff" }}>#{tagQuery.trim()}</strong>
+                    </div>
+                  )}
+
+                  {/* Top Tags Pills */}
+                  {topTags.length > 0 && (
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginTop: 8 }}>
+                      <span style={{ fontSize: 11, color: "var(--text-4)" }}>Časté štítky:</span>
+                      {topTags.map((tg) => {
+                        const isSelected = selectedTagIds.includes(tg.id);
+                        if (isSelected) return null;
+                        return (
+                          <button
+                            key={tg.id}
+                            type="button"
+                            onClick={() => setSelectedTagIds((p) => [...p, tg.id])}
+                            style={{
+                              padding: "2px 8px",
+                              borderRadius: 6,
+                              fontSize: 11,
+                              cursor: "pointer",
+                              border: `1px solid ${tg.color}30`,
+                              background: `${tg.color}05`,
+                              color: tg.color,
+                              transition: "all 0.1s",
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = `${tg.color}15`; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = `${tg.color}05`; }}
+                          >
+                            +# {tg.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Footer Actions */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              borderTop: "1px solid rgba(255, 255, 255, 0.06)",
+              paddingTop: 16,
+              marginTop: 4,
+            }}
+          >
+            {/* Show Advanced Toggle as Secondary button if not expanded */}
+            {!showAdvanced ? (
+              <button
+                type="button"
+                className="btn"
+                onClick={() => setShowAdvanced(true)}
+                style={{ fontSize: 12.5, color: "var(--text-3)", borderColor: "rgba(255, 255, 255, 0.08)", background: "transparent" }}
+              >
+                ⚙️ Další možnosti
+              </button>
+            ) : (
+              <div />
+            )}
+
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                type="button"
+                className="btn"
+                onClick={onClose}
+                style={{
+                  padding: "8px 16px",
+                  fontSize: 13,
+                  borderColor: "rgba(255, 255, 255, 0.08)",
+                  background: "transparent",
+                  color: "var(--text-2)",
+                }}
+              >
+                Zrušit
+              </button>
+              <button
+                type="submit"
+                className="btn primary"
+                style={{
+                  padding: "8px 20px",
+                  fontSize: 13.5,
+                  fontWeight: 600,
+                  background: "var(--accent)",
+                  borderColor: "var(--accent)",
+                  boxShadow: "0 4px 12px var(--accent-soft)",
+                }}
+              >
+                🚀 Založit úkol
+              </button>
+            </div>
           </div>
         </form>
       </div>
@@ -260,7 +919,8 @@ export default function TimelinePage() {
       priority: payload.priority,
       projectId: payload.projectId,
       description: payload.description,
-      status: "todo",
+      status: payload.status || "todo",
+      tagIds: payload.tagIds || [],
     });
     setAddingForCell(null);
   };

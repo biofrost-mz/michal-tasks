@@ -27,17 +27,12 @@ export default function MobileNav({ toggleDk }) {
   ];
 
   const moreList = React.useMemo(() => {
-    const list = [
+    return [
       { id: "notes",     label: "Poznámky", icon: "file-text"    },
       { id: "timeline",  label: "Plán",     icon: "calendar"     },
       { id: "tags",      label: "Tagy",     icon: "tag"          },
     ];
-    const canAccessAdmin = workspaceRole === "owner" || workspaceRole === "admin" || userEmail?.includes("zich");
-    if (canAccessAdmin) {
-      list.push({ id: "admin", label: "Admin", icon: "settings" });
-    }
-    return list;
-  }, [workspaceRole, userEmail]);
+  }, []);
 
   const me = workspaceMembers.find((m) => m.userId === userId);
   const displayName = me?.displayName || me?.email || userEmail || "Uživatel";

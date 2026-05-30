@@ -1,5 +1,6 @@
 /* === ATLAS v2 — merged direction (Cortex precision + Atlas premium) === */
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap');
+@import url('https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,600,700,900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
 :root {
   /* dark — slightly warmer than pure black */
@@ -40,9 +41,18 @@
   --green-glow: rgba(34, 197, 94, 0.3);
   --gray: #8b8f9c;
 
-  --serif: 'Instrument Serif', Georgia, serif;
-  --sans: 'Geist', ui-sans-serif, system-ui, sans-serif;
-  --mono: 'Geist Mono', ui-monospace, monospace;
+  /* dynamic overlays */
+  --tb-bg: rgba(10, 12, 18, 0.85);
+  --we-bg: rgba(0, 0, 0, 0.2);
+  --accent-rgb: 227, 168, 80;
+  --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+
+  --font-ui: "Satoshi", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", Consolas, "Liberation Mono", monospace;
+
+  --sans: var(--font-ui);
+  --mono: var(--font-mono);
+  --serif: var(--font-ui);
 
   --r-sm: 6px;
   --r: 10px;
@@ -50,19 +60,71 @@
   --r-pill: 999px;
 }
 
+:root.light {
+  /* light — warm off-white zinc/slate tones, highly professional */
+  --bg: #f5f6fa;
+  --bg-2: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #eceef4;
+  --surface-3: #e2e4ec;
+  --surface-h: #f0f2f8;
+  --border: #e1e3ed;
+  --border-strong: #8f95b2;
+  --border-soft: #eceef4;
+
+  /* text */
+  --text: #1a1e2e;
+  --text-2: #4a5168;
+  --text-3: #7e859b;
+  --text-4: #a2a8be;
+
+  /* brand — warm amber gold adjusted for contrast */
+  --accent: #c58a36;
+  --accent-2: #b07a2d;
+  --accent-soft: rgba(197, 138, 54, 0.08);
+  --accent-glow: rgba(197, 138, 54, 0.20);
+
+  /* status colors — high-contrast safe tones for light background */
+  --red: #d32f2f;
+  --red-soft: rgba(211, 47, 47, 0.08);
+  --red-glow: rgba(211, 47, 47, 0.2);
+  --orange: #e65100;
+  --orange-soft: rgba(230, 81, 0, 0.08);
+  --orange-glow: rgba(230, 81, 0, 0.2);
+  --blue: #1565c0;
+  --blue-soft: rgba(21, 101, 192, 0.08);
+  --blue-glow: rgba(21, 101, 192, 0.2);
+  --green: #2e7d32;
+  --green-soft: rgba(46, 125, 50, 0.08);
+  --green-glow: rgba(46, 125, 50, 0.2);
+  --gray: #5c637a;
+
+  /* dynamic overlays */
+  --tb-bg: rgba(245, 246, 250, 0.85);
+  --we-bg: rgba(0, 0, 0, 0.03);
+  --accent-rgb: 197, 138, 54;
+  --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
 * { box-sizing: border-box; }
 html, body {
   margin: 0; padding: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: var(--sans);
+  font-family: var(--font-ui);
   font-size: 15px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
-button { font-family: inherit; cursor: pointer; border: 0; background: none; color: inherit; padding: 0; }
-input, textarea { font-family: inherit; color: inherit; background: transparent; border: 0; outline: 0; }
+button, input, textarea, select {
+  font-family: inherit;
+  color: inherit;
+}
+button { cursor: pointer; border: 0; background: none; padding: 0; }
+input, textarea { background: transparent; border: 0; outline: 0; }
 ::selection { background: var(--accent); color: var(--bg); }
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }
@@ -331,10 +393,20 @@ input, textarea { font-family: inherit; color: inherit; background: transparent;
   width: 30px; height: 18px; border-radius: var(--r-pill); background: var(--surface-3);
   position: relative; cursor: pointer; flex-shrink: 0;
   border: 1px solid var(--border);
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 .sb-foot-toggle::after {
-  content: ''; position: absolute; right: 1px; top: 1px;
+  content: ''; position: absolute; left: 1px; top: 1px;
   width: 14px; height: 14px; border-radius: 50%;
+  background: var(--text-4);
+  transition: left 0.15s cubic-bezier(0.4, 0, 0.2, 1), background 0.15s ease, box-shadow 0.15s ease;
+}
+.sb-foot-toggle.active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.sb-foot-toggle.active::after {
+  left: 13px;
   background: var(--accent); box-shadow: 0 0 6px var(--accent-glow);
 }
 
@@ -348,7 +420,7 @@ input, textarea { font-family: inherit; color: inherit; background: transparent;
 /* topbar */
 .tb {
   position: sticky; top: 0; z-index: 10;
-  background: rgba(10, 12, 18, 0.85);
+  background: var(--tb-bg);
   backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--border-soft);
   padding: 12px 32px;
@@ -1340,7 +1412,7 @@ input, textarea { font-family: inherit; color: inherit; background: transparent;
   border-left: 1px solid var(--border-soft);
 }
 .tl-day.today { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
-.tl-day.we { color: var(--text-4); background: rgba(0,0,0,0.2); }
+.tl-day.we { color: var(--text-4); background: var(--we-bg); }
 .tl-row {
   display: grid; grid-template-columns: 180px 1fr;
   border-bottom: 1px solid var(--border-soft);
@@ -1377,8 +1449,8 @@ input, textarea { font-family: inherit; color: inherit; background: transparent;
   box-shadow: inset 0 -2px 0 var(--accent);
 }
 .tl-cell.selected {
-  background: rgba(227, 168, 80, 0.04) !important;
-  box-shadow: inset 1px 0 0 rgba(227, 168, 80, 0.25), inset -1px 0 0 rgba(227, 168, 80, 0.25);
+  background: rgba(var(--accent-rgb), 0.04) !important;
+  box-shadow: inset 1px 0 0 rgba(var(--accent-rgb), 0.25), inset -1px 0 0 rgba(var(--accent-rgb), 0.25);
 }
 
 /* Clickable grid cells */
@@ -1387,7 +1459,7 @@ input, textarea { font-family: inherit; color: inherit; background: transparent;
   transition: background 0.15s ease;
 }
 .tl-cell.clickable:hover {
-  background: rgba(227, 168, 80, 0.08) !important;
+  background: rgba(var(--accent-rgb), 0.08) !important;
 }
 
 /* Segmented controls for timeline duration selection */
@@ -2016,3 +2088,38 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
     margin-bottom: -4px;
   }
 }
+
+/* === TYPOGRAPHIC UNIFICATION (Satoshi & JetBrains Mono) === */
+.meta,
+.kicker,
+.badge,
+.tag,
+.status-pill,
+.sync-status,
+.date-line,
+.task-state,
+.shortcut,
+.filter-chip,
+.stat-label,
+.system-label,
+.sb-cal-h,
+.sb-cal-d,
+.hl-svatek,
+.donut-sub,
+.donut-leg-val,
+.donut-num {
+  font-family: var(--font-mono) !important;
+  letter-spacing: 0.04em !important;
+}
+
+/* Typography tuning for premium productivity OS look */
+h1, h2, h3, .ph-title {
+  line-height: 1.15 !important;
+  letter-spacing: -0.02em !important;
+}
+
+body, p, li, td, th {
+  line-height: 1.5;
+  letter-spacing: normal;
+}
+

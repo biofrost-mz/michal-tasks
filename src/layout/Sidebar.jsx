@@ -478,7 +478,7 @@ export default function Sidebar({ toggleDk }) {
     >
       <div style={{ padding: "20px 14px 14px", display: "flex", alignItems: "center", gap: 9 }}>
         <MZLogo size={30} />
-        <span style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 700, fontSize: 16, letterSpacing: "-0.5px" }}>
+        <span style={{ fontFamily: "var(--font-ui)", fontWeight: 700, fontSize: 16, letterSpacing: "-0.5px" }}>
           Michal Tasks
         </span>
       </div>

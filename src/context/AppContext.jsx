@@ -9,7 +9,7 @@ import React, {
 
 import { supabase } from "../supabase.js";
 import theme from "../theme.js";
-import { uuid4, parseYMD, useDebouncedEffect } from "../utils.js";
+import { uuid4, parseYMD, useDebouncedEffect, setGlobalProjects } from "../utils.js";
 import { formatDateKey } from "../locale.js";
 import * as taskService from "../services/taskService.js";
 import * as noteService from "../services/noteService.js";
@@ -177,16 +177,24 @@ export function AppProvider({ children }) {
   const [selProject, setSelProject] = useState(null);
 
   const [projects, setProjects] = useState([]);
+  const [deletedProjects, setDeletedProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
+  const [deletedTasks, setDeletedTasks] = useState([]);
   const tasksRef = useRef([]);
   useEffect(() => { tasksRef.current = tasks; }, [tasks]);
   const [tags, setTags] = useState([]);
   const [notes, setNotes] = useState([]);
+  const [deletedNotes, setDeletedNotes] = useState([]);
   const [attachments, setAttachments] = useState([]);
   const [quickTodos, setQuickTodos] = useState([]);
   const [workspaces, setWorkspaces] = useState([]);
   const [activeWorkspaceId, setActiveWorkspaceIdRaw] = useState(null);
   const [workspaceMembers, setWorkspaceMembers] = useState([]);
+  const [tasksPageFilter, setTasksPageFilter] = useState("all");
+
+  useEffect(() => {
+    setGlobalProjects(projects);
+  }, [projects]);
 
   // Error queue for displaying DB errors as toasts
   const [errorQueue, setErrorQueue] = useState([]);
@@ -231,6 +239,17 @@ export function AppProvider({ children }) {
     })();
   }, []);
 
+  // Sync theme class to document.documentElement
+  useEffect(() => {
+    if (dk) {
+      document.documentElement.classList.add("dark");
+      document.documentElement.classList.remove("light");
+    } else {
+      document.documentElement.classList.add("light");
+      document.documentElement.classList.remove("dark");
+    }
+  }, [dk]);
+
   // Load from Supabase after login
   useEffect(() => {
     if (!userId) { setLoaded(true); return; }
@@ -259,10 +278,21 @@ export function AppProvider({ children }) {
         setWorkspaceMembers(normalized);
         await workspaceService.seedIfEmpty(userId, wsId);
         const data = await dbFetchAll(userId, wsId);
-        setProjects(data.projects);
-        setTasks(data.tasks);
-        setTags(data.tags);
-        setNotes(data.notes);
+        const loadedProjects = data.projects || [];
+        const loadedTasks = data.tasks || [];
+        const loadedNotes = data.notes || [];
+
+        setProjects(loadedProjects.filter((p) => p.status !== "deleted"));
+        setDeletedProjects(loadedProjects.filter((p) => p.status === "deleted"));
+
+        setTasks(loadedTasks.filter((t) => t.status !== "deleted"));
+        setDeletedTasks(loadedTasks.filter((t) => t.status === "deleted"));
+
+        setTags(data.tags || []);
+
+        setNotes(loadedNotes.filter((n) => n.status !== "deleted"));
+        setDeletedNotes(loadedNotes.filter((n) => n.status === "deleted"));
+
         setAttachments(data.attachments ?? []);
         setQuickTodos(data.quickTodos ?? []);
       } catch (e) {
@@ -301,11 +331,39 @@ export function AppProvider({ children }) {
       .channel(`tasks-rt-${activeWorkspaceId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "tasks", filter: `workspace_id=eq.${activeWorkspaceId}` }, (payload) => {
         if (payload.eventType === "UPDATE") {
-          setTasks((prev) => prev.map((t) => t.id === payload.new.id ? taskService.normalizeTask(payload.new, t.tagIds) : t));
+          const isDeleted = payload.new.status === "deleted";
+          if (isDeleted) {
+            setTasks((prev) => prev.filter((t) => t.id !== payload.new.id));
+            setDeletedTasks((prev) => {
+              const existing = prev.find((t) => t.id === payload.new.id);
+              const tagIds = existing ? existing.tagIds : [];
+              const updated = taskService.normalizeTask(payload.new, tagIds);
+              return prev.some((t) => t.id === payload.new.id)
+                ? prev.map((t) => t.id === payload.new.id ? updated : t)
+                : [...prev, updated];
+            });
+          } else {
+            setDeletedTasks((prev) => prev.filter((t) => t.id !== payload.new.id));
+            setTasks((prev) => {
+              const existing = prev.find((t) => t.id === payload.new.id);
+              const tagIds = existing ? existing.tagIds : [];
+              const updated = taskService.normalizeTask(payload.new, tagIds);
+              return prev.some((t) => t.id === payload.new.id)
+                ? prev.map((t) => t.id === payload.new.id ? updated : t)
+                : [...prev, updated];
+            });
+          }
         } else if (payload.eventType === "INSERT") {
-          setTasks((prev) => prev.some((t) => t.id === payload.new.id) ? prev : [...prev, taskService.normalizeTask(payload.new, [])]);
+          const isDeleted = payload.new.status === "deleted";
+          const normalized = taskService.normalizeTask(payload.new, []);
+          if (isDeleted) {
+            setDeletedTasks((prev) => prev.some((t) => t.id === payload.new.id) ? prev : [...prev, normalized]);
+          } else {
+            setTasks((prev) => prev.some((t) => t.id === payload.new.id) ? prev : [...prev, normalized]);
+          }
         } else if (payload.eventType === "DELETE") {
           setTasks((prev) => prev.filter((t) => t.id !== payload.old.id));
+          setDeletedTasks((prev) => prev.filter((t) => t.id !== payload.old.id));
         }
       })
       .subscribe();
@@ -319,21 +377,25 @@ export function AppProvider({ children }) {
 
   // CRUD — Projects
   const addProject = useCallback((p) => {
+    const rawDesc = (p?.description || "").trim();
+    const color = p?.color || null;
+    const fullDesc = color ? `${rawDesc} [color:${color}]`.trim() : rawDesc;
     const proj = {
       id: uuid4(),
       name: (p?.name || "").trim() || "Nový projekt",
-      description: p?.description || "",
+      description: rawDesc,
       status: p?.status || "active",
       tags: [],
       position: Date.now(),
       createdAt: Date.now(),
       updatedAt: Date.now(),
+      color: color,
     };
     setProjects((prev) => [...prev, proj]);
     (async () => {
       if (!userId) return;
       try {
-        await projectService.insertProject(proj, userId, activeWorkspaceId);
+        await projectService.insertProject({ ...proj, description: fullDesc }, userId, activeWorkspaceId);
       } catch {
         setProjects((prev) => prev.filter((x) => x.id !== proj.id));
         reportError("Projekt se nepodařilo uložit");
@@ -344,11 +406,16 @@ export function AppProvider({ children }) {
 
   const updateProject = useCallback((id, u) => {
     const prevProject = projects.find((x) => x.id === id) ?? null;
+    if (!prevProject) return;
+    const nextColor = u.color !== undefined ? u.color : prevProject.color;
+    const nextDesc = u.description !== undefined ? u.description : prevProject.description;
+    const fullDesc = nextColor ? `${nextDesc} [color:${nextColor}]`.trim() : nextDesc;
+
     setProjects((p) => p.map((x) => (x.id === id ? { ...x, ...u, updatedAt: Date.now() } : x)));
     (async () => {
       const payload = {};
       if (u.name !== undefined) payload.name = u.name;
-      if (u.description !== undefined) payload.description = u.description;
+      if (u.description !== undefined || u.color !== undefined) payload.description = fullDesc;
       if (u.status !== undefined) payload.status = u.status;
       if (!Object.keys(payload).length) return;
       try {
@@ -362,17 +429,20 @@ export function AppProvider({ children }) {
 
   const deleteProject = useCallback(
     (id) => {
-      const prevProjects = projects;
-      const prevTasks = tasks;
+      const target = projects.find((x) => x.id === id);
+      if (!target) return;
+      const updated = { ...target, status: "deleted", updatedAt: Date.now() };
+
       setProjects((p) => p.filter((x) => x.id !== id));
-      setTasks((p) => p.map((x) => (x.projectId === id ? { ...x, projectId: null } : x)));
+      setDeletedProjects((prev) => [...prev, updated]);
+
       (async () => {
         try {
-          await projectService.deleteProjectDB(id);
+          await projectService.updateProjectDB(id, { status: "deleted", updated_at: new Date().toISOString() });
         } catch {
-          setProjects(prevProjects);
-          setTasks(prevTasks);
-          reportError("Projekt se nepodařilo smazat");
+          setProjects((p) => [...p, target]);
+          setDeletedProjects((prev) => prev.filter((x) => x.id !== id));
+          reportError("Projekt se nepodařilo přesunout do koše");
         }
       })();
       if (selProject === id) {
@@ -380,7 +450,7 @@ export function AppProvider({ children }) {
         setSelProject(null);
       }
     },
-    [selProject, projects, tasks, reportError]
+    [selProject, projects, reportError]
   );
 
   // Přeuspořádání úkolů — přijme nové pole úkolů v požadovaném pořadí
@@ -556,15 +626,21 @@ export function AppProvider({ children }) {
 
   const deleteTask = useCallback(
     (id) => {
-      const prevTask = tasksRef.current.find((x) => x.id === id) ?? null;
+      const target = tasksRef.current.find((x) => x.id === id) ?? null;
+      if (!target) return;
+      const updated = { ...target, status: "deleted", updatedAt: Date.now() };
+
       setTasks((p) => p.filter((x) => x.id !== id));
+      setDeletedTasks((prev) => [...prev, updated]);
       if (taskDetail === id) setTaskDetail(null);
+
       (async () => {
         try {
-          await taskService.deleteTaskDB(id);
+          await taskService.updateTaskDB(id, { status: "deleted", updated_at: new Date().toISOString() });
         } catch {
-          if (prevTask) setTasks((p) => [...p, prevTask]);
-          reportError("Úkol se nepodařilo smazat");
+          setTasks((p) => [...p, target]);
+          setDeletedTasks((prev) => prev.filter((x) => x.id !== id));
+          reportError("Úkol se nepodařilo přesunout do koše");
         }
       })();
     },
@@ -679,17 +755,122 @@ export function AppProvider({ children }) {
   }, [notes, reportError]);
 
   const deleteNote = useCallback((id) => {
-    const prevNote = notes.find((n) => n.id === id) ?? null;
+    const target = notes.find((n) => n.id === id) ?? null;
+    if (!target) return;
+    const updated = { ...target, status: "deleted", updatedAt: Date.now() };
+
     setNotes((prev) => prev.filter((n) => n.id !== id));
+    setDeletedNotes((prev) => [...prev, updated]);
+
+    (async () => {
+      try {
+        await noteService.updateNoteDB(id, { status: "deleted", updated_at: new Date().toISOString() });
+      } catch {
+        setNotes((prev) => [...prev, target]);
+        setDeletedNotes((prev) => prev.filter((x) => x.id !== id));
+        reportError("Poznámka se nepodařilo přesunout do koše");
+      }
+    })();
+  }, [notes, reportError]);
+
+  const restoreProject = useCallback((id) => {
+    const target = deletedProjects.find((x) => x.id === id);
+    if (!target) return;
+    const restored = { ...target, status: "active", updatedAt: Date.now() };
+
+    setDeletedProjects((prev) => prev.filter((x) => x.id !== id));
+    setProjects((prev) => [...prev, restored]);
+
+    (async () => {
+      try {
+        await projectService.updateProjectDB(id, { status: "active", updated_at: new Date().toISOString() });
+      } catch {
+        setDeletedProjects((prev) => [...prev, target]);
+        setProjects((prev) => prev.filter((x) => x.id !== id));
+        reportError("Projekt se nepodařilo obnovit");
+      }
+    })();
+  }, [deletedProjects, reportError]);
+
+  const restoreTask = useCallback((id) => {
+    const target = deletedTasks.find((x) => x.id === id);
+    if (!target) return;
+    const restored = { ...target, status: "todo", updatedAt: Date.now() };
+
+    setDeletedTasks((prev) => prev.filter((x) => x.id !== id));
+    setTasks((prev) => [...prev, restored]);
+
+    (async () => {
+      try {
+        await taskService.updateTaskDB(id, { status: "todo", updated_at: new Date().toISOString() });
+      } catch {
+        setDeletedTasks((prev) => [...prev, target]);
+        setTasks((prev) => prev.filter((x) => x.id !== id));
+        reportError("Úkol se nepodařilo obnovit");
+      }
+    })();
+  }, [deletedTasks, reportError]);
+
+  const restoreNote = useCallback((id) => {
+    const target = deletedNotes.find((x) => x.id === id);
+    if (!target) return;
+    const restored = { ...target, status: "draft", updatedAt: Date.now() };
+
+    setDeletedNotes((prev) => prev.filter((x) => x.id !== id));
+    setNotes((prev) => [restored, ...prev]);
+
+    (async () => {
+      try {
+        await noteService.updateNoteDB(id, { status: "draft", updated_at: new Date().toISOString() });
+      } catch {
+        setDeletedNotes((prev) => [...prev, target]);
+        setNotes((prev) => prev.filter((x) => x.id !== id));
+        reportError("Poznámka se nepodařilo obnovit");
+      }
+    })();
+  }, [deletedNotes, reportError]);
+
+  const hardDeleteProject = useCallback((id) => {
+    const target = deletedProjects.find((x) => x.id === id);
+    setDeletedProjects((prev) => prev.filter((x) => x.id !== id));
+
+    (async () => {
+      try {
+        await projectService.deleteProjectDB(id);
+      } catch {
+        if (target) setDeletedProjects((prev) => [...prev, target]);
+        reportError("Projekt se nepodařilo permanentně smazat");
+      }
+    })();
+  }, [deletedProjects, reportError]);
+
+  const hardDeleteTask = useCallback((id) => {
+    const target = deletedTasks.find((x) => x.id === id);
+    setDeletedTasks((prev) => prev.filter((x) => x.id !== id));
+
+    (async () => {
+      try {
+        await taskService.deleteTaskDB(id);
+      } catch {
+        if (target) setDeletedTasks((prev) => [...prev, target]);
+        reportError("Úkol se nepodařilo permanentně smazat");
+      }
+    })();
+  }, [deletedTasks, reportError]);
+
+  const hardDeleteNote = useCallback((id) => {
+    const target = deletedNotes.find((x) => x.id === id);
+    setDeletedNotes((prev) => prev.filter((x) => x.id !== id));
+
     (async () => {
       try {
         await noteService.deleteNoteDB(id);
       } catch {
-        if (prevNote) setNotes((prev) => [...prev, prevNote]);
-        reportError("Poznámka se nepodařilo smazat");
+        if (target) setDeletedNotes((prev) => [...prev, target]);
+        reportError("Poznámka se nepodařilo permanentně smazat");
       }
     })();
-  }, [notes, reportError]);
+  }, [deletedNotes, reportError]);
 
   const uploadAttachment = useCallback(async (file, { taskId = null, projectId = null, noteId = null } = {}) => {
     if (!userId) throw new Error("Not logged in");
@@ -802,10 +983,21 @@ export function AppProvider({ children }) {
     try {
       await setActiveWorkspaceId(wsId);
       const data = await dbFetchAll(userId, wsId);
-      setProjects(data.projects);
-      setTasks(data.tasks);
-      setTags(data.tags);
-      setNotes(data.notes);
+      const loadedProjects = data.projects || [];
+      const loadedTasks = data.tasks || [];
+      const loadedNotes = data.notes || [];
+
+      setProjects(loadedProjects.filter((p) => p.status !== "deleted"));
+      setDeletedProjects(loadedProjects.filter((p) => p.status === "deleted"));
+
+      setTasks(loadedTasks.filter((t) => t.status !== "deleted"));
+      setDeletedTasks(loadedTasks.filter((t) => t.status === "deleted"));
+
+      setTags(data.tags || []);
+
+      setNotes(loadedNotes.filter((n) => n.status !== "deleted"));
+      setDeletedNotes(loadedNotes.filter((n) => n.status === "deleted"));
+
       setAttachments(data.attachments ?? []);
       setQuickTodos(data.quickTodos ?? []);
     } catch (e) {
@@ -968,16 +1160,22 @@ export function AppProvider({ children }) {
     setLoaded,
     updateProfileDisplayName,
     projects,
+    deletedProjects,
     tasks,
+    deletedTasks,
     tags,
     addProject,
     updateProject,
     deleteProject,
+    restoreProject,
+    hardDeleteProject,
     reorderProjects,
     reorderTasks,
     addTask,
     updateTask,
     deleteTask,
+    restoreTask,
+    hardDeleteTask,
     addTag,
     updateTag,
     deleteTag,
@@ -994,10 +1192,15 @@ export function AppProvider({ children }) {
     setSearch,
     dashFilter,
     setDashFilter,
+    tasksPageFilter,
+    setTasksPageFilter,
     notes,
+    deletedNotes,
     addNote,
     updateNote,
     deleteNote,
+    restoreNote,
+    hardDeleteNote,
     openNote,
     openNoteId,
     setOpenNoteId,

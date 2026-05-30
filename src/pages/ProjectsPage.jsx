@@ -15,6 +15,11 @@ const PROJ_STATUS = {
   archived: { label: "Archiv", color: "#64748b" },
 };
 
+const PROJECT_COLORS = [
+  "#3b82f6", "#22c55e", "#f59e0b", "#8b5cf6", "#ef4444",
+  "#06b6d4", "#ec4899", "#84cc16", "#6366f1", "#f97316",
+];
+
 const TASK_COLS = [
   { id: "todo", label: "To do", color: "var(--gray)", className: "todo" },
   { id: "doing", label: "Rozpracováno", color: "var(--blue)", className: "doing" },
@@ -64,6 +69,7 @@ export function ProjectDetailPage() {
   const [editing, setEditing] = useState(false);
   const [eName, setEName] = useState("");
   const [eDesc, setEDesc] = useState("");
+  const [eColor, setEColor] = useState(null);
   const [quickTask, setQuickTask] = useState("");
   const [quickNote, setQuickNote] = useState("");
   const [inlineAdd, setInlineAdd] = useState(null);
@@ -85,7 +91,7 @@ export function ProjectDetailPage() {
   const progress = projectTasks.length ? Math.round((doneCount / projectTasks.length) * 100) : 0;
 
   const saveEdit = () => {
-    updateProject(project.id, { name: eName.trim() || project.name, description: eDesc.trim() });
+    updateProject(project.id, { name: eName.trim() || project.name, description: eDesc.trim(), color: eColor });
     setEditing(false);
     toast("Projekt uložen", "success");
   };
@@ -136,6 +142,7 @@ export function ProjectDetailPage() {
               setEditing(true);
               setEName(project.name || "");
               setEDesc(project.description || "");
+              setEColor(project.color || null);
             }}
           >
             Upravit
@@ -161,12 +168,42 @@ export function ProjectDetailPage() {
       </div>
 
       {editing ? (
-        <div className="quickadd" style={{ borderStyle: "solid", marginBottom: 12 }}>
-          <span className="quickadd-plus">✎</span>
-          <input value={eName} onChange={(e) => setEName(e.target.value)} placeholder="Název projektu" />
-          <input value={eDesc} onChange={(e) => setEDesc(e.target.value)} placeholder="Popis projektu" />
-          <button className="btn primary" onClick={saveEdit}>Uložit</button>
-          <button className="btn" onClick={() => setEditing(false)}>Zrušit</button>
+        <div className="quickadd" style={{ borderStyle: "solid", marginBottom: 12, flexDirection: "column", alignItems: "stretch", gap: 12, padding: "16px 20px" }}>
+          <div style={{ display: "flex", gap: 10, width: "100%", alignItems: "center" }}>
+            <span className="quickadd-plus">✎</span>
+            <input value={eName} onChange={(e) => setEName(e.target.value)} placeholder="Název projektu" style={{ flex: 1 }} />
+            <input value={eDesc} onChange={(e) => setEDesc(e.target.value)} placeholder="Popis projektu" style={{ flex: 2 }} />
+          </div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 13, color: "var(--text-3)", fontWeight: 500 }}>Barva projektu:</span>
+              <div style={{ display: "flex", gap: 6 }}>
+                {PROJECT_COLORS.map((c) => (
+                  <span
+                    key={c}
+                    onClick={() => setEColor(c)}
+                    style={{
+                      width: 22,
+                      height: 22,
+                      borderRadius: "50%",
+                      background: c,
+                      cursor: "pointer",
+                      display: "inline-block",
+                      border: eColor === c ? "2px solid #ffffff" : "2px solid transparent",
+                      boxShadow: eColor === c ? "0 0 0 2px var(--accent)" : "none",
+                      transition: "transform 0.15s ease",
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.15)"}
+                    onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
+                  />
+                ))}
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="btn primary" onClick={saveEdit}>Uložit</button>
+              <button className="btn" onClick={() => setEditing(false)}>Zrušit</button>
+            </div>
+          </div>
         </div>
       ) : null}
 
@@ -307,6 +344,29 @@ export function ProjectDetailPage() {
                 </button>
               ) : null}
 
+              {listAll.length > 0 && inlineAdd !== col.id ? (
+                <button
+                  className="btn"
+                  style={{
+                    width: "100%",
+                    marginTop: 8,
+                    borderStyle: "dashed",
+                    borderColor: "var(--border-soft)",
+                    background: "transparent",
+                    color: "var(--text-3)",
+                    fontSize: 12.5,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6
+                  }}
+                  onClick={() => { setInlineAdd(col.id); setInlineVal(""); }}
+                >
+                  <Icon name="plus" size={12} color="currentColor" strokeWidth={2} />
+                  Přidat úkol
+                </button>
+              ) : null}
+
               {inlineAdd === col.id ? (
                 <div style={{ marginTop: 6 }}>
                   <input
@@ -363,10 +423,11 @@ export default function ProjectsPage() {
   const [nName, setNName] = useState("");
   const [nDesc, setNDesc] = useState("");
   const [nStatus, setNStatus] = useState("active");
+  const [nColor, setNColor] = useState(null);
   const newInputRef = useRef(null);
 
   const [pGroupBy, setPGroupBy] = useState("none"); // "none", "status"
-  const [pSortBy, setPSortBy] = useState("progress"); // "progress", "alphabetical", "tasksCount"
+  const [pSortBy, setPSortBy] = useState("newest"); // "newest", "progress", "alphabetical", "tasksCount"
   const [pGroupOpen, setPGroupByOpen] = useState(false);
   const [pSortOpen, setPSortByOpen] = useState(false);
 
@@ -392,6 +453,7 @@ export default function ProjectsPage() {
   };
 
   const PROJ_SORT_LABELS = {
+    newest: "Nejnovější",
     progress: "Progresu",
     alphabetical: "Abecedy",
     tasksCount: "Počtu úkolů",
@@ -412,7 +474,7 @@ export default function ProjectsPage() {
         const countB = tasks.filter((t) => t.projectId === b.id).length;
         return countB - countA;
       });
-    } else {
+    } else if (pSortBy === "progress") {
       list.sort((a, b) => {
         const tasksA = tasks.filter((t) => t.projectId === a.id);
         const doneA = tasksA.filter((t) => t.status === "done").length;
@@ -424,6 +486,9 @@ export default function ProjectsPage() {
 
         return progressB - progressA;
       });
+    } else {
+      // newest
+      list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     }
 
     return list;
@@ -458,16 +523,19 @@ export default function ProjectsPage() {
 
   const create = () => {
     if (!nName.trim()) return;
-    addProject({ name: nName.trim(), description: nDesc.trim(), status: nStatus });
+    addProject({ name: nName.trim(), description: nDesc.trim(), status: nStatus, color: nColor });
     setNName("");
     setNDesc("");
     setNStatus("active");
+    setNColor(null);
     setShowNew(false);
     toast("Projekt vytvořen", "success");
   };
 
   const openNew = () => {
     setShowNew(true);
+    const randColor = PROJECT_COLORS[Math.floor(Math.random() * PROJECT_COLORS.length)];
+    setNColor(randColor);
     setTimeout(() => newInputRef.current?.focus(), 40);
   };
 
@@ -619,15 +687,45 @@ export default function ProjectsPage() {
       </div>
 
       {showNew ? (
-        <div className="quickadd" style={{ borderStyle: "solid" }}>
-          <span className="quickadd-plus">+</span>
-          <input ref={newInputRef} value={nName} onChange={(e) => setNName(e.target.value)} placeholder="Název projektu…" />
-          <input value={nDesc} onChange={(e) => setNDesc(e.target.value)} placeholder="Popis (volitelně)…" />
-          <select value={nStatus} onChange={(e) => setNStatus(e.target.value)} style={{ background: "var(--surface)", color: "var(--text-2)", border: "1px solid var(--border-soft)", borderRadius: 8, padding: "8px 10px", fontSize: 12.5 }}>
-            {Object.entries(PROJ_STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-          </select>
-          <button className="btn primary" onClick={create}>Vytvořit</button>
-          <button className="btn" onClick={() => setShowNew(false)}>Zrušit</button>
+        <div className="quickadd" style={{ borderStyle: "solid", marginBottom: 16, flexDirection: "column", alignItems: "stretch", gap: 12, padding: "16px 20px" }}>
+          <div style={{ display: "flex", gap: 10, width: "100%", alignItems: "center" }}>
+            <span className="quickadd-plus">+</span>
+            <input ref={newInputRef} value={nName} onChange={(e) => setNName(e.target.value)} placeholder="Název projektu…" style={{ flex: 1 }} />
+            <input value={nDesc} onChange={(e) => setNDesc(e.target.value)} placeholder="Popis (volitelně)…" style={{ flex: 2 }} />
+            <select value={nStatus} onChange={(e) => setNStatus(e.target.value)} style={{ background: "var(--surface)", color: "var(--text-2)", border: "1px solid var(--border-soft)", borderRadius: 8, padding: "8px 10px", fontSize: 12.5 }}>
+              {Object.entries(PROJ_STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+            </select>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 13, color: "var(--text-3)", fontWeight: 500 }}>Barva projektu:</span>
+              <div style={{ display: "flex", gap: 6 }}>
+                {PROJECT_COLORS.map((c) => (
+                  <span
+                    key={c}
+                    onClick={() => setNColor(c)}
+                    style={{
+                      width: 22,
+                      height: 22,
+                      borderRadius: "50%",
+                      background: c,
+                      cursor: "pointer",
+                      display: "inline-block",
+                      border: nColor === c ? "2px solid #ffffff" : "2px solid transparent",
+                      boxShadow: nColor === c ? "0 0 0 2px var(--accent)" : "none",
+                      transition: "transform 0.15s ease",
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.15)"}
+                    onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
+                  />
+                ))}
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="btn primary" onClick={create}>Vytvořit</button>
+              <button className="btn" onClick={() => { setShowNew(false); setNColor(null); }}>Zrušit</button>
+            </div>
+          </div>
         </div>
       ) : null}
 
@@ -654,7 +752,7 @@ export default function ProjectsPage() {
                 onClick={openNew}
               >
                 <Icon name="plus" size={14} color="currentColor" strokeWidth={2} />
-                <span style={{ marginTop: 8, fontFamily: "var(--serif)", fontSize: 17 }}>Nový projekt</span>
+                <span style={{ marginTop: 8, fontFamily: "var(--font-ui)", fontSize: 17, fontWeight: 600 }}>Nový projekt</span>
               </div>
             </div>
           ) : null}
@@ -669,7 +767,7 @@ export default function ProjectsPage() {
               onClick={openNew}
             >
               <Icon name="plus" size={14} color="currentColor" strokeWidth={2} />
-              <span style={{ marginTop: 8, fontFamily: "var(--serif)", fontSize: 19 }}>Nový projekt</span>
+              <span style={{ marginTop: 8, fontFamily: "var(--font-ui)", fontSize: 19, fontWeight: 600 }}>Nový projekt</span>
             </div>
           ) : null}
         </div>

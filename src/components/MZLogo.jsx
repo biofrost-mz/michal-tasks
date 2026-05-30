@@ -21,7 +21,7 @@ export default function MZLogo({ size = 32, style = {} }) {
       <circle cx="50" cy="50" r="50" fill={`url(#${id})`} />
       <text
         x="50" y="65"
-        fontFamily="'Outfit',system-ui,sans-serif"
+        fontFamily="var(--font-ui)"
         fontWeight="800"
         fontSize="38"
         fill="white"

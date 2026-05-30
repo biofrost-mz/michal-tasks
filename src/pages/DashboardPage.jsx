@@ -199,26 +199,30 @@ function Headline({ overdueCount, activeCount, totalCount, doneWeek, doneWeekAvg
           </div>
         </div>
         <div className="hl-aside">
-          <div className="hl-aside-row"><span className="hl-live-dot" />sync · právě teď</div>
-          <div>{weather ? weather.city : "Brno"} · {tzName}{weather ? ` · ${weather.temp} °C` : ""}</div>
-          <div>
-            <span className="hl-svatek">
-              {weather ? (
-                <><Icon name={weather.icon} size={11} color="currentColor" strokeWidth={1.5} /> {weather.label}</>
-              ) : (
-                <><Icon name={dayPhase.icon} size={11} color="currentColor" strokeWidth={1.5} /> {dayPhase.label}</>
-              )}
-            </span>
-          </div>
+          <div className="hl-aside-row" style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6 }}><span className="hl-live-dot" />sync · právě teď</div>
+          <div style={{ color: "var(--text-2)" }}>{weather ? weather.city : "Brno"} · {tzName}{weather ? ` · ${weather.temp} °C` : ""}</div>
           {sunTimes && (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6, color: "var(--text-3)", fontSize: 11, marginTop: 4 }}>
-              <Icon name="sunrise" size={11} color="currentColor" strokeWidth={1.5} />
-              <span>svítání {sunTimes.sunrise}</span>
-              <span style={{ color: "var(--text-4)" }}>·</span>
-              <Icon name="sunset" size={11} color="currentColor" strokeWidth={1.5} />
-              <span>soumrak {sunTimes.sunset}</span>
-              <span style={{ color: "var(--text-4)" }}>·</span>
-              <span>délka dne {sunTimes.dayLength}</span>
+            <div style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "flex-end",
+              gap: 4,
+              color: "var(--text-3)",
+              fontSize: 11,
+              marginTop: 8
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <Icon name="sunrise" size={11} color="var(--accent)" strokeWidth={1.5} />
+                <span>Svítání: {sunTimes.sunrise}</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <Icon name="sunset" size={11} color="var(--accent)" strokeWidth={1.5} />
+                <span>Soumrak: {sunTimes.sunset}</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <Icon name="sun" size={11} color="var(--accent)" strokeWidth={1.5} />
+                <span>Délka dne: {sunTimes.dayLength}</span>
+              </div>
             </div>
           )}
         </div>
@@ -231,17 +235,65 @@ function Headline({ overdueCount, activeCount, totalCount, doneWeek, doneWeekAvg
       </div>
 
       <div className="hl-stats">
-        <div className="hl-stat">
+        <div
+          className="hl-stat"
+          onClick={() => navigateToTasks("all")}
+          style={{
+            cursor: "pointer",
+            transition: "opacity 0.2s, transform 0.2s"
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.opacity = "0.85";
+            e.currentTarget.style.transform = "translateY(-1px)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.opacity = "1";
+            e.currentTarget.style.transform = "translateY(0)";
+          }}
+          title="Zobrazit úkoly"
+        >
           <div className="hl-stat-l">Aktivní</div>
           <div className="hl-stat-v">{activeCount}</div>
           <div className="hl-stat-u">z {totalCount}{addedToday > 0 ? ` · ↗ +${addedToday} dnes` : ""}</div>
         </div>
-        <div className="hl-stat">
+        <div
+          className="hl-stat"
+          onClick={() => navigateToTasks("all")}
+          style={{
+            cursor: "pointer",
+            transition: "opacity 0.2s, transform 0.2s"
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.opacity = "0.85";
+            e.currentTarget.style.transform = "translateY(-1px)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.opacity = "1";
+            e.currentTarget.style.transform = "translateY(0)";
+          }}
+          title="Zobrazit úkoly po termínu"
+        >
           <div className="hl-stat-l">Po termínu</div>
           <div className="hl-stat-v" style={{ color: "var(--red)" }}>{overdueCount}</div>
           <div className="hl-stat-u" style={{ color: "var(--red)" }}>{overdueCount > 0 ? "⚠ vyřeš dnes" : "✓ vše ok"}</div>
         </div>
-        <div className="hl-stat">
+        <div
+          className="hl-stat"
+          onClick={() => navigateToTasks("done")}
+          style={{
+            cursor: "pointer",
+            transition: "opacity 0.2s, transform 0.2s"
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.opacity = "0.85";
+            e.currentTarget.style.transform = "translateY(-1px)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.opacity = "1";
+            e.currentTarget.style.transform = "translateY(0)";
+          }}
+          title="Zobrazit dokončené úkoly"
+        >
           <div className="hl-stat-l">Hotovo · týden</div>
           <div className="hl-stat-v" style={{ color: "var(--green)" }}>{doneWeek}</div>
           <div className="hl-stat-u" style={{ color: weekDiff >= 0 ? "var(--green)" : "var(--red)" }}>{weekDiffLabel}</div>
@@ -251,7 +303,7 @@ function Headline({ overdueCount, activeCount, totalCount, doneWeek, doneWeekAvg
           <div className="hl-stat-v" style={{ color: "var(--accent)" }}>{streak.current}</div>
           <div className="hl-stat-u">dní · best {streak.best}</div>
         </div>
-        <div className="hl-stat">
+        <div className="hl-stat" onClick={() => setPage("projects")} style={{ cursor: "pointer" }} title="Přejít na projekty">
           <div className="hl-stat-l">Projekty</div>
           <div className="hl-stat-v" style={{ color: "var(--blue)" }}>{activeProjectsCount}</div>
           <div className="hl-stat-u">z {totalProjectsCount} · {doneProjectsCount} hotový</div>
@@ -315,7 +367,7 @@ function buildStreak(tasks) {
       const key = localDateKey(dt);
       const c = dayMap.get(key) || 0;
       const level = c >= 4 ? 4 : c >= 3 ? 3 : c >= 2 ? 2 : c >= 1 ? 1 : 0;
-      week.push(level);
+      week.push({ level, date: dt, count: c });
     }
     weeks.push(week);
   }
@@ -374,6 +426,7 @@ export default function DashboardPage() {
     setPage,
     search,
     isMobile,
+    setTasksPageFilter,
   } = useApp();
 
   const [filter, setFilter] = useState("all");
@@ -381,20 +434,21 @@ export default function DashboardPage() {
   const [showDailyPlan, setShowDailyPlan] = useState(false);
   const [aiExpanded, setAiExpanded] = useState(false);
   const [expandedSections, setExpandedSections] = useState({});
+  const [hoveredDay, setHoveredDay] = useState(null);
 
-  const [groupBy, setGroupBy] = useState("status"); // "status", "project", "priority", "dueDate"
+  const groupBy = "status";
   const [sortBy, setSortBy] = useState("default"); // "default", "dueDate", "priority", "title"
-  const [groupByOpen, setGroupByOpen] = useState(false);
   const [sortByOpen, setSortByOpen] = useState(false);
 
-  const groupRef = useRef(null);
   const sortRef = useRef(null);
+
+  const navigateToTasks = (statusFilter) => {
+    setTasksPageFilter(statusFilter);
+    setPage("tasks");
+  };
 
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (groupRef.current && !groupRef.current.contains(e.target)) {
-        setGroupByOpen(false);
-      }
       if (sortRef.current && !sortRef.current.contains(e.target)) {
         setSortByOpen(false);
       }
@@ -783,50 +837,6 @@ export default function DashboardPage() {
             <span className={`chip ${filter === "starred" ? "active" : ""}`} onClick={() => setFilter("starred")} style={{ cursor: "pointer" }}>
               <span className="chip-dot" style={{ background: "var(--accent)" }} /> Top úkoly <span className="chip-count">{starred.length}</span>
             </span>
-            <span style={{ position: "relative" }} ref={groupRef}>
-              <span className={`chip ${groupBy !== "status" ? "active" : ""}`} onClick={() => setGroupByOpen(!groupByOpen)}>
-                Seskupit: {GROUP_LABELS[groupBy]} ▾
-              </span>
-              {groupByOpen && (
-                <div className="pop" style={{
-                  position: "absolute",
-                  top: "calc(100% + 6px)",
-                  left: 0,
-                  background: "var(--bg-2)",
-                  border: "1px solid var(--border)",
-                  borderRadius: 12,
-                  boxShadow: "var(--shadow)",
-                  zIndex: 200,
-                  minWidth: 180,
-                  padding: "6px"
-                }}>
-                  {Object.entries(GROUP_LABELS).map(([k, label]) => (
-                    <button
-                      key={k}
-                      onClick={() => { setGroupBy(k); setGroupByOpen(false); }}
-                      style={{
-                        width: "100%",
-                        display: "flex",
-                        alignItems: "center",
-                        padding: "8px 12px",
-                        borderRadius: 8,
-                        border: "none",
-                        background: groupBy === k ? "var(--accent-soft)" : "transparent",
-                        color: groupBy === k ? "var(--accent)" : "var(--text-2)",
-                        fontSize: 13,
-                        fontWeight: groupBy === k ? 600 : 400,
-                        cursor: "pointer",
-                        textAlign: "left"
-                      }}
-                      onMouseEnter={(e) => { if (groupBy !== k) e.currentTarget.style.background = "var(--card-h)"; }}
-                      onMouseLeave={(e) => { if (groupBy !== k) e.currentTarget.style.background = "transparent"; }}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </span>
 
             <span style={{ position: "relative" }} ref={sortRef}>
               <span className={`chip ${sortBy !== "default" ? "active" : ""}`} onClick={() => setSortByOpen(!sortByOpen)}>
@@ -904,7 +914,18 @@ export default function DashboardPage() {
 
         <aside className="rail">
           <div className="rail-card">
-            <div className="rail-h"><span className="rail-h-t">Stav úkolů</span><span className="rail-h-a">{total} celkem</span></div>
+            <div className="rail-h">
+              <span className="rail-h-t">Stav úkolů</span>
+              <span
+                className="rail-h-a"
+                onClick={() => navigateToTasks("all")}
+                style={{ cursor: "pointer", transition: "color 0.2s" }}
+                onMouseEnter={(e) => e.currentTarget.style.color = "var(--accent)"}
+                onMouseLeave={(e) => e.currentTarget.style.color = ""}
+              >
+                {total} celkem
+              </span>
+            </div>
             <div className="donut-block">
               <div className="donut">
                 <svg width="96" height="96">
@@ -937,7 +958,19 @@ export default function DashboardPage() {
               </div>
               <div className="donut-legend">
                 {donutSegs.map((s) => (
-                  <div key={s.k} className="donut-leg-row">
+                  <div
+                    key={s.k}
+                    className="donut-leg-row"
+                    onClick={() => navigateToTasks(s.k)}
+                    style={{
+                      cursor: "pointer",
+                      padding: "2px 4px",
+                      borderRadius: 4,
+                      transition: "background 0.2s"
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = "var(--surface-hover)"}
+                    onMouseLeave={(e) => e.currentTarget.style.background = ""}
+                  >
                     <span className="donut-leg-dot" style={{ background: s.color }} />
                     <span className="donut-leg-label">{s.lab}</span>
                     <span className="donut-leg-val">{s.v}</span>
@@ -969,10 +1002,58 @@ export default function DashboardPage() {
             <div className="streak-grid">
               {streak.weeks.map((w, i) => (
                 <div key={i} className="streak-col">
-                  {w.map((d, j) => <div key={j} className={`streak-cell ${d ? `l${d}` : ""}`} />)}
+                  {w.map((d, j) => (
+                    <div
+                      key={j}
+                      className={`streak-cell ${d.level ? `l${d.level}` : ""}`}
+                      onMouseEnter={() => setHoveredDay(d)}
+                      onMouseLeave={() => setHoveredDay(null)}
+                      style={{
+                        cursor: "pointer",
+                        transform: hoveredDay?.date?.getTime() === d.date?.getTime() ? "scale(1.2)" : "scale(1)",
+                        transition: "transform 0.15s ease, background 0.15s ease",
+                      }}
+                    />
+                  ))}
                 </div>
               ))}
             </div>
+            {hoveredDay ? (
+              <div style={{
+                marginTop: 12,
+                padding: "8px 12px",
+                background: "rgba(255, 255, 255, 0.03)",
+                backdropFilter: "blur(8px)",
+                borderRadius: 8,
+                border: "1px solid rgba(255, 255, 255, 0.08)",
+                fontSize: 12,
+                color: "var(--text-2)",
+                animation: "fadeIn 0.2s ease-out"
+              }}>
+                <div style={{ fontWeight: 600, color: "var(--text-1)", textTransform: "capitalize", marginBottom: 2 }}>
+                  {formatDate(hoveredDay.date, { weekday: 'long', day: 'numeric', month: 'long' })}
+                </div>
+                <div>
+                  {hoveredDay.count === 0 && "Žádné dokončené úkoly."}
+                  {hoveredDay.count === 1 && "🪄 1 dokončený úkol. Skvělý začátek!"}
+                  {hoveredDay.count >= 2 && hoveredDay.count <= 4 && `🔥 ${hoveredDay.count} dokončené úkoly. Výborné tempo!`}
+                  {hoveredDay.count >= 5 && `🚀 ${hoveredDay.count} dokončených úkolů. Neuvěřitelný výkon!`}
+                </div>
+              </div>
+            ) : (
+              <div style={{
+                marginTop: 12,
+                padding: "8px 12px",
+                background: "transparent",
+                border: "1px solid transparent",
+                fontSize: 12,
+                color: "var(--text-4)",
+                fontStyle: "italic",
+                textAlign: "center"
+              }}>
+                Přejeď myší nad čtverečky pro detaily aktivity
+              </div>
+            )}
           </div>
 
           <div className="rail-card">
