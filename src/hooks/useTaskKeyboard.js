@@ -1,36 +1,26 @@
-import { useEffect, useCallback } from "react";
+import { useEffect } from "react";
 
-/**
- * Keyboard navigation for task lists.
- * J/K — move focus up/down, D — toggle done, S — toggle star, Enter — open detail.
- * Disabled when focus is on an input/textarea/select.
- */
 export function useTaskKeyboard({ tasks, focusedId, setFocusedId, onOpen, onStatusChange, onStar }) {
-  const getFocusedIndex = useCallback(() => {
-    if (!focusedId) return -1;
-    return tasks.findIndex((t) => t.id === focusedId);
-  }, [tasks, focusedId]);
-
   useEffect(() => {
     const handler = (e) => {
       const tag = document.activeElement?.tagName?.toLowerCase();
       if (tag === "input" || tag === "textarea" || tag === "select") return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
 
+      const focusedIdx = focusedId ? tasks.findIndex((t) => t.id === focusedId) : -1;
+
       switch (e.key) {
         case "j":
         case "ArrowDown": {
           e.preventDefault();
-          const idx = getFocusedIndex();
-          const next = Math.min(idx + 1, tasks.length - 1);
+          const next = Math.min(focusedIdx + 1, tasks.length - 1);
           if (tasks[next]) setFocusedId(tasks[next].id);
           break;
         }
         case "k":
         case "ArrowUp": {
           e.preventDefault();
-          const idx = getFocusedIndex();
-          const prev = Math.max(idx - 1, 0);
+          const prev = Math.max(focusedIdx - 1, 0);
           if (tasks[prev]) setFocusedId(tasks[prev].id);
           break;
         }
@@ -59,5 +49,5 @@ export function useTaskKeyboard({ tasks, focusedId, setFocusedId, onOpen, onStat
 
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [tasks, focusedId, getFocusedIndex, setFocusedId, onOpen, onStatusChange, onStar]);
+  }, [tasks, focusedId, setFocusedId, onOpen, onStatusChange, onStar]);
 }

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import { useApp, AppProvider } from "./context/AppContext.jsx";
 import Icon from "./components/Icon.jsx";
 import { ToastProvider, useToast } from "./components/Toast.jsx";
@@ -95,18 +95,8 @@ function MobileFAB() {
 }
 
 function PageTransition({ pageKey, children }) {
-  const [animKey, setAnimKey] = useState(pageKey);
-  const prevPageRef = useRef(pageKey);
-
-  useEffect(() => {
-    if (pageKey !== prevPageRef.current) {
-      prevPageRef.current = pageKey;
-      setAnimKey(pageKey + "_" + Date.now());
-    }
-  }, [pageKey]);
-
   return (
-    <div key={animKey} className="page-enter" style={{ height: "100%" }}>
+    <div key={pageKey} className="page-enter" style={{ height: "100%" }}>
       {children}
     </div>
   );

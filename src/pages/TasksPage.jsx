@@ -1,5 +1,6 @@
-import React, { useMemo, useState, useCallback } from "react";
+import React, { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import { useApp } from "../context/AppContext.jsx";
+import { useConfirm } from "../components/Confirm.jsx";
 import {
   mapTaskForAtlas,
   ProjectPill,
@@ -7,7 +8,7 @@ import {
   CLASS_TO_STATUS,
 } from "../components/atlas/AtlasTaskCard.jsx";
 import { STATUSES } from "../constants.js";
-import { parseYMD, startOfToday } from "../utils.js";
+import { startOfToday } from "../utils.js";
 import QuickAdd from "../components/QuickAdd.jsx";
 import EmptyState from "../components/EmptyState.jsx";
 import { useTaskKeyboard } from "../hooks/useTaskKeyboard.js";
@@ -21,16 +22,32 @@ const STATUS_LABELS = {
   done: "Hotovo",
 };
 
-const STATUS_CLASS_COLOR = {
-  doing: "var(--blue)",
-  wait:  "var(--orange)",
-  done:  "var(--green)",
-  todo:  "var(--gray)",
-};
+
+function statusColor(statusClass) {
+  return STATUSES[CLASS_TO_STATUS[statusClass]]?.color;
+}
 
 function statusLabel(statusClass) {
   const realKey = CLASS_TO_STATUS[statusClass] || statusClass;
   return STATUSES[realKey]?.label ?? STATUS_LABELS[statusClass] ?? "To do";
+}
+
+function InlineEditInput({ taskId, value, onChange, onCommit, onCancel, style }) {
+  return (
+    <input
+      autoFocus
+      className="detail-input"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") { e.preventDefault(); onCommit(taskId); }
+        if (e.key === "Escape") onCancel();
+      }}
+      onBlur={() => onCommit(taskId)}
+      onClick={(e) => e.stopPropagation()}
+      style={style}
+    />
+  );
 }
 
 export function ViewToggle({ view, setView, modes }) {
@@ -67,6 +84,7 @@ export function ListView() {
 }
 
 export default function TasksPage() {
+  const confirm = useConfirm();
   const {
     tasks,
     projects,
@@ -83,7 +101,7 @@ export default function TasksPage() {
   const [view, setView] = useState("table");
   const [statusFilter, setStatusFilter] = useState(() => tasksPageFilter || "all");
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (tasksPageFilter && tasksPageFilter !== "all") {
       setStatusFilter(tasksPageFilter);
       setTasksPageFilter("all");
@@ -132,8 +150,8 @@ export default function TasksPage() {
     return list;
   }, [mappedTasks, search, statusFilter, projectFilter, priorityFilter, tagFilter, tasks]);
 
-  const activeCount = tasks.filter((t) => t.status !== "done").length;
-  const doneCount = tasks.filter((t) => t.status === "done").length;
+  const doneCount = mappedTasks.filter((t) => t.status === "done").length;
+  const activeCount = mappedTasks.length - doneCount;
 
   const onQuickAdd = (e) => {
     if (e.key !== "Enter") return;
@@ -163,20 +181,21 @@ export default function TasksPage() {
 
   const [inlineEditId, setInlineEditId] = useState(null);
   const [inlineEditVal, setInlineEditVal] = useState("");
+  const origEditRef = useRef("");
 
   const startInlineEdit = useCallback((t, e) => {
     e.stopPropagation();
+    origEditRef.current = t.title;
     setInlineEditId(t.id);
     setInlineEditVal(t.title);
   }, []);
 
   const commitInlineEdit = useCallback((id) => {
     const val = inlineEditVal.trim();
-    if (val) updateTask(id, { title: val });
+    if (val && val !== origEditRef.current) updateTask(id, { title: val });
     setInlineEditId(null);
   }, [inlineEditVal, updateTask]);
 
-  // Bulk selection
   const [selected, setSelected] = useState(new Set());
 
   const toggleSelect = useCallback((id, e) => {
@@ -223,7 +242,7 @@ export default function TasksPage() {
       <div className="chips">
         {CHIP_STATUSES.map((k) => (
           <span key={k} className={`chip ${statusFilter === k ? "active" : ""}`} onClick={() => setStatusFilter(k)}>
-            {k === "all" ? <span className="chip-dot" style={{ background: "var(--text-2)" }} /> : <span className="chip-dot" style={{ background: STATUS_CLASS_COLOR[k] || "var(--gray)" }} />}
+            {k === "all" ? <span className="chip-dot" style={{ background: "var(--text-2)" }} /> : <span className="chip-dot" style={{ background: statusColor(k) }} />}
             {STATUS_LABELS[k]}
             <span className="chip-count">{k === "all" ? filtered.length : filtered.filter((t) => t.statusClass === k).length}</span>
           </span>
@@ -286,17 +305,13 @@ export default function TasksPage() {
           </div>
 
           {filtered.map((t) => {
-            const due = t.due;
-            const dueDate = parseYMD(tasks.find((x) => x.id === t.id)?.dueDate);
-            const isOverdue = dueDate && t.status !== "done" && dueDate < today;
             const isFocused = focusedId === t.id;
-
             return (
               <div
                 key={t.id}
                 className="ttable-row"
                 onClick={() => { setFocusedId(t.id); setTaskDetail(t.id); }}
-                onMouseEnter={() => setFocusedId(t.id)}
+                onMouseEnter={() => { if (focusedId !== t.id) setFocusedId(t.id); }}
                 style={isFocused ? { outline: "1px solid var(--accent)", outlineOffset: -1, borderRadius: 8 } : undefined}
               >
                 <input
@@ -306,17 +321,12 @@ export default function TasksPage() {
                   onClick={(e) => e.stopPropagation()}
                 />
                 {inlineEditId === t.id ? (
-                  <input
-                    autoFocus
-                    className="detail-input"
+                  <InlineEditInput
+                    taskId={t.id}
                     value={inlineEditVal}
-                    onChange={(e) => setInlineEditVal(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") { e.preventDefault(); commitInlineEdit(t.id); }
-                      if (e.key === "Escape") setInlineEditId(null);
-                    }}
-                    onBlur={() => commitInlineEdit(t.id)}
-                    onClick={(e) => e.stopPropagation()}
+                    onChange={setInlineEditVal}
+                    onCommit={commitInlineEdit}
+                    onCancel={() => setInlineEditId(null)}
                     style={{ fontWeight: 600 }}
                   />
                 ) : (
@@ -333,7 +343,7 @@ export default function TasksPage() {
                 </div>
                 <div><PrioChip priority={t.priority} /></div>
                 <div><ProjectPill projectId={t.project} projectsById={projectsById} /></div>
-                <div><span className={`due ${isOverdue ? "overdue" : ""}`}>{due || "—"}</span></div>
+                <div><span className={`due ${t.overdue ? "overdue" : ""}`}>{t.due || "—"}</span></div>
               </div>
             );
           })}
@@ -347,23 +357,18 @@ export default function TasksPage() {
               key={t.id}
               className={`tcard ${t.statusClass} ${t.overdue ? "alert" : ""}`}
               onClick={() => { setFocusedId(t.id); setTaskDetail(t.id); }}
-              onMouseEnter={() => setFocusedId(t.id)}
+              onMouseEnter={() => { if (focusedId !== t.id) setFocusedId(t.id); }}
               style={isFocused ? { outline: "1px solid var(--accent)", outlineOffset: -1 } : undefined}
             >
               <div className="tcard-state" onClick={(e) => { e.stopPropagation(); setStatus(t.id, t.status === "done" ? "todo" : "done"); }} title="Toggle hotovo" />
               <div className="tcard-body">
                 {inlineEditId === t.id ? (
-                  <input
-                    autoFocus
-                    className="detail-input"
+                  <InlineEditInput
+                    taskId={t.id}
                     value={inlineEditVal}
-                    onChange={(e) => setInlineEditVal(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") { e.preventDefault(); commitInlineEdit(t.id); }
-                      if (e.key === "Escape") setInlineEditId(null);
-                    }}
-                    onBlur={() => commitInlineEdit(t.id)}
-                    onClick={(e) => e.stopPropagation()}
+                    onChange={setInlineEditVal}
+                    onCommit={commitInlineEdit}
+                    onCancel={() => setInlineEditId(null)}
                     style={{ width: "100%", fontWeight: 600, fontSize: 14 }}
                   />
                 ) : (
@@ -392,7 +397,6 @@ export default function TasksPage() {
               </div>
             </div>
           );})}
-          {/* Keyboard shortcut hint */}
           {filtered.length > 0 && (
             <div style={{ textAlign: "center", padding: "12px 0 4px", fontSize: 11.5, color: "var(--text-4)", fontFamily: "var(--mono)" }}>
               J/K navigace · Enter detail · D hotovo · S hvězda
@@ -424,8 +428,8 @@ export default function TasksPage() {
           </span>
           <button className="btn" onClick={selectAll} style={{ fontSize: 12 }}>Vše</button>
           <button className="btn primary" onClick={bulkDone} style={{ fontSize: 12 }}>✓ Hotovo</button>
-          <button className="btn danger" onClick={() => {
-            if (window.confirm(`Smazat ${selected.size} úkolů?`)) bulkDelete();
+          <button className="btn danger" onClick={async () => {
+            if (await confirm(`Smazat ${selected.size} úkolů?`)) bulkDelete();
           }} style={{ fontSize: 12 }}>Smazat</button>
           <button className="icon-btn" onClick={clearSelected} style={{ marginLeft: 4 }}>✕</button>
         </div>

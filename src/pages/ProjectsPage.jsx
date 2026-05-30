@@ -154,9 +154,64 @@ export function ProjectDetailPage() {
   );
 
   const project = projects.find((p) => p.id === selProject);
+
+  const projectTasks = useMemo(
+    () => project ? tasks.filter((t) => t.projectId === project.id) : [],
+    [tasks, project]
+  );
+
+  const columnTasksMap = useMemo(() => {
+    const map = {};
+    TASK_COLS.forEach((col) => {
+      map[col.id] = projectTasks
+        .filter((t) => t.status === col.id)
+        .sort((a, b) => (a.position || 0) - (b.position || 0));
+    });
+    return map;
+  }, [projectTasks]);
+
+  const handleDragStart = useCallback(({ active }) => {
+    setActiveId(active.id);
+  }, []);
+
+  const handleDragOver = useCallback(({ over }) => {
+    setOverId((prev) => {
+      const next = over?.id ?? null;
+      return prev === next ? prev : next;
+    });
+  }, []);
+
+  const handleDragEnd = useCallback(({ active, over }) => {
+    setActiveId(null);
+    setOverId(null);
+    if (!over || active.id === over.id) return;
+
+    const activeTask = projectTasks.find((t) => t.id === active.id);
+    if (!activeTask) return;
+
+    const targetCol = TASK_COLS.find((c) => c.id === over.id);
+    if (targetCol) {
+      if (activeTask.status !== targetCol.id) updateTask(activeTask.id, { status: targetCol.id });
+      return;
+    }
+
+    const overTask = projectTasks.find((t) => t.id === over.id);
+    if (!overTask) return;
+
+    if (activeTask.status === overTask.status) {
+      const colTasks = columnTasksMap[activeTask.status] ?? [];
+      const oldIdx = colTasks.findIndex((t) => t.id === active.id);
+      const newIdx = colTasks.findIndex((t) => t.id === over.id);
+      if (oldIdx !== newIdx) reorderTasks(arrayMove(colTasks, oldIdx, newIdx));
+    } else {
+      updateTask(activeTask.id, { status: overTask.status });
+    }
+  }, [projectTasks, columnTasksMap, updateTask, reorderTasks]);
+
+  const activeTask = activeId ? projectTasks.find((t) => t.id === activeId) ?? null : null;
+
   if (!project) return <div className="content"><div className="ph-title">Projekt nenalezen</div></div>;
 
-  const projectTasks = tasks.filter((t) => t.projectId === project.id);
   const projectNotes = notes.filter((n) => n.primaryProjectId === project.id);
 
   const doneCount = projectTasks.filter((t) => t.status === "done").length;
@@ -176,45 +231,6 @@ export function ProjectDetailPage() {
     setInlineVal("");
     setInlineAdd(null);
   };
-
-  const handleDragStart = useCallback(({ active }) => {
-    setActiveId(active.id);
-  }, []);
-
-  const handleDragOver = useCallback(({ over }) => {
-    setOverId(over?.id ?? null);
-  }, []);
-
-  const handleDragEnd = useCallback(({ active, over }) => {
-    setActiveId(null);
-    setOverId(null);
-    if (!over || active.id === over.id) return;
-
-    const activeTask = projectTasks.find((t) => t.id === active.id);
-    if (!activeTask) return;
-
-    const targetCol = TASK_COLS.find((c) => c.id === over.id);
-    if (targetCol) {
-      if (activeTask.status !== targetCol.id) {
-        updateTask(activeTask.id, { status: targetCol.id });
-      }
-      return;
-    }
-
-    const overTask = projectTasks.find((t) => t.id === over.id);
-    if (!overTask) return;
-
-    if (activeTask.status === overTask.status) {
-      const colTasks = projectTasks
-        .filter((t) => t.status === activeTask.status)
-        .sort((a, b) => (a.position || 0) - (b.position || 0));
-      const oldIdx = colTasks.findIndex((t) => t.id === active.id);
-      const newIdx = colTasks.findIndex((t) => t.id === over.id);
-      if (oldIdx !== newIdx) reorderTasks(arrayMove(colTasks, oldIdx, newIdx));
-    } else {
-      updateTask(activeTask.id, { status: overTask.status });
-    }
-  }, [projectTasks, updateTask, reorderTasks]);
 
   return (
     <div className="content">
@@ -353,9 +369,7 @@ export function ProjectDetailPage() {
       >
         <div className="kanban">
           {TASK_COLS.map((col) => {
-            const listAll = projectTasks
-              .filter((t) => t.status === col.id)
-              .sort((a, b) => (a.position || 0) - (b.position || 0));
+            const listAll = columnTasksMap[col.id] ?? [];
             const list = col.id === "done" && !showAllDone ? listAll.slice(0, 5) : listAll;
             const colIsOver = overId === col.id;
 
@@ -435,19 +449,15 @@ export function ProjectDetailPage() {
         </div>
 
         <DragOverlay>
-          {activeId ? (() => {
-            const t = projectTasks.find((tk) => tk.id === activeId);
-            if (!t) return null;
-            return (
-              <div className="kcard" style={{ opacity: 0.95, cursor: "grabbing", boxShadow: "0 8px 32px rgba(0,0,0,.4)", pointerEvents: "none" }}>
-                <div className="kcard-t">{t.title || "Bez názvu"}</div>
-                <div className="kcard-m">
-                  {t.priority === "high" ? <span className="prio" style={{ "--prio-color": "#f87171" }}>↑ Vysoká</span> : null}
-                  {t.dueDate ? <span className={`due ${taskOverdue(t) ? "overdue" : ""}`}>{taskDue(t)}</span> : null}
-                </div>
+          {activeTask ? (
+            <div className="kcard" style={{ opacity: 0.95, cursor: "grabbing", boxShadow: "0 8px 32px rgba(0,0,0,.4)", pointerEvents: "none" }}>
+              <div className="kcard-t">{activeTask.title || "Bez názvu"}</div>
+              <div className="kcard-m">
+                {activeTask.priority === "high" ? <span className="prio" style={{ "--prio-color": "#f87171" }}>↑ Vysoká</span> : null}
+                {activeTask.dueDate ? <span className={`due ${taskOverdue(activeTask) ? "overdue" : ""}`}>{taskDue(activeTask)}</span> : null}
               </div>
-            );
-          })() : null}
+            </div>
+          ) : null}
         </DragOverlay>
       </DndContext>
 
