@@ -1232,7 +1232,17 @@ export function AppProvider({ children }) {
     revokeInvite,
     userId,
     userEmail: session?.user?.email ?? null,
-    logout: () => supabase.auth.signOut(),
+    logout: async () => {
+      try {
+        await supabase.auth.signOut();
+      } catch (e) {
+        console.warn("signOut error", e);
+      }
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith("sb-")) localStorage.removeItem(key);
+      });
+      window.location.reload();
+    },
     // Error queue
     errorQueue,
     clearErrors,
