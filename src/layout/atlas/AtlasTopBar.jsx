@@ -36,7 +36,7 @@ export default function AtlasTopBar() {
 
   return (
     <div className="tb">
-      <div className="tb-crumbs">
+      <div className="tb-crumbs" style={{ flex: 1 }}>
         {crumbs.map((c, i) => {
           const isLast = i === crumbs.length - 1;
           const isClickable = c.pageId && !isLast;
@@ -61,12 +61,15 @@ export default function AtlasTopBar() {
         })}
       </div>
 
-      <div className="tb-acts">
+      <div className="tb-center" style={{ display: "flex", justifyContent: "center", flex: 1 }}>
         <div className="tb-search" onClick={() => setCmdOpen(true)}>
           <Icon name="search" size={13} color="currentColor" strokeWidth={1.8} />
           <span>Hledat napříč workspace…</span>
           <kbd>⌘K</kbd>
         </div>
+      </div>
+
+      <div className="tb-acts" style={{ flex: 1, justifyContent: "flex-end" }}>
         <button className="tb-btn primary" onClick={() => { setPage("tasks"); setTaskDetail(null); }}>
           <Icon name="plus" size={13} color="currentColor" strokeWidth={2} />
           Nový úkol

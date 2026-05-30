@@ -25,13 +25,13 @@ export default function DashTaskCard({ task, sectionColor }) {
 
   return (
     <div
+      className="dash-task-card"
       onClick={() => setTaskDetail(task.id)}
       style={{
         background: t.card,
         border: `1px solid ${t.border}`,
         borderRadius: 10,
         cursor: "pointer",
-        transition: "border-color .12s, background .12s",
         overflow: "hidden",
         minWidth: 0,
         width: "100%",

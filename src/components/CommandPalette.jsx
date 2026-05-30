@@ -190,7 +190,8 @@ export default function CommandPalette({ onClose }) {
       onClick={onClose}
       style={{
         position: "fixed", inset: 0, zIndex: 1000,
-        background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)",
+        background: "rgba(6,8,14,0.55)", backdropFilter: "blur(20px) saturate(180%)",
+        WebkitBackdropFilter: "blur(20px) saturate(180%)",
         display: "flex",
         alignItems: isMobile ? "flex-end" : "flex-start",
         justifyContent: "center",
@@ -202,10 +203,14 @@ export default function CommandPalette({ onClose }) {
         className={isMobile ? "su" : "pop"}
         style={{
           width: isMobile ? "100%" : 600, maxWidth: isMobile ? "100%" : "90vw",
-          background: t.bg2,
-          border: `1px solid ${t.border}`,
+          background: "rgba(20,24,34,0.78)",
+          backdropFilter: "blur(24px) saturate(150%)",
+          WebkitBackdropFilter: "blur(24px) saturate(150%)",
+          border: `1px solid rgba(255,255,255,0.06)`,
           borderRadius: isMobile ? "16px 16px 0 0" : 14,
-          boxShadow: isMobile ? "0 -8px 40px rgba(0,0,0,0.4)" : "0 24px 80px rgba(0,0,0,0.4)",
+          boxShadow: isMobile
+            ? "0 -8px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)"
+            : "0 24px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.04)",
           overflow: "hidden",
         }}
       >

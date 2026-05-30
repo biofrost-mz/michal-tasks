@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useApp, AppProvider } from "./context/AppContext.jsx";
 import Icon from "./components/Icon.jsx";
 import { ToastProvider, useToast } from "./components/Toast.jsx";
@@ -10,6 +10,7 @@ import AtlasSidebar from "./layout/atlas/AtlasSidebar.jsx";
 import AtlasTopBar from "./layout/atlas/AtlasTopBar.jsx";
 import TaskDrawer from "./components/TaskDrawer.jsx";
 import CommandPalette from "./components/CommandPalette.jsx";
+import ShortcutHelper from "./components/ShortcutHelper.jsx";
 import DashboardPage from "./pages/DashboardPage.jsx";
 import TasksPage from "./pages/TasksPage.jsx";
 import NotesPage from "./pages/NotesPage.jsx";
@@ -103,12 +104,68 @@ function PageTransition({ pageKey, children }) {
 }
 
 function AppShell() {
-  const { dk, setDk, isMobile, page, taskDetail, cmdOpen, setCmdOpen } = useApp();
+  const { dk, setDk, isMobile, page, setPage, taskDetail, setTaskDetail, cmdOpen, setCmdOpen } = useApp();
   const [collapsed, setCollapsed] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const gPressedRef = useRef(false);
+  const gTimerRef = useRef(null);
 
   useEffect(() => {
     applyDocumentMetadata(page);
   }, [page]);
+
+  // Global keyboard shortcuts
+  useEffect(() => {
+    const handler = (e) => {
+      // Skip if user is typing in an input/textarea/select
+      const tag = e.target.tagName;
+      const editable = e.target.isContentEditable;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || editable) return;
+
+      // ? = open shortcut helper
+      if (e.key === "?" || (e.shiftKey && e.key === "/")) {
+        e.preventDefault();
+        setShortcutsOpen((v) => !v);
+        return;
+      }
+
+      // n = new task (focus quick add)
+      if (e.key === "n" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent("focusQuickAdd"));
+        return;
+      }
+
+      // g + key = go-to navigation
+      if (e.key === "g" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        gPressedRef.current = true;
+        clearTimeout(gTimerRef.current);
+        gTimerRef.current = setTimeout(() => { gPressedRef.current = false; }, 800);
+        return;
+      }
+      if (gPressedRef.current) {
+        gPressedRef.current = false;
+        clearTimeout(gTimerRef.current);
+        switch (e.key) {
+          case "h": e.preventDefault(); setPage("dashboard"); break;
+          case "t": e.preventDefault(); setPage("tasks"); break;
+          case "n": e.preventDefault(); setPage("notes"); break;
+          case "p": e.preventDefault(); setPage("timeline"); break;
+          default: break;
+        }
+        return;
+      }
+
+      // Escape = close shortcut helper
+      if (e.key === "Escape" && shortcutsOpen) {
+        e.preventDefault();
+        setShortcutsOpen(false);
+        return;
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [shortcutsOpen, setPage]);
 
   return (
     <>
@@ -169,6 +226,12 @@ function AppShell() {
           {cmdOpen && (
             <ErrorBoundary inline label="Command palette">
               <CommandPalette onClose={() => setCmdOpen(false)} />
+            </ErrorBoundary>
+          )}
+
+          {shortcutsOpen && (
+            <ErrorBoundary inline label="Shortcut helper">
+              <ShortcutHelper onClose={() => setShortcutsOpen(false)} />
             </ErrorBoundary>
           )}
         </div>
