@@ -7,6 +7,17 @@ import { supabase } from '../supabase.js'
 
 /* Decorative mock card shown in the brand panel */
 function MockTaskCard() {
+  const [tasks, setTasks] = React.useState([
+    { done: true,  text: "Zkontrolovat pull requesty",  priority: "#22c55e" },
+    { done: true,  text: "Schůzka s týmem (10:00)",     priority: "#f59e0b" },
+    { done: false, text: "Dokončit design přihlášení",  priority: "#ef4444" },
+    { done: false, text: "Code review — notes linking", priority: "#e3a850" },
+  ]);
+
+  const handleToggle = (index) => {
+    setTasks(prev => prev.map((t, idx) => idx === index ? { ...t, done: !t.done } : t));
+  };
+
   return (
     <div 
       style={{
@@ -34,24 +45,68 @@ function MockTaskCard() {
       <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 10 }}>
         Dnešní plán · AI
       </div>
-      {[
-        { done: true,  text: "Zkontrolovat pull requesty",  priority: "#22c55e" },
-        { done: true,  text: "Schůzka s týmem (10:00)",     priority: "#f59e0b" },
-        { done: false, text: "Dokončit design přihlášení",  priority: "#ef4444" },
-        { done: false, text: "Code review — notes linking", priority: "#e3a850" },
-      ].map((item, i) => (
-        <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0", borderBottom: i < 3 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
+      {tasks.map((item, i) => (
+        <div 
+          key={i} 
+          onClick={() => handleToggle(i)}
+          style={{ 
+            display: "flex", 
+            alignItems: "center", 
+            gap: 10, 
+            padding: "8px 0", 
+            borderBottom: i < 3 ? "1px solid rgba(255,255,255,0.05)" : "none",
+            cursor: "pointer",
+            transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
+            borderRadius: "6px",
+            userSelect: "none",
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = "rgba(255, 255, 255, 0.02)";
+            e.currentTarget.style.paddingLeft = "6px";
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.paddingLeft = "0px";
+          }}
+        >
           <div style={{
             width: 16, height: 16, borderRadius: 5, flexShrink: 0,
-            background: item.done ? item.priority + "30" : "transparent",
-            border: `2px solid ${item.done ? item.priority : "rgba(255,255,255,0.15)"}`,
+            background: item.done ? item.priority + "25" : "transparent",
+            border: `2px solid ${item.done ? item.priority : "rgba(255,255,255,0.2)"}`,
             display: "flex", alignItems: "center", justifyContent: "center",
+            transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
           }}>
-            {item.done && <span style={{ fontSize: 9, color: item.priority, fontWeight: 900 }}>✓</span>}
+            <span style={{
+              fontSize: 9,
+              color: item.priority,
+              fontWeight: 900,
+              transform: `scale(${item.done ? 1 : 0})`,
+              opacity: item.done ? 1 : 0,
+              transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease",
+            }}>✓</span>
           </div>
           <div style={{ width: 5, height: 5, borderRadius: "50%", background: item.priority, flexShrink: 0 }} />
-          <span style={{ fontSize: 12.5, color: item.done ? "#4a5568" : "#cbd5e1", textDecoration: item.done ? "line-through" : "none", flex: 1 }}>
+          <span style={{
+            position: "relative",
+            fontSize: 12.5,
+            color: item.done ? "#64748b" : "#cbd5e1",
+            transition: "color 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+            flex: 1,
+            userSelect: "none",
+          }}>
             {item.text}
+            <span style={{
+              position: "absolute",
+              left: 0,
+              right: 0,
+              top: "50%",
+              height: "1px",
+              background: "currentColor",
+              transform: `scaleX(${item.done ? 1 : 0})`,
+              transformOrigin: "left",
+              transition: "transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
+              opacity: 0.6,
+            }} />
           </span>
         </div>
       ))}
@@ -75,6 +130,7 @@ export default function AuthGate({ children }) {
   const [signMode, setSignMode] = useState("signin");   // "signin" | "signup"
   const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
   const [showPw,   setShowPw]   = useState(false);
   const [sending,  setSending]  = useState(false);
   const [sent,     setSent]     = useState(false);
@@ -117,7 +173,15 @@ export default function AuthGate({ children }) {
     setSending(true);
     let error;
     if (signMode === "signup") {
-      ({ error } = await supabase.auth.signUp({ email: e, password }));
+      ({ error } = await supabase.auth.signUp({
+        email: e,
+        password,
+        options: {
+          data: {
+            display_name: fullName.trim() || undefined
+          }
+        }
+      }));
       if (!error) toast("Účet vytvořen! Zkontroluj email pro potvrzení.", "success");
     } else {
       ({ error } = await supabase.auth.signInWithPassword({ email: e, password }));
@@ -204,8 +268,8 @@ export default function AuthGate({ children }) {
         right: 0,
         bottom: 0,
         background: `
-          radial-gradient(circle 450px at ${mouseCoords.x}% ${mouseCoords.y}%, rgba(251, 191, 36, 0.16) 0%, rgba(249, 115, 22, 0.08) 30%, rgba(139, 92, 246, 0.05) 60%, rgba(0, 0, 0, 0) 100%),
-          radial-gradient(circle 600px at ${100 - mouseCoords.x}% ${100 - mouseCoords.y}%, rgba(168, 85, 247, 0.08) 0%, rgba(236, 72, 153, 0.03) 40%, rgba(0, 0, 0, 0) 100%),
+          radial-gradient(circle 650px at ${mouseCoords.x}% ${mouseCoords.y}%, rgba(251, 191, 36, 0.28) 0%, rgba(249, 115, 22, 0.15) 30%, rgba(139, 92, 246, 0.08) 60%, rgba(0, 0, 0, 0) 100%),
+          radial-gradient(circle 750px at ${100 - mouseCoords.x}% ${100 - mouseCoords.y}%, rgba(168, 85, 247, 0.15) 0%, rgba(236, 72, 153, 0.06) 40%, rgba(0, 0, 0, 0) 100%),
           radial-gradient(circle 800px at 100% 0%, rgba(251, 191, 36, 0.06) 0%, rgba(0, 0, 0, 0) 80%),
           radial-gradient(circle 800px at 0% 100%, rgba(139, 92, 246, 0.06) 0%, rgba(0, 0, 0, 0) 80%),
           #030303
@@ -222,9 +286,9 @@ export default function AuthGate({ children }) {
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundImage: "radial-gradient(rgba(251, 191, 36, 0.08) 1.5px, transparent 1.5px)",
+        backgroundImage: "radial-gradient(rgba(251, 191, 36, 0.22) 1.5px, transparent 1.5px)",
         backgroundSize: "28px 24px",
-        opacity: 0.8,
+        opacity: 1.0,
         zIndex: 0,
         pointerEvents: "none",
         maskImage: "radial-gradient(ellipse at 50% 50%, black 50%, transparent 100%)",
@@ -504,6 +568,30 @@ export default function AuthGate({ children }) {
                 ))}
               </div>
 
+              {signMode === "signup" && (
+                <div>
+                  <label style={{ display: "block", fontSize: "11px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.08em", color: "#9ca3af", marginBottom: "8px" }}>
+                    Jméno a Příjmení
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Michal Zich"
+                    value={fullName}
+                    onChange={e => setFullName(e.target.value)}
+                    required
+                    style={inputFieldStyle}
+                    onFocus={e => {
+                      e.target.style.borderColor = "#fbbf24";
+                      e.target.style.background = "rgba(255, 255, 255, 0.08)";
+                    }}
+                    onBlur={e => {
+                      e.target.style.borderColor = "rgba(255, 255, 255, 0.1)";
+                      e.target.style.background = "rgba(255, 255, 255, 0.05)";
+                    }}
+                  />
+                </div>
+              )}
+
               <div>
                 <label style={{ display: "block", fontSize: "11px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.08em", color: "#9ca3af", marginBottom: "8px" }}>
                   E-mailová adresa
@@ -583,10 +671,10 @@ export default function AuthGate({ children }) {
 
               <button
                 type="submit"
-                disabled={!email.trim() || !password || sending}
-                style={{ ...btnPrimaryStyle, opacity: !email.trim() || !password || sending ? 0.6 : 1 }}
+                disabled={!email.trim() || !password || (signMode === "signup" && !fullName.trim()) || sending}
+                style={{ ...btnPrimaryStyle, opacity: !email.trim() || !password || (signMode === "signup" && !fullName.trim()) || sending ? 0.6 : 1 }}
                 onMouseEnter={e => {
-                  if (email.trim() && password && !sending) {
+                  if (email.trim() && password && (signMode !== "signup" || fullName.trim()) && !sending) {
                     e.currentTarget.style.transform = "translateY(-1px)";
                     e.currentTarget.style.boxShadow = "0 10px 20px rgba(251, 191, 36, 0.3)";
                   }

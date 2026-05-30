@@ -239,8 +239,13 @@ export function AppProvider({ children }) {
       const timeout = setTimeout(() => setLoaded(true), 10_000);
       try {
         setLoaded(false);
+        const displayNameFromMeta = session?.user?.user_metadata?.display_name || null;
         await supabase.from("user_profiles").upsert(
-          { id: userId, email: session?.user?.email ?? null },
+          { 
+            id: userId, 
+            email: session?.user?.email ?? null,
+            ...(displayNameFromMeta ? { display_name: displayNameFromMeta } : {})
+          },
           { onConflict: "id", ignoreDuplicates: false }
         );
         const personalWsId = await workspaceService.ensurePersonalWorkspace(userId);
