@@ -464,7 +464,18 @@ export function ProjectDetailPage() {
 
         <DragOverlay>
           {activeTask ? (
-            <div className="kcard" style={{ opacity: 0.95, cursor: "grabbing", boxShadow: "0 8px 32px rgba(0,0,0,.4)", pointerEvents: "none" }}>
+            <div
+              className="kcard"
+              style={{
+                opacity: 0.92,
+                cursor: "grabbing",
+                boxShadow: "0 20px 48px rgba(0, 0, 0, 0.45)",
+                pointerEvents: "none",
+                transform: "rotate(3deg) scale(1.05)",
+                transformOrigin: "center center",
+                transition: "transform 0.15s ease",
+              }}
+            >
               <div className="kcard-t">{activeTask.title || "Bez názvu"}</div>
               <div className="kcard-m">
                 {activeTask.priority === "high" ? <span className="prio" style={{ "--prio-color": "#f87171" }}>↑ Vysoká</span> : null}

@@ -132,7 +132,21 @@ function AppShell() {
       // n = new task (focus quick add)
       if (e.key === "n" && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault();
-        window.dispatchEvent(new CustomEvent("focusQuickAdd"));
+        if (page !== "tasks" && page !== "quick-todos") {
+          setPage("tasks");
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent("focusQuickAdd"));
+          }, 120);
+        } else {
+          window.dispatchEvent(new CustomEvent("focusQuickAdd"));
+        }
+        return;
+      }
+
+      // t = go to tasks directly
+      if (e.key === "t" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        setPage("tasks");
         return;
       }
 
@@ -165,7 +179,7 @@ function AppShell() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [shortcutsOpen, setPage]);
+  }, [shortcutsOpen, setPage, page]);
 
   return (
     <>
@@ -234,6 +248,49 @@ function AppShell() {
               <ShortcutHelper onClose={() => setShortcutsOpen(false)} />
             </ErrorBoundary>
           )}
+
+          {/* Floating help trigger for keyboard shortcuts */}
+          {!isMobile && (
+            <button
+              onClick={() => setShortcutsOpen(true)}
+              style={{
+                position: "fixed",
+                bottom: "24px",
+                right: "24px",
+                width: "38px",
+                height: "38px",
+                borderRadius: "50%",
+                background: "var(--surface)",
+                border: "1px solid var(--border-soft)",
+                boxShadow: "0 6px 20px rgba(0,0,0,0.18)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "var(--text-2)",
+                cursor: "pointer",
+                zIndex: 9999,
+                transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
+                backdropFilter: "blur(12px)",
+                WebkitBackdropFilter: "blur(12px)",
+              }}
+              className="shortcut-trigger"
+              title="Klávesové zkratky (?)"
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "scale(1.1) translateY(-2px)";
+                e.currentTarget.style.color = "var(--accent)";
+                e.currentTarget.style.borderColor = "var(--accent)";
+                e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.25)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "scale(1) translateY(0)";
+                e.currentTarget.style.color = "var(--text-2)";
+                e.currentTarget.style.borderColor = "var(--border-soft)";
+                e.currentTarget.style.boxShadow = "0 6px 20px rgba(0,0,0,0.18)";
+              }}
+            >
+              <span style={{ fontSize: "16px", fontWeight: "700", fontFamily: "var(--font-ui)" }}>?</span>
+            </button>
+          )}
         </div>
         {isMobile && <MobileFAB />}
         {isMobile && <MobileNav toggleDk={() => setDk(!dk)} />}
@@ -246,8 +303,8 @@ export default function MichalTasks() {
   return (
     // Vnější boundary zachytí chyby v AppProvider, AuthGate, atd.
     <ErrorBoundary label="Aplikace">
-      <AppProvider>
-        <ToastProvider>
+      <ToastProvider>
+        <AppProvider>
           <ConfirmProvider>
             <AuthGate>
               {/* Vnitřní boundary zachytí chyby v samotném shellu */}
@@ -256,8 +313,8 @@ export default function MichalTasks() {
               </ErrorBoundary>
             </AuthGate>
           </ConfirmProvider>
-        </ToastProvider>
-      </AppProvider>
+        </AppProvider>
+      </ToastProvider>
     </ErrorBoundary>
   );
 }

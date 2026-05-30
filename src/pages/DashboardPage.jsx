@@ -4,7 +4,7 @@ import Icon from "../components/Icon.jsx";
 import AIDailyPlan from "../components/AIDailyPlan.jsx";
 import QuickAdd from "../components/QuickAdd.jsx";
 import { formatDate, formatDateKey } from "../locale.js";
-import { parseYMD, projectColor, startOfToday } from "../utils.js";
+import { parseYMD, projectColor, startOfToday, triggerConfettiBurst } from "../utils.js";
 import { getNamedayInfo } from "../data/czechNamedays.js";
 import { getSunTimes, getGreeting, getDayPhaseIcon } from "../data/sunCalc.js";
 import { fetchWeather, hasWeatherApiKey } from "../data/weather.js";
@@ -108,7 +108,9 @@ function TaskCard({ task, onOpen, onStatusChange, onStar, projectsById }) {
         className="tcard-state"
         onClick={(e) => {
           e.stopPropagation();
-          onStatusChange(task.id, task.status === "done" ? "todo" : "done");
+          const nextStatus = task.status === "done" ? "todo" : "done";
+          if (nextStatus === "done") triggerConfettiBurst(e);
+          onStatusChange(task.id, nextStatus);
         }}
         title="Toggle hotovo"
       />

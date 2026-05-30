@@ -15,7 +15,8 @@ const SHORTCUT_GROUPS = [
   {
     title: "Akce",
     shortcuts: [
-      { label: "Nový úkol", keys: ["N"] },
+      { label: "Nový úkol (zaměření vstupu)", keys: ["N"] },
+      { label: "Přejít na Úkoly (dnešek)", keys: ["T"] },
       { label: "Nápověda zkratek", keys: ["?"] },
     ],
   },

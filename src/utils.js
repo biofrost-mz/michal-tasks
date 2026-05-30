@@ -192,3 +192,50 @@ export function useDebouncedEffect(effect, deps, delay = 350) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 }
+
+// Particle micro-confetti burst animation for satisfying task completions
+export function triggerConfettiBurst(e) {
+  if (!e || !e.target) return;
+  const rect = e.target.getBoundingClientRect();
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 2;
+
+  const colors = ["#22c55e", "#3b82f6", "#f59e0b", "#ef4444", "#a855f7", "#ec4899"];
+  const container = document.createElement("div");
+  container.className = "confetti-container";
+  container.style.position = "fixed";
+  container.style.inset = "0";
+  container.style.pointerEvents = "none";
+  container.style.zIndex = "999999";
+  document.body.appendChild(container);
+
+  for (let i = 0; i < 20; i++) {
+    const el = document.createElement("div");
+    const size = Math.random() * 5 + 5; // size between 5px and 10px
+    const angle = Math.random() * Math.PI * 2;
+    const distance = Math.random() * 55 + 20;
+    const destX = Math.cos(angle) * distance;
+    const destY = Math.sin(angle) * distance - (Math.random() * 25 + 5); // subtle gravity arc
+
+    el.style.position = "absolute";
+    el.style.left = `${centerX}px`;
+    el.style.top = `${centerY}px`;
+    el.style.width = `${size}px`;
+    el.style.height = `${size}px`;
+    el.style.borderRadius = Math.random() > 0.45 ? "50%" : "2px";
+    el.style.background = colors[Math.floor(Math.random() * colors.length)];
+    el.style.transform = "translate(-50%, -50%) scale(1)";
+    el.style.transition = "transform 0.55s cubic-bezier(0.12, 0.8, 0.32, 1), opacity 0.55s cubic-bezier(0.12, 0.8, 0.32, 1)";
+    container.appendChild(el);
+
+    // Force frame update to start transition
+    requestAnimationFrame(() => {
+      el.style.transform = `translate(calc(-50% + ${destX}px), calc(-50% + ${destY}px)) scale(0)`;
+      el.style.opacity = "0";
+    });
+  }
+
+  setTimeout(() => {
+    container.remove();
+  }, 650);
+}

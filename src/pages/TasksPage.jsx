@@ -8,7 +8,7 @@ import {
   CLASS_TO_STATUS,
 } from "../components/atlas/AtlasTaskCard.jsx";
 import { STATUSES } from "../constants.js";
-import { startOfToday } from "../utils.js";
+import { startOfToday, triggerConfettiBurst } from "../utils.js";
 import QuickAdd from "../components/QuickAdd.jsx";
 import EmptyState from "../components/EmptyState.jsx";
 import { useTaskKeyboard } from "../hooks/useTaskKeyboard.js";
@@ -306,7 +306,9 @@ export default function TasksPage() {
           <EmptyState
             type="tasks"
             title="Zatím žádné úkoly"
-            description="Přidej svůj první úkol pomocí pole výše nebo klávesové zkratky."
+            description="Vytvoř svůj první úkol pomocí pole výše nebo klávesové zkratky."
+            action={() => window.dispatchEvent(new CustomEvent("focusQuickAdd"))}
+            actionLabel="Vytvořit první úkol"
           />
         ) : (
           <EmptyState
@@ -382,7 +384,12 @@ export default function TasksPage() {
               onMouseEnter={() => { if (focusedId !== t.id) setFocusedId(t.id); }}
               style={isFocused ? { outline: "1px solid var(--accent)", outlineOffset: -1 } : undefined}
             >
-              <div className="tcard-state" onClick={(e) => { e.stopPropagation(); setStatus(t.id, t.status === "done" ? "todo" : "done"); }} title="Toggle hotovo" />
+              <div className="tcard-state" onClick={(e) => {
+                 e.stopPropagation();
+                 const nextStatus = t.status === "done" ? "todo" : "done";
+                 if (nextStatus === "done") triggerConfettiBurst(e);
+                 setStatus(t.id, nextStatus);
+               }} title="Toggle hotovo" />
               <div className="tcard-body">
                 {inlineEditId === t.id ? (
                   <InlineEditInput

@@ -316,41 +316,8 @@ export default function TaskDrawer() {
 
   if (!task) return null;
 
-  // Auto-save with beautiful visual toasts for field-level changes
   const s = (u) => {
     updateTask(task.id, u);
-    if (u.status !== undefined) {
-      const label = STATUSES[u.status]?.label || u.status;
-      toast(`Stav úkolu změněn na "${label}"`, "success");
-    } else if (u.priority !== undefined) {
-      const prioLabels = { low: "Nízká", medium: "Střední", high: "Vysoká" };
-      const label = prioLabels[u.priority] || "Žádná";
-      toast(`Priorita úkolu změněna na "${label}"`, "success");
-    } else if (u.projectId !== undefined) {
-      const proj = projects.find(p => p.id === u.projectId);
-      const label = proj ? proj.name : "Inbox";
-      toast(`Úkol přesunut do projektu "${label}"`, "success");
-    } else if (u.dueDate !== undefined) {
-      if (u.dueDate) {
-        toast(`Termín splnění nastaven na ${u.dueDate}`, "success");
-      } else {
-        toast("Termín splnění byl odebrán", "success");
-      }
-    } else if (u.assigneeUserId !== undefined) {
-      const member = workspaceMembers?.find(m => m.userId === u.assigneeUserId);
-      const label = member?.displayName || member?.email || "nepřiřazeno";
-      toast(`Řešitel změněn na "${label}"`, "success");
-    } else if (u.title !== undefined) {
-      toast("Název úkolu byl uložen", "success");
-    } else if (u.description !== undefined) {
-      toast("Popis úkolu byl uložen", "success");
-    } else if (u.remindAt !== undefined) {
-      if (u.remindAt) {
-        toast("Připomenutí bylo nastaveno", "success");
-      } else {
-        toast("Připomenutí bylo zrušeno", "success");
-      }
-    }
   };
 
   const addPhase = () => {

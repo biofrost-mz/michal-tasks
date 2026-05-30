@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback } from "react";
 import Icon from "../Icon.jsx";
-import { parseYMD, projectColor } from "../../utils.js";
+import { parseYMD, projectColor, triggerConfettiBurst } from "../../utils.js";
 import { useApp } from "../../context/AppContext.jsx";
 
 export const STATUS_TO_CLASS = { todo: "todo", doing: "doing", waiting: "wait", done: "done" };
@@ -142,7 +142,9 @@ export default function AtlasTaskCard({ task, onOpen, onStatusChange, onStar, pr
         className="tcard-state"
         onClick={(e) => {
           e.stopPropagation();
-          onStatusChange(task.id, task.status === "done" ? "todo" : "done");
+          const nextStatus = task.status === "done" ? "todo" : "done";
+          if (nextStatus === "done") triggerConfettiBurst(e);
+          onStatusChange(task.id, nextStatus);
         }}
         title="Toggle hotovo"
       />

@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext.jsx'
 import Icon from '../components/Icon.jsx'
 import { PrioChip, TagPill } from '../components/atlas/AtlasTaskCard.jsx'
 import EmptyState from '../components/EmptyState.jsx'
+import { triggerConfettiBurst } from '../utils.js'
 
 const PRIORITY_CONFIG = {
   low:    { label: "Nízká",   color: "#22c55e", bg: "#22c55e18" },
@@ -63,52 +64,72 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
       <div
         className="tcard todo"
         style={{
+          display: "flex",
           flexDirection: "column",
           alignItems: "stretch",
-          gap: 12,
-          padding: "16px",
+          gap: "18px",
+          padding: isMobile ? "16px" : "20px 24px",
           background: "var(--surface)",
           border: "1px solid var(--accent)",
-          boxShadow: "var(--shadow)",
-          animation: "pop .2s ease-out"
+          boxShadow: "0 12px 32px rgba(0, 0, 0, 0.25)",
+          animation: "pop .2s ease-out",
+          cursor: "default"
         }}
       >
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <span style={{ fontSize: 13, color: "var(--text-3)", fontWeight: 600 }}>Název:</span>
+        <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+          {/* Title Field */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            <label style={{ fontSize: "11px", color: "var(--text-3)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+              Název
+            </label>
             <input
               autoFocus
               className="detail-input"
               value={editText}
               onChange={(e) => setEditText(e.target.value)}
               placeholder="Co je potřeba udělat…"
-              style={{ flex: 1, padding: "6px 10px" }}
+              style={{ padding: "10px 14px", fontSize: "14px" }}
             />
           </div>
 
-          <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-            <span style={{ fontSize: 13, color: "var(--text-3)", fontWeight: 600, marginTop: 6 }}>Popis:</span>
+          {/* Description Field */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            <label style={{ fontSize: "11px", color: "var(--text-3)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+              Popis
+            </label>
             <textarea
               className="detail-input"
               value={editDesc}
               onChange={(e) => setEditDesc(e.target.value)}
-              placeholder="Popis rychlého úkolu…"
+              placeholder="Doplňující informace nebo poznámka…"
               rows={2}
-              style={{ flex: 1, padding: "6px 10px", resize: "vertical" }}
+              style={{ padding: "10px 14px", fontSize: "13.5px", resize: "vertical" }}
             />
           </div>
 
-          <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-              <span style={{ fontSize: 13, color: "var(--text-3)", fontWeight: 600 }}>Priorita:</span>
-              <div style={{ display: "flex", gap: 4 }}>
+          {/* Meta Fields (Responsive Grid) */}
+          <div style={isMobile ? { display: "flex", flexDirection: "column", gap: "14px" } : { display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "20px" }}>
+            {/* Priority Column */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+              <label style={{ fontSize: "11px", color: "var(--text-3)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                Priorita
+              </label>
+              <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
                 {Object.entries(PRIORITY_CONFIG).map(([key, cfg]) => (
                   <button
                     key={key}
                     type="button"
                     onClick={() => setEditPrio(editPrio === key ? "" : key)}
                     className={`chip ${editPrio === key ? "active" : ""}`}
-                    style={editPrio === key ? { borderColor: cfg.color, color: cfg.color, padding: "3px 8px", fontSize: 11 } : { padding: "3px 8px", fontSize: 11 }}
+                    style={{
+                      padding: "8px 14px",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      borderRadius: "8px",
+                      borderColor: editPrio === key ? cfg.color : "var(--border-soft)",
+                      color: editPrio === key ? cfg.color : "var(--text-2)",
+                      background: editPrio === key ? cfg.bg : "transparent",
+                    }}
                   >
                     {cfg.label}
                   </button>
@@ -116,35 +137,56 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
               </div>
             </div>
 
-            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-              <span style={{ fontSize: 13, color: "var(--text-3)", fontWeight: 600 }}>Termín:</span>
+            {/* Due Date Column */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+              <label style={{ fontSize: "11px", color: "var(--text-3)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                Termín splnění
+              </label>
               <input
                 type="date"
                 className="detail-input"
                 value={editDue}
                 onChange={(e) => setEditDue(e.target.value)}
-                style={{ padding: "4px 8px", fontSize: 11.5 }}
+                style={{ padding: "8px 12px", fontSize: "13px" }}
                 onClick={(e) => { try { e.target.showPicker(); } catch(err) {} }}
               />
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <span style={{ fontSize: 13, color: "var(--text-3)", fontWeight: 600 }}>Tagy:</span>
+          {/* Tags Field */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            <label style={{ fontSize: "11px", color: "var(--text-3)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+              Tagy
+            </label>
             <input
               className="detail-input"
               value={editTags}
               onChange={(e) => setEditTags(e.target.value)}
-              placeholder="nakup, osobni, prace…"
-              style={{ flex: 1, padding: "4px 8px", fontSize: 12 }}
+              placeholder="nakup, osobni, prace (oddělené čárkou)"
+              style={{ padding: "10px 14px", fontSize: "13px" }}
             />
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 4 }}>
+        {/* Action Buttons Row */}
+        <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "8px", borderTop: "1px solid var(--border-soft)", paddingTop: "14px" }}>
+          <button
+            className="btn"
+            style={{ padding: "8px 16px", fontSize: "13px", fontWeight: 600, borderRadius: "8px", minWidth: "80px" }}
+            onClick={() => {
+              setEditText(todo.text || "");
+              setEditDesc(todo.description || "");
+              setEditPrio(todo.priority || "");
+              setEditDue(todo.dueDate || "");
+              setEditTags(todo.tags ? todo.tags.join(", ") : "");
+              setIsEditing(false);
+            }}
+          >
+            Zrušit
+          </button>
           <button
             className="btn primary"
-            style={{ padding: "5px 12px", fontSize: 12 }}
+            style={{ padding: "8px 20px", fontSize: "13px", fontWeight: 600, borderRadius: "8px", background: "var(--accent)", color: "var(--bg)", minWidth: "90px" }}
             onClick={() => {
               const text = editText.trim();
               if (!text) return;
@@ -164,20 +206,6 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
             }}
           >
             Uložit
-          </button>
-          <button
-            className="btn"
-            style={{ padding: "5px 12px", fontSize: 12 }}
-            onClick={() => {
-              setEditText(todo.text || "");
-              setEditDesc(todo.description || "");
-              setEditPrio(todo.priority || "");
-              setEditDue(todo.dueDate || "");
-              setEditTags(todo.tags ? todo.tags.join(", ") : "");
-              setIsEditing(false);
-            }}
-          >
-            Zrušit
           </button>
         </div>
       </div>
@@ -207,6 +235,10 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
         onTouchStart={isMobile ? onTouchStart : undefined}
         onTouchMove={isMobile ? onTouchMove : undefined}
         onTouchEnd={isMobile ? onTouchEnd : undefined}
+        onClick={() => {
+          if (Math.abs(offsetX) > 5) return;
+          setIsEditing(true);
+        }}
         style={isMobile ? {
           transform: exiting ? "translateX(-110%)" : `translateX(${offsetX + hintOffset}px)`,
           opacity: exiting ? 0 : 1,
@@ -216,10 +248,14 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
       >
         <div
           className="tcard-state"
-          onClick={(e) => { e.stopPropagation(); triggerArchive(); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            triggerConfettiBurst(e);
+            triggerArchive();
+          }}
           title="Označit jako hotové"
         />
-        <div className="tcard-body" onClick={() => setIsEditing(true)} style={{ cursor: "pointer" }}>
+        <div className="tcard-body">
           <div className="tcard-title">{todo.text}</div>
           {(todo.priority || todo.dueDate || todo.tags?.length || todo.description) && (
             <div className="tcard-meta">
@@ -457,6 +493,8 @@ export default function QuickTodosPage() {
           type="todos"
           title="Žádné položky"
           description="Napiš co potřebuješ a stiskni Enter nebo klikni na + Přidat."
+          action={() => inputRef.current?.focus()}
+          actionLabel="Vytvořit první úkol"
         />
       )}
 

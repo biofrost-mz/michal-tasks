@@ -1,5 +1,4 @@
 import React, { useState, useContext, createContext, useCallback } from 'react'
-import { useApp } from '../context/AppContext.jsx'
 
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 
@@ -7,9 +6,6 @@ export const ToastCtx = createContext(() => {});
 export const useToast = () => useContext(ToastCtx);
 
 function ToastList({ toasts }) {
-  const ctx = useApp();
-  if (!ctx) return null;
-  const { t } = ctx;
   return (
     <>
       <style>{`
@@ -23,63 +19,100 @@ function ToastList({ toasts }) {
             transform: translateY(0) scale(1);
           }
         }
+        .toast-container {
+          position: fixed;
+          bottom: 24px;
+          left: 50%;
+          transform: translateX(-50%);
+          z-index: 99999;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 10px;
+          pointer-events: none;
+          width: max-content;
+          max-width: 90vw;
+        }
+        .toast-item {
+          padding: 12px 22px;
+          border-radius: 12px;
+          font-size: 13.5px;
+          font-weight: 600;
+          box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
+          pointer-events: auto;
+          animation: toastInCenter .36s cubic-bezier(0.16, 1, 0.3, 1) both;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          font-family: var(--font-ui);
+        }
+        
+        /* Success Toast style */
+        .toast-item.success {
+          background: rgba(34, 197, 94, 0.15);
+          color: #22c55e;
+          border: 1px solid rgba(34, 197, 94, 0.35);
+        }
+        :root.light .toast-item.success {
+          background: rgba(21, 128, 61, 0.08);
+          color: #15803d;
+          border: 1px solid rgba(21, 128, 61, 0.25);
+        }
+        
+        /* Error Toast style */
+        .toast-item.error {
+          background: rgba(239, 68, 68, 0.15);
+          color: #ef4444;
+          border: 1px solid rgba(239, 68, 68, 0.35);
+        }
+        :root.light .toast-item.error {
+          background: rgba(185, 28, 28, 0.08);
+          color: #b91c1c;
+          border: 1px solid rgba(185, 28, 28, 0.25);
+        }
+        
+        /* Info/Default Toast style */
+        .toast-item.info {
+          background: rgba(20, 24, 34, 0.85);
+          color: #ededf2;
+          border: 1px solid rgba(38, 44, 60, 0.8);
+        }
+        :root.light .toast-item.info {
+          background: rgba(255, 255, 255, 0.9);
+          color: #1e293b;
+          border: 1px solid rgba(226, 232, 240, 0.8);
+          box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
+        }
+        
+        .toast-icon {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          font-size: 11px;
+          font-weight: 700;
+        }
+        .toast-icon.success {
+          background: rgba(34, 197, 94, 0.2);
+          color: #22c55e;
+        }
+        :root.light .toast-icon.success {
+          background: rgba(21, 128, 61, 0.15);
+          color: #15803d;
+        }
       `}</style>
-      <div
-        style={{
-          position: "fixed",
-          bottom: 24,
-          left: "50%",
-          transform: "translateX(-50%)",
-          zIndex: 9999,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: 8,
-          pointerEvents: "none",
-          width: "max-content",
-          maxWidth: "90vw",
-        }}
-      >
+      <div className="toast-container">
         {toasts.map((toast) => (
-          <div
-            key={toast.id}
-            style={{
-              background: toast.type === "success"
-                ? (ctx.dk ? "rgba(16, 185, 129, 0.16)" : "#e6fcf5")
-                : (toast.type === "error" ? "rgba(239, 68, 68, 0.12)" : t.toast),
-              color: toast.type === "success"
-                ? (ctx.dk ? "#4ade80" : "#0f766e")
-                : (toast.type === "error" ? "#ef4444" : t.text),
-              padding: "12px 20px",
-              borderRadius: 12,
-              fontSize: 13.5,
-              fontWeight: 550,
-              border: toast.type === "success"
-                ? (ctx.dk ? "1px solid rgba(74, 222, 128, 0.4)" : "1px solid #10b981")
-                : (toast.type === "error" ? "1px solid rgba(239, 68, 68, 0.4)" : `1px solid ${t.border}`),
-              boxShadow: "0 10px 30px rgba(0, 0, 0, 0.15)",
-              backdropFilter: "blur(12px)",
-              WebkitBackdropFilter: "blur(12px)",
-              pointerEvents: "auto",
-              animation: "toastInCenter .32s cubic-bezier(0.16, 1, 0.3, 1)",
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-            }}
-          >
+          <div key={toast.id} className={`toast-item ${toast.type || 'info'}`}>
             {toast.type === "success" && (
-              <span style={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: 18,
-                height: 18,
-                borderRadius: "50%",
-                background: ctx.dk ? "rgba(74, 222, 128, 0.2)" : "#10b981",
-                color: ctx.dk ? "#4ade80" : "#ffffff",
-                fontSize: 11,
-                fontWeight: 700,
-              }}>✓</span>
+              <span className="toast-icon success">✓</span>
+            )}
+            {toast.type === "error" && (
+              <span className="toast-icon error" style={{ background: "rgba(239, 68, 68, 0.15)", color: "#ef4444" }}>✕</span>
             )}
             <span>{toast.msg}</span>
           </div>

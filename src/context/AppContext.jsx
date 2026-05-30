@@ -18,6 +18,8 @@ import * as tagService from "../services/tagService.js";
 import * as workspaceService from "../services/workspaceService.js";
 import * as quickTodoService from "../services/quickTodoService.js";
 import * as attachmentService from "../services/attachmentService.js";
+import { useToast } from "../components/Toast.jsx";
+import { STATUSES, PRIORITIES } from "../constants.js";
 
 /* ─────────────────────────────────────────────
    Context
@@ -168,6 +170,7 @@ async function dbFetchAll(userId, workspaceId) {
    AppProvider
 ───────────────────────────────────────────── */
 export function AppProvider({ children }) {
+  const toast = useToast();
   const [session, setSession] = useState(null);
   const userId = session?.user?.id ?? null;
   const [dk, setDk] = useState(true);
@@ -505,6 +508,7 @@ export function AppProvider({ children }) {
       remindAt: task?.remindAt ?? null,
     };
     setTasks((p) => [...p, tsk]);
+    toast("Úkol vytvořen", "success");
     (async () => {
       if (!userId) return;
       try {
@@ -518,10 +522,10 @@ export function AppProvider({ children }) {
       }
     })();
     return tsk;
-  }, [userId, activeWorkspaceId, reportError]);
+  }, [userId, activeWorkspaceId, reportError, toast]);
 
   const updateTask = useCallback(
-    (id, u) => {
+    (id, u, options = {}) => {
       // Compute prev/next synchronně z ref — vyhne se stale closure a race condition
       const prevTask = tasksRef.current.find((x) => x.id === id) ?? null;
       if (!prevTask) return;
@@ -530,6 +534,42 @@ export function AppProvider({ children }) {
       if (u.status && u.status !== "done") nextTask.completedAt = null;
 
       setTasks((p) => p.map((x) => (x.id === id ? nextTask : x)));
+
+      const silent = options.silent ?? false;
+      if (!silent) {
+        if (u.status !== undefined && prevTask.status !== u.status) {
+          const label = STATUSES[u.status]?.label || u.status;
+          toast(`Stav úkolu změněn na "${label}"`, "success");
+        } else if (u.priority !== undefined && prevTask.priority !== u.priority) {
+          const labels = { low: "Nízká", medium: "Střední", high: "Vysoká" };
+          const label = labels[u.priority] || "Žádná";
+          toast(`Priorita úkolu změněna na "${label}"`, "success");
+        } else if (u.projectId !== undefined && prevTask.projectId !== u.projectId) {
+          const proj = projects.find(p => p.id === u.projectId);
+          const label = proj ? proj.name : "Inbox";
+          toast(`Úkol přesunut do projektu "${label}"`, "success");
+        } else if (u.dueDate !== undefined && prevTask.dueDate !== u.dueDate) {
+          if (u.dueDate) {
+            toast(`Termín splnění nastaven na ${u.dueDate}`, "success");
+          } else {
+            toast("Termín splnění byl odebrán", "success");
+          }
+        } else if (u.assigneeUserId !== undefined && prevTask.assigneeUserId !== u.assigneeUserId) {
+          const member = workspaceMembers?.find(m => m.userId === u.assigneeUserId);
+          const label = member?.displayName || member?.email || "nepřiřazeno";
+          toast(`Řešitel změněn na "${label}"`, "success");
+        } else if (u.title !== undefined && prevTask.title !== u.title) {
+          toast("Název úkolu byl uložen", "success");
+        } else if (u.description !== undefined && prevTask.description !== u.description) {
+          toast("Popis úkolu byl uložen", "success");
+        } else if (u.remindAt !== undefined && prevTask.remindAt !== u.remindAt) {
+          if (u.remindAt) {
+            toast("Připomenutí bylo nastaveno", "success");
+          } else {
+            toast("Připomenutí bylo zrušeno", "success");
+          }
+        }
+      }
 
       (async () => {
         const payload = {};
@@ -570,45 +610,50 @@ export function AppProvider({ children }) {
               baseDate = new Date(parsed);
             }
           }
-          if (!baseDate) {
-            baseDate = new Date();
+          if (!baseDate) baseDate = new Date();
+
+          if (rec === "daily") {
+            const d = new Date(baseDate); d.setDate(d.getDate() + 1);
+            nextDue = d.toISOString().split("T")[0];
+          } else if (rec === "weekly") {
+            const d = new Date(baseDate); d.setDate(d.getDate() + 7);
+            nextDue = d.toISOString().split("T")[0];
+          } else if (rec === "monthly") {
+            const d = new Date(baseDate); d.setMonth(d.getMonth() + 1);
+            nextDue = d.toISOString().split("T")[0];
           }
-          const d = new Date(baseDate);
-          if (rec === "daily") d.setDate(d.getDate() + 1);
-          else if (rec === "weekly") d.setDate(d.getDate() + 7);
-          else if (rec === "monthly") d.setMonth(d.getMonth() + 1);
-          nextDue = formatDateKey(d);
-          const newId = uuid4();
-          const newTask = {
-            id: newId,
-            title: nextTask.title,
-            description: nextTask.description,
-            status: "todo",
-            priority: nextTask.priority,
-            dueDate: nextDue,
-            projectId: nextTask.projectId,
-            tagIds: nextTask.tagIds || [],
-            phases: [],
-            subtasks: [],
-            position: Date.now() + 1,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-            completedAt: null,
-            starred: false,
-            recurrence: rec,
-          };
-          setTasks((p) => [...p, newTask]);
-          (async () => {
-            if (!userId) return;
-            try {
-              await taskService.insertTask({ ...newTask, recurrence: rec }, userId, activeWorkspaceId);
-              if (newTask.tagIds?.length) {
-                await taskService.insertTaskTags(newTask.id, newTask.tagIds, userId);
+
+          if (nextDue) {
+            const newTask = {
+              id: uuid4(),
+              title: nextTask.title,
+              description: nextTask.description,
+              status: "todo",
+              priority: nextTask.priority,
+              dueDate: nextDue,
+              projectId: nextTask.projectId,
+              tagIds: nextTask.tagIds || [],
+              phases: [],
+              subtasks: (nextTask.subtasks || []).map((sb) => ({ ...sb, done: false })),
+              position: Date.now() + 10,
+              createdAt: Date.now(),
+              updatedAt: Date.now(),
+              completedAt: null,
+              starred: nextTask.starred,
+              recurrence: nextTask.recurrence,
+            };
+            setTasks((p) => [...p, newTask]);
+            (async () => {
+              try {
+                await taskService.insertTask(newTask, userId, activeWorkspaceId);
+                if (newTask.tagIds?.length) {
+                  await taskService.insertTaskTags(newTask.id, newTask.tagIds, userId);
+                }
+              } catch {
+                setTasks((p) => p.filter((t) => t.id !== newTask.id));
               }
-            } catch {
-              setTasks((p) => p.filter((t) => t.id !== newTask.id));
-            }
-          })();
+            })();
+          }
         }
 
         if (u.tagIds !== undefined) {
@@ -621,7 +666,7 @@ export function AppProvider({ children }) {
         }
       })();
     },
-    [userId, activeWorkspaceId, reportError]
+    [userId, activeWorkspaceId, reportError, projects, workspaceMembers, toast]
   );
 
   const deleteTask = useCallback(
@@ -633,6 +678,7 @@ export function AppProvider({ children }) {
       setTasks((p) => p.filter((x) => x.id !== id));
       setDeletedTasks((prev) => [...prev, updated]);
       if (taskDetail === id) setTaskDetail(null);
+      toast("Úkol byl přesunut do koše", "success");
 
       (async () => {
         try {
@@ -644,7 +690,7 @@ export function AppProvider({ children }) {
         }
       })();
     },
-    [taskDetail, reportError]
+    [taskDetail, reportError, toast]
   );
 
   // CRUD — Tags
