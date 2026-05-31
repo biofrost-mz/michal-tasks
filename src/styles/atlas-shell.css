@@ -1434,6 +1434,136 @@ input, textarea { background: transparent; border: 0; outline: 0; }
   cursor: grabbing !important;
 }
 
+/* === Mobile Timeline === */
+.tl-mob-strip-wrap {
+  margin: 0 -4px 14px;
+  padding: 0 4px;
+}
+.tl-mob-strip {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 4px 2px 6px;
+}
+.tl-mob-strip::-webkit-scrollbar { display: none; }
+.tl-mob-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 42px;
+  padding: 6px 4px;
+  gap: 3px;
+  border-radius: 12px;
+  border: 1.5px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background .15s, border-color .15s;
+}
+.tl-mob-day.past { opacity: 0.45; }
+.tl-mob-dow {
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--text-4);
+}
+.tl-mob-num {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 500;
+  color: var(--text-2);
+  transition: background .15s, color .15s;
+}
+.tl-mob-day.today .tl-mob-num {
+  background: var(--accent);
+  color: var(--bg);
+  font-weight: 700;
+  box-shadow: 0 2px 8px var(--accent-glow);
+}
+.tl-mob-day.today .tl-mob-dow { color: var(--accent); }
+.tl-mob-day.sel {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.tl-mob-day.sel .tl-mob-num { color: var(--accent); }
+.tl-mob-dot-row {
+  display: flex; gap: 2px;
+  height: 5px; align-items: center;
+  min-height: 5px;
+}
+.tl-mob-dot {
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: .65;
+}
+.tl-mob-section {
+  margin-bottom: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r);
+  padding: 12px 14px;
+}
+.tl-mob-sh {
+  display: flex; align-items: center; justify-content: space-between;
+  padding-bottom: 8px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border-soft);
+  font-size: 11.5px; font-weight: 600;
+  font-family: var(--mono);
+  text-transform: uppercase; letter-spacing: .07em;
+  color: var(--text-3);
+}
+.tl-mob-sh.today { color: var(--accent); }
+.tl-mob-sh.overdue { color: var(--red); }
+.tl-mob-cnt {
+  font-family: var(--mono); font-size: 10px;
+  background: var(--accent-soft); color: var(--accent);
+  padding: 1px 6px; border-radius: var(--r-pill);
+}
+.tl-mob-sh.overdue .tl-mob-cnt {
+  background: color-mix(in srgb, var(--red) 12%, transparent);
+  color: var(--red);
+}
+.tl-mob-task {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border-soft);
+  cursor: pointer;
+}
+.tl-mob-task:last-of-type { border-bottom: none; }
+.tl-mob-task-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.tl-mob-task-info { flex: 1; min-width: 0; }
+.tl-mob-task-title {
+  font-size: 13.5px; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.tl-mob-task-proj {
+  font-family: var(--mono); font-size: 10px;
+  color: var(--text-4); margin-top: 2px;
+}
+.tl-mob-task-date {
+  font-family: var(--mono); font-size: 11px; color: var(--text-3);
+  flex-shrink: 0;
+}
+.tl-mob-task-date.overdue { color: var(--red); font-weight: 600; }
+.tl-mob-add-btn {
+  display: flex; align-items: center; gap: 5px;
+  width: 100%; padding: 8px 0 2px;
+  background: transparent; border: none;
+  color: var(--text-4); font-size: 12px;
+  cursor: pointer; text-align: left;
+  transition: color .15s;
+}
+.tl-mob-add-btn:hover { color: var(--accent); }
+
 /* === Timeline === */
 .tl {
   background: var(--surface);
@@ -1994,27 +2124,34 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 
   /* === B. AI Banner (AI Hero) a návrhy === */
   .ai-hero {
-    grid-template-columns: 1fr;
-    text-align: center;
-    justify-items: center;
-    padding: 20px 16px;
-    gap: 16px;
+    position: relative;
+    grid-template-columns: 36px 1fr;
+    align-items: start;
+    padding: 14px 44px 14px 14px;
+    gap: 12px;
     border-left: none;
     border-top: 3px solid var(--accent);
+    text-align: left;
+    justify-items: start;
   }
   .ai-orb {
-    margin: 0 auto;
+    width: 36px;
+    height: 36px;
+    margin: 0;
+    font-size: 15px;
   }
   .ai-text-h {
-    font-size: 17px;
+    font-size: 15px;
   }
   .ai-text-h .num {
-    font-size: 22px;
+    font-size: 19px;
   }
   .ai-act {
+    grid-column: 1 / -1;
     width: 100%;
     justify-content: center;
-    padding: 12px;
+    padding: 11px;
+    margin-top: 2px;
   }
   button.ai-hero {
     grid-template-columns: 32px 1fr 20px;
@@ -2025,24 +2162,27 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
     border: 1px solid var(--border-soft);
     text-align: left;
     justify-items: start;
+    align-items: center;
   }
 
   .aisug {
     grid-template-columns: 1fr;
-    gap: 10px;
+    gap: 8px;
   }
   .aisug-card {
-    grid-template-columns: 32px 1fr;
-    padding: 12px 14px;
-    gap: 12px;
+    grid-template-columns: 30px 1fr;
+    padding: 11px 13px;
+    gap: 10px;
+  }
+  .aisug-num {
+    width: 30px;
+    height: 30px;
+    font-size: 13px;
   }
   .aisug-tag {
-    grid-column: 1 / -1;
+    grid-column: 2;
     justify-self: start;
-    margin-top: 4px;
-  }
-  .aisug {
-    display: none;
+    margin-top: 3px;
   }
 
   /* === C. Rychlé přidávání a klávesové zkratky === */

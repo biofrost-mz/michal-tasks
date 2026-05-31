@@ -4,6 +4,7 @@ import { useToast } from '../components/Toast.jsx'
 import { useConfirm } from '../components/Confirm.jsx'
 import Icon from '../components/Icon.jsx'
 import { formatDate } from '../locale.js'
+import { usePushNotifications } from '../hooks/usePushNotifications.js'
 
 export default function WorkspaceSettingsPage() {
   const { workspaces, activeWorkspaceId, workspaceMembers, workspaceRole, userId,
@@ -11,6 +12,7 @@ export default function WorkspaceSettingsPage() {
     generateInviteLink, fetchWorkspaceInvites, revokeInvite, setPage, isMobile } = useApp();
   const toast = useToast();
   const confirm = useConfirm();
+  const push = usePushNotifications();
 
   const active = workspaces.find((w) => w.id === activeWorkspaceId);
   const [editingName, setEditingName] = useState(false);
@@ -240,6 +242,40 @@ export default function WorkspaceSettingsPage() {
             )}
           </section>
         )}
+
+        <section style={panel}>
+          <div style={sectionLabel}>Notifikace</div>
+          {!push.supported ? (
+            <div style={{ fontSize: 13, color: "var(--text-3)" }}>
+              Push notifikace nejsou v tomto prohlížeči podporovány nebo není nastaven VAPID klíč.
+            </div>
+          ) : push.permission === 'denied' ? (
+            <div style={{ fontSize: 13, color: "var(--text-3)" }}>
+              Notifikace jsou blokovány. Povol je v nastavení prohlížeče a stránku obnov.
+            </div>
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+              <div>
+                <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--text)" }}>
+                  {push.subscribed ? "Notifikace jsou zapnuté" : "Push notifikace"}
+                </div>
+                <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2 }}>
+                  {push.subscribed
+                    ? "Upozorníme tě na blížící se termíny a připomínky."
+                    : "Dostávej upozornění i když je app zavřená."}
+                </div>
+              </div>
+              <button
+                className={`btn${push.subscribed ? "" : " primary"}`}
+                onClick={push.subscribed ? push.unsubscribe : push.subscribe}
+                disabled={push.loading}
+                style={{ flexShrink: 0, minWidth: 120 }}
+              >
+                {push.loading ? "…" : push.subscribed ? "Vypnout" : "Zapnout"}
+              </button>
+            </div>
+          )}
+        </section>
 
         <section style={{ ...panel, borderColor: "rgba(239,68,68,.28)" }}>
           <div style={{ ...sectionLabel, color: "var(--red)" }}>Nebezpečná Zóna</div>

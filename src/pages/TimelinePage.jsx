@@ -1,7 +1,9 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useApp } from "../context/AppContext.jsx";
 import { parseYMD, projectColor, startOfToday } from "../utils.js";
 import { formatDate, formatDateKey } from "../locale.js";
+
+const DOW_CS = ["Ne", "Po", "Út", "St", "Čt", "Pá", "So"];
 
 function assignLanes(tasks, startDate) {
   const indexed = tasks
@@ -845,6 +847,7 @@ export default function TimelinePage() {
   const [daysCount, setDaysCount] = useState(() => Number(localStorage.getItem("mt3:timeline_days") || 7));
   const [addingFor, setAddingFor] = useState(null);
   const [addingForCell, setAddingForCell] = useState(null);
+  const [selectedDayKey, setSelectedDayKey] = useState(null);
 
   const handleSetDaysCount = (val) => {
     setDaysCount(val);
@@ -901,6 +904,26 @@ export default function TimelinePage() {
     return m;
   }, [rows, startDate]);
 
+  const byDate = useMemo(() => {
+    const m = new Map();
+    days.forEach((d) => {
+      const key = formatDateKey(d);
+      m.set(key, scheduled
+        .filter((t) => t.dueDate === key)
+        .sort((a, b) => (a.priority === "high" ? -1 : b.priority === "high" ? 1 : 0)));
+    });
+    return m;
+  }, [scheduled, days]);
+
+  const overdueTasks = useMemo(() =>
+    scheduled
+      .filter((t) => t.dueDate < todayKey)
+      .sort((a, b) => a.dueDate.localeCompare(b.dueDate)),
+    [scheduled, todayKey],
+  );
+
+  useEffect(() => { setSelectedDayKey(null); }, [daysCount, offsetDays]);
+
   const handleAdd = (projectId, payload) => {
     addTask({
       title: payload.title,
@@ -934,63 +957,139 @@ export default function TimelinePage() {
   const rangeLabel = `${formatDate(days[0], { day: "numeric", month: "long" })} → ${formatDate(days[daysCount - 1], { day: "numeric", month: "long", year: "numeric" })}`;
 
   if (isMobile) {
+    const tomorrowKey = formatDateKey(new Date(today.getTime() + 86400000));
+    const visibleDays = selectedDayKey
+      ? days.filter((d) => formatDateKey(d) === selectedDayKey)
+      : days.filter((d) => formatDateKey(d) >= todayKey);
+
     return (
       <div className="content">
-        <div className="ph" style={{ marginBottom: 14 }}>
+        <div className="ph" style={{ marginBottom: 12 }}>
           <div>
             <div className="ph-eyebrow">{rangeLabel}</div>
             <h1 className="ph-title">Plán</h1>
-            <div className="ph-sub"><span>{overdueCount} po termínu</span><span className="dot" /><span>{activeProjects.length} projektů</span></div>
+            <div className="ph-sub">
+              {overdueCount > 0 && <span style={{ color: "var(--red)" }}>{overdueCount} po termínu</span>}
+              {overdueCount > 0 && <span className="dot" />}
+              <span>{activeProjects.length} projektů</span>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 5, alignSelf: "flex-start", paddingTop: 4 }}>
+            <button className="btn" style={{ padding: "6px 10px", fontSize: 13 }} onClick={() => setOffsetDays((v) => v - daysCount)}>←</button>
+            <button className="btn primary" style={{ padding: "6px 10px", fontSize: 13 }} onClick={() => setOffsetDays(0)}>dnes</button>
+            <button className="btn" style={{ padding: "6px 10px", fontSize: 13 }} onClick={() => setOffsetDays((v) => v + daysCount)}>→</button>
           </div>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
-          <div className="segmented-control" style={{ width: "100%" }}>
-            <button style={{ flex: 1 }} className={`sc-btn ${daysCount === 7 ? "active" : ""}`} onClick={() => handleSetDaysCount(7)}>7 dní</button>
-            <button style={{ flex: 1 }} className={`sc-btn ${daysCount === 14 ? "active" : ""}`} onClick={() => handleSetDaysCount(14)}>14 dní</button>
-            <button style={{ flex: 1 }} className={`sc-btn ${daysCount === 30 ? "active" : ""}`} onClick={() => handleSetDaysCount(30)}>30 dní</button>
-          </div>
-          <div style={{ display: "flex", gap: 6 }}>
-            <button style={{ flex: 1 }} className="btn" onClick={() => setOffsetDays((v) => v - daysCount)}>←</button>
-            <button style={{ flex: 1 }} className="btn primary" onClick={() => setOffsetDays(0)}>dnes</button>
-            <button style={{ flex: 1 }} className="btn" onClick={() => setOffsetDays((v) => v + daysCount)}>→</button>
+        <div className="segmented-control" style={{ width: "100%", marginBottom: 12 }}>
+          <button style={{ flex: 1 }} className={`sc-btn ${daysCount === 7 ? "active" : ""}`} onClick={() => handleSetDaysCount(7)}>7 dní</button>
+          <button style={{ flex: 1 }} className={`sc-btn ${daysCount === 14 ? "active" : ""}`} onClick={() => handleSetDaysCount(14)}>14 dní</button>
+          <button style={{ flex: 1 }} className={`sc-btn ${daysCount === 30 ? "active" : ""}`} onClick={() => handleSetDaysCount(30)}>30 dní</button>
+        </div>
+
+        {/* Date strip */}
+        <div className="tl-mob-strip-wrap">
+          <div className="tl-mob-strip">
+            {days.map((d) => {
+              const key = formatDateKey(d);
+              const count = (byDate.get(key) || []).length;
+              const isToday = key === todayKey;
+              const isSelected = key === selectedDayKey;
+              const isPast = key < todayKey;
+              return (
+                <button
+                  key={key}
+                  className={`tl-mob-day${isToday ? " today" : ""}${isSelected ? " sel" : ""}${isPast ? " past" : ""}`}
+                  onClick={() => setSelectedDayKey(isSelected ? null : key)}
+                >
+                  <span className="tl-mob-dow">{DOW_CS[d.getDay()]}</span>
+                  <span className="tl-mob-num">{d.getDate()}</span>
+                  <span className="tl-mob-dot-row">
+                    {Array.from({ length: Math.min(count, 3) }).map((_, i) => (
+                      <span key={i} className="tl-mob-dot" />
+                    ))}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {rows.map((row) => {
-          const list = row.tasks
-            .filter((t) => t.dueDate)
-            .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+        {/* Overdue section */}
+        {!selectedDayKey && overdueTasks.length > 0 && (
+          <div className="tl-mob-section">
+            <div className="tl-mob-sh overdue">
+              <span>Po termínu</span>
+              <span className="tl-mob-cnt">{overdueTasks.length}</span>
+            </div>
+            {overdueTasks.map((t) => {
+              const proj = projects.find((p) => p.id === t.projectId);
+              return (
+                <div key={t.id} className="tl-mob-task" onClick={() => setTaskDetail(t.id)}>
+                  <span className="tl-mob-task-dot" style={{ background: proj ? projectColor(proj.id) : "var(--text-4)" }} />
+                  <div className="tl-mob-task-info">
+                    <div className="tl-mob-task-title">{t.title}</div>
+                    {proj && <div className="tl-mob-task-proj">{proj.name}</div>}
+                  </div>
+                  <span className="tl-mob-task-date overdue">{taskDue(t)}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Day sections */}
+        {visibleDays.map((d) => {
+          const key = formatDateKey(d);
+          const list = byDate.get(key) || [];
+          const isToday = key === todayKey;
+          const isTomorrow = key === tomorrowKey;
+          if (!selectedDayKey && list.length === 0) return null;
+          const label = isToday ? "Dnes" : isTomorrow ? "Zítra" : `${DOW_CS[d.getDay()]} ${d.getDate()}.${d.getMonth() + 1}.`;
 
           return (
-            <div key={row.id} className="rail-card" style={{ marginBottom: 10 }}>
-              <div className="rail-h">
-                <span className="rail-h-t" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: row.color, display: "inline-block" }} />
-                  {row.name}
-                </span>
-                <span className="rail-h-a">{list.length}</span>
+            <div key={key} className="tl-mob-section">
+              <div className={`tl-mob-sh${isToday ? " today" : ""}`}>
+                <span>{label}</span>
+                <span className="tl-mob-cnt">{list.length}</span>
               </div>
               {list.length === 0 ? (
-                <div style={{ fontSize: 12.5, color: "var(--text-3)", padding: "8px 0" }}>Žádné úkoly s termínem</div>
+                <div style={{ padding: "10px 0 4px", fontSize: 12.5, color: "var(--text-4)" }}>Žádné úkoly</div>
               ) : (
                 list.map((t) => {
-                  const d = parseYMD(t.dueDate);
-                  const isOver = d && d < today;
+                  const proj = projects.find((p) => p.id === t.projectId);
                   return (
-                    <div key={t.id} className="pr-row" onClick={() => setTaskDetail(t.id)}>
-                      <div className="pr-top">
-                        <span className="pr-name" style={{ color: "var(--text)" }}>{t.title}</span>
-                        <span className="pr-pct" style={{ color: isOver ? "var(--red)" : "var(--text-3)" }}>{taskDue(t)}</span>
+                    <div key={t.id} className="tl-mob-task" onClick={() => setTaskDetail(t.id)}>
+                      <span className="tl-mob-task-dot" style={{ background: proj ? projectColor(proj.id) : "var(--text-4)" }} />
+                      <div className="tl-mob-task-info">
+                        <div className="tl-mob-task-title">{t.title}</div>
+                        {proj && <div className="tl-mob-task-proj">{proj.name}</div>}
                       </div>
-                      {isOver ? <div className="pr-sub" style={{ color: "var(--red)" }}>Po termínu</div> : null}
+                      {t.priority === "high" && (
+                        <span style={{ fontSize: 10, fontWeight: 700, color: "var(--red)", fontFamily: "var(--mono)" }}>HI</span>
+                      )}
                     </div>
                   );
                 })
               )}
+              <button
+                className="tl-mob-add-btn"
+                onClick={() => setAddingForCell({ projectId: null, dateKey: key })}
+              >
+                + Přidat úkol
+              </button>
             </div>
           );
         })}
+
+        {addingForCell && (
+          <CellAddModal
+            addingForCell={addingForCell}
+            projects={projects}
+            onClose={() => setAddingForCell(null)}
+            onAdd={handleAddForCell}
+          />
+        )}
       </div>
     );
   }

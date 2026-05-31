@@ -119,6 +119,7 @@ export default function ProjectChatPanel({ project, tasks, notes, onClose }) {
     ? {
         position: "fixed", inset: 0, zIndex: 300,
         background: t.bg, display: "flex", flexDirection: "column",
+        paddingTop: "env(safe-area-inset-top, 0px)",
       }
     : {
         position: "fixed", top: 0, right: 0, bottom: 0,
@@ -213,7 +214,7 @@ export default function ProjectChatPanel({ project, tasks, notes, onClose }) {
             >
               <div
                 style={{
-                  maxWidth: "85%",
+                  maxWidth: isMobile ? "90%" : "85%",
                   padding: "8px 12px",
                   borderRadius: m.role === "user" ? "12px 12px 4px 12px" : "12px 12px 12px 4px",
                   background: m.role === "user" ? t.accent : t.input,
@@ -245,7 +246,8 @@ export default function ProjectChatPanel({ project, tasks, notes, onClose }) {
 
         {/* Input */}
         <div style={{
-          padding: "10px 12px", borderTop: `1px solid ${t.border}`,
+          padding: `10px 12px calc(10px + env(safe-area-inset-bottom, 0px))`,
+          borderTop: `1px solid ${t.border}`,
           display: "flex", gap: 8, flexShrink: 0, alignItems: "flex-end",
         }}>
           <textarea
@@ -253,7 +255,7 @@ export default function ProjectChatPanel({ project, tasks, notes, onClose }) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKey}
-            placeholder="Napiš zprávu… (Enter = odeslat)"
+            placeholder={isMobile ? "Zpráva…" : "Napiš zprávu… (Enter = odeslat)"}
             rows={1}
             disabled={loading}
             style={{
@@ -268,7 +270,8 @@ export default function ProjectChatPanel({ project, tasks, notes, onClose }) {
             onClick={() => send()}
             disabled={!input.trim() || loading}
             style={{
-              width: 36, height: 36, borderRadius: 8, border: "none",
+              width: isMobile ? 42 : 36, height: isMobile ? 42 : 36,
+              borderRadius: 10, border: "none",
               background: input.trim() && !loading ? t.accent : t.border,
               color: "#fff", cursor: input.trim() && !loading ? "pointer" : "default",
               display: "flex", alignItems: "center", justifyContent: "center",
