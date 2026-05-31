@@ -26,6 +26,7 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
   const hasSwipedRef = useRef(false);
   const offsetXRef = useRef(0);
   const cardRef = useRef(null);
+  const pointerIdRef = useRef(null);
   const maxSwipeRef = useRef(180);
   const thresholdRef = useRef(84);
 
@@ -53,20 +54,24 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
     return () => window.removeEventListener("resize", recalcSwipeMetrics);
   }, []);
 
-  const onTouchStart = (e) => {
-    startXRef.current = e.touches[0].clientX;
-    startYRef.current = e.touches[0].clientY;
+  const onPointerDown = (e) => {
+    if (!isMobile || e.pointerType === "mouse") return;
+    startXRef.current = e.clientX;
+    startYRef.current = e.clientY;
     swipeAxisRef.current = null;
+    pointerIdRef.current = e.pointerId;
     hasSwipedRef.current = false;
     setSwiping(false);
+    e.currentTarget.setPointerCapture?.(e.pointerId);
   };
-  const onTouchMove = (e) => {
+  const onPointerMove = (e) => {
+    if (!isMobile || pointerIdRef.current !== e.pointerId) return;
     if (startXRef.current == null || startYRef.current == null) return;
-    const dx = e.touches[0].clientX - startXRef.current;
-    const dy = e.touches[0].clientY - startYRef.current;
+    const dx = e.clientX - startXRef.current;
+    const dy = e.clientY - startYRef.current;
 
     if (!swipeAxisRef.current) {
-      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+      if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
       if (Math.abs(dx) > Math.abs(dy) && dx < 0) {
         swipeAxisRef.current = "x";
         setSwiping(true);
@@ -77,14 +82,15 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
 
     if (swipeAxisRef.current !== "x") return;
     if (e.cancelable) e.preventDefault();
-    if (Math.abs(dx) > 10) {
+    if (Math.abs(dx) > 8) {
       hasSwipedRef.current = true;
     }
     const clamped = Math.max(dx, -maxSwipeRef.current);
     offsetXRef.current = clamped;
     setOffsetX(clamped);
   };
-  const onTouchEnd = () => {
+  const onPointerEnd = (e) => {
+    if (!isMobile || (pointerIdRef.current != null && pointerIdRef.current !== e.pointerId)) return;
     const wasHorizontalSwipe = swipeAxisRef.current === "x";
     setSwiping(false);
     if (wasHorizontalSwipe && offsetXRef.current < -thresholdRef.current) triggerArchive();
@@ -93,14 +99,18 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
     startXRef.current = null;
     startYRef.current = null;
     swipeAxisRef.current = null;
+    pointerIdRef.current = null;
+    e.currentTarget.releasePointerCapture?.(e.pointerId);
   };
-  const onTouchCancel = () => {
+  const onPointerCancel = (e) => {
     setSwiping(false);
     setOffsetX(0);
     offsetXRef.current = 0;
     startXRef.current = null;
     startYRef.current = null;
     swipeAxisRef.current = null;
+    pointerIdRef.current = null;
+    e.currentTarget.releasePointerCapture?.(e.pointerId);
   };
 
   const swipeFraction = Math.min(Math.abs(offsetX + hintOffset) / thresholdRef.current, 1);
@@ -115,6 +125,7 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
     overflow: "hidden",
     borderRadius: "var(--r, 14px)",
     touchAction: "pan-y",
+    userSelect: "none",
   } : {};
 
   if (isEditing) {
@@ -300,10 +311,10 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
       <div
         ref={cardRef}
         className={`tcard ${statusClass}`}
-        onTouchStart={isMobile ? onTouchStart : undefined}
-        onTouchMove={isMobile ? onTouchMove : undefined}
-        onTouchEnd={isMobile ? onTouchEnd : undefined}
-        onTouchCancel={isMobile ? onTouchCancel : undefined}
+        onPointerDown={isMobile ? onPointerDown : undefined}
+        onPointerMove={isMobile ? onPointerMove : undefined}
+        onPointerUp={isMobile ? onPointerEnd : undefined}
+        onPointerCancel={isMobile ? onPointerCancel : undefined}
         onClick={() => {
           if (hasSwipedRef.current) return;
           if (Math.abs(offsetX) > 5) return;
@@ -312,6 +323,8 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
         style={isMobile ? {
           transform: exiting ? "translateX(-115%) scale(0.95)" : `translateX(${offsetX + hintOffset}px)`,
           opacity: exiting ? 0 : 1,
+          touchAction: "pan-y",
+          cursor: swiping ? "grabbing" : "grab",
           transition: swiping
             ? "none"
             : exiting

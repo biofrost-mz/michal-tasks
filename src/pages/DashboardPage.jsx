@@ -713,7 +713,7 @@ export default function DashboardPage() {
             </>
           )}
 
-          <div style={{ marginBottom: 18 }}>
+          <div className="dashboard-quickadd-host" style={{ marginBottom: isMobile ? 0 : 18 }}>
             <QuickAdd />
           </div>
 

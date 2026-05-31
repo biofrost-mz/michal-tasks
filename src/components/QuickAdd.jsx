@@ -197,49 +197,37 @@ export default function QuickAdd({ defaultProjectId = null }) {
           style={{
             position: "fixed",
             inset: 0,
-            zIndex: 900,
+            zIndex: 5000,
             display: "flex",
-            alignItems: isMobile ? "flex-end" : "center",
+            alignItems: isMobile ? "flex-start" : "center",
             justifyContent: "center",
+            padding: isMobile ? "calc(46px + env(safe-area-inset-top, 0px) + 10px) 14px calc(84px + env(safe-area-inset-bottom, 0px))" : 0,
             background: dk ? "rgba(10, 12, 18, 0.65)" : "rgba(0, 0, 0, 0.4)",
             backdropFilter: "blur(20px) saturate(180%)",
-            animation: "fadeIn .2s ease-out"
+            WebkitBackdropFilter: "blur(20px) saturate(180%)",
+            animation: "fadeIn .2s ease-out",
+            overflow: "hidden",
           }}
           onClick={() => setModalOpen(false)}
         >
-          {/* Drag handle — jen na mobilu */}
-          {isMobile && (
-            <div
-              style={{
-                position: "absolute",
-                bottom: "calc(100% - 12px)",
-                left: "50%",
-                transform: "translateX(-50%)",
-                width: 40, height: 4,
-                borderRadius: 2,
-                background: "rgba(255,255,255,0.25)",
-                zIndex: 901,
-                pointerEvents: "none",
-              }}
-            />
-          )}
           <div
-            className={isMobile ? "su" : "pop"}
+            className="pop"
             style={{
               background: t.card,
               border: `1px solid ${dk ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.08)"}`,
-              borderRadius: isMobile ? "20px 20px 0 0" : 16,
+              borderRadius: isMobile ? 16 : 16,
               boxShadow: isMobile
-                ? "0 -8px 40px rgba(0,0,0,0.4)"
+                ? "0 18px 48px rgba(0,0,0,0.48)"
                 : t.shadow,
-              padding: isMobile ? "20px 20px calc(20px + env(safe-area-inset-bottom, 0px))" : "24px 28px",
+              padding: isMobile ? "16px" : "24px 28px",
               width: isMobile ? "100%" : "calc(100% - 32px)",
-              maxWidth: isMobile ? "100%" : 600,
-              maxHeight: isMobile ? "92vh" : "90vh",
+              maxWidth: isMobile ? 560 : 600,
+              maxHeight: isMobile ? "calc(100svh - 150px)" : "90vh",
               overflowY: "auto",
+              overscrollBehavior: "contain",
               display: "flex",
               flexDirection: "column",
-              gap: 18,
+              gap: isMobile ? 14 : 18,
               position: "relative"
             }}
             onClick={(e) => e.stopPropagation()}
@@ -273,14 +261,14 @@ export default function QuickAdd({ defaultProjectId = null }) {
             {/* Task Title Input */}
             <div style={{ display: "flex", flexDirection: "column" }}>
               <input
-                autoFocus
+                autoFocus={!isMobile}
                 value={modalTitle}
                 onChange={(e) => setModalTitle(e.target.value)}
                 placeholder="Co je třeba udělat?"
                 style={{
-                  fontSize: 17,
+                  fontSize: isMobile ? 16 : 17,
                   fontWeight: 600,
-                  padding: "12px 14px",
+                  padding: isMobile ? "11px 12px" : "12px 14px",
                   borderRadius: 10,
                   border: `1.5px solid ${t.border}`,
                   background: t.input,
@@ -296,13 +284,19 @@ export default function QuickAdd({ defaultProjectId = null }) {
             </div>
 
             {/* SECTION 1: Základní nastavení (Status, Priorita) */}
-            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? 14 : 20 }}>
+            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? 12 : 20 }}>
               {/* Status Section */}
               <div>
                 <div style={{ fontSize: 11, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6, fontFamily: "var(--font-mono)" }}>
                   Status
                 </div>
-                <div style={{ display: "flex", flexDirection: isMobile ? "row" : "column", flexWrap: "wrap", gap: isMobile ? 6 : 4 }}>
+                <div style={{
+                  display: isMobile ? "grid" : "flex",
+                  gridTemplateColumns: isMobile ? "repeat(2, minmax(0, 1fr))" : undefined,
+                  flexDirection: isMobile ? undefined : "column",
+                  flexWrap: isMobile ? undefined : "wrap",
+                  gap: isMobile ? 6 : 4
+                }}>
                   {Object.entries(STATUSES).map(([k, v]) => {
                     const isActive = status === k;
                     return (
@@ -323,7 +317,8 @@ export default function QuickAdd({ defaultProjectId = null }) {
                           cursor: "pointer",
                           textAlign: "left",
                           transition: "all .12s",
-                          flex: isMobile ? "1 1 auto" : undefined,
+                          justifyContent: isMobile ? "center" : undefined,
+                          flex: isMobile ? undefined : undefined,
                           minHeight: 40,
                         }}
                       >
@@ -340,12 +335,17 @@ export default function QuickAdd({ defaultProjectId = null }) {
                 <div style={{ fontSize: 11, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6, fontFamily: "var(--font-mono)" }}>
                   Priorita
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                <div style={{
+                  display: isMobile ? "grid" : "flex",
+                  gridTemplateColumns: isMobile ? "repeat(2, minmax(0, 1fr))" : undefined,
+                  flexDirection: isMobile ? undefined : "column",
+                  gap: isMobile ? 6 : 4
+                }}>
                   {/* Option: Žádná priorita */}
                   <button
                     onClick={() => setPriority(null)}
                     style={{
-                      padding: "8px 12px",
+                      padding: isMobile ? "8px 8px" : "8px 12px",
                       borderRadius: 8,
                       fontSize: 12.5,
                       fontWeight: 600,
@@ -354,6 +354,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
                       color: priority === null ? t.text : t.text2,
                       display: "flex",
                       alignItems: "center",
+                      justifyContent: isMobile ? "center" : undefined,
                       gap: 8,
                       cursor: "pointer",
                       textAlign: "left",
@@ -371,7 +372,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
                         key={k}
                         onClick={() => setPriority(k)}
                         style={{
-                          padding: "8px 12px",
+                          padding: isMobile ? "8px 8px" : "8px 12px",
                           borderRadius: 8,
                           fontSize: 12.5,
                           fontWeight: 600,
@@ -380,6 +381,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
                           color: isActive ? v.color : t.text2,
                           display: "flex",
                           alignItems: "center",
+                          justifyContent: isMobile ? "center" : undefined,
                           gap: 8,
                           cursor: "pointer",
                           textAlign: "left",
