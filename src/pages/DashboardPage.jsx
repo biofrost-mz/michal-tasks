@@ -9,23 +9,13 @@ import { getNamedayInfo } from "../data/czechNamedays.js";
 import { getSunTimes, getGreeting, getDayPhaseIcon } from "../data/sunCalc.js";
 import { fetchWeather, hasWeatherApiKey } from "../data/weather.js";
 import { useCountUp } from "../hooks/useCountUp.js";
-
-const STATUS_TO_CLASS = { todo: "todo", doing: "doing", waiting: "wait", done: "done" };
-const CLASS_TO_STATUS = { todo: "todo", doing: "doing", wait: "waiting", done: "done" };
-const STATUS_SHORT = { todo: "Todo", doing: "Doing", wait: "Wait", done: "Done" };
-
-const PRIORITY_META = {
-  low: { label: "Nízká", glyph: "↓", color: "#60a5fa" },
-  medium: { label: "Střední", glyph: "—", color: "#fbbf24" },
-  high: { label: "Vysoká", glyph: "↑", color: "#f87171" },
-};
-
-function formatShortDue(dueDate) {
-  if (!dueDate) return null;
-  const d = parseYMD(dueDate);
-  if (!d) return null;
-  return `${d.getDate()}.${d.getMonth() + 1}.`;
-}
+import {
+  mapTaskForAtlas,
+  ProjectPill,
+  PrioChip,
+  Stepper,
+  TagPill,
+} from "../components/atlas/AtlasTaskCard.jsx";
 
 function getWeekNumber(date) {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
@@ -34,73 +24,6 @@ function getWeekNumber(date) {
   return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
 }
 
-function mapTask(task, projectsById, tagsById, today) {
-  const due = parseYMD(task.dueDate);
-  const overdue = !!due && task.status !== "done" && due < today;
-  const tagNames = (task.tagIds || [])
-    .map((id) => tagsById.get(id)?.name)
-    .filter(Boolean);
-
-  return {
-    id: task.id,
-    title: task.title || "Bez názvu",
-    desc: task.description || "",
-    statusClass: STATUS_TO_CLASS[task.status] || "todo",
-    status: task.status,
-    priority: task.priority || "medium",
-    due: formatShortDue(task.dueDate),
-    overdue,
-    tags: tagNames,
-    starred: !!task.starred,
-    hasSubtasks: Array.isArray(task.subtasks) ? task.subtasks.length : 0,
-    project: task.projectId,
-    projectName: task.projectId ? projectsById.get(task.projectId)?.name : null,
-  };
-}
-
-function ProjectPill({ projectId, projectsById }) {
-  if (!projectId) return null;
-  const p = projectsById.get(projectId);
-  if (!p) return null;
-  return (
-    <span className="proj-pill" style={{ "--proj-color": projectColor(projectId) }}>
-      <span className="pp-dot" />
-      {p.name}
-    </span>
-  );
-}
-
-function Tag({ name }) {
-  return <span className="tag">{name}</span>;
-}
-
-function PrioChip({ priority }) {
-  if (!priority || priority === "medium") return null;
-  const m = PRIORITY_META[priority];
-  if (!m) return null;
-  return <span className="prio" style={{ "--prio-color": m.color }}>{m.glyph} {m.label}</span>;
-}
-
-function Stepper({ statusClass, onChange }) {
-  const keys = ["todo", "doing", "wait", "done"];
-  return (
-    <div className="stepper">
-      {keys.map((k) => (
-        <button
-          key={k}
-          className={statusClass === k ? `cur ${k}` : ""}
-          onClick={(e) => {
-            e.stopPropagation();
-            onChange(CLASS_TO_STATUS[k]);
-          }}
-          title={STATUS_SHORT[k]}
-        >
-          {STATUS_SHORT[k]}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 function TaskCard({ task, onOpen, onStatusChange, onStar, projectsById }) {
   return (
@@ -122,7 +45,7 @@ function TaskCard({ task, onOpen, onStatusChange, onStar, projectsById }) {
           <ProjectPill projectId={task.project} projectsById={projectsById} />
           <PrioChip priority={task.priority} />
           {task.due ? <span className={`due ${task.overdue ? "overdue" : ""}`}>{task.overdue ? "⚠ " : ""}{task.due}</span> : null}
-          {task.tags.map((tg) => <Tag key={tg} name={tg} />)}
+          {task.tags.map((tg) => <TagPill key={tg} name={tg} />)}
           {task.hasSubtasks > 0 ? <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--text-3)" }}>≡ {task.hasSubtasks}</span> : null}
         </div>
       </div>
@@ -452,12 +375,12 @@ export default function DashboardPage() {
   }, []);
 
   const today = startOfToday();
-  const weekAgo = Date.now() - 7 * 86400000;
+  const weekAgo = useMemo(() => Date.now() - 7 * 86400000, []);
 
   const projectsById = useMemo(() => new Map(projects.map((p) => [p.id, p])), [projects]);
   const tagsById = useMemo(() => new Map(tags.map((tg) => [tg.id, tg])), [tags]);
 
-  const mappedTasks = useMemo(() => tasks.map((t) => mapTask(t, projectsById, tagsById, today)), [tasks, projectsById, tagsById, today]);
+  const mappedTasks = useMemo(() => tasks.map((t) => mapTaskForAtlas(t, projectsById, tagsById, today)), [tasks, projectsById, tagsById, today]);
 
   const matchesSearch = (task) => {
     if (!search) return true;

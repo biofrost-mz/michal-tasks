@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, { lazy, Suspense, useEffect, useState, useCallback, useRef } from "react";
 import { useApp, AppProvider } from "./context/AppContext.jsx";
 import Icon from "./components/Icon.jsx";
 import { ToastProvider, useToast } from "./components/Toast.jsx";
@@ -13,16 +13,18 @@ import CommandPalette from "./components/CommandPalette.jsx";
 import ShortcutHelper from "./components/ShortcutHelper.jsx";
 import DashboardPage from "./pages/DashboardPage.jsx";
 import TasksPage from "./pages/TasksPage.jsx";
-import NotesPage from "./pages/NotesPage.jsx";
-import ProjectsPage, { ProjectDetailPage } from "./pages/ProjectsPage.jsx";
-import TimelinePage from "./pages/TimelinePage.jsx";
-import TagsPage from "./pages/TagsPage.jsx";
-import WorkspaceSettingsPage from "./pages/WorkspaceSettingsPage.jsx";
-import UserProfilePage from "./pages/UserProfilePage.jsx";
-import QuickTodosPage from "./pages/QuickTodosPage.jsx";
-import AdminPage from "./pages/AdminPage.jsx";
 import { applyDocumentMetadata } from "./appMeta.js";
 import "./styles/atlas-shell.css";
+
+const NotesPage            = lazy(() => import("./pages/NotesPage.jsx"));
+const ProjectsPage         = lazy(() => import("./pages/ProjectsPage.jsx"));
+const ProjectDetailPage    = lazy(() => import("./pages/ProjectsPage.jsx").then((m) => ({ default: m.ProjectDetailPage })));
+const TimelinePage         = lazy(() => import("./pages/TimelinePage.jsx"));
+const TagsPage             = lazy(() => import("./pages/TagsPage.jsx"));
+const WorkspaceSettingsPage = lazy(() => import("./pages/WorkspaceSettingsPage.jsx"));
+const UserProfilePage      = lazy(() => import("./pages/UserProfilePage.jsx"));
+const QuickTodosPage       = lazy(() => import("./pages/QuickTodosPage.jsx"));
+const AdminPage            = lazy(() => import("./pages/AdminPage.jsx"));
 
 function AppErrorReporter() {
   const { errorQueue, clearErrors } = useApp();
@@ -216,17 +218,19 @@ function AppShell() {
           {!isMobile && <AtlasTopBar />}
           <main style={isMobile ? { flex: 1, minWidth: 0, width: "100%", overflow: "auto", position: "relative", paddingBottom: 66 } : undefined}>
             <PageTransition pageKey={page}>
-              {page === "dashboard"          && <PageErrorBoundary label="Přehled">         <DashboardPage />         </PageErrorBoundary>}
-              {page === "projects"           && <PageErrorBoundary label="Projekty">        <ProjectsPage />          </PageErrorBoundary>}
-              {page === "project-detail"     && <PageErrorBoundary label="Detail projektu"> <ProjectDetailPage />     </PageErrorBoundary>}
-              {page === "tasks"              && <PageErrorBoundary label="Úkoly">           <TasksPage />             </PageErrorBoundary>}
-              {page === "timeline"           && <PageErrorBoundary label="Plán">            <TimelinePage />          </PageErrorBoundary>}
-              {page === "tags"               && <PageErrorBoundary label="Tagy">            <TagsPage />              </PageErrorBoundary>}
-              {page === "notes"              && <PageErrorBoundary label="Poznámky">        <NotesPage />             </PageErrorBoundary>}
-              {page === "workspace-settings" && <PageErrorBoundary label="Nastavení">       <WorkspaceSettingsPage /> </PageErrorBoundary>}
-              {page === "user-profile"       && <PageErrorBoundary label="Profil">          <UserProfilePage />       </PageErrorBoundary>}
-              {page === "quick-todos"        && <PageErrorBoundary label="Rychlý seznam">   <QuickTodosPage />        </PageErrorBoundary>}
-              {page === "admin"              && <PageErrorBoundary label="Administrace">    <AdminPage />             </PageErrorBoundary>}
+              <Suspense fallback={null}>
+                {page === "dashboard"          && <PageErrorBoundary label="Přehled">         <DashboardPage />         </PageErrorBoundary>}
+                {page === "projects"           && <PageErrorBoundary label="Projekty">        <ProjectsPage />          </PageErrorBoundary>}
+                {page === "project-detail"     && <PageErrorBoundary label="Detail projektu"> <ProjectDetailPage />     </PageErrorBoundary>}
+                {page === "tasks"              && <PageErrorBoundary label="Úkoly">           <TasksPage />             </PageErrorBoundary>}
+                {page === "timeline"           && <PageErrorBoundary label="Plán">            <TimelinePage />          </PageErrorBoundary>}
+                {page === "tags"               && <PageErrorBoundary label="Tagy">            <TagsPage />              </PageErrorBoundary>}
+                {page === "notes"              && <PageErrorBoundary label="Poznámky">        <NotesPage />             </PageErrorBoundary>}
+                {page === "workspace-settings" && <PageErrorBoundary label="Nastavení">       <WorkspaceSettingsPage /> </PageErrorBoundary>}
+                {page === "user-profile"       && <PageErrorBoundary label="Profil">          <UserProfilePage />       </PageErrorBoundary>}
+                {page === "quick-todos"        && <PageErrorBoundary label="Rychlý seznam">   <QuickTodosPage />        </PageErrorBoundary>}
+                {page === "admin"              && <PageErrorBoundary label="Administrace">    <AdminPage />             </PageErrorBoundary>}
+              </Suspense>
             </PageTransition>
           </main>
 
