@@ -350,7 +350,6 @@ export default function DashboardPage() {
   const [filter, setFilter] = useState("all");
   const [quickText, setQuickText] = useState("");
   const [showDailyPlan, setShowDailyPlan] = useState(false);
-  const [aiExpanded, setAiExpanded] = useState(false);
   const [expandedSections, setExpandedSections] = useState({});
   const [hoveredDay, setHoveredDay] = useState(null);
 
@@ -674,25 +673,8 @@ export default function DashboardPage() {
 
       <div className="work">
         <div>
-          {/* AI hero — collapsible on mobile */}
-          {isMobile && !aiExpanded ? (
-            <button
-              className="ai-hero"
-              onClick={() => setAiExpanded(true)}
-              style={{ cursor: "pointer", width: "100%", textAlign: "left" }}
-            >
-              <div className="ai-orb" style={{ fontSize: 16 }}>✦</div>
-              <div style={{ flex: 1 }}>
-                <div className="ai-text-h" style={{ fontSize: 14 }}>
-                  <span className="num">{aiSuggestions.length}</span> návrhů pro dnešek
-                </div>
-                <div className="ai-text-sub" style={{ fontSize: 11 }}>
-                  {activeTasks.length} aktivních · {overdue.length} po termínu · tap pro detail
-                </div>
-              </div>
-              <Icon name="chevron-down" size={16} color="var(--text-3)" strokeWidth={2} />
-            </button>
-          ) : (
+          {/* AI hero — desktop only */}
+          {!isMobile && (
             <>
               <div className="ai-hero">
                 <div className="ai-orb">✦</div>
@@ -708,11 +690,6 @@ export default function DashboardPage() {
                   <Icon name="zap" size={13} color="currentColor" strokeWidth={1.9} />
                   {showDailyPlan ? "Skrýt plán" : "Vygenerovat plán"}
                 </button>
-                {isMobile && (
-                  <button onClick={() => setAiExpanded(false)} style={{ position: "absolute", top: 8, right: 8, background: "none", border: "none", color: "var(--text-3)", padding: 4 }}>
-                    <Icon name="chevron-up" size={14} color="currentColor" strokeWidth={2} />
-                  </button>
-                )}
               </div>
 
               {showDailyPlan && (

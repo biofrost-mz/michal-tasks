@@ -17,7 +17,7 @@ const PAGE_LABELS = {
 };
 
 export default function AtlasTopBar() {
-  const { page, projects, selProject, setCmdOpen, setPage, setTaskDetail } = useApp();
+  const { page, projects, selProject, setCmdOpen, setPage, setTaskDetail, addTask } = useApp();
 
   const crumbs = useMemo(() => {
     if (page === "project-detail") {
@@ -70,7 +70,7 @@ export default function AtlasTopBar() {
       </div>
 
       <div className="tb-acts" style={{ flex: 1, justifyContent: "flex-end" }}>
-        <button className="tb-btn primary" onClick={() => { setPage("tasks"); setTaskDetail(null); }}>
+        <button className="tb-btn primary" onClick={() => { const t = addTask({ title: "" }); setTaskDetail(t.id); }}>
           <Icon name="plus" size={13} color="currentColor" strokeWidth={2} />
           Nový úkol
         </button>

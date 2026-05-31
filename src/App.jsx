@@ -240,11 +240,18 @@ function AppShell() {
         {!isMobile && <AtlasSidebar collapsed={collapsed} setCollapsed={setCollapsed} />}
         <div className={!isMobile ? "main" : undefined} style={isMobile ? { flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden" } : undefined}>
           {!isMobile && <AtlasTopBar />}
-          {isMobile && (
-            <div className="mob-topbar" onClick={() => { setPage("dashboard"); document.querySelector("main")?.scrollTo({ top: 0, behavior: "smooth" }); }}>
-              <span className="mob-topbar-brand">Zen<span>tero</span></span>
-            </div>
-          )}
+          {isMobile && (() => {
+            const now = new Date();
+            const days = ["Ne","Po","Út","St","Čt","Pá","So"];
+            const months = ["ledna","února","března","dubna","května","června","července","srpna","září","října","listopadu","prosince"];
+            const dayLabel = `${days[now.getDay()]} ${now.getDate()}. ${months[now.getMonth()]}`;
+            return (
+              <div className="mob-topbar" onClick={() => { setPage("dashboard"); document.querySelector("main")?.scrollTo({ top: 0, behavior: "smooth" }); }}>
+                <span className="mob-topbar-brand">Zen<span>tero</span></span>
+                <span style={{ fontSize: 12, color: "var(--text-3)", fontFamily: "var(--font-ui)", fontWeight: 500 }}>{dayLabel}</span>
+              </div>
+            );
+          })()}
           <main style={isMobile ? { flex: 1, minWidth: 0, width: "100%", overflow: "auto", position: "relative", paddingBottom: 66, WebkitOverflowScrolling: "touch" } : undefined}>
             <PageTransition pageKey={page}>
               <Suspense fallback={null}>
