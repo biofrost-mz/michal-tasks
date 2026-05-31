@@ -1905,88 +1905,91 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
     top: -50px;
   }
   .headline-top {
-    flex-direction: row;
-    gap: 12px;
+    flex-direction: column;
+    gap: 0;
     align-items: flex-start;
   }
   .hl-greet {
-    font-size: 11px;
+    font-size: 10px;
+    margin-bottom: 6px;
   }
   .hl-row {
     flex-direction: row;
-    align-items: flex-start;
+    align-items: center;
     gap: 10px;
   }
   .hl-daynum {
     flex-shrink: 0;
+    align-items: center;
+    gap: 8px;
   }
   .hl-day {
     padding-bottom: 0;
-    font-size: 14px;
+    font-size: 13px;
   }
   .hl-num {
-    font-size: 36px;
+    font-size: 38px;
     line-height: 1;
   }
+  /* Hide verbose meta on mobile — mob-strip covers it compactly */
   .hl-meta {
-    padding-bottom: 0;
-    font-size: 11px;
-  }
-  .hl-meta .m-month {
-    font-size: 15px;
-  }
-  .hl-meta .m-row {
-    font-size: 10.5px;
+    display: none;
   }
   .hl-aside {
     display: none;
   }
-  /* Compact weather strip on mobile */
+  /* Compact info pills below the date */
   .hl-mob-strip {
     display: flex !important;
-    gap: 8px;
+    gap: 6px;
     font-family: var(--mono);
-    font-size: 10.5px;
+    font-size: 10px;
     color: var(--text-3);
-    padding: 6px 0 0;
+    padding: 8px 0 0;
     flex-wrap: wrap;
   }
   .hl-mob-strip span {
     white-space: nowrap;
     background: var(--bg-2);
+    border: 1px solid var(--border-soft);
     border-radius: var(--r-pill);
-    padding: 2px 8px;
+    padding: 3px 9px;
   }
 
+  /* Stats: horizontal scroll strip instead of cramped 3x2 grid */
   .hl-stats {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    padding-top: 10px;
-    overflow-x: unset;
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-top: 12px;
+    gap: 0;
   }
   .hl-stats::-webkit-scrollbar { display: none; }
   .hl-stat {
-    flex: unset;
-    min-width: 0;
-    padding: 10px 8px;
+    flex: 0 0 auto;
+    width: 108px;
+    padding: 8px 12px;
     border-right: 1px dashed var(--border-soft);
-    border-bottom: 1px dashed var(--border-soft);
+    border-bottom: none;
     animation: none;
   }
-  .hl-stat:first-child { padding-left: 8px; }
-  .hl-stat:last-child { padding-right: 8px; border-right: none; }
-  .hl-stat:nth-child(3n) { border-right: none; }
+  .hl-stat:first-child { padding-left: 0; }
+  .hl-stat:last-child { border-right: none; }
+  .hl-stat:nth-child(3n) { border-right: 1px dashed var(--border-soft); }
   .hl-stat:nth-child(n+4) { border-bottom: none; }
   .hl-stat-v {
-    font-size: 26px;
+    font-size: 28px;
     margin-top: 2px;
   }
   .hl-stat-l {
     font-size: 9px;
   }
   .hl-stat-u {
-    font-size: 9.5px;
-    margin-top: 1px;
+    font-size: 9px;
+    margin-top: 2px;
   }
 
   /* === B. AI Banner (AI Hero) a návrhy === */

@@ -161,6 +161,7 @@ function Headline({ overdueCount, activeCount, totalCount, doneWeek, doneWeekAvg
         {/* Mobile compact strip (visible only on mobile via CSS) */}
         <div className="hl-mob-strip">
           {weather && <span>{weather.temp}°C {weather.label}</span>}
+          {weather && <span>💨 {weather.wind} km/h</span>}
           <span>{namedayName}</span>
           {sunTimes && <span>☀ {sunTimes.sunrise}–{sunTimes.sunset}</span>}
         </div>
