@@ -48,7 +48,7 @@ export function startOfToday() {
   return t;
 }
 
-const PROJECT_COLORS = [
+export const PROJECT_COLORS = [
   "#3b82f6", "#22c55e", "#f59e0b", "#8b5cf6", "#ef4444",
   "#06b6d4", "#ec4899", "#84cc16", "#6366f1", "#f97316",
 ];

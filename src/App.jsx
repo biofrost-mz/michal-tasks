@@ -26,6 +26,29 @@ const UserProfilePage      = lazy(() => import("./pages/UserProfilePage.jsx"));
 const QuickTodosPage       = lazy(() => import("./pages/QuickTodosPage.jsx"));
 const AdminPage            = lazy(() => import("./pages/AdminPage.jsx"));
 
+function OfflineBanner() {
+  const [online, setOnline] = useState(() => navigator.onLine);
+  useEffect(() => {
+    const up = () => setOnline(true);
+    const dn = () => setOnline(false);
+    window.addEventListener("online", up);
+    window.addEventListener("offline", dn);
+    return () => { window.removeEventListener("online", up); window.removeEventListener("offline", dn); };
+  }, []);
+  if (online) return null;
+  return (
+    <div style={{
+      position: "fixed", top: 0, left: 0, right: 0, zIndex: 99999,
+      background: "var(--orange, #f97316)", color: "#fff",
+      padding: "7px 16px", textAlign: "center",
+      fontSize: 12.5, fontWeight: 600, letterSpacing: ".02em",
+      fontFamily: "var(--font-ui)",
+    }}>
+      ⚡ Offline — zobrazují se naposledy načtená data
+    </div>
+  );
+}
+
 function AppErrorReporter() {
   const { errorQueue, clearErrors } = useApp();
   const toast = useToast();
@@ -211,6 +234,7 @@ function AppShell() {
         .mobile-nav-bar{padding-bottom:env(safe-area-inset-bottom,0px)}
       `}</style>
 
+      <OfflineBanner />
       <AppErrorReporter />
       <div className={!isMobile ? `app ${collapsed ? "collapsed" : ""}` : undefined} style={isMobile ? { display: "flex", width: "100%", height: "100vh", overflow: "hidden" } : undefined}>
         {!isMobile && <AtlasSidebar collapsed={collapsed} setCollapsed={setCollapsed} />}

@@ -12,7 +12,8 @@
       "Bash(cp /Users/michalzich/Desktop/zichmichal_web/web/mz-creative-theme/header.php /Users/michalzich/Desktop/zichmichal_web/web/mz-creative-theme_1/header.php)",
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
-      "Bash(git commit -m 'docs: dashboard UX redesign spec — mobile stats grid, animations, AI section *)"
+      "Bash(git commit -m 'docs: dashboard UX redesign spec — mobile stats grid, animations, AI section *)",
+      "Bash(git commit *)"
     ],
     "additionalDirectories": [
       "/Users/michalzich/Desktop/michal-pocket/stash/src/app/api/search",

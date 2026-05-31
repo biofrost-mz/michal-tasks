@@ -6,7 +6,7 @@ import Icon from "../components/Icon.jsx";
 import NotesMiniList from "../components/NotesMiniList.jsx";
 import ProjectChatPanel from "../components/ProjectChatPanel.jsx";
 import QuickAdd from "../components/QuickAdd.jsx";
-import { projectColor, parseYMD, startOfToday } from "../utils.js";
+import { projectColor, parseYMD, startOfToday, PROJECT_COLORS } from "../utils.js";
 import { PROJ_STATUS } from "../constants.js";
 import EmptyState from "../components/EmptyState.jsx";
 import {
@@ -27,10 +27,6 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-const PROJECT_COLORS = [
-  "#3b82f6", "#22c55e", "#f59e0b", "#8b5cf6", "#ef4444",
-  "#06b6d4", "#ec4899", "#84cc16", "#6366f1", "#f97316",
-];
 
 const TASK_COLS = [
   { id: "todo", label: "To do", color: "var(--gray)", className: "todo" },
