@@ -213,9 +213,18 @@ export function AppProvider({ children }) {
 
   // Auth session (Supabase)
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session ?? null));
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession ?? null);
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (error) {
+        // Invalid/expired refresh token — clear storage and force re-login
+        supabase.auth.signOut();
+        return;
+      }
+      setSession(data.session ?? null);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((event, newSession) => {
+      if (event === "TOKEN_REFRESHED" || event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") {
+        setSession(newSession ?? null);
+      }
     });
     return () => sub?.subscription?.unsubscribe?.();
   }, []);
