@@ -33,9 +33,9 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
   const [editTags, setEditTags] = useState(todo.tags ? todo.tags.join(", ") : "");
 
   const triggerArchive = useCallback(() => {
-    navigator.vibrate?.(30);
+    navigator.vibrate?.([20, 30, 60]);
     setExiting(true);
-    setTimeout(() => onArchive(todo.id), 260);
+    setTimeout(() => onArchive(todo.id), 320);
   }, [onArchive, todo.id]);
 
   const onTouchStart = (e) => {
@@ -68,7 +68,9 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
     startXRef.current = null;
   };
 
-  const bgOpacity = Math.min(Math.abs(offsetX + hintOffset) / THRESHOLD, 1);
+  const swipeFraction = Math.min(Math.abs(offsetX + hintOffset) / THRESHOLD, 1);
+  const bgOpacity = swipeFraction;
+  const pastThreshold = (offsetX + hintOffset) < -THRESHOLD;
 
   // Map quickTodo to a visual status — active items are "todo"
   const statusClass = "todo";
@@ -239,14 +241,23 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
       {isMobile && (
         <div style={{
           position: "absolute", inset: 0,
-          background: `rgba(34,197,94,${bgOpacity * 0.85})`,
-          display: "flex", alignItems: "center", justifyContent: "flex-end", paddingRight: 20,
-          transition: swiping ? "none" : "background .2s",
+          background: pastThreshold
+            ? `rgba(34,197,94,0.95)`
+            : `rgba(34,197,94,${bgOpacity * 0.8})`,
+          display: "flex", alignItems: "center", justifyContent: "flex-end", paddingRight: 24,
+          transition: swiping ? "background .08s" : "background .25s",
           borderRadius: "inherit",
         }}>
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
-            <Icon name="check" size={20} color="var(--bg)" strokeWidth={2.5} />
-            <span style={{ fontSize: 12, color: "var(--bg)", fontWeight: 700 }}>Hotovo</span>
+          <div style={{
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
+            transform: pastThreshold ? "scale(1.15)" : `scale(${0.7 + swipeFraction * 0.3})`,
+            transition: swiping ? "transform .08s" : "transform .25s cubic-bezier(0.34,1.56,0.64,1)",
+            opacity: bgOpacity,
+          }}>
+            <Icon name="check" size={22} color="var(--bg)" strokeWidth={2.5} />
+            <span style={{ fontSize: 11, color: "var(--bg)", fontWeight: 700, letterSpacing: "0.04em" }}>
+              {pastThreshold ? "Pusť!" : "Hotovo"}
+            </span>
           </div>
         </div>
       )}
@@ -263,9 +274,13 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
           setIsEditing(true);
         }}
         style={isMobile ? {
-          transform: exiting ? "translateX(-110%)" : `translateX(${offsetX + hintOffset}px)`,
+          transform: exiting ? "translateX(-115%) scale(0.95)" : `translateX(${offsetX + hintOffset}px)`,
           opacity: exiting ? 0 : 1,
-          transition: swiping ? "none" : "transform .25s cubic-bezier(.4,0,.2,1), opacity .18s",
+          transition: swiping
+            ? "none"
+            : exiting
+              ? "transform .32s cubic-bezier(.4,0,.2,1), opacity .22s"
+              : "transform .35s cubic-bezier(0.34,1.56,0.64,1), opacity .2s",
           willChange: "transform",
         } : undefined}
       >

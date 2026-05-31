@@ -64,9 +64,26 @@ function MobileFAB() {
   const { addTask, addQuickTodo, page } = useApp();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
+  const [inputBottom, setInputBottom] = useState(null);
   const inputRef = React.useRef(null);
 
-  React.useEffect(() => { if (open) setTimeout(() => inputRef.current?.focus(), 100); }, [open]);
+  React.useEffect(() => { if (open) setTimeout(() => inputRef.current?.focus(), 80); }, [open]);
+
+  // Sledujeme vizuální viewport (iOS klávesnice) a repositionujeme input nad ní
+  React.useEffect(() => {
+    if (!open || !window.visualViewport) return;
+    const vv = window.visualViewport;
+    const update = () => {
+      const keyboardHeight = window.innerHeight - vv.height - vv.offsetTop;
+      setInputBottom(keyboardHeight > 50 ? keyboardHeight + 12 : null);
+    };
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    update();
+    return () => { vv.removeEventListener("resize", update); vv.removeEventListener("scroll", update); };
+  }, [open]);
+
+  React.useEffect(() => { if (!open) setInputBottom(null); }, [open]);
 
   const handleAdd = () => {
     const val = text.trim();
@@ -80,17 +97,23 @@ function MobileFAB() {
     setOpen(false);
   };
 
+  const inputBottomStyle = inputBottom != null
+    ? inputBottom + 12
+    : "calc(66px + env(safe-area-inset-bottom, 0px) + 76px)";
+
   return (
     <>
       {open && (
         <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)", zIndex: 189 }}>
           <div onClick={(e) => e.stopPropagation()} style={{
-            position: "fixed", bottom: "calc(66px + env(safe-area-inset-bottom, 0px) + 76px)",
+            position: "fixed",
+            bottom: inputBottomStyle,
             left: 16, right: 16,
             background: "var(--surface)", border: "1px solid var(--border-soft)",
             borderRadius: "var(--r, 14px)", padding: "12px 14px",
             boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
             display: "flex", gap: 8, zIndex: 191,
+            transition: "bottom .25s cubic-bezier(.4,0,.2,1)",
           }}>
             <input
               ref={inputRef}
@@ -260,7 +283,7 @@ function AppShell() {
               </div>
             );
           })()}
-          <main style={isMobile ? { flex: 1, minWidth: 0, width: "100%", overflow: "auto", position: "relative", paddingBottom: 66, WebkitOverflowScrolling: "touch" } : undefined}>
+          <main style={isMobile ? { flex: 1, minWidth: 0, width: "100%", overflow: "auto", position: "relative", paddingBottom: "calc(66px + env(safe-area-inset-bottom, 0px))", overscrollBehaviorY: "contain" } : undefined}>
             <PageTransition pageKey={page}>
               <Suspense fallback={null}>
                 {page === "dashboard"          && <PageErrorBoundary label="Přehled">         <DashboardPage />         </PageErrorBoundary>}

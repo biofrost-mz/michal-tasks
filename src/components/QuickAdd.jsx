@@ -5,7 +5,7 @@ import Icon from './Icon.jsx'
 import { STATUSES, PRIORITIES } from '../constants.js'
 
 export default function QuickAdd({ defaultProjectId = null }) {
-  const { t, dk, tasks, addTask, projects, tags, addProject, addTag, setTaskDetail } = useApp();
+  const { t, dk, tasks, addTask, projects, tags, addProject, addTag, setTaskDetail, isMobile } = useApp();
   const toast = useToast();
 
   const [val, setVal] = useState("");
@@ -190,7 +190,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
             inset: 0,
             zIndex: 900,
             display: "flex",
-            alignItems: "center",
+            alignItems: isMobile ? "flex-end" : "center",
             justifyContent: "center",
             background: dk ? "rgba(10, 12, 18, 0.65)" : "rgba(0, 0, 0, 0.4)",
             backdropFilter: "blur(20px) saturate(180%)",
@@ -198,16 +198,35 @@ export default function QuickAdd({ defaultProjectId = null }) {
           }}
           onClick={() => setModalOpen(false)}
         >
+          {/* Drag handle — jen na mobilu */}
+          {isMobile && (
+            <div
+              style={{
+                position: "absolute",
+                bottom: "calc(100% - 12px)",
+                left: "50%",
+                transform: "translateX(-50%)",
+                width: 40, height: 4,
+                borderRadius: 2,
+                background: "rgba(255,255,255,0.25)",
+                zIndex: 901,
+                pointerEvents: "none",
+              }}
+            />
+          )}
           <div
+            className={isMobile ? "su" : "pop"}
             style={{
               background: t.card,
               border: `1px solid ${dk ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.08)"}`,
-              borderRadius: 16,
-              boxShadow: t.shadow,
-              padding: "24px 28px",
-              width: "calc(100% - 32px)",
-              maxWidth: 600,
-              maxHeight: "90vh",
+              borderRadius: isMobile ? "20px 20px 0 0" : 16,
+              boxShadow: isMobile
+                ? "0 -8px 40px rgba(0,0,0,0.4)"
+                : t.shadow,
+              padding: isMobile ? "20px 20px calc(20px + env(safe-area-inset-bottom, 0px))" : "24px 28px",
+              width: isMobile ? "100%" : "calc(100% - 32px)",
+              maxWidth: isMobile ? "100%" : 600,
+              maxHeight: isMobile ? "92vh" : "90vh",
               overflowY: "auto",
               display: "flex",
               flexDirection: "column",
@@ -268,13 +287,13 @@ export default function QuickAdd({ defaultProjectId = null }) {
             </div>
 
             {/* SECTION 1: Základní nastavení (Status, Priorita) */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? 14 : 20 }}>
               {/* Status Section */}
               <div>
                 <div style={{ fontSize: 11, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6, fontFamily: "var(--font-mono)" }}>
                   Status
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                <div style={{ display: "flex", flexDirection: isMobile ? "row" : "column", flexWrap: "wrap", gap: isMobile ? 6 : 4 }}>
                   {Object.entries(STATUSES).map(([k, v]) => {
                     const isActive = status === k;
                     return (
@@ -282,7 +301,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
                         key={k}
                         onClick={() => setStatus(k)}
                         style={{
-                          padding: "8px 12px",
+                          padding: isMobile ? "8px 10px" : "8px 12px",
                           borderRadius: 8,
                           fontSize: 12.5,
                           fontWeight: 600,
@@ -291,10 +310,12 @@ export default function QuickAdd({ defaultProjectId = null }) {
                           color: isActive ? v.color : t.text2,
                           display: "flex",
                           alignItems: "center",
-                          gap: 8,
+                          gap: 6,
                           cursor: "pointer",
                           textAlign: "left",
-                          transition: "all .12s"
+                          transition: "all .12s",
+                          flex: isMobile ? "1 1 auto" : undefined,
+                          minHeight: 40,
                         }}
                       >
                         <Icon name={v.icon} size={13} color="currentColor" strokeWidth={2} />
@@ -675,13 +696,35 @@ export default function QuickAdd({ defaultProjectId = null }) {
             <div
               style={{
                 display: "flex",
-                alignItems: "center",
+                flexDirection: isMobile ? "column" : "row",
+                alignItems: isMobile ? "stretch" : "center",
                 justifyContent: "space-between",
                 borderTop: `1px solid ${t.border}`,
                 paddingTop: 16,
-                marginTop: 6
+                marginTop: 6,
+                gap: isMobile ? 10 : 0,
               }}
             >
+              {/* Primary action na mobilu — nahoře, full width */}
+              <button
+                onClick={() => handleCreate(false)}
+                style={{
+                  padding: "13px 22px",
+                  borderRadius: 12,
+                  fontSize: 14,
+                  fontWeight: 700,
+                  border: "none",
+                  background: t.accent,
+                  color: "#fff",
+                  cursor: "pointer",
+                  boxShadow: `0 4px 14px ${t.accentGlow}`,
+                  display: isMobile ? "block" : "none",
+                  width: "100%",
+                }}
+              >
+                Založit úkol
+              </button>
+
               {/* Left Action: Open full drawer details */}
               <button
                 onClick={() => handleCreate(true)}
@@ -695,65 +738,57 @@ export default function QuickAdd({ defaultProjectId = null }) {
                   color: t.text2,
                   display: "flex",
                   alignItems: "center",
+                  justifyContent: isMobile ? "center" : undefined,
                   gap: 6,
                   cursor: "pointer",
-                  transition: "all .12s"
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = t.accent;
-                  e.currentTarget.style.color = t.accent;
-                  if (dk) e.currentTarget.style.background = "rgba(255,255,255,0.03)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = t.border;
-                  e.currentTarget.style.color = t.text2;
-                  e.currentTarget.style.background = "transparent";
+                  transition: "all .12s",
+                  width: isMobile ? "100%" : undefined,
                 }}
               >
                 Další možnosti
                 <Icon name="arrow-right" size={13} color="currentColor" strokeWidth={2.5} />
               </button>
 
-              {/* Right Actions: Cancel / Submit */}
-              <div style={{ display: "flex", gap: 10 }}>
-                <button
-                  onClick={() => setModalOpen(false)}
-                  style={{
-                    padding: "8px 16px",
-                    borderRadius: 10,
-                    fontSize: 12.5,
-                    fontWeight: 600,
-                    border: "none",
-                    background: "transparent",
-                    color: t.text3,
-                    cursor: "pointer",
-                    transition: "color .12s"
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.color = t.text}
-                  onMouseLeave={(e) => e.currentTarget.style.color = t.text3}
-                >
-                  Zrušit
-                </button>
-                <button
-                  onClick={() => handleCreate(false)}
-                  style={{
-                    padding: "10px 22px",
-                    borderRadius: 10,
-                    fontSize: 13,
-                    fontWeight: 600,
-                    border: "none",
-                    background: t.accent,
-                    color: "#fff",
-                    cursor: "pointer",
-                    boxShadow: `0 4px 14px ${t.accentGlow}`,
-                    transition: "all .15s"
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-1px)"}
-                  onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
-                >
-                  Založit úkol
-                </button>
-              </div>
+              {/* Right Actions: Cancel / Submit — jen desktop */}
+              {!isMobile && (
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button
+                    onClick={() => setModalOpen(false)}
+                    style={{
+                      padding: "8px 16px",
+                      borderRadius: 10,
+                      fontSize: 12.5,
+                      fontWeight: 600,
+                      border: "none",
+                      background: "transparent",
+                      color: t.text3,
+                      cursor: "pointer",
+                      transition: "color .12s"
+                    }}
+                  >
+                    Zrušit
+                  </button>
+                  <button
+                    onClick={() => handleCreate(false)}
+                    style={{
+                      padding: "10px 22px",
+                      borderRadius: 10,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      border: "none",
+                      background: t.accent,
+                      color: "#fff",
+                      cursor: "pointer",
+                      boxShadow: `0 4px 14px ${t.accentGlow}`,
+                      transition: "all .15s"
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-1px)"}
+                    onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
+                  >
+                    Založit úkol
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

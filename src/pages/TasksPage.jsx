@@ -190,6 +190,7 @@ export default function TasksPage() {
     onStar: toggleStar,
   });
 
+  const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
   const [inlineEditId, setInlineEditId] = useState(null);
   const [inlineEditVal, setInlineEditVal] = useState("");
   const origEditRef = useRef("");
@@ -304,7 +305,163 @@ export default function TasksPage() {
         )}
         {!isMobile && <span className="chips-sep" />}
         {!isMobile && <span className="chip">{filtered.length} položek</span>}
+
+        {/* Mobilní filtr tlačítko */}
+        {isMobile && (() => {
+          const activeFilters = [priorityFilter, tagFilter, projectFilter].filter((f) => f !== "all").length;
+          return (
+            <span
+              className={`chip ${activeFilters > 0 ? "active" : ""}`}
+              onClick={() => setFilterDrawerOpen(true)}
+              style={{ marginLeft: "auto", flexShrink: 0 }}
+            >
+              <span style={{ fontSize: 13 }}>⚙</span>
+              Filtrovat
+              {activeFilters > 0 && <span className="chip-count">{activeFilters}</span>}
+            </span>
+          );
+        })()}
       </div>
+
+      {/* Mobilní filter drawer */}
+      {isMobile && filterDrawerOpen && (
+        <div
+          onClick={() => setFilterDrawerOpen(false)}
+          style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(6px)" }}
+        >
+          <div
+            className="su"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: "fixed", bottom: 0, left: 0, right: 0,
+              background: "var(--surface)",
+              borderRadius: "20px 20px 0 0",
+              padding: "20px 20px calc(20px + env(safe-area-inset-bottom, 0px))",
+              boxShadow: "0 -8px 40px rgba(0,0,0,0.4)",
+              display: "flex", flexDirection: "column", gap: 20,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>Filtry</span>
+              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                {[priorityFilter, tagFilter, projectFilter].some((f) => f !== "all") && (
+                  <button
+                    onClick={() => { setPriorityFilter("all"); setTagFilter("all"); setProjectFilter("all"); }}
+                    style={{ fontSize: 12, color: "var(--accent)", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}
+                  >
+                    Resetovat
+                  </button>
+                )}
+                <button
+                  onClick={() => setFilterDrawerOpen(false)}
+                  style={{ background: "var(--surface-3)", border: "none", color: "var(--text-2)", borderRadius: 8, width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 16 }}
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* Priorita */}
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, fontFamily: "var(--font-mono)" }}>
+                Priorita
+              </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {[["all","Vše"], ["high","Vysoká"], ["medium","Střední"], ["low","Nízká"]].map(([v, label]) => (
+                  <button
+                    key={v}
+                    onClick={() => setPriorityFilter(v)}
+                    style={{
+                      padding: "8px 14px", borderRadius: 20, fontSize: 13, fontWeight: 600,
+                      border: `1.5px solid ${priorityFilter === v ? "var(--accent)" : "var(--border-soft)"}`,
+                      background: priorityFilter === v ? "var(--accent-soft)" : "transparent",
+                      color: priorityFilter === v ? "var(--accent)" : "var(--text-2)",
+                      cursor: "pointer", minHeight: 40,
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Projekt */}
+            {projects.length > 0 && (
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, fontFamily: "var(--font-mono)" }}>
+                  Projekt
+                </div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {[{ id: "all", name: "Vše" }, { id: "inbox", name: "Inbox" }, ...projects].map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => setProjectFilter(p.id)}
+                      style={{
+                        padding: "8px 14px", borderRadius: 20, fontSize: 13, fontWeight: 600,
+                        border: `1.5px solid ${projectFilter === p.id ? "var(--accent)" : "var(--border-soft)"}`,
+                        background: projectFilter === p.id ? "var(--accent-soft)" : "transparent",
+                        color: projectFilter === p.id ? "var(--accent)" : "var(--text-2)",
+                        cursor: "pointer", minHeight: 40,
+                      }}
+                    >
+                      {p.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Tagy */}
+            {tags.length > 0 && (
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, fontFamily: "var(--font-mono)" }}>
+                  Tag
+                </div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button
+                    onClick={() => setTagFilter("all")}
+                    style={{
+                      padding: "8px 14px", borderRadius: 20, fontSize: 13, fontWeight: 600,
+                      border: `1.5px solid ${tagFilter === "all" ? "var(--accent)" : "var(--border-soft)"}`,
+                      background: tagFilter === "all" ? "var(--accent-soft)" : "transparent",
+                      color: tagFilter === "all" ? "var(--accent)" : "var(--text-2)",
+                      cursor: "pointer", minHeight: 40,
+                    }}
+                  >
+                    Vše
+                  </button>
+                  {tags.map((tg) => (
+                    <button
+                      key={tg.id}
+                      onClick={() => setTagFilter(tg.id)}
+                      style={{
+                        padding: "8px 14px", borderRadius: 20, fontSize: 13, fontWeight: 600,
+                        border: `1.5px solid ${tagFilter === tg.id ? tg.color : "var(--border-soft)"}`,
+                        background: tagFilter === tg.id ? tg.color + "18" : "transparent",
+                        color: tagFilter === tg.id ? tg.color : "var(--text-2)",
+                        cursor: "pointer", minHeight: 40,
+                      }}
+                    >
+                      {tg.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <button
+              onClick={() => setFilterDrawerOpen(false)}
+              style={{
+                padding: "13px", borderRadius: 12, fontSize: 14, fontWeight: 700,
+                border: "none", background: "var(--accent)", color: "#fff",
+                cursor: "pointer", marginTop: 4,
+              }}
+            >
+              Zobrazit {filtered.length} úkolů
+            </button>
+          </div>
+        </div>
+      )}
 
       {filtered.length === 0 ? (
         tasks.length === 0 ? (
