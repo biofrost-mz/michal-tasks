@@ -211,7 +211,7 @@ function AppShell() {
       <style>{`
         *{margin:0;padding:0;box-sizing:border-box}
         html,body,#root{width:100%;height:100%}
-        html{overscroll-behavior:none;overflow-x:hidden}
+        html{overscroll-behavior-x:none;overflow-x:hidden}
         body{overflow-x:hidden}
         input,textarea,select{-webkit-appearance:none;border-radius:0}
         @media(max-width:767px){input,textarea,select{font-size:16px !important}}
@@ -241,11 +241,11 @@ function AppShell() {
         <div className={!isMobile ? "main" : undefined} style={isMobile ? { flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden" } : undefined}>
           {!isMobile && <AtlasTopBar />}
           {isMobile && (
-            <div className="mob-topbar" onClick={() => setPage("dashboard")}>
+            <div className="mob-topbar" onClick={() => { setPage("dashboard"); document.querySelector("main")?.scrollTo({ top: 0, behavior: "smooth" }); }}>
               <span className="mob-topbar-brand">Zen<span>tero</span></span>
             </div>
           )}
-          <main style={isMobile ? { flex: 1, minWidth: 0, width: "100%", overflow: "auto", position: "relative", paddingBottom: 66 } : undefined}>
+          <main style={isMobile ? { flex: 1, minWidth: 0, width: "100%", overflow: "auto", position: "relative", paddingBottom: 66, WebkitOverflowScrolling: "touch" } : undefined}>
             <PageTransition pageKey={page}>
               <Suspense fallback={null}>
                 {page === "dashboard"          && <PageErrorBoundary label="Přehled">         <DashboardPage />         </PageErrorBoundary>}

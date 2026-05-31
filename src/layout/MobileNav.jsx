@@ -42,6 +42,9 @@ export default function MobileNav({ toggleDk }) {
     setPage(id);
     setMoreOpen(false);
     setTaskDetail(null);
+    if (id === "dashboard") {
+      document.querySelector("main")?.scrollTo({ top: 0, behavior: "smooth" });
+    }
   };
 
   const handleLogout = async () => {
@@ -113,9 +116,23 @@ export default function MobileNav({ toggleDk }) {
             </div>
 
             {/* Workspace switcher */}
-            <div style={{ marginBottom: 8 }}>
+            <div style={{ marginBottom: 4 }}>
               <WorkspaceSwitcher />
             </div>
+
+            {/* Workspace settings */}
+            <button
+              onClick={() => handleNav("workspace-settings")}
+              style={{
+                width: "100%", display: "flex", alignItems: "center", gap: 12,
+                padding: "10px 14px", borderRadius: 10, border: `1px solid ${t.border}`,
+                background: t.card, color: t.text2, fontSize: 13, marginBottom: 8,
+                textAlign: "left",
+              }}
+            >
+              <Icon name="settings" size={16} color={t.text3} strokeWidth={1.75} />
+              <span>Nastavení workspace</span>
+            </button>
 
             {/* Reminders inline panel */}
             {(overdue.length > 0 || dueToday.length > 0 || dueTomorrow.length > 0) && (

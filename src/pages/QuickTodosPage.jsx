@@ -404,9 +404,9 @@ export default function QuickTodosPage() {
 
   useEffect(() => {
     if (!showSwipeHint) return;
-    const t1 = setTimeout(() => setHintOffset(-55), 100);
-    const t2 = setTimeout(() => setHintOffset(0), 700);
-    const t3 = setTimeout(() => { setShowSwipeHint(false); localStorage.setItem(SWIPE_HINT_KEY, "1"); }, 1200);
+    const t1 = setTimeout(() => setHintOffset(-80), 100);
+    const t2 = setTimeout(() => setHintOffset(0), 900);
+    const t3 = setTimeout(() => { setShowSwipeHint(false); localStorage.setItem(SWIPE_HINT_KEY, "1"); }, 1600);
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, [showSwipeHint]);
 
@@ -580,6 +580,19 @@ export default function QuickTodosPage() {
         <div style={{ textAlign: "center", padding: "24px 20px", color: "var(--text-3)", fontSize: 13 }}>
           Žádné položky neodpovídají filtru.
           <button onClick={() => setFilterPrio(null)} style={{ marginLeft: 8, background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: 13 }}>Zrušit filtr</button>
+        </div>
+      )}
+
+      {isMobile && showSwipeHint && active.length > 0 && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 8,
+          padding: "8px 12px", borderRadius: 8, marginBottom: 8,
+          background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.3)",
+          fontSize: 12, color: "#22c55e", fontWeight: 600,
+          animation: "fadeIn .3s ease-out",
+        }}>
+          <Icon name="arrow-left" size={13} color="#22c55e" strokeWidth={2.5} />
+          Přejeď doleva pro splnění
         </div>
       )}
 

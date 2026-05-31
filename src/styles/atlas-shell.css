@@ -2031,8 +2031,8 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
     position: fixed;
     bottom: calc(66px + env(safe-area-inset-bottom, 0px) + 12px);
     right: 16px;
-    width: 56px;
-    height: 56px;
+    width: 46px;
+    height: 46px;
     border-radius: 50%;
     background: var(--accent);
     color: var(--bg);

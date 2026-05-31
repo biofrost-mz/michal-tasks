@@ -223,7 +223,7 @@ export default function AtlasSidebar({ collapsed, setCollapsed }) {
         <Icon name="chevron-right" size={12} color="currentColor" strokeWidth={2} />
       </button>
 
-      <div className="sb-brand">
+      <div className="sb-brand" onClick={() => setPage("dashboard")} style={{ cursor: "pointer" }}>
         <div className="sb-logo">Z</div>
         <div className="sb-brand-text">
           <div className="sb-brand-name">Zentero</div>
