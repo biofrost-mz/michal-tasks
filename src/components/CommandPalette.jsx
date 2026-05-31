@@ -215,8 +215,11 @@ export default function CommandPalette({ onClose }) {
         }}
       >
         {isMobile && (
-          <div style={{ display: "flex", justifyContent: "center", paddingTop: 10, paddingBottom: 2 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", paddingTop: 10, paddingBottom: 2, position: "relative" }}>
             <div style={{ width: 36, height: 4, borderRadius: 2, background: t.border }} />
+            <button onClick={onClose} style={{ background: "none", border: "none", color: t.text3, cursor: "pointer", display: "flex", alignItems: "center", padding: 4, position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)" }}>
+              <Icon name="x" size={18} color={t.text2} strokeWidth={2} />
+            </button>
           </div>
         )}
 
@@ -236,7 +239,7 @@ export default function CommandPalette({ onClose }) {
               <Icon name="x" size={13} color={t.text3} strokeWidth={2} />
             </button>
           )}
-          <kbd style={{ fontSize: 12, color: t.text3, background: t.input, border: `1px solid ${t.border}`, borderRadius: 4, padding: "2px 6px" }}>Esc</kbd>
+          {!isMobile && <kbd style={{ fontSize: 12, color: t.text3, background: t.input, border: `1px solid ${t.border}`, borderRadius: 4, padding: "2px 6px" }}>Esc</kbd>}
         </div>
 
         {/* Filter chips */}
@@ -283,7 +286,7 @@ export default function CommandPalette({ onClose }) {
           )}
         </div>
 
-        <div style={{ maxHeight: isMobile ? "50vh" : 340, overflowY: "auto", padding: "8px 0" }}>
+        <div style={{ maxHeight: isMobile ? "75vh" : 340, overflowY: "auto", padding: "8px 0" }}>
           {items.length === 0 ? (
             <div style={{ padding: "28px 20px", textAlign: "center", color: t.text3, fontSize: 13 }}>
               Nic nenalezeno
