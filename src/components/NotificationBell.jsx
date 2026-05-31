@@ -15,12 +15,14 @@ export default function NotificationBell({ compact = false, variant = null }) {
   const today = startOfToday();
   const todayStr = formatDateKey(today);
   const tomorrowStr = formatDateKey(new Date(today.getTime() + 86400000));
+  const weekEndStr = formatDateKey(new Date(today.getTime() + 7 * 86400000));
 
   const active = tasks.filter((tk) => tk.status !== "done");
 
-  const overdue  = active.filter((tk) => tk.dueDate && tk.dueDate < todayStr);
-  const dueToday = active.filter((tk) => tk.dueDate === todayStr);
+  const overdue     = active.filter((tk) => tk.dueDate && tk.dueDate < todayStr);
+  const dueToday    = active.filter((tk) => tk.dueDate === todayStr);
   const dueTomorrow = active.filter((tk) => tk.dueDate === tomorrowStr);
+  const dueWeek     = active.filter((tk) => tk.dueDate > tomorrowStr && tk.dueDate <= weekEndStr);
 
   const urgentCount = overdue.length + dueToday.length;
 
@@ -90,7 +92,7 @@ export default function NotificationBell({ compact = false, variant = null }) {
     );
   };
 
-  const isEmpty = overdue.length === 0 && dueToday.length === 0 && dueTomorrow.length === 0;
+  const isEmpty = overdue.length === 0 && dueToday.length === 0 && dueTomorrow.length === 0 && dueWeek.length === 0;
 
   if (variant === "atlas") {
     return (
@@ -148,13 +150,14 @@ export default function NotificationBell({ compact = false, variant = null }) {
                   <Section label="Prošlé termíny" color="#ef4444" items={overdue} icon="alert-circle" />
                   <Section label="Dnes" color="#f59e0b" items={dueToday} icon="clock" />
                   <Section label="Zítra" color="#3b82f6" items={dueTomorrow} icon="calendar" />
+                  <Section label="Tento týden" color="var(--text-3)" items={dueWeek} icon="calendar" />
                 </>
               )}
             </div>
 
             {!isEmpty && (
               <div style={{ padding: "8px 16px 12px", borderTop: "1px solid var(--border)", fontSize: 12, color: "var(--text-3)" }}>
-                Celkem {urgentCount + dueTomorrow.length} blížících se termínů · Kliknutím otevřeš detail
+                Celkem {urgentCount + dueTomorrow.length + dueWeek.length} blížících se termínů · Kliknutím otevřeš detail
               </div>
             )}
           </div>
@@ -254,7 +257,7 @@ export default function NotificationBell({ compact = false, variant = null }) {
 
           {!isEmpty && (
             <div style={{ padding: "8px 16px 12px", borderTop: `1px solid ${t.border}`, fontSize: 12, color: t.text3 }}>
-              Celkem {urgentCount + dueTomorrow.length} blížících se termínů · Kliknutím otevřeš detail
+              Celkem {urgentCount + dueTomorrow.length + dueWeek.length} blížících se termínů · Kliknutím otevřeš detail
             </div>
           )}
         </div>

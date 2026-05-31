@@ -240,6 +240,11 @@ function AppShell() {
         {!isMobile && <AtlasSidebar collapsed={collapsed} setCollapsed={setCollapsed} />}
         <div className={!isMobile ? "main" : undefined} style={isMobile ? { flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden" } : undefined}>
           {!isMobile && <AtlasTopBar />}
+          {isMobile && (
+            <div className="mob-topbar" onClick={() => setPage("dashboard")}>
+              <span className="mob-topbar-brand">Zen<span>tero</span></span>
+            </div>
+          )}
           <main style={isMobile ? { flex: 1, minWidth: 0, width: "100%", overflow: "auto", position: "relative", paddingBottom: 66 } : undefined}>
             <PageTransition pageKey={page}>
               <Suspense fallback={null}>
