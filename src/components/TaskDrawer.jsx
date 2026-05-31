@@ -380,14 +380,15 @@ export default function TaskDrawer() {
         style={isMobile ? {
           transform: `translateY(${dragY}px)`,
           transition: dragging ? "none" : "transform .3s cubic-bezier(.4,0,.2,1)",
-          borderRadius: "16px 16px 0 0",
-          top: "6vh",
+          borderRadius: 0,
+          top: 0,
           position: "fixed",
           bottom: 0,
           left: 0,
           right: 0,
           width: "100%",
           maxWidth: "100%",
+          paddingTop: "env(safe-area-inset-top, 0px)",
         } : undefined}
       >
         {/* Mobile drag handle */}
