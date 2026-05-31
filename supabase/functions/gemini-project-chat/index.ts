@@ -101,14 +101,9 @@ serve(async (req) => {
       }
     }
 
-    // Include project context directly in the user message (no systemInstruction)
-    const userMessageText = alternating.length === 0
-      ? `${systemContext}\n\nOtázka: ${currentMessage}`
-      : currentMessage;
-
     const geminiContents = [
       ...alternating,
-      { role: "user", parts: [{ text: userMessageText }] },
+      { role: "user", parts: [{ text: currentMessage }] },
     ];
 
     let reply = "";
@@ -125,8 +120,10 @@ serve(async (req) => {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              model: "gemini-2.0-flash",
               contents: geminiContents,
+              systemInstruction: {
+                parts: [{ text: systemContext }],
+              },
               generationConfig: {
                 temperature: 0.7,
                 maxOutputTokens: 1024,
