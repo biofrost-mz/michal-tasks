@@ -56,7 +56,7 @@ serve(async (req) => {
 
     // Ověř JWT přes Supabase
     const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: { headers: { authorization: authHeader } },
+      global: { headers: { Authorization: authHeader } },
     });
     const { data: { user }, error: authErr } = await userClient.auth.getUser();
     if (authErr || !user) {
@@ -174,9 +174,9 @@ Pokud některá kategorie nemá žádné úkoly, vynech ji. Buď konkrétní —
     const apiKey = Deno.env.get("GOOGLE_GENERATIVE_AI_API_KEY");
     if (apiKey) {
       try {
-        console.log("ai-daily-plan: Pokouším se volat Google Gemini API (gemini-2.0-flash)...");
+        console.log("ai-daily-plan: Pokouším se volat Google Gemini API (gemini-2.5-flash)...");
         const geminiResp = await fetch(
-          `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -187,7 +187,7 @@ Pokud některá kategorie nemá žádné úkoly, vynech ji. Buď konkrétní —
               },
               generationConfig: {
                 temperature: 0.7,
-                maxOutputTokens: 1024,
+                maxOutputTokens: 2048,
               },
             }),
           }

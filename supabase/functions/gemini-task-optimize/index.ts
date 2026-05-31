@@ -107,9 +107,9 @@ Pravidla:
     const apiKey = Deno.env.get("GOOGLE_GENERATIVE_AI_API_KEY");
     if (apiKey) {
       try {
-        console.log("gemini-task-optimize: Pokouším se volat Google Gemini API (gemini-2.0-flash)...");
+        console.log("gemini-task-optimize: Pokouším se volat Google Gemini API (gemini-2.5-flash)...");
         const geminiResp = await fetch(
-          `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -119,7 +119,7 @@ Pravidla:
                 responseMimeType: "application/json",
                 responseSchema: GEMINI_RESPONSE_SCHEMA,
                 temperature: 0.4,
-                maxOutputTokens: 800,
+                maxOutputTokens: 2048,
               },
             }),
           }
@@ -223,10 +223,10 @@ Vrať výsledek jako JSON objekt s touto strukturou:
     let parsed: unknown;
     try {
       parsed = JSON.parse(cleanedText);
-    } catch {
+    } catch (parseErr: any) {
       console.error("gemini-task-optimize: JSON parse error:", cleanedText);
       return new Response(
-        JSON.stringify({ error: `AI vrátila neplatný JSON formát. Detaily chyb: ${errorDetails}` }),
+        JSON.stringify({ error: `AI vrátila neplatný JSON formát. Text: "${cleanedText}". Detaily chyb: ${errorDetails}` }),
         { status: 200, headers: CORS }
       );
     }
