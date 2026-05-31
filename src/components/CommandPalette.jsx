@@ -218,7 +218,7 @@ export default function CommandPalette({ onClose }) {
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", paddingTop: 10, paddingBottom: 2, position: "relative" }}>
             <div style={{ width: 36, height: 4, borderRadius: 2, background: t.border }} />
             <button onClick={onClose} style={{ background: "none", border: "none", color: t.text3, cursor: "pointer", display: "flex", alignItems: "center", padding: 4, position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)" }}>
-              <Icon name="x" size={18} color={t.text2} strokeWidth={2} />
+              <Icon name="x" size={18} color={t.text3} strokeWidth={2} />
             </button>
           </div>
         )}
