@@ -1995,7 +1995,6 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
     margin-left: -14px;
     margin-right: -14px;
     border-bottom: 1px solid var(--border-soft);
-    border: none !important;
     display: flex !important;
     flex-wrap: nowrap !important;
     overflow-x: auto;
