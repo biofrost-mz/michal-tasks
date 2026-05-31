@@ -33,6 +33,7 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
   const [editTags, setEditTags] = useState(todo.tags ? todo.tags.join(", ") : "");
 
   const triggerArchive = useCallback(() => {
+    navigator.vibrate?.(30);
     setExiting(true);
     setTimeout(() => onArchive(todo.id), 260);
   }, [onArchive, todo.id]);
@@ -264,7 +265,7 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
         style={isMobile ? {
           transform: exiting ? "translateX(-110%)" : `translateX(${offsetX + hintOffset}px)`,
           opacity: exiting ? 0 : 1,
-          transition: swiping ? "none" : "transform .5s cubic-bezier(.4,0,.2,1), opacity .22s",
+          transition: swiping ? "none" : "transform .25s cubic-bezier(.4,0,.2,1), opacity .18s",
           willChange: "transform",
         } : undefined}
       >
@@ -396,7 +397,7 @@ export default function QuickTodosPage() {
 
   useEffect(() => {
     if (!isMobile) return;
-    if (localStorage.getItem(SWIPE_HINT_KEY)) return;
+    if (sessionStorage.getItem(SWIPE_HINT_KEY)) return;
     if (active.length === 0) return;
     const t1 = setTimeout(() => setShowSwipeHint(true), 800);
     return () => clearTimeout(t1);
@@ -406,7 +407,7 @@ export default function QuickTodosPage() {
     if (!showSwipeHint) return;
     const t1 = setTimeout(() => setHintOffset(-80), 100);
     const t2 = setTimeout(() => setHintOffset(0), 900);
-    const t3 = setTimeout(() => { setShowSwipeHint(false); localStorage.setItem(SWIPE_HINT_KEY, "1"); }, 1600);
+    const t3 = setTimeout(() => { setShowSwipeHint(false); sessionStorage.setItem(SWIPE_HINT_KEY, "1"); }, 1600);
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, [showSwipeHint]);
 
