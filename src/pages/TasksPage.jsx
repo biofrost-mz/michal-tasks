@@ -243,7 +243,7 @@ export default function TasksPage() {
           <h1 className="ph-title">Úkoly</h1>
           <div className="ph-sub"><span>poslední úprava: dnes</span></div>
         </div>
-        <ViewToggle view={view} setView={setView} />
+        {!isMobile && <ViewToggle view={view} setView={setView} />}
       </div>
 
       <div style={{ marginBottom: 18 }}>
@@ -302,8 +302,8 @@ export default function TasksPage() {
             </select>
           </>
         )}
-        <span className="chips-sep" />
-        <span className="chip">{filtered.length} položek</span>
+        {!isMobile && <span className="chips-sep" />}
+        {!isMobile && <span className="chip">{filtered.length} položek</span>}
       </div>
 
       {filtered.length === 0 ? (
