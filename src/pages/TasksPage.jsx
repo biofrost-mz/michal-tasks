@@ -98,9 +98,10 @@ export default function TasksPage() {
     search,
     tasksPageFilter,
     setTasksPageFilter,
+    isMobile,
   } = useApp();
 
-  const [view, setView] = useState("table");
+  const [view, setView] = useState(() => isMobile ? "cards" : "table");
   const [statusFilter, setStatusFilter] = useState(() => tasksPageFilter || "active");
 
   useEffect(() => {
@@ -269,34 +270,38 @@ export default function TasksPage() {
             </span>
           </span>
         ))}
-        <span className="chips-div" />
-        <select
-          value={priorityFilter}
-          onChange={(e) => setPriorityFilter(e.target.value)}
-          style={{ background: "var(--surface)", color: "var(--text-2)", border: "1px solid var(--border-soft)", borderRadius: 999, padding: "7px 12px", fontSize: 12.5 }}
-        >
-          <option value="all">Všechny priority</option>
-          <option value="high">Vysoká</option>
-          <option value="medium">Střední</option>
-          <option value="low">Nízká</option>
-        </select>
-        <select
-          value={tagFilter}
-          onChange={(e) => setTagFilter(e.target.value)}
-          style={{ background: "var(--surface)", color: "var(--text-2)", border: "1px solid var(--border-soft)", borderRadius: 999, padding: "7px 12px", fontSize: 12.5 }}
-        >
-          <option value="all">Všechny tagy</option>
-          {tags.map((tg) => <option key={tg.id} value={tg.id}>{tg.name}</option>)}
-        </select>
-        <select
-          value={projectFilter}
-          onChange={(e) => setProjectFilter(e.target.value)}
-          style={{ background: "var(--surface)", color: "var(--text-2)", border: "1px solid var(--border-soft)", borderRadius: 999, padding: "7px 12px", fontSize: 12.5 }}
-        >
-          <option value="all">Všechny projekty</option>
-          <option value="inbox">Inbox</option>
-          {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-        </select>
+        {!isMobile && (
+          <>
+            <span className="chips-div" />
+            <select
+              value={priorityFilter}
+              onChange={(e) => setPriorityFilter(e.target.value)}
+              style={{ background: "var(--surface)", color: "var(--text-2)", border: "1px solid var(--border-soft)", borderRadius: 999, padding: "7px 12px", fontSize: 12.5 }}
+            >
+              <option value="all">Všechny priority</option>
+              <option value="high">Vysoká</option>
+              <option value="medium">Střední</option>
+              <option value="low">Nízká</option>
+            </select>
+            <select
+              value={tagFilter}
+              onChange={(e) => setTagFilter(e.target.value)}
+              style={{ background: "var(--surface)", color: "var(--text-2)", border: "1px solid var(--border-soft)", borderRadius: 999, padding: "7px 12px", fontSize: 12.5 }}
+            >
+              <option value="all">Všechny tagy</option>
+              {tags.map((tg) => <option key={tg.id} value={tg.id}>{tg.name}</option>)}
+            </select>
+            <select
+              value={projectFilter}
+              onChange={(e) => setProjectFilter(e.target.value)}
+              style={{ background: "var(--surface)", color: "var(--text-2)", border: "1px solid var(--border-soft)", borderRadius: 999, padding: "7px 12px", fontSize: 12.5 }}
+            >
+              <option value="all">Všechny projekty</option>
+              <option value="inbox">Inbox</option>
+              {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </>
+        )}
         <span className="chips-sep" />
         <span className="chip">{filtered.length} položek</span>
       </div>

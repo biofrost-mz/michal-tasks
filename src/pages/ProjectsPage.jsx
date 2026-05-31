@@ -502,7 +502,7 @@ export function ProjectDetailPage() {
 }
 
 export default function ProjectsPage() {
-  const { projects, tasks, addProject, openProject, updateProject } = useApp();
+  const { projects, tasks, addProject, openProject, updateProject, isMobile } = useApp();
   const toast = useToast();
 
   const [tab, setTab] = useState("active");
@@ -714,96 +714,55 @@ export default function ProjectsPage() {
             {t.label} <span className="chip-count">{counts[t.id]}</span>
           </span>
         ))}
-        <span className="chips-sep" />
-        <span style={{ position: "relative" }} ref={pGroupRef}>
-          <span className={`chip ${pGroupBy !== "none" ? "active" : ""}`} onClick={() => setPGroupByOpen(!pGroupOpen)}>
-            Seskupit: {PROJ_GROUP_LABELS[pGroupBy]} ▾
-          </span>
-          {pGroupOpen && (
-            <div className="pop" style={{
-              position: "absolute",
-              top: "calc(100% + 6px)",
-              left: 0,
-              background: "var(--bg-2)",
-              border: "1px solid var(--border)",
-              borderRadius: 12,
-              boxShadow: "var(--shadow)",
-              zIndex: 200,
-              minWidth: 180,
-              padding: "6px"
-            }}>
-              {Object.entries(PROJ_GROUP_LABELS).map(([k, label]) => (
-                <button
-                  key={k}
-                  onClick={() => { setPGroupBy(k); setPGroupByOpen(false); }}
-                  style={{
-                    width: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    padding: "8px 12px",
-                    borderRadius: 8,
-                    border: "none",
-                    background: pGroupBy === k ? "var(--accent-soft)" : "transparent",
-                    color: pGroupBy === k ? "var(--accent)" : "var(--text-2)",
-                    fontSize: 13,
-                    fontWeight: pGroupBy === k ? 600 : 400,
-                    cursor: "pointer",
-                    textAlign: "left"
-                  }}
-                  onMouseEnter={(e) => { if (pGroupBy !== k) e.currentTarget.style.background = "var(--card-h)"; }}
-                  onMouseLeave={(e) => { if (pGroupBy !== k) e.currentTarget.style.background = "transparent"; }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          )}
-        </span>
-
-        <span style={{ position: "relative" }} ref={pSortRef}>
-          <span className={`chip ${pSortBy !== "newest" ? "active" : ""}`} onClick={() => setPSortByOpen(!pSortOpen)}>
-            Řadit podle: {PROJ_SORT_LABELS[pSortBy]} ▾
-          </span>
-          {pSortOpen && (
-            <div className="pop" style={{
-              position: "absolute",
-              top: "calc(100% + 6px)",
-              right: 0,
-              background: "var(--bg-2)",
-              border: "1px solid var(--border)",
-              borderRadius: 12,
-              boxShadow: "var(--shadow)",
-              zIndex: 200,
-              minWidth: 180,
-              padding: "6px"
-            }}>
-              {Object.entries(PROJ_SORT_LABELS).map(([k, label]) => (
-                <button
-                  key={k}
-                  onClick={() => { setPSortBy(k); setPSortByOpen(false); }}
-                  style={{
-                    width: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    padding: "8px 12px",
-                    borderRadius: 8,
-                    border: "none",
-                    background: pSortBy === k ? "var(--accent-soft)" : "transparent",
-                    color: pSortBy === k ? "var(--accent)" : "var(--text-2)",
-                    fontSize: 13,
-                    fontWeight: pSortBy === k ? 600 : 400,
-                    cursor: "pointer",
-                    textAlign: "left"
-                  }}
-                  onMouseEnter={(e) => { if (pSortBy !== k) e.currentTarget.style.background = "var(--card-h)"; }}
-                  onMouseLeave={(e) => { if (pSortBy !== k) e.currentTarget.style.background = "transparent"; }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          )}
-        </span>
+        {!isMobile && (
+          <>
+            <span className="chips-sep" />
+            <span style={{ position: "relative" }} ref={pGroupRef}>
+              <span className={`chip ${pGroupBy !== "none" ? "active" : ""}`} onClick={() => setPGroupByOpen(!pGroupOpen)}>
+                Seskupit: {PROJ_GROUP_LABELS[pGroupBy]} ▾
+              </span>
+              {pGroupOpen && (
+                <div className="pop" style={{
+                  position: "absolute",
+                  top: "calc(100% + 6px)",
+                  left: 0,
+                  background: "var(--bg-2)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 12,
+                  boxShadow: "var(--shadow)",
+                  zIndex: 200,
+                  minWidth: 180,
+                  padding: "6px"
+                }}>
+                  {Object.entries(PROJ_GROUP_LABELS).map(([k, label]) => (
+                    <button
+                      key={k}
+                      onClick={() => { setPGroupBy(k); setPGroupByOpen(false); }}
+                      style={{
+                        width: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        padding: "8px 12px",
+                        borderRadius: 8,
+                        border: "none",
+                        background: pGroupBy === k ? "var(--accent-soft)" : "transparent",
+                        color: pGroupBy === k ? "var(--accent)" : "var(--text-2)",
+                        fontSize: 13,
+                        fontWeight: pGroupBy === k ? 600 : 400,
+                        cursor: "pointer",
+                        textAlign: "left"
+                      }}
+                      onMouseEnter={(e) => { if (pGroupBy !== k) e.currentTarget.style.background = "var(--card-h)"; }}
+                      onMouseLeave={(e) => { if (pGroupBy !== k) e.currentTarget.style.background = "transparent"; }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </span>
+          </>
+        )}
       </div>
 
       {showNew ? (
