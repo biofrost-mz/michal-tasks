@@ -144,28 +144,33 @@ serve(async (req) => {
       );
     }
 
-    const systemPrompt = `Jsi osobní asistent produktivity. Odpovídáš vždy v češtině. Jsi přímý, motivující a konkrétní. Nepiš zbytečné fráze. Tvoje odpovědi jsou strukturované, přehledné a actionable.`;
+    const systemPrompt = `Jsi elitní osobní kouč produktivity a executive mentor. Odpovídáš vždy v češtině. Tvůj tón je vysoce profesionální, energický, přímočarý a hluboce motivující. Nepoužíváš otřepané fráze ani klišé. Pomáháš uživateli přetavit chaos v naprosto přehlednou, strukturovanou a nekompromisně realizovatelnou denní strategii.`;
 
     const userPrompt = `Dnes je ${dateLabel}.
  
-Zde jsou moje aktivní úkoly:
+Zde je seznam mých aktuálních aktivních úkolů z mého workspace:
 ${taskList}
  
-Připrav mi stručný denní plán v češtině. Strukturuj odpověď takto:
- 
-## 🔥 Musí se dnes udělat
-(max 3 položky — prošlé termíny, termín dnes, kritické věci)
- 
-## 🎯 Na čem se soustředit
-(max 3 položky — vysoká priorita nebo rozpracované)
- 
+Sestav mi vysoce efektivní, profesionální denní plán v češtině, který ze mě vymáčkne maximum. Strukturuj odpověď přesně do těchto sekcí za použití formátu Markdown (pokud pro některou sekci nemám úkol, přizpůsob to, ale nevynechávej celou sekci):
+
+## 🐸 Sněz tu žábu (Klíčový úkol dne)
+(Vyber přesně JEDEN nejdůležitější úkol s nejvyšší prioritou nebo ten, který má dnes či prošlý termín. Zdůvodni jednou silnou větou, proč právě tento úkol musíš vyřídit hned ráno jako první a jaké to přinese uvolnění.)
+
+## 🔥 Musí se dnes dokončit
+(Maximálně 2 další kritické položky, které mají prošlý termín nebo termín dnes. Ukaž na ně jako na dnešní absolutní priority.)
+
+## 🎯 Navržené Focus Bloky (Bloky hluboké práce)
+(Navrhni konkrétní, strukturovaný časový harmonogram pro hlubokou práci – Deep Work. Např.:
+- **9:00 - 10:30 (90 min)**: Nerušený focus na úkol *[název úkolu]*
+- **11:00 - 12:00 (60 min)**: Rychlé vyřízení *[název úkolu]* a administrativy)
+
 ## 💡 Co je dobré posunout
-(max 2 položky — menší věci nebo příští kroky)
- 
-## ✨ Dnešní záměr
-(1-2 věty motivačního shrnutí dne — co je klíčové a proč)
- 
-Pokud některá kategorie nemá žádné úkoly, vynech ji. Buď konkrétní — uváděj skutečné názvy úkolů. Nepiš žádné zbytečné úvody ani závěry mimo stanovenou strukturu.`;
+(Max 2 položky s nižší prioritou nebo rozpracované věci, které je skvělé dnes aspoň o kousek posunout dál.)
+
+## ✨ Záměr a motto pro dnešní den
+(Vytvoř 1-2 věty silného, personalizovaného motivačního shrnutí dne šitého na míru mému seznamu úkolů. Žádné generické citáty, ale konkrétní, energické povzbuzení, které mi dodá chuť se do toho pustit.)
+
+Buď maximálně konkrétní — uváděj skutečné názvy úkolů z mého seznamu a provazuj je logicky dohromady. Nepiš žádné zbytečné zdvořilostní úvody ani závěry mimo tuto strukturu.`;
 
     let plan = "";
     let success = false;
@@ -187,7 +192,7 @@ Pokud některá kategorie nemá žádné úkoly, vynech ji. Buď konkrétní —
               },
               generationConfig: {
                 temperature: 0.7,
-                maxOutputTokens: 2048,
+                maxOutputTokens: 8192,
               },
             }),
           }

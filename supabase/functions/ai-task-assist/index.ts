@@ -74,69 +74,82 @@ serve(async (req) => {
     if (action === "subtasks") {
       prompt = `Úkol: "${task.title}"${task.description ? `\nPopis: ${task.description}` : ""}
 
-Navrhni 3–6 konkrétních, akčních podúkolů v češtině.
-Vrať POUZE JSON pole stringů, žádný jiný text.
-Příklad: ["Podúkol 1", "Podúkol 2", "Podúkol 3"]`;
+Navrhni 3–6 konkrétních, akčních podúkolů (subtasks) v češtině. Podúkoly musí pokrývat kompletní dokončení úkolu a být chronologicky seřazeny (od přípravy podkladů po finální odevzdání/kontrolu). Každý podúkol začni silným slovesem a omez na max 80 znaků.
+Vrať POUZE JSON pole stringů, žádný jiný text ani markdown.
+Příklad: ["Sběr potřebných podkladů", "Realizace první verze návrhu", "Interní revize a úprava chyb", "Odeslání hotového díla ke schválení"]`;
 
     } else if (action === "tags") {
       const existing = availableTags?.length
-        ? `Existující tagy: ${availableTags.join(", ")}`
-        : "Zatím žádné tagy.";
+        ? `Existující tagy v aplikaci: ${availableTags.join(", ")}`
+        : "Zatím žádné tagy v aplikaci.";
       prompt = `Úkol: "${task.title}"${task.description ? `\nPopis: ${task.description}` : ""}
 ${existing}
 
-Navrhni 1–3 relevantní tagy. Preferuj existující, jinak navrhni nové.
-Vrať POUZE JSON pole stringů (malá písmena, bez mezer).
-Příklad: ["design", "backend", "urgent"]`;
+Navrhni 1–3 nejrelevantnější štítky (tags) v češtině pro tento úkol. Striktně preferuj stávající tagy, pokud tematicky odpovídají. Nové tagy navrhuj pouze v případě, že žádný z existujících neodpovídá (používej malá písmena, jednoslovné, bez mezer).
+Vrať POUZE JSON pole stringů.
+Příklad: ["design", "marketing", "vyvoj"]`;
 
     } else if (action === "description") {
       prompt = `Název úkolu: "${task.title}"
 
-Napiš stručný a užitečný popis (2–4 věty). Co je třeba udělat, proč je to důležité, jaký je výsledek.
-Vrať POUZE text popisu, bez nadpisů nebo odrážek.`;
+Napiš pro tento úkol profesionální, strukturovaný a přehledný popis ve formátu Markdown v češtině. Popis strukturuj takto:
+
+## 🎯 Cíl (Objective)
+(Stručné a jasné vyjádření, čeho má být tímto úkolem dosaženo a jaký je očekávaný výsledek.)
+
+## 🔑 Klíčové parametry (Key Results)
+- **Kritérium 1**: Co přesně musí být splněno, aby byl úkol považován za úspěšný.
+- **Kritérium 2**: Konkrétní kvalita nebo vlastnost výstupu.
+
+## 👣 První akční krok (Next Step)
+- [ ] Co je potřeba udělat jako úplně první krok k nastartování práce.
+
+Vrať POUZE vygenerovaný formátovaný text popisu, bez jakýchkoli dalších úvodních či závěrečných keců a bez zpětných uvozovek.`;
 
     } else if (action === "priority") {
       prompt = `Úkol: "${task.title}"${task.description ? `\nPopis: ${task.description}` : ""}${task.dueDate ? `\nTermín: ${task.dueDate}` : ""}
 
-Odhadni prioritu. Vrať POUZE JSON objekt (žádný jiný text):
-{"priority":"low"|"medium"|"high","reason":"krátké vysvětlení max 1 věta"}`;
+Zhodnoť závažnost a naléhavost tohoto úkolu z hlediska prioritizace (low = nízká, medium = střední, high = vysoká). Projdi termín dokončení, název i popis a proveď hlubší úvahu nad důležitostí.
+Vrať POUZE JSON objekt s klíči "priority" a "reason" v češtině (reason musí být max 1 výstižná věta):
+{"priority":"low"|"medium"|"high","reason":"zdůvodnění priority na základě termínu nebo složitosti úkolu"}`;
 
     } else if (action === "note_summary") {
-      prompt = `Shrň tuto poznámku ve 2–3 větách. Vrať POUZE text shrnutí.
+      prompt = `Zanalyzuj a shrň tuto poznámku. Napiš vysoce profesionální, reprezentativní a výstižné shrnutí v češtině (2–3 věty).
+Shrnutí napiš jako souvislý text, který popíše hlavní myšlenku, kontext a klíčové závěry poznámky. Vrať POUZE text shrnutí.
 
-Název: ${note.title || "Bez názvu"}
+Název poznámky: ${note.title || "Bez názvu"}
 Obsah:
 ${(note.content || "").slice(0, 4000)}`;
 
     } else if (action === "note_continue") {
-      prompt = `Pokračuj přirozeně v psaní této poznámky. Přidej 1–2 odstavce ve stejném stylu.
-Vrať POUZE nový text ve formátu Markdown (bez opakování existujícího obsahu).
+      prompt = `Pokračuj přirozeně a s vysokou odborností v psaní této poznámky v češtině. Navázej na poslední myšlenku a přidej 1–2 logicky propracované odstavce ve stejném stylu, formátování a tónu.
+Vrať POUZE nový navazující text ve formátu Markdown (neopakuj stávající text poznámky a nepiš žádné komentáře).
 
-Název: ${note.title || "Bez názvu"}
+Název poznámky: ${note.title || "Bez názvu"}
 Obsah:
 ${(note.content || "").slice(-2000)}`;
 
     } else if (action === "note_summary_bullet") {
-      prompt = `Převeď tuto poznámku do stručných, přehledných odrážek (bullet-points) v češtině. Použij standardní odrážky (pomlčky nebo tečky). Vrať POUZE text s odrážkami, bez jakéhokoli jiného komentáře.
+      prompt = `Převeď obsah této poznámky do přehledných, stručných a strukturovaných odrážek (bullet-points) v češtině. Odrážky musí vystihovat nejdůležitější fakta, rozhodnutí nebo úkoly z poznámky. Použij standardní odrážky (pomlčky nebo tečky) a tučné písmo pro zvýraznění klíčových pojmů. Vrať POUZE naformátovaný text s odrážkami, bez jakýchkoli komentářů.
 
-Název: ${note.title || "Bez názvu"}
+Název poznámky: ${note.title || "Bez názvu"}
 Obsah:
 ${(note.content || "").slice(0, 4000)}`;
 
     } else if (action === "note_fix_tone") {
-      prompt = `Oprav v této poznámce gramatické, pravopisné a stylistické chyby. Přepiš text do spisovné, profesionální a vkusné češtiny, aniž bys měnil původní význam.
-Vrať POUZE opravený a upravený text poznámky bez jakýchkoli vysvětlivek, uvozovek nebo komentářů okolo.
+      prompt = `Oprav v této poznámce veškeré gramatické, pravopisné, typografické a stylistické chyby. Přepiš text do vysoce kultivované, čtivé, spisovné a profesionální češtiny (uprav slovní zásobu a strukturu vět k lepšímu), aniž bys změnil původní věcný význam a myšlenky. Ponech strukturu Markdown (nadpisy, odrážky), pokud je v poznámce přítomna.
+Vrať POUZE kompletní upravený a opravený text poznámky, bez jakýchkoli vysvětlivek, uvozovek, poznámek pod čarou nebo komentářů okolo.
 
-Název: ${note.title || "Bez názvu"}
+Název poznámky: ${note.title || "Bez názvu"}
 Obsah:
 ${(note.content || "").slice(0, 4000)}`;
 
     } else if (action === "note_extract_tasks") {
-      prompt = `Z této poznámky vytáhni konkrétní akční body nebo úkoly k udělání.
-Vrať POUZE JSON pole stringů, žádný jiný text.
-Příklad: ["Zavolat Petrovi ohledně smlouvy", "Připravit prezentaci do pátku"]
+      prompt = `Zanalyzuj obsah této poznámky a vytáhni z ní všechny konkrétní akční kroky, úkoly nebo sliby k vyřízení. Každý úkol formuluj v češtině jako akční větu začínající slovesem (max 80 znaků).
+Vrať POUZE JSON pole stringů, žádný jiný text. Pokud v poznámce nejsou žádné akční úkoly, vrať prázdné pole [].
+Příklad: ["Zavolat klientovi ohledně zpětné vazby k návrhu", "Připravit finální prezentaci do páteční porady"]
 
-Název: ${note.title || "Bez názvu"}
+Název poznámky: ${note.title || "Bez názvu"}
 Obsah:
 ${(note.content || "").slice(0, 4000)}`;
 
@@ -167,7 +180,7 @@ ${(note.content || "").slice(0, 4000)}`;
               },
               generationConfig: {
                 temperature: 0.4,
-                maxOutputTokens: 2048,
+                maxOutputTokens: 8192,
                 ...(isJsonAction ? { responseMimeType: "application/json" } : {}),
               },
             }),

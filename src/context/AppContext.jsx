@@ -492,7 +492,7 @@ export function AppProvider({ children }) {
       projectId: task?.projectId ?? null,
       tagIds: task?.tagIds || [],
       phases: [],
-      subtasks: [],
+      subtasks: task?.subtasks || [],
       position: Date.now(),
       createdAt: Date.now(),
       updatedAt: Date.now(),

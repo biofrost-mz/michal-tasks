@@ -6,7 +6,8 @@ import Icon from "../components/Icon.jsx";
 import NotesMiniList from "../components/NotesMiniList.jsx";
 import ProjectChatPanel from "../components/ProjectChatPanel.jsx";
 import QuickAdd from "../components/QuickAdd.jsx";
-import { projectColor, parseYMD, startOfToday, PROJECT_COLORS } from "../utils.js";
+import { projectColor, parseYMD, startOfToday, PROJECT_COLORS, uuid4 } from "../utils.js";
+import { supabase } from "../supabase.js";
 import { PROJ_STATUS } from "../constants.js";
 import EmptyState from "../components/EmptyState.jsx";
 import {
@@ -507,6 +508,7 @@ export default function ProjectsPage() {
 
   const [tab, setTab] = useState("active");
   const [showNew, setShowNew] = useState(false);
+  const [showAIGen, setShowAIGen] = useState(false);
   const [nName, setNName] = useState("");
   const [nDesc, setNDesc] = useState("");
   const [nStatus, setNStatus] = useState("active");
@@ -699,7 +701,26 @@ export default function ProjectsPage() {
           <h1 className="ph-title">Projekty</h1>
           <div className="ph-sub"><span>poslední úprava: dnes</span></div>
         </div>
-        <button className="btn primary" onClick={openNew}><Icon name="plus" size={13} color="currentColor" strokeWidth={2} /> Nový projekt</button>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button
+            className="btn"
+            style={{
+              borderColor: "var(--accent)",
+              color: "var(--accent)",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              background: "rgba(139, 92, 246, 0.06)"
+            }}
+            onClick={() => setShowAIGen(true)}
+          >
+            <Icon name="sparkles" size={13} color="currentColor" strokeWidth={2} />
+            AI Generátor
+          </button>
+          <button className="btn primary" onClick={openNew}>
+            <Icon name="plus" size={13} color="currentColor" strokeWidth={2} /> Nový projekt
+          </button>
+        </div>
       </div>
 
       <div className="chips" style={{ marginBottom: 22 }}>
@@ -863,6 +884,856 @@ export default function ProjectsPage() {
           actionLabel="Nový projekt"
         />
       ) : null}
+
+      {showAIGen && <AIProjectGeneratorModal onClose={() => setShowAIGen(false)} />}
+    </div>
+  );
+}
+
+function AIProjectGeneratorModal({ onClose }) {
+  const { tags, addProject, addTask, addTag, openProject } = useApp();
+  const toast = useToast();
+
+  const [step, setStep] = useState("prompt"); // "prompt" | "loading" | "preview"
+  const [promptText, setPromptText] = useState("");
+  const [loadingText, setLoadingText] = useState("Analýza záměru a plánování...");
+
+  // Preview States
+  const [projectName, setProjectName] = useState("");
+  const [projectDesc, setProjectDesc] = useState("");
+  const [projectColor, setProjectColor] = useState("#3b82f6");
+  const [tasksList, setTasksList] = useState([]);
+  const [expandedTasks, setExpandedTasks] = useState({});
+
+  // Loading text sequence
+  useEffect(() => {
+    if (step !== "loading") return;
+    const texts = [
+      "Analyzuji váš kreativní záměr...",
+      "Sestavuji agilní fáze a milníky...",
+      "Doplňuji detailní chronologické podúkoly...",
+      "Přiřazuji optimální priority a štítky...",
+      "Dokončuji finální úpravy vašeho plánu..."
+    ];
+    let idx = 0;
+    setLoadingText(texts[0]);
+    const timer = setInterval(() => {
+      idx = (idx + 1) % texts.length;
+      setLoadingText(texts[idx]);
+    }, 2500);
+    return () => clearInterval(timer);
+  }, [step]);
+
+  const handleGenerate = async () => {
+    if (!promptText.trim()) return;
+    setStep("loading");
+    try {
+      const { data, error } = await supabase.functions.invoke("ai-project-planner", {
+        body: {
+          userPrompt: promptText,
+          availableTags: tags.map((t) => t.name),
+        },
+      });
+
+      if (error || !data?.result) {
+        throw new Error(error?.message || data?.error || "Generování selhalo");
+      }
+
+      const result = data.result;
+      setProjectName(result.projectName || "");
+      setProjectDesc(result.projectDescription || "");
+      setProjectColor(result.projectColor || "#3b82f6");
+      setTasksList(
+        (result.tasks || []).map((t, idx) => ({
+          ...t,
+          id: `gen-task-${idx}`,
+          selected: true, // defaults to checked
+        }))
+      );
+      setStep("preview");
+    } catch (err) {
+      console.error(err);
+      toast(err.message || "Generování projektu selhalo", "error");
+      setStep("prompt");
+    }
+  };
+
+  const toggleTaskSelected = (id) => {
+    setTasksList((prev) => prev.map((t) => t.id === id ? { ...t, selected: !t.selected } : t));
+  };
+
+  const toggleTaskExpanded = (id) => {
+    setExpandedTasks((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const handleSave = () => {
+    try {
+      const p = addProject({
+        name: projectName.trim() || "Bez názvu",
+        description: projectDesc.trim(),
+        status: "active",
+        color: projectColor,
+      });
+
+      for (const t of tasksList) {
+        if (!t.selected) continue;
+
+        // Map/Create Tags
+        const tTagIds = [];
+        if (Array.isArray(t.tags)) {
+          for (const rawName of t.tags) {
+            const cleanName = rawName.trim().toLowerCase();
+            if (!cleanName) continue;
+            const existing = tags.find((tg) => tg.name.toLowerCase() === cleanName);
+            if (existing) {
+              tTagIds.push(existing.id);
+            } else {
+              const colors = ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444", "#06b6d4", "#ec4899"];
+              const randomColor = colors[Math.floor(Math.random() * colors.length)];
+              const newTg = addTag({ name: cleanName, color: randomColor });
+              tTagIds.push(newTg.id);
+            }
+          }
+        }
+
+        // Map subtasks to checklists
+        const formattedSubtasks = (t.subtasks || []).map((stText) => ({
+          id: uuid4(),
+          text: stText,
+          done: false,
+        }));
+
+        addTask({
+          title: t.title,
+          description: t.description,
+          status: "todo",
+          priority: t.priority,
+          projectId: p.id,
+          tagIds: tTagIds,
+          subtasks: formattedSubtasks,
+        });
+      }
+
+      toast("Projekt a úkoly úspěšně vytvořeny s AI!", "success");
+      openProject(p.id);
+      onClose();
+    } catch (err) {
+      console.error(err);
+      toast("Nepodařilo se uložit projekt", "error");
+    }
+  };
+
+  const presets = [
+    { label: "🚀 Spuštění e-shopu", prompt: "Spustit nový moderní e-shop s udržitelnou módou. Zahrnout přípravu marketingu, nastavení logistiky, testování webu a spuštění." },
+    { label: "🤝 Onboarding zaměstnance", prompt: "Vytvořit hladký onboarding plán pro nového seniorního vývojáře. Od prvního dne (hardware, účty), přes seznámení s kódem, až po samostatný úkol." },
+    { label: "🎪 Plánování eventu", prompt: "Naplánovat firemní letní teambuilding pro 50 lidí na téma sport a grilování. Zahrnout výběr lokace, rozpočet, catering, pozvánky a program." },
+    { label: "🎯 Marketingová kampaň", prompt: "Marketingová kampaň na sociálních sítích pro uvedení nové výběrové kávy. Cílem je zvýšit povědomí o značce, vytvořit vizuály a spustit PPC reklamy." },
+    { label: "📱 Vývoj mobilní aplikace", prompt: "Vytvořit MVP mobilní aplikace pro sledování osobních návyků. Od wireframů, přes vývoj v React Native, integraci databáze, až po testování." },
+  ];
+
+  return (
+    <div className="ai-modal-overlay" onClick={onClose}>
+      <style dangerouslySetInnerHTML={{ __html: `
+        .ai-modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(15, 18, 25, 0.65);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+          padding: 20px;
+          animation: fadeIn 0.3s ease-out;
+        }
+
+        .ai-modal-container {
+          background: var(--bg-2);
+          border: 1px solid var(--border);
+          box-shadow: var(--shadow);
+          border-radius: 20px;
+          width: 100%;
+          max-width: 900px;
+          max-height: 90vh;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          color: var(--text);
+          animation: slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+          from { transform: translateY(20px) scale(0.97); opacity: 0; }
+          to { transform: translateY(0) scale(1); opacity: 1; }
+        }
+
+        .ai-modal-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 20px 24px;
+          border-bottom: 1px solid var(--border-soft);
+        }
+
+        .ai-modal-title {
+          font-size: 1.25rem;
+          font-weight: 700;
+          background: linear-gradient(135deg, #a78bfa, #f472b6);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .ai-modal-close {
+          background: transparent;
+          border: none;
+          color: var(--text-3);
+          cursor: pointer;
+          padding: 6px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s;
+        }
+
+        .ai-modal-close:hover {
+          background: var(--bg-3);
+          color: var(--text);
+        }
+
+        .ai-modal-body {
+          padding: 24px;
+          overflow-y: auto;
+          flex: 1;
+        }
+
+        /* Scrollbar styling */
+        .ai-modal-body::-webkit-scrollbar {
+          width: 6px;
+        }
+        .ai-modal-body::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .ai-modal-body::-webkit-scrollbar-thumb {
+          background: var(--border);
+          border-radius: 3px;
+        }
+
+        /* Prompt View Styles */
+        .ai-prompt-heading {
+          font-size: 1.5rem;
+          font-weight: 800;
+          margin-bottom: 8px;
+          color: var(--text);
+        }
+
+        .ai-prompt-sub {
+          color: var(--text-2);
+          font-size: 0.925rem;
+          margin-bottom: 24px;
+          line-height: 1.5;
+        }
+
+        .ai-textarea {
+          width: 100%;
+          min-height: 120px;
+          background: var(--bg-1);
+          border: 1px solid var(--border-soft);
+          border-radius: 12px;
+          padding: 16px;
+          color: var(--text);
+          font-family: inherit;
+          font-size: 0.95rem;
+          line-height: 1.5;
+          resize: vertical;
+          transition: all 0.2s;
+          outline: none;
+          margin-bottom: 20px;
+        }
+
+        .ai-textarea:focus {
+          border-color: var(--accent);
+          box-shadow: 0 0 0 3px var(--accent-soft);
+          background: var(--bg-1);
+        }
+
+        .ai-presets-title {
+          font-size: 0.825rem;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          color: var(--text-3);
+          margin-bottom: 12px;
+        }
+
+        .ai-presets-grid {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          margin-bottom: 32px;
+        }
+
+        .ai-preset-chip {
+          background: var(--bg-3);
+          border: 1px solid var(--border-soft);
+          border-radius: 20px;
+          padding: 8px 14px;
+          font-size: 0.85rem;
+          color: var(--text-2);
+          cursor: pointer;
+          transition: all 0.2s;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .ai-preset-chip:hover {
+          background: var(--accent-soft);
+          border-color: var(--accent);
+          color: var(--accent);
+          transform: translateY(-1px);
+        }
+
+        .ai-btn-generate {
+          background: linear-gradient(135deg, #7c3aed, #db2777);
+          border: none;
+          color: white;
+          padding: 14px 28px;
+          border-radius: 12px;
+          font-size: 1rem;
+          font-weight: 600;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          width: 100%;
+          box-shadow: 0 8px 24px rgba(124, 58, 237, 0.25);
+          transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .ai-btn-generate:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 12px 28px rgba(124, 58, 237, 0.4);
+        }
+
+        .ai-btn-generate:active {
+          transform: translateY(0);
+        }
+
+        /* Loading View Styles */
+        .ai-loading-container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 60px 0;
+        }
+
+        .ai-loading-spinner {
+          width: 64px;
+          height: 64px;
+          border: 4px solid var(--border-soft);
+          border-left-color: var(--accent);
+          border-top-color: #ec4899;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+          margin-bottom: 32px;
+        }
+
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+
+        .ai-loading-text {
+          font-size: 1.15rem;
+          font-weight: 600;
+          color: var(--text);
+          margin-bottom: 12px;
+          text-align: center;
+          height: 24px;
+          animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+          0%, 100% { opacity: 0.6; }
+          50% { opacity: 1; }
+        }
+
+        .ai-loading-hint {
+          font-size: 0.85rem;
+          color: var(--text-3);
+          text-align: center;
+        }
+
+        /* Preview View Styles */
+        .ai-preview-grid {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 24px;
+        }
+
+        @media (min-width: 768px) {
+          .ai-preview-grid {
+            grid-template-columns: 280px 1fr;
+          }
+        }
+
+        .ai-preview-sidebar {
+          border-bottom: 1px solid var(--border-soft);
+          padding-bottom: 20px;
+        }
+
+        @media (min-width: 768px) {
+          .ai-preview-sidebar {
+            border-bottom: none;
+            border-right: 1px solid var(--border-soft);
+            padding-bottom: 0;
+            padding-right: 24px;
+          }
+        }
+
+        .ai-preview-main {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+
+        .ai-input-group {
+          margin-bottom: 20px;
+        }
+
+        .ai-label {
+          display: block;
+          font-size: 0.825rem;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          color: var(--text-2);
+          margin-bottom: 8px;
+        }
+
+        .ai-input {
+          width: 100%;
+          background: var(--bg-1);
+          border: 1px solid var(--border-soft);
+          border-radius: 8px;
+          padding: 10px 14px;
+          color: var(--text);
+          font-size: 0.925rem;
+          outline: none;
+          transition: all 0.2s;
+        }
+
+        .ai-input:focus {
+          border-color: var(--accent);
+        }
+
+        .ai-color-picker {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          margin-top: 8px;
+        }
+
+        .ai-color-dot {
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
+          cursor: pointer;
+          transition: transform 0.15s ease;
+          border: 2px solid transparent;
+        }
+
+        .ai-color-dot:hover {
+          transform: scale(1.15);
+        }
+
+        .ai-color-dot.active {
+          border-color: var(--text);
+          box-shadow: 0 0 0 2px var(--accent);
+        }
+
+        .ai-preview-card {
+          background: var(--bg-3);
+          border: 1px solid var(--border-soft);
+          border-radius: 12px;
+          padding: 16px;
+          transition: all 0.2s;
+        }
+
+        .ai-preview-card:hover {
+          background: var(--bg-1);
+          border-color: var(--border);
+        }
+
+        .ai-preview-card-header {
+          display: flex;
+          align-items: flex-start;
+          gap: 12px;
+        }
+
+        .ai-preview-card-checkbox {
+          margin-top: 4px;
+          width: 16px;
+          height: 16px;
+          accent-color: var(--accent);
+          cursor: pointer;
+        }
+
+        .ai-preview-card-info {
+          flex: 1;
+        }
+
+        .ai-preview-card-title {
+          font-size: 0.975rem;
+          font-weight: 600;
+          color: var(--text);
+          margin-bottom: 4px;
+        }
+
+        .ai-preview-card-desc {
+          font-size: 0.85rem;
+          color: var(--text-2);
+          line-height: 1.4;
+          margin-bottom: 12px;
+        }
+
+        .ai-preview-card-meta {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          align-items: center;
+        }
+
+        .ai-badge {
+          font-size: 0.75rem;
+          padding: 3px 8px;
+          border-radius: 6px;
+          font-weight: 500;
+        }
+
+        .ai-badge.prio-high {
+          background: rgba(239, 68, 68, 0.12);
+          color: #f87171;
+          border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .ai-badge.prio-medium {
+          background: rgba(245, 158, 11, 0.12);
+          color: #fbbf24;
+          border: 1px solid rgba(245, 158, 11, 0.2);
+        }
+
+        .ai-badge.prio-low {
+          background: rgba(16, 185, 129, 0.12);
+          color: #34d399;
+          border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .ai-badge.time {
+          background: var(--bg-2);
+          color: var(--text-2);
+          border: 1px solid var(--border-soft);
+        }
+
+        .ai-badge.tag {
+          background: var(--accent-soft);
+          color: var(--accent);
+          border: 1px solid var(--accent);
+        }
+
+        .ai-subtasks-toggle {
+          background: transparent;
+          border: none;
+          color: var(--text-2);
+          font-size: 0.8rem;
+          font-weight: 500;
+          cursor: pointer;
+          padding: 0;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          margin-top: 12px;
+        }
+
+        .ai-subtasks-toggle:hover {
+          color: var(--text);
+        }
+
+        .ai-preview-subtasks-list {
+          margin-top: 8px;
+          padding-left: 16px;
+          border-left: 1px solid var(--border-soft);
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+
+        .ai-preview-subtask-item {
+          font-size: 0.825rem;
+          color: var(--text-2);
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .ai-preview-subtask-bullet {
+          width: 4px;
+          height: 4px;
+          background: var(--accent);
+          border-radius: 50%;
+        }
+
+        .ai-modal-footer {
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          gap: 12px;
+          padding: 20px 24px;
+          border-top: 1px solid var(--border-soft);
+        }
+
+        .ai-btn-secondary {
+          background: var(--bg-3);
+          border: 1px solid var(--border-soft);
+          color: var(--text-2);
+          padding: 10px 18px;
+          border-radius: 8px;
+          font-size: 0.9rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .ai-btn-secondary:hover {
+          background: var(--bg-1);
+          color: var(--text);
+        }
+
+        .ai-btn-primary {
+          background: linear-gradient(135deg, #8b5cf6, #ec4899);
+          border: none;
+          color: white;
+          padding: 10px 20px;
+          border-radius: 8px;
+          font-size: 0.9rem;
+          font-weight: 600;
+          cursor: pointer;
+          box-shadow: 0 4px 12px rgba(139, 92, 246, 0.15);
+          transition: all 0.2s;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .ai-btn-primary:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 6px 16px rgba(139, 92, 246, 0.3);
+        }
+      ` }} />
+
+      <div className="ai-modal-container" onClick={(e) => e.stopPropagation()}>
+        <div className="ai-modal-header">
+          <div className="ai-modal-title">
+            <Icon name="sparkles" size={18} color="currentColor" strokeWidth={2.5} />
+            <span>AI Projektový Plánovač</span>
+          </div>
+          <button className="ai-modal-close" onClick={onClose}>
+            <Icon name="x" size={16} color="currentColor" strokeWidth={2.5} />
+          </button>
+        </div>
+
+        <div className="ai-modal-body">
+          {step === "prompt" && (
+            <div>
+              <h2 className="ai-prompt-heading">Navrhněte nový projekt s AI</h2>
+              <p className="ai-prompt-sub">
+                Napište jakýkoliv záměr a umělá inteligence Zontero navrhne kompletní strukturovaný projekt,
+                barvu, akční úkoly s prioritami, časovými odhady a chronologickými podúkoly.
+              </p>
+
+              <textarea
+                className="ai-textarea"
+                placeholder="Např.: Přestěhovat firmu do nových kanceláří do konce měsíce..."
+                value={promptText}
+                onChange={(e) => setPromptText(e.target.value)}
+              />
+
+              <div className="ai-presets-title">Nebo začněte z rychlé šablony:</div>
+              <div className="ai-presets-grid">
+                {presets.map((p, idx) => (
+                  <button
+                    key={idx}
+                    className="ai-preset-chip"
+                    onClick={() => setPromptText(p.prompt)}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                className="ai-btn-generate"
+                onClick={handleGenerate}
+                disabled={!promptText.trim()}
+                style={{ opacity: promptText.trim() ? 1 : 0.6, cursor: promptText.trim() ? "pointer" : "not-allowed" }}
+              >
+                <Icon name="sparkles" size={16} color="currentColor" strokeWidth={2} />
+                <span>Generovat projekt s AI</span>
+              </button>
+            </div>
+          )}
+
+          {step === "loading" && (
+            <div className="ai-loading-container">
+              <div className="ai-loading-spinner" />
+              <div className="ai-loading-text">{loadingText}</div>
+              <div className="ai-loading-hint">Tento proces obvykle trvá 5 až 10 sekund.</div>
+            </div>
+          )}
+
+          {step === "preview" && (
+            <div className="ai-preview-grid">
+              <div className="ai-preview-sidebar">
+                <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 16, color: "var(--text)" }}>Nastavení projektu</h3>
+
+                <div className="ai-input-group">
+                  <label className="ai-label">Název projektu</label>
+                  <input
+                    className="ai-input"
+                    value={projectName}
+                    onChange={(e) => setProjectName(e.target.value)}
+                  />
+                </div>
+
+                <div className="ai-input-group">
+                  <label className="ai-label">Popis projektu</label>
+                  <textarea
+                    className="ai-input"
+                    style={{ minHeight: 80, resize: "none" }}
+                    value={projectDesc}
+                    onChange={(e) => setProjectDesc(e.target.value)}
+                  />
+                </div>
+
+                <div className="ai-input-group">
+                  <label className="ai-label">Zvolit barvu</label>
+                  <div className="ai-color-picker">
+                    {PROJECT_COLORS.map((c) => (
+                      <span
+                        key={c}
+                        className={`ai-color-dot ${projectColor === c ? "active" : ""}`}
+                        style={{ background: c }}
+                        onClick={() => setProjectColor(c)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="ai-preview-main">
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                  <h3 style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", margin: 0 }}>Navržený plán úkolů ({tasksList.filter((t) => t.selected).length})</h3>
+                  <span style={{ fontSize: 12, color: "var(--text-3)" }}>Vyberte úkoly k vytvoření</span>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 12, maxHeight: "50vh", overflowY: "auto", paddingRight: "4px" }}>
+                  {tasksList.map((t) => {
+                    const isExpanded = !!expandedTasks[t.id];
+                    return (
+                      <div key={t.id} className="ai-preview-card" style={{ opacity: t.selected ? 1 : 0.5 }}>
+                        <div className="ai-preview-card-header">
+                          <input
+                            type="checkbox"
+                            className="ai-preview-card-checkbox"
+                            checked={t.selected}
+                            onChange={() => toggleTaskSelected(t.id)}
+                          />
+                          <div className="ai-preview-card-info" onClick={() => toggleTaskSelected(t.id)} style={{ cursor: "pointer" }}>
+                            <div className="ai-preview-card-title">{t.title}</div>
+                            <div className="ai-preview-card-desc">{t.description}</div>
+
+                            <div className="ai-preview-card-meta">
+                              <span className={`ai-badge prio-${t.priority}`}>
+                                {t.priority === "high" ? "↑ Vysoká" : t.priority === "medium" ? "→ Střední" : "↓ Nízká"}
+                              </span>
+                              <span className="ai-badge time">
+                                ⏱ {t.timeEstimate}
+                              </span>
+                              {(t.tags || []).map((tag, tIdx) => (
+                                <span key={tIdx} className="ai-badge tag">
+                                  #{tag}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        {t.subtasks && t.subtasks.length > 0 && (
+                          <div>
+                            <button
+                              className="ai-subtasks-toggle"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleTaskExpanded(t.id);
+                              }}
+                            >
+                              <span>{isExpanded ? "Skrýt podúkoly" : `Zobrazit podúkoly (${t.subtasks.length})`}</span>
+                              <span>{isExpanded ? "▴" : "▾"}</span>
+                            </button>
+
+                            {isExpanded && (
+                              <div className="ai-preview-subtasks-list">
+                                {t.subtasks.map((st, sIdx) => (
+                                  <div key={sIdx} className="ai-preview-subtask-item">
+                                    <div className="ai-preview-subtask-bullet" />
+                                    <span>{st}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="ai-modal-footer">
+          {step === "preview" ? (
+            <>
+              <button className="ai-btn-secondary" onClick={() => setStep("prompt")}>
+                Zpět / Znovu
+              </button>
+              <button className="ai-btn-primary" onClick={handleSave}>
+                <Icon name="check" size={15} color="currentColor" strokeWidth={2.5} />
+                <span>Vytvořit projekt s AI</span>
+              </button>
+            </>
+          ) : (
+            <button className="ai-btn-secondary" onClick={onClose} disabled={step === "loading"}>
+              Zavřít
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

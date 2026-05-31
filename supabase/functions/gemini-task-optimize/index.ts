@@ -86,19 +86,22 @@ serve(async (req) => {
       ? `Dostupné tagy: ${availableTags.join(", ")}`
       : "Žádné tagy zatím.";
 
-    const prompt = `Jsi asistent produktivity. Analyzuj tento úkol a vrať optimalizovaná data.
+    const prompt = `Jsi špičkový expert na osobní produktivitu a GTD (Getting Things Done). Zanalyzuj zadaný úkol a navrhni jeho kompletní, vysoce profesionální optimalizaci.
 
-Název úkolu: "${currentTitle}"${currentDescription ? `\nPopis: "${currentDescription}"` : ""}
+Vstupní údaje:
+Název úkolu: "${currentTitle}"
+${currentDescription ? `Popis úkolu: "${currentDescription}"` : ""}
 
+Workspace kontext:
 ${projectList}
 ${tagList}
 
-Pravidla:
-- optimizedTitle: přeformuluj na akční větu začínající slovesem (např. "Aktualizovat...", "Připravit...", "Navrhnout..."). Zachovej klíčové info, buď konkrétnější než vstup.
-- suggestedProject: vyber NEJLEPŠÍ projekt ze seznamu dostupných podle tématu úkolu. Pokud žádný nesedí, vrať prázdný řetězec "".
-- suggestedTags: vyber 1–3 nejrelevantnější tagy ze seznamu dostupných. Navrhuj pouze existující, přidej nový jen pokud opravdu nic nesedí.
-- timeEstimate: realistický odhad celkového času práce (nejen deadline).
-- subtasks: 3–6 konkrétních, akčních podúkolů pro dokončení tohoto úkolu (česky, každý max 80 znaků).`;
+Pravidla pro optimalizaci:
+1. optimizedTitle: Přeformuluj název na silnou, údernou akční větu v češtině začínající prémiovým, specifickým slovesem v infinitivu (např. místo obecného "Udělat analýzu" navrhni "Vypracovat hloubkovou srovnávací analýzu", místo "Web" navrhni "Zkonstruovat responzivní wireframe hlavní stránky"). Název musí jasně definovat očekávaný výsledek, zachovat klíčové informace a být gramaticky perfektní.
+2. suggestedProject: Vyber ze seznamu dostupných projektů ten JEDINÝ, který tematicky naprosto přesně odpovídá úkolu. Pokud žádný projekt ze seznamu neodpovídá, vrať prázdný řetězec "".
+3. suggestedTags: Vyber 1 až 3 nejrelevantnější tagy ze seznamu dostupných tagů. Pokud žádný z dostupných tagů nesedí, navrhni maximálně jeden nový, vysoce výstižný tag (malá písmena, jednoslovný).
+4. timeEstimate: Proveď realistický, střízlivý odhad celkového čistého času práce potřebného pro dokončení celého úkolu.
+5. subtasks: Vygeneruj 3 až 6 konkrétních, akčních podúkolů (subtasks) v češtině. Podúkoly MUSÍ být seřazeny chronologicky za sebou od přípravné fáze (např. sběr podkladů), přes samotnou realizaci, až po kontrolu kvality a finální odevzdání (každý podúkol max 80 znaků).`;
 
     let rawText = "";
     let success = false;
@@ -119,7 +122,7 @@ Pravidla:
                 responseMimeType: "application/json",
                 responseSchema: GEMINI_RESPONSE_SCHEMA,
                 temperature: 0.4,
-                maxOutputTokens: 2048,
+                maxOutputTokens: 8192,
               },
             }),
           }
