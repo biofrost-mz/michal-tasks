@@ -1985,9 +1985,7 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 
   /* --- Mobile Filter Chips (sticky) --- */
   .chips {
-    border-radius: var(--r) !important;
-    padding: 10px 12px !important;
-    gap: 8px 6px !important;
+    border-radius: 0 !important;
     position: sticky;
     top: 0;
     z-index: 10;
@@ -1996,10 +1994,20 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
     -webkit-backdrop-filter: blur(12px);
     margin-left: -14px;
     margin-right: -14px;
-    padding-left: 14px !important;
-    padding-right: 14px !important;
     border-bottom: 1px solid var(--border-soft);
+    border: none !important;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 8px 14px !important;
+    gap: 6px !important;
   }
+  .chips::-webkit-scrollbar { display: none; }
+  .chips .chips-sep,
+  .chips .chips-div { display: none !important; }
+  .chips .chip-count-only { display: none !important; }
 
   /* --- Mobile top bar --- */
   .mob-topbar {
