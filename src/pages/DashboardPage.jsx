@@ -980,7 +980,7 @@ export default function DashboardPage() {
           <div className="rail-card">
             <div className="rail-h"><span className="rail-h-t">Nedávné poznámky</span><span className="rail-h-a" onClick={() => setPage("notes")}>vše →</span></div>
             {recentNotes.map((n) => {
-              const excerpt = (n.content || "").replace(/[#*_`\n-]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 90);
+              const excerpt = (n.content || "").replace(/<[^>]+>/g, " ").replace(/[#*_`\n-]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 90);
               return (
                 <div key={n.id} className="note-row" onClick={() => { setPage("notes"); }}>
                   <div className="note-t">{n.title || "Bez názvu"}</div>

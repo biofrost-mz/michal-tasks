@@ -248,7 +248,15 @@ function AppShell() {
             return (
               <div className="mob-topbar" onClick={() => { setPage("dashboard"); document.querySelector("main")?.scrollTo({ top: 0, behavior: "smooth" }); }}>
                 <span className="mob-topbar-brand">Zen<span>tero</span></span>
-                <span style={{ fontSize: 12, color: "var(--text-3)", fontFamily: "var(--font-ui)", fontWeight: 500 }}>{dayLabel}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 12, color: "var(--text-3)", fontFamily: "var(--font-ui)", fontWeight: 500 }}>{dayLabel}</span>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setCmdOpen(true); }}
+                    style={{ background: "none", border: "none", padding: "4px", display: "flex", alignItems: "center", color: "var(--text-3)", cursor: "pointer" }}
+                  >
+                    <Icon name="search" size={17} color="var(--text-3)" strokeWidth={1.75} />
+                  </button>
+                </div>
               </div>
             );
           })()}

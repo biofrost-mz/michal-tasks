@@ -314,6 +314,11 @@ export default function TaskDrawer() {
     dragStartRef.current = null;
   }, [dragY, setTaskDetail]);
 
+  const closeDrawer = () => {
+    if (!title.trim() && task) deleteTask(task.id);
+    setTaskDetail(null);
+  };
+
   if (!task) return null;
 
   const s = (u) => {
@@ -368,7 +373,7 @@ export default function TaskDrawer() {
   const projectObj = projects.find((p) => p.id === task.projectId);
 
   return (
-    <div className="overlay" onClick={() => setTaskDetail(null)}>
+    <div className="overlay" onClick={closeDrawer}>
       <div
         className="detail"
         onClick={(e) => e.stopPropagation()}
@@ -415,7 +420,7 @@ export default function TaskDrawer() {
             >
               Smazat
             </button>
-            <button className="icon-btn" onClick={() => setTaskDetail(null)}>
+            <button className="icon-btn" onClick={closeDrawer}>
               <Icon name="x" size={14} color="var(--text-2)" strokeWidth={2} />
             </button>
           </div>
@@ -454,6 +459,7 @@ export default function TaskDrawer() {
             onChange={(e) => setTitle(e.target.value)}
             onBlur={() => s({ title })}
             placeholder="Název úkolu"
+            autoFocus={!task.title}
             style={{ border: "none", background: "transparent", outline: "none", width: "100%", cursor: "text", color: "var(--text)" }}
           />
 

@@ -503,7 +503,7 @@ export function AppProvider({ children }) {
       remindAt: task?.remindAt ?? null,
     };
     setTasks((p) => [...p, tsk]);
-    toast("Úkol vytvořen", "success");
+    if (tsk.title) toast("Úkol vytvořen", "success");
     (async () => {
       if (!userId) return;
       try {
