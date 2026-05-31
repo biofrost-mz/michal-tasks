@@ -156,8 +156,9 @@ export default function MobileNav({ toggleDk }) {
                         onClick={() => { setTaskDetail(task.id); setMoreOpen(false); }}
                         style={{
                           display: "flex", alignItems: "center", gap: 8, width: "100%",
-                          padding: "6px 6px", borderRadius: 7, border: "none", background: "transparent",
+                          padding: "10px 8px", borderRadius: 7, border: "none", background: "transparent",
                           cursor: "pointer", textAlign: "left",
+                          minHeight: 44,
                         }}
                         onMouseEnter={(e) => { e.currentTarget.style.background = t.input; }}
                         onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
