@@ -4,6 +4,7 @@ import Icon from '../components/Icon.jsx'
 import { PrioChip, TagPill } from '../components/atlas/AtlasTaskCard.jsx'
 import EmptyState from '../components/EmptyState.jsx'
 import { triggerConfettiBurst } from '../utils.js'
+import { useConfirm } from '../components/Confirm.jsx'
 
 const PRIORITY_CONFIG = {
   low:    { label: "Nízká",   color: "#22c55e", bg: "#22c55e18" },
@@ -21,6 +22,7 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
   const [exiting, setExiting] = useState(false);
   const startXRef = useRef(null);
   const hasSwipedRef = useRef(false);
+  const offsetXRef = useRef(0);
   const THRESHOLD = 80;
 
   const [isEditing, setIsEditing] = useState(false);
@@ -47,16 +49,25 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
     if (Math.abs(dx) > 15) {
       hasSwipedRef.current = true;
     }
-    setOffsetX(Math.max(dx, -160));
+    const clamped = Math.max(dx, -160);
+    offsetXRef.current = clamped;
+    setOffsetX(clamped);
   };
   const onTouchEnd = () => {
     setSwiping(false);
-    if (offsetX < -THRESHOLD) triggerArchive();
+    if (offsetXRef.current < -THRESHOLD) triggerArchive();
     else setOffsetX(0);
+    offsetXRef.current = 0;
+    startXRef.current = null;
+  };
+  const onTouchCancel = () => {
+    setSwiping(false);
+    setOffsetX(0);
+    offsetXRef.current = 0;
     startXRef.current = null;
   };
 
-  const bgOpacity = Math.min(Math.abs(offsetX) / THRESHOLD, 1);
+  const bgOpacity = Math.min(Math.abs(offsetX + hintOffset) / THRESHOLD, 1);
 
   // Map quickTodo to a visual status — active items are "todo"
   const statusClass = "todo";
@@ -65,6 +76,7 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
     position: "relative",
     overflow: "hidden",
     borderRadius: "var(--r, 14px)",
+    touchAction: "pan-y",
   } : {};
 
   if (isEditing) {
@@ -243,6 +255,7 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
         onTouchStart={isMobile ? onTouchStart : undefined}
         onTouchMove={isMobile ? onTouchMove : undefined}
         onTouchEnd={isMobile ? onTouchEnd : undefined}
+        onTouchCancel={isMobile ? onTouchCancel : undefined}
         onClick={() => {
           if (hasSwipedRef.current) return;
           if (Math.abs(offsetX) > 5) return;
@@ -345,6 +358,7 @@ const SWIPE_HINT_KEY = "qt:swipe-hint-shown";
 
 export default function QuickTodosPage() {
   const { t, isMobile, quickTodos, addQuickTodo, archiveQuickTodo, restoreQuickTodo, deleteQuickTodo, clearArchivedQuickTodos } = useApp();
+  const confirm = useConfirm();
   const [input, setInput] = useState("");
   const [expanded, setExpanded] = useState(false);
   const [priority, setPriority] = useState(null);
@@ -416,7 +430,7 @@ export default function QuickTodosPage() {
           ref={inputRef}
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter" && !expanded) handleAdd(); }}
+          onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); }}
           placeholder="Co potřebuješ udělat nebo koupit…"
         />
         <span className="quickadd-kbd">Enter</span>
@@ -548,7 +562,10 @@ export default function QuickTodosPage() {
             </button>
             {archiveOpen && (
               <button
-                onClick={clearArchivedQuickTodos}
+                onClick={async () => {
+                  const ok = await confirm(`Smazat všech ${archived.length} archivovaných položek?`);
+                  if (ok) clearArchivedQuickTodos();
+                }}
                 style={{ marginLeft: "auto", background: "none", border: "none", color: "var(--text-3)", fontSize: 13, cursor: "pointer", padding: "2px 0" }}
               >
                 Smazat vše

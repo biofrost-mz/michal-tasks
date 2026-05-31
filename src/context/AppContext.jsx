@@ -92,14 +92,28 @@ function useIsMobile() {
    DB fetch all (uses service normalizers)
 ───────────────────────────────────────────── */
 async function dbFetchAll(userId, workspaceId) {
-  const { data: projects, error: pErr } = await supabase
-    .from("projects")
-    .select("*")
-    .eq("workspace_id", workspaceId)
-    .order("position", { ascending: true, nullsFirst: false });
-  if (pErr) throw pErr;
+  const [
+    { data: projects, error: pErr },
+    rawTasks,
+    { data: tags, error: gErr },
+    { data: notes, error: nErr },
+    { data: atts, error: aErr },
+    { data: qts, error: qtErr },
+  ] = await Promise.all([
+    supabase.from("projects").select("*").eq("workspace_id", workspaceId).order("position", { ascending: true, nullsFirst: false }),
+    taskService.fetchTasks(workspaceId),
+    supabase.from("tags").select("*").eq("workspace_id", workspaceId).order("created_at", { ascending: true }),
+    supabase.from("notes").select("*").eq("workspace_id", workspaceId).order("updated_at", { ascending: false }),
+    supabase.from("attachments").select("*").eq("workspace_id", workspaceId).order("created_at", { ascending: false }),
+    supabase.from("quick_todos").select("*").eq("workspace_id", workspaceId).order("created_at", { ascending: false }),
+  ]);
 
-  const rawTasks = await taskService.fetchTasks(workspaceId);
+  if (pErr) throw pErr;
+  if (gErr) throw gErr;
+  if (nErr) console.warn("notes table:", nErr.message);
+  if (aErr) console.warn("attachments table:", aErr.message);
+  if (qtErr) console.warn("quick_todos table:", qtErr.message);
+
   const taskIds = rawTasks.map((t) => t.id);
   const rawTaskTags = await taskService.fetchTaskTags(taskIds);
 
@@ -108,34 +122,6 @@ async function dbFetchAll(userId, workspaceId) {
     if (!tagMap.has(x.task_id)) tagMap.set(x.task_id, []);
     tagMap.get(x.task_id).push(x.tag_id);
   });
-
-  const { data: tags, error: gErr } = await supabase
-    .from("tags")
-    .select("*")
-    .eq("workspace_id", workspaceId)
-    .order("created_at", { ascending: true });
-  if (gErr) throw gErr;
-
-  const { data: notes, error: nErr } = await supabase
-    .from("notes")
-    .select("*")
-    .eq("workspace_id", workspaceId)
-    .order("updated_at", { ascending: false });
-  if (nErr) console.warn("notes table:", nErr.message);
-
-  const { data: atts, error: aErr } = await supabase
-    .from("attachments")
-    .select("*")
-    .eq("workspace_id", workspaceId)
-    .order("created_at", { ascending: false });
-  if (aErr) console.warn("attachments table:", aErr.message);
-
-  const { data: qts, error: qtErr } = await supabase
-    .from("quick_todos")
-    .select("*")
-    .eq("workspace_id", workspaceId)
-    .order("created_at", { ascending: false });
-  if (qtErr) console.warn("quick_todos table:", qtErr.message);
 
   return {
     projects: (projects || []).map((p, i) => projectService.normalizeProject(p, i)),
