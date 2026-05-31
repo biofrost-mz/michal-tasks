@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useEffect, useState, useCallback, useRef } from "react";
+import React, { lazy, Suspense, useEffect, useState, useRef } from "react";
 import { useApp, AppProvider } from "./context/AppContext.jsx";
 import Icon from "./components/Icon.jsx";
 import { ToastProvider, useToast } from "./components/Toast.jsx";
@@ -27,7 +27,7 @@ const QuickTodosPage       = lazy(() => import("./pages/QuickTodosPage.jsx"));
 const AdminPage            = lazy(() => import("./pages/AdminPage.jsx"));
 
 function OfflineBanner() {
-  const [online, setOnline] = useState(() => navigator.onLine);
+  const [online, setOnline] = useState(() => (typeof navigator === "undefined" ? true : navigator.onLine));
   useEffect(() => {
     const up = () => setOnline(true);
     const dn = () => setOnline(false);
@@ -56,7 +56,7 @@ function AppErrorReporter() {
     if (!errorQueue.length) return;
     errorQueue.forEach((msg) => toast(msg, "error"));
     clearErrors();
-  }, [errorQueue]);
+  }, [errorQueue, toast, clearErrors]);
   return null;
 }
 
@@ -152,7 +152,7 @@ function PageTransition({ pageKey, children }) {
 }
 
 function AppShell() {
-  const { dk, setDk, isMobile, page, setPage, taskDetail, setTaskDetail, cmdOpen, setCmdOpen } = useApp();
+  const { dk, setDk, isMobile, page, setPage, taskDetail, cmdOpen, setCmdOpen } = useApp();
   const [collapsed, setCollapsed] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const gPressedRef = useRef(false);
@@ -259,7 +259,7 @@ function AppShell() {
 
       <OfflineBanner />
       <AppErrorReporter />
-      <div className={!isMobile ? `app ${collapsed ? "collapsed" : ""}` : undefined} style={isMobile ? { display: "flex", width: "100%", height: "100vh", overflow: "hidden" } : undefined}>
+      <div className={!isMobile ? `app ${collapsed ? "collapsed" : ""}` : undefined} style={isMobile ? { display: "flex", width: "100%", height: "100dvh", minHeight: "100svh", overflow: "hidden" } : undefined}>
         {!isMobile && <AtlasSidebar collapsed={collapsed} setCollapsed={setCollapsed} />}
         <div className={!isMobile ? "main" : undefined} style={isMobile ? { flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden" } : undefined}>
           {!isMobile && <AtlasTopBar />}
@@ -283,7 +283,7 @@ function AppShell() {
               </div>
             );
           })()}
-          <main style={isMobile ? { flex: 1, minWidth: 0, width: "100%", overflow: "auto", position: "relative", paddingBottom: "calc(66px + env(safe-area-inset-bottom, 0px))", overscrollBehaviorY: "contain" } : undefined}>
+          <main style={isMobile ? { flex: 1, minWidth: 0, width: "100%", overflowY: "auto", overflowX: "hidden", position: "relative", paddingBottom: "calc(66px + env(safe-area-inset-bottom, 0px))", overscrollBehaviorY: "contain" } : undefined}>
             <PageTransition pageKey={page}>
               <Suspense fallback={null}>
                 {page === "dashboard"          && <PageErrorBoundary label="Přehled">         <DashboardPage />         </PageErrorBoundary>}

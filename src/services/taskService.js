@@ -55,9 +55,12 @@ export async function insertTask(tsk, userId, workspaceId) {
     status: tsk.status,
     priority: tsk.priority,
     due_date: tsk.dueDate,
+    ...(tsk.remindAt != null ? { remind_at: tsk.remindAt } : {}),
+    ...(tsk.assigneeUserId != null ? { assignee_user_id: tsk.assigneeUserId } : {}),
     position: tsk.position,
     starred: tsk.starred,
     phases: tsk.phases,
+    subtasks: tsk.subtasks,
     ...(tsk.recurrence != null ? { recurrence: tsk.recurrence } : {}),
     completed_at: tsk.status === "done" ? new Date().toISOString() : null,
   });

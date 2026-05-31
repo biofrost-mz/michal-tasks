@@ -7,6 +7,7 @@ import { NOTE_TEMPLATES, NOTE_STATUSES } from '../constants.js'
 import { projectColor, relTime } from '../utils.js'
 import { supabase } from '../supabase.js'
 import { compareText, formatDate, formatDateTime } from '../locale.js'
+import DOMPurify from 'dompurify'
 
 
 const CURATED_TAG_COLORS = ["#38bdf8", "#34d399", "#fb7185", "#f472b6", "#fbbf24", "#a78bfa", "#c084fc", "#60a5fa", "#2dd4bf", "#fb923c"];
@@ -100,8 +101,21 @@ function mdToHtml(md) {
 
 function initEditorContent(content) {
   if (!content) return "";
-  if (/<[a-z]/i.test(content)) return content;
-  return mdToHtml(content);
+  const html = /<[a-z]/i.test(content) ? content : mdToHtml(content);
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: [
+      "p", "br", "strong", "em", "del", "s", "code", "pre", "blockquote",
+      "h1", "h2", "h3", "h4", "ul", "ol", "li", "a", "img", "hr", "div", "span",
+      "table", "thead", "tbody", "tr", "th", "td", "input"
+    ],
+    ALLOWED_ATTR: [
+      "href", "target", "rel", "src", "alt", "class", "style", "data-type", "data-noteid",
+      "type", "checked", "colspan", "rowspan"
+    ],
+    ALLOW_DATA_ATTR: false,
+    FORBID_TAGS: ["script", "iframe", "object", "embed", "form"],
+    FORBID_ATTR: ["onerror", "onload", "onclick", "onmouseover"],
+  });
 }
 
 /* ─── Pin SVG icon ─────────────────────────── */
@@ -273,7 +287,7 @@ function NoteEditor({ note, onSave, t, isMobile, showProps, onToggleProps, onDel
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async () => {
       try {
-        await onSave(data);
+        await onSave({ ...data, content: initEditorContent(data.content || "") });
         setSaveState("saved");
         setTimeout(() => setSaveState("idle"), 2000);
       } catch { setSaveState("idle"); }

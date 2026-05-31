@@ -1953,10 +1953,43 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 #root { height: 100%; }
 
 @media (max-width: 767px) {
-  .app { display: block; height: auto; min-height: 100vh; }
+  html, body, #root {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+  .app {
+    display: block;
+    height: auto;
+    min-height: 100vh;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
   .sb, .tb { display: none; }
-  .content { padding: 16px 14px 82px; }
-  .work { grid-template-columns: 1fr; gap: 12px; }
+  .main { overflow-x: hidden; }
+  .content {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    margin: 0;
+    padding: 16px 14px 82px;
+    overflow-x: hidden;
+  }
+  .content > * {
+    max-width: 100%;
+    min-width: 0;
+  }
+  .work {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: hidden;
+  }
+  .work > * {
+    max-width: 100%;
+    min-width: 0;
+  }
 
   /* --- Mobile Page Heading and Tables --- */
   .ph {
@@ -2007,6 +2040,34 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   .chips .chips-sep,
   .chips .chips-div { display: none !important; }
   .chips .chip-count-only { display: none !important; }
+
+  .sec,
+  .tcards,
+  .rail,
+  .rail-card {
+    max-width: 100%;
+    min-width: 0;
+  }
+  .sec-head {
+    align-items: center;
+    gap: 8px;
+    max-width: 100%;
+    min-width: 0;
+  }
+  .sec-title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .sec-act {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  .rail {
+    position: static;
+    width: 100%;
+  }
 
   /* --- Mobile top bar --- */
   .mob-topbar {
@@ -2059,6 +2120,9 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   .headline {
     padding: 16px 14px;
     gap: 10px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
   }
   .headline::before {
     width: 150px;
@@ -2070,6 +2134,9 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
     flex-direction: column;
     gap: 0;
     align-items: flex-start;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
   }
   .hl-greet {
     font-size: 10px;
@@ -2079,6 +2146,8 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
     flex-direction: row;
     align-items: center;
     gap: 10px;
+    max-width: 100%;
+    min-width: 0;
   }
   .hl-daynum {
     flex-shrink: 0;
@@ -2109,6 +2178,9 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
     color: var(--text-3);
     padding: 8px 0 0;
     flex-wrap: wrap;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
   }
   .hl-mob-strip span {
     white-space: nowrap;
@@ -2118,15 +2190,18 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
     padding: 3px 9px;
   }
 
-  /* Stats: 3×2 grid */
+  /* Stats: compact 2-column grid that never widens the page */
   .hl-stats {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     padding-top: 0;
     gap: 0;
-    overflow: visible;
+    overflow: hidden;
     border-top: 1px solid var(--border-soft);
     margin-top: 12px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
   }
   .hl-stat {
     flex: unset;
@@ -2139,8 +2214,8 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   }
   .hl-stat:first-child { padding-left: 10px; }
   .hl-stat:last-child { border-right: 1px solid var(--border-soft); padding-right: 10px; }
-  .hl-stat:nth-child(3n) { border-right: none; }
-  .hl-stat:nth-child(n+4) { border-bottom: none; }
+  .hl-stat:nth-child(2n) { border-right: none; }
+  .hl-stat:nth-child(n+5) { border-bottom: none; }
   .hl-stat-v {
     font-size: 26px;
     margin-top: 2px;
@@ -2227,6 +2302,8 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   .quickadd {
     padding: 12px 14px;
     gap: 10px;
+    max-width: 100%;
+    min-width: 0;
   }
   .quickadd-plus {
     width: 24px;
@@ -2244,9 +2321,11 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 
   /* === D. Karty úkolů (.tcard) === */
   .tcard {
-    grid-template-columns: 28px 1fr;
+    grid-template-columns: 28px minmax(0, 1fr);
     padding: 14px 16px;
     gap: 12px;
+    max-width: 100%;
+    min-width: 0;
   }
   .tcard-acts {
     grid-column: 1 / -1;
@@ -2257,6 +2336,7 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
     justify-content: space-between;
     align-items: center;
     width: 100%;
+    min-width: 0;
   }
   .tcard-title {
     font-size: 15px;
@@ -2267,6 +2347,19 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   .tcard-meta {
     margin-top: 10px;
     gap: 6px;
+    max-width: 100%;
+    min-width: 0;
+  }
+  .stepper {
+    width: 100%;
+    min-width: 0;
+  }
+  .stepper button {
+    flex: 1;
+    min-width: 0;
+    padding: 7px 6px;
+    font-size: 9.5px;
+    letter-spacing: 0;
   }
   .proj-pill {
     padding: 2px 8px 2px 6px;

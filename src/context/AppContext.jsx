@@ -10,7 +10,6 @@ import React, {
 import { supabase } from "../supabase.js";
 import theme from "../theme.js";
 import { uuid4, parseYMD, useDebouncedEffect, setGlobalProjects } from "../utils.js";
-import { formatDateKey } from "../locale.js";
 import * as taskService from "../services/taskService.js";
 import * as noteService from "../services/noteService.js";
 import * as projectService from "../services/projectService.js";
@@ -501,6 +500,7 @@ export function AppProvider({ children }) {
       starred: !!task?.starred,
       recurrence: task?.recurrence ?? null,
       remindAt: task?.remindAt ?? null,
+      assigneeUserId: task?.assigneeUserId ?? null,
     };
     setTasks((p) => [...p, tsk]);
     if (tsk.title) toast("Úkol vytvořen", "success");
@@ -636,6 +636,8 @@ export function AppProvider({ children }) {
               completedAt: null,
               starred: nextTask.starred,
               recurrence: nextTask.recurrence,
+              assigneeUserId: nextTask.assigneeUserId ?? null,
+              remindAt: null,
             };
             setTasks((p) => [...p, newTask]);
             (async () => {

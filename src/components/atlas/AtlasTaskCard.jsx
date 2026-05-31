@@ -36,6 +36,7 @@ export function mapTaskForAtlas(task, projectsById, tagsById, today) {
     status: task.status,
     priority: task.priority || "medium",
     due: formatShortDue(task.dueDate),
+    dueDate: task.dueDate ?? null,
     overdue,
     tags: tagNames,
     tagIds: task.tagIds || [],

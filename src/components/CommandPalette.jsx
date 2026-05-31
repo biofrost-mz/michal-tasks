@@ -26,6 +26,13 @@ export default function CommandPalette({ onClose }) {
     return qi === qq.length ? score : -1;
   }
 
+  const openTasksWithFilter = (filter = null, searchText = "") => {
+    setPage("tasks");
+    setDashFilter(filter);
+    setSearch(searchText);
+    onClose();
+  };
+
   const quickActions = [
     { id: "new-task",      icon: "check-square", label: "Nový úkol",           group: "Akce",     action: () => { onClose(); window.dispatchEvent(new CustomEvent("focusQuickAdd")); } },
     { id: "new-note",      icon: "file-text",    label: "Nová poznámka",        group: "Akce",     action: () => { const n = addNote({}); openNote(n.id); onClose(); } },
@@ -119,9 +126,7 @@ export default function CommandPalette({ onClose }) {
         score,
         tagColor: tg.color,
         action: () => {
-          setPage("tasks");
-          setSearch(tg.name);
-          onClose();
+          openTasksWithFilter({ tagId: tg.id }, "");
         },
       };
     })
@@ -132,17 +137,17 @@ export default function CommandPalette({ onClose }) {
   // Priority filter quick actions (only show when queried)
   const priorityFilters = query
     ? [
-        { id: "filter-high",   icon: "alert-triangle", label: "Vysoká priorita",  group: "Filtry", action: () => { setPage("tasks"); setDashFilter && setDashFilter({ priority: "high" }); onClose(); } },
-        { id: "filter-medium", icon: "minus-circle",   label: "Střední priorita", group: "Filtry", action: () => { setPage("tasks"); setDashFilter && setDashFilter({ priority: "medium" }); onClose(); } },
+        { id: "filter-high",   icon: "alert-triangle", label: "Vysoká priorita",  group: "Filtry", action: () => openTasksWithFilter({ priority: "high" }) },
+        { id: "filter-medium", icon: "minus-circle",   label: "Střední priorita", group: "Filtry", action: () => openTasksWithFilter({ priority: "medium" }) },
       ].filter((pf) => fuzzy(pf.label, query) >= 0)
     : [];
 
   // Date filter quick actions (only show when queried)
   const dateFilters = query
     ? [
-        { id: "filter-today",   icon: "calendar",    label: "Dnes",        group: "Filtry", action: () => { setPage("tasks"); setDashFilter && setDashFilter({ date: "today" }); onClose(); } },
-        { id: "filter-week",    icon: "calendar",    label: "Tento týden", group: "Filtry", action: () => { setPage("tasks"); setDashFilter && setDashFilter({ date: "week" }); onClose(); } },
-        { id: "filter-overdue", icon: "alert-circle",label: "Po termínu",  group: "Filtry", action: () => { setPage("tasks"); setDashFilter && setDashFilter({ date: "overdue" }); onClose(); } },
+        { id: "filter-today",   icon: "calendar",    label: "Dnes",        group: "Filtry", action: () => openTasksWithFilter({ date: "today" }) },
+        { id: "filter-week",    icon: "calendar",    label: "Tento týden", group: "Filtry", action: () => openTasksWithFilter({ date: "week" }) },
+        { id: "filter-overdue", icon: "alert-circle",label: "Po termínu",  group: "Filtry", action: () => openTasksWithFilter({ date: "overdue" }) },
       ].filter((df) => fuzzy(df.label, query) >= 0)
     : [];
 
@@ -151,8 +156,6 @@ export default function CommandPalette({ onClose }) {
     : quickActions;
 
   const safeCursor = Math.min(cursor, Math.max(0, items.length - 1));
-
-  useEffect(() => { setCursor(0); }, [query]);
 
   const handleKey = (e) => {
     if (e.key === "ArrowDown") { e.preventDefault(); setCursor((c) => Math.min(c + 1, items.length - 1)); }
@@ -229,7 +232,7 @@ export default function CommandPalette({ onClose }) {
           <input
             ref={inputRef}
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => { setQuery(e.target.value); setCursor(0); }}
             onKeyDown={handleKey}
             placeholder="Hledat úkoly, projekty, tagy, poznámky…"
             style={{ flex: 1, border: "none", background: "transparent", outline: "none", color: t.text, fontSize: 15 }}

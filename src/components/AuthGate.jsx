@@ -122,7 +122,7 @@ const FEATURES = [
 ];
 
 export default function AuthGate({ children }) {
-  const { t, isMobile } = useApp();
+  const { isMobile } = useApp();
   const toast = useToast();
 
   const [session,  setSession]  = useState(null);
@@ -135,25 +135,36 @@ export default function AuthGate({ children }) {
   const [showPw,   setShowPw]   = useState(false);
   const [sending,  setSending]  = useState(false);
   const [sent,     setSent]     = useState(false);
-  const [isResetting, setIsResetting] = useState(false);
+  const [isResetting, setIsResetting] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const params = new URLSearchParams(window.location.search);
+    return params.get("reset") === "1" || window.location.hash.includes("type=recovery");
+  });
   const [mouseCoords, setMouseCoords] = useState({ x: 50, y: 50 });
 
   useEffect(() => {
+    if (isMobile) return;
+    let rafId = null;
+    let nextCoords = { x: 50, y: 50 };
     const handleMouseMove = (e) => {
-      const x = (e.clientX / window.innerWidth) * 100;
-      const y = (e.clientY / window.innerHeight) * 100;
-      setMouseCoords({ x, y });
+      nextCoords = {
+        x: (e.clientX / window.innerWidth) * 100,
+        y: (e.clientY / window.innerHeight) * 100,
+      };
+      if (rafId !== null) return;
+      rafId = window.requestAnimationFrame(() => {
+        rafId = null;
+        setMouseCoords(nextCoords);
+      });
     };
     window.addEventListener("mousemove", handleMouseMove);
-    return () => window.removeEventListener("mousemove", handleMouseMove);
-  }, []);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      if (rafId !== null) window.cancelAnimationFrame(rafId);
+    };
+  }, [isMobile]);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("reset") === "1" || window.location.hash.includes("type=recovery")) {
-      setIsResetting(true);
-    }
-
     supabase.auth.getSession().then(({ data }) => setSession(data.session ?? null));
     const { data: sub } = supabase.auth.onAuthStateChange((event, newSession) => {
       setSession(newSession ?? null);

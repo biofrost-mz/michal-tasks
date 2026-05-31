@@ -12,6 +12,7 @@ import { startOfToday, triggerConfettiBurst } from "../utils.js";
 import QuickAdd from "../components/QuickAdd.jsx";
 import EmptyState from "../components/EmptyState.jsx";
 import { useTaskKeyboard } from "../hooks/useTaskKeyboard.js";
+import { formatDateKey } from "../locale.js";
 
 const CHIP_STATUSES = ["all", "active", "todo", "doing", "wait", "done"];
 const STATUS_LABELS = {
@@ -91,11 +92,12 @@ export default function TasksPage() {
     tasks,
     projects,
     tags,
-    addTask,
     updateTask,
     deleteTask,
     setTaskDetail,
     search,
+    dashFilter,
+    setDashFilter,
     tasksPageFilter,
     setTasksPageFilter,
     isMobile,
@@ -106,6 +108,7 @@ export default function TasksPage() {
 
   useEffect(() => {
     if (tasksPageFilter && tasksPageFilter !== "all" && tasksPageFilter !== "active") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setStatusFilter(tasksPageFilter);
       setTasksPageFilter("active");
     }
@@ -113,9 +116,15 @@ export default function TasksPage() {
   const [projectFilter, setProjectFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [tagFilter, setTagFilter] = useState("all");
-  const [quickText, setQuickText] = useState("");
+  const [dateFilter, setDateFilter] = useState("all");
 
-  const today = startOfToday();
+  const today = useMemo(() => startOfToday(), []);
+  const todayKey = useMemo(() => formatDateKey(today), [today]);
+  const weekEndKey = useMemo(() => {
+    const d = new Date(today);
+    d.setDate(d.getDate() + 6);
+    return formatDateKey(d);
+  }, [today]);
   const projectsById = useMemo(() => new Map(projects.map((p) => [p.id, p])), [projects]);
   const tagsById = useMemo(() => new Map(tags.map((tg) => [tg.id, tg])), [tags]);
 
@@ -123,6 +132,17 @@ export default function TasksPage() {
     () => tasks.map((t) => mapTaskForAtlas(t, projectsById, tagsById, today)),
     [tasks, projectsById, tagsById, today]
   );
+
+  useEffect(() => {
+    if (!dashFilter || typeof dashFilter !== "object") return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (dashFilter.status) setStatusFilter(dashFilter.status);
+    if (dashFilter.priority) setPriorityFilter(dashFilter.priority);
+    if (dashFilter.projectId) setProjectFilter(dashFilter.projectId);
+    if (dashFilter.tagId) setTagFilter(dashFilter.tagId);
+    if (dashFilter.date) setDateFilter(dashFilter.date);
+    setDashFilter(null);
+  }, [dashFilter, setDashFilter]);
 
   const baseFiltered = useMemo(() => {
     let list = mappedTasks;
@@ -145,8 +165,16 @@ export default function TasksPage() {
       list = list.filter((t) => t.tagIds.includes(tagFilter));
     }
 
+    if (dateFilter === "today") {
+      list = list.filter((t) => t.dueDate === todayKey);
+    } else if (dateFilter === "week") {
+      list = list.filter((t) => t.dueDate && t.dueDate >= todayKey && t.dueDate <= weekEndKey);
+    } else if (dateFilter === "overdue") {
+      list = list.filter((t) => t.dueDate && t.dueDate < todayKey && t.status !== "done");
+    }
+
     return list;
-  }, [mappedTasks, search, projectFilter, priorityFilter, tagFilter]);
+  }, [mappedTasks, search, projectFilter, priorityFilter, tagFilter, dateFilter, todayKey, weekEndKey]);
 
   const filtered = useMemo(() => {
     let list = baseFiltered;
@@ -163,14 +191,6 @@ export default function TasksPage() {
 
   const doneCount = mappedTasks.filter((t) => t.status === "done").length;
   const activeCount = mappedTasks.length - doneCount;
-
-  const onQuickAdd = (e) => {
-    if (e.key !== "Enter") return;
-    const title = quickText.trim();
-    if (!title) return;
-    addTask({ title });
-    setQuickText("");
-  };
 
   const [focusedId, setFocusedId] = useState(null);
 
@@ -275,6 +295,16 @@ export default function TasksPage() {
           <>
             <span className="chips-div" />
             <select
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              style={{ background: "var(--surface)", color: "var(--text-2)", border: "1px solid var(--border-soft)", borderRadius: 999, padding: "7px 12px", fontSize: 12.5 }}
+            >
+              <option value="all">Všechny termíny</option>
+              <option value="today">Dnes</option>
+              <option value="week">Tento týden</option>
+              <option value="overdue">Po termínu</option>
+            </select>
+            <select
               value={priorityFilter}
               onChange={(e) => setPriorityFilter(e.target.value)}
               style={{ background: "var(--surface)", color: "var(--text-2)", border: "1px solid var(--border-soft)", borderRadius: 999, padding: "7px 12px", fontSize: 12.5 }}
@@ -308,7 +338,7 @@ export default function TasksPage() {
 
         {/* Mobilní filtr tlačítko */}
         {isMobile && (() => {
-          const activeFilters = [priorityFilter, tagFilter, projectFilter].filter((f) => f !== "all").length;
+          const activeFilters = [priorityFilter, tagFilter, projectFilter, dateFilter].filter((f) => f !== "all").length;
           return (
             <span
               className={`chip ${activeFilters > 0 ? "active" : ""}`}
@@ -344,9 +374,9 @@ export default function TasksPage() {
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <span style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>Filtry</span>
               <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                {[priorityFilter, tagFilter, projectFilter].some((f) => f !== "all") && (
+                {[priorityFilter, tagFilter, projectFilter, dateFilter].some((f) => f !== "all") && (
                   <button
-                    onClick={() => { setPriorityFilter("all"); setTagFilter("all"); setProjectFilter("all"); }}
+                    onClick={() => { setPriorityFilter("all"); setTagFilter("all"); setProjectFilter("all"); setDateFilter("all"); }}
                     style={{ fontSize: 12, color: "var(--accent)", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}
                   >
                     Resetovat
@@ -358,6 +388,30 @@ export default function TasksPage() {
                 >
                   ✕
                 </button>
+              </div>
+            </div>
+
+            {/* Datum */}
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, fontFamily: "var(--font-mono)" }}>
+                Termín
+              </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {[["all","Vše"], ["today","Dnes"], ["week","Tento týden"], ["overdue","Po termínu"]].map(([v, label]) => (
+                  <button
+                    key={v}
+                    onClick={() => setDateFilter(v)}
+                    style={{
+                      padding: "8px 14px", borderRadius: 20, fontSize: 13, fontWeight: 600,
+                      border: `1.5px solid ${dateFilter === v ? "var(--accent)" : "var(--border-soft)"}`,
+                      background: dateFilter === v ? "var(--accent-soft)" : "transparent",
+                      color: dateFilter === v ? "var(--accent)" : "var(--text-2)",
+                      cursor: "pointer", minHeight: 40,
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
             </div>
 
