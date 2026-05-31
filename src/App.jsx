@@ -61,118 +61,22 @@ function AppErrorReporter() {
 }
 
 function MobileFAB() {
-  const { addTask, addQuickTodo, page } = useApp();
-  const [open, setOpen] = useState(false);
-  const [text, setText] = useState("");
-  const [inputBottom, setInputBottom] = useState(null);
-  const inputRef = React.useRef(null);
-
-  React.useEffect(() => { if (open) setTimeout(() => inputRef.current?.focus(), 80); }, [open]);
-
-  // Sledujeme vizuální viewport (iOS klávesnice) a repositionujeme input nad ní
-  React.useEffect(() => {
-    if (!open || !window.visualViewport) return;
-    const vv = window.visualViewport;
-    const update = () => {
-      const keyboardHeight = window.innerHeight - vv.height - vv.offsetTop;
-      setInputBottom(keyboardHeight > 50 ? keyboardHeight + 12 : null);
-    };
-    vv.addEventListener("resize", update);
-    vv.addEventListener("scroll", update);
-    update();
-    return () => { vv.removeEventListener("resize", update); vv.removeEventListener("scroll", update); };
-  }, [open]);
-
-  React.useEffect(() => { if (!open) setInputBottom(null); }, [open]);
-
-  const handleAdd = () => {
-    const val = text.trim();
-    if (!val) return;
-    if (page === "quick-todos") {
-      addQuickTodo(val);
-    } else {
-      addTask({ title: val });
-    }
-    setText("");
-    setOpen(false);
-  };
+  const { page, setPage } = useApp();
 
   const openTaskModal = () => {
-    window.dispatchEvent(new CustomEvent("openQuickAddModal"));
-    setOpen(false);
+    const dispatchOpen = () => window.dispatchEvent(new CustomEvent("openQuickAddModal"));
+    if (page === "dashboard" || page === "tasks") {
+      dispatchOpen();
+      return;
+    }
+    setPage("dashboard");
+    window.setTimeout(dispatchOpen, 180);
   };
 
-  const inputBottomStyle = inputBottom != null
-    ? inputBottom + 12
-    : "calc(66px + env(safe-area-inset-bottom, 0px) + 76px)";
-
   return (
-    <>
-      {open && (
-        <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)", zIndex: 189 }}>
-          <div onClick={(e) => e.stopPropagation()} style={{
-            position: "fixed",
-            bottom: inputBottomStyle,
-            left: 16, right: 16,
-            background: "var(--surface)", border: "1px solid var(--border-soft)",
-            borderRadius: "var(--r, 14px)", padding: "12px 14px",
-            boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
-            display: "flex", gap: 8, zIndex: 191, alignItems: "center",
-            transition: "bottom .25s cubic-bezier(.4,0,.2,1)",
-          }}>
-            {page === "quick-todos" ? (
-              <>
-                <input
-                  ref={inputRef}
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); }}
-                  placeholder="Nová položka…"
-                  style={{
-                    flex: 1, padding: "10px 14px", borderRadius: 10,
-                    border: "1px solid var(--border-soft)", background: "var(--bg-2)",
-                    color: "var(--text)", fontSize: 16, outline: "none",
-                  }}
-                />
-                <button onClick={handleAdd} disabled={!text.trim()} style={{
-                  width: 44, borderRadius: 10, border: "none",
-                  background: text.trim() ? "var(--accent)" : "var(--bg-2)",
-                  color: text.trim() ? "var(--bg)" : "var(--text-3)",
-                  fontWeight: 700, fontSize: 18,
-                }}>+</button>
-              </>
-            ) : (
-              <button
-                onClick={openTaskModal}
-                style={{
-                  width: "100%",
-                  border: "1px solid var(--border-soft)",
-                  background: "var(--bg-2)",
-                  color: "var(--text)",
-                  borderRadius: 12,
-                  minHeight: 52,
-                  padding: "0 14px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  fontSize: 15,
-                  fontWeight: 500,
-                  textAlign: "left",
-                }}
-              >
-                <span>Přidat nový úkol</span>
-                <span style={{ width: 28, height: 28, borderRadius: 8, background: "var(--accent-soft)", color: "var(--accent)", display: "grid", placeItems: "center" }}>
-                  <Icon name="plus" size={16} color="currentColor" strokeWidth={2.2} />
-                </span>
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-      <button className={`fab ${open ? "open" : ""}`} onClick={() => setOpen((v) => !v)}>
-        <Icon name="plus" size={28} color="currentColor" strokeWidth={2.5} />
-      </button>
-    </>
+    <button className="fab" onClick={openTaskModal} aria-label="Nový úkol">
+      <Icon name="plus" size={28} color="currentColor" strokeWidth={2.5} />
+    </button>
   );
 }
 
