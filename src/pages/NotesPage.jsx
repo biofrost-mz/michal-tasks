@@ -906,7 +906,7 @@ function NoteEditor({ note, onSave, t, isMobile, showProps, onToggleProps, onDel
 function NotePropertiesPanel({ note, onClose, t, isMobile, onExportMD, projects, tasks, addTask, activeWorkspaceId }) {
   const { updateNote, tags: globalTags, addTag: createGlobalTag } = useApp();
   const toast = useToast();
-  const [tagInput,        setTagInput]        = useState("");
+  const [tagSearch,       setTagSearch]       = useState("");
   const [showAllProjects, setShowAllProjects] = useState(true);
   const [showAllTasks,    setShowAllTasks]    = useState(false);
   const [taskSearch,      setTaskSearch]      = useState("");
@@ -915,31 +915,31 @@ function NotePropertiesPanel({ note, onClose, t, isMobile, onExportMD, projects,
   const linkedProject = note.primaryProjectId ? projects.find(p => p.id === note.primaryProjectId) : null;
   const linkedTask    = note.primaryTaskId    ? tasks.find(tk => tk.id === note.primaryTaskId)     : null;
 
-  const addTag = (raw) => {
-    const rawClean = raw.trim().replace(/\s+/g, "-");
-    if (!rawClean) return;
-    
-    if (note.tags?.some(t2 => t2.trim().toLowerCase() === rawClean.toLowerCase())) return;
-
-    const matchedGlobal = globalTags?.find(gt => gt.name.trim().toLowerCase() === rawClean.toLowerCase());
-    
-    let tagNameForNote = rawClean;
-    if (matchedGlobal) {
-      tagNameForNote = matchedGlobal.name;
-    } else {
-      const randomColor = getRandomTagColor();
-      createGlobalTag({ name: rawClean, color: randomColor });
-    }
-
-    const nextTags = [...(note.tags || []), tagNameForNote];
-    updateNote(note.id, { tags: nextTags });
+  const addTagByName = (raw) => {
+    const name = raw.trim().replace(/\s+/g, "-");
+    if (!name) return;
+    if (note.tags?.some(t2 => t2.toLowerCase() === name.toLowerCase())) return;
+    const matched = globalTags?.find(gt => gt.name.toLowerCase() === name.toLowerCase());
+    const tagName = matched ? matched.name : name;
+    if (!matched) createGlobalTag({ name, color: getRandomTagColor() });
+    updateNote(note.id, { tags: [...(note.tags || []), tagName] });
+    setTagSearch("");
   };
+
   const removeTag = (tag) => updateNote(note.id, { tags: note.tags.filter(t2 => t2 !== tag) });
 
-  const handleTagKey = (e) => {
-    if ((e.key === "Enter" || e.key === ",") && tagInput.trim()) { e.preventDefault(); addTag(tagInput); setTagInput(""); }
-    else if (e.key === "Backspace" && !tagInput && note.tags.length) removeTag(note.tags[note.tags.length-1]);
+  const toggleGlobalTag = (gt) => {
+    const already = note.tags?.some(t2 => t2.toLowerCase() === gt.name.toLowerCase());
+    if (already) {
+      updateNote(note.id, { tags: (note.tags || []).filter(t2 => t2.toLowerCase() !== gt.name.toLowerCase()) });
+    } else {
+      updateNote(note.id, { tags: [...(note.tags || []), gt.name] });
+    }
   };
+
+  const filteredGlobalTags = tagSearch.trim()
+    ? (globalTags || []).filter(gt => gt.name.toLowerCase().includes(tagSearch.toLowerCase()))
+    : (globalTags || []);
 
   const runAIExtract = async () => {
     try {
@@ -1021,196 +1021,232 @@ function NotePropertiesPanel({ note, onClose, t, isMobile, onExportMD, projects,
     !taskSearch || (tk.title || "").toLowerCase().includes(taskSearch.toLowerCase())
   );
 
+  const SH = ({ label }) => (
+    <div style={{ fontSize:11, fontWeight:750, textTransform:"uppercase", letterSpacing:".07em", color:t.text3, marginBottom:8 }}>{label}</div>
+  );
+  const Sep = () => <div style={{ height:1, background:"var(--border-soft)", margin:"4px 0" }} />;
+
   return (
     <div style={panelStyle}>
       {/* Header */}
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"14px 14px 10px", borderBottom:`1px solid ${t.border}`, position:"sticky", top:0, background:t.bg2, zIndex:1 }}>
-        <span style={{ fontSize:13, fontWeight:850, color:t.text }}>Vlastnosti poznámky</span>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"14px 16px 12px", borderBottom:`1px solid ${t.border}`, position:"sticky", top:0, background:t.bg2, zIndex:1 }}>
+        <span style={{ fontSize:13, fontWeight:800, color:t.text, letterSpacing:"-.2px" }}>Vlastnosti</span>
         <button onClick={onClose} style={{ background:"none", border:"none", cursor:"pointer", padding:4, display:"flex", color:t.text3 }}>
           <Icon name="x" size={15} color={t.text3} strokeWidth={2} />
         </button>
       </div>
 
-      <div style={{ padding:"10px 12px 24px" }}>
+      <div style={{ padding:"16px 16px 24px", display:"flex", flexDirection:"column", gap:20 }}>
 
-        {/* Core properties */}
-        <PropCard t={t}>
-          <PRow t={t} label="Stav">
-            <select value={note.status||"draft"} onChange={e=>updateNote(note.id,{status:e.target.value})} style={{ background:"transparent", border:"none", color:statusInfo.color, fontSize:12, fontWeight:700, outline:"none", cursor:"pointer", width:"100%" }}>
-              {Object.entries(NOTE_STATUSES).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}
-            </select>
-          </PRow>
-          <PRow t={t} label="Ikona">
-            <button onClick={() => {
-              const em = prompt("Emoji nebo ikona:", note.icon || "📝");
-              if (em !== null) updateNote(note.id, { icon: em.trim().slice(0,2) || null });
-            }} style={{ background:"none", border:"none", padding:0, cursor:"pointer", color:t.text2, fontSize:13 }}>
-              {note.icon || "📝"} <span style={{ color:t.text3, fontSize:11 }}>změnit</span>
-            </button>
-          </PRow>
-          <PRow t={t} label="Štítky">
-            <div style={{ display:"flex", flexWrap:"wrap", gap:4 }}>
+        {/* ── Stav ── */}
+        <div>
+          <SH label="Stav" />
+          <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
+            {Object.entries(NOTE_STATUSES).map(([k, v]) => {
+              const isActive = (note.status || "draft") === k;
+              return (
+                <button key={k} onClick={() => updateNote(note.id, { status:k })} style={{
+                  padding:"4px 11px", borderRadius:999, fontSize:12, fontWeight:700,
+                  border:`1px solid ${isActive ? v.color+"60" : "var(--border-soft)"}`,
+                  background: isActive ? v.color+"18" : "transparent",
+                  color: isActive ? v.color : t.text3,
+                  cursor:"pointer", transition:"all .15s",
+                }}>
+                  {v.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── Štítky ── */}
+        <div>
+          <SH label="Štítky" />
+          {note.tags?.length > 0 && (
+            <div style={{ display:"flex", flexWrap:"wrap", gap:5, marginBottom:8 }}>
               {note.tags.map(tag => {
                 const col = getTagColor(tag, globalTags) || t.accent;
                 return (
-                  <span key={tag} style={{ display:"inline-flex", alignItems:"center", gap:3, padding:"1px 6px", borderRadius:20, fontSize:11, fontWeight:600, background:`${col}18`, color:col, border:`1px solid ${col}35` }}>
-                    #{tag}
-                    <button onClick={()=>removeTag(tag)} style={{ background:"none", border:"none", cursor:"pointer", padding:0, display:"flex", color:col }}>
-                      <Icon name="x" size={8} color="currentColor" strokeWidth={2.5} />
+                  <span key={tag} style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"3px 8px 3px 6px", borderRadius:999, fontSize:11.5, fontWeight:600, background:`${col}18`, color:col, border:`1px solid ${col}30` }}>
+                    <span style={{ width:6, height:6, borderRadius:"50%", background:col, flexShrink:0 }} />
+                    {tag}
+                    <button onClick={()=>removeTag(tag)} style={{ background:"none", border:"none", cursor:"pointer", padding:0, display:"flex", color:col, opacity:.7 }}>
+                      <Icon name="x" size={9} color="currentColor" strokeWidth={2.5} />
                     </button>
                   </span>
                 );
               })}
-              <input
-                value={tagInput}
-                onChange={e=>setTagInput(e.target.value)}
-                onKeyDown={handleTagKey}
-                onBlur={()=>{ if(tagInput.trim()){addTag(tagInput);setTagInput("");} }}
-                placeholder={note.tags.length ? "+" : "Přidat…"}
-                style={{ background:"none", border:"none", color:t.text, fontSize:11, outline:"none", width:60, minWidth:40 }}
-              />
-            </div>
-          </PRow>
-          <div style={{ padding:"7px 0 0", fontSize:11, color:t.text3 }}>
-            <div>Vytvořeno: {formatDateTime(note.createdAt)}</div>
-            <div style={{ marginTop:2 }}>Upraveno: {formatDateTime(note.updatedAt)}</div>
-          </div>
-        </PropCard>
-
-        {/* Projects */}
-        <PropCard t={t} noPad>
-          <div style={{ padding:"12px 12px 8px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-            <div style={{ fontSize:12, fontWeight:750, color:t.text }}>Projekty</div>
-            <button onClick={()=>setShowAllProjects(v=>!v)} style={{ background:"none", border:"none", cursor:"pointer", padding:2, display:"flex", color:t.text3 }}>
-              <Icon name={showAllProjects?"chevron-up":"chevron-down"} size={13} color={t.text3} strokeWidth={2} />
-            </button>
-          </div>
-
-          {/* Primary project selector */}
-          <div style={{ padding:"0 12px 8px", borderBottom:`1px solid rgba(255,255,255,.055)` }}>
-            <div style={{ fontSize:11, color:t.text3, marginBottom:5, fontWeight:700 }}>Primární projekt</div>
-            <select
-              value={note.primaryProjectId || ""}
-              onChange={e => {
-                const v = e.target.value;
-                updateNote(note.id, { primaryProjectId: v || null, primaryTaskId: v ? null : note.primaryTaskId });
-              }}
-              style={{ width:"100%", background:"var(--bg-2)", border:"1px solid var(--border-soft)", borderRadius:7, color:"var(--text-2)", fontSize:12, padding:"5px 8px", outline:"none", cursor:"pointer" }}
-            >
-              <option value="">— Bez projektu</option>
-              {projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-          </div>
-
-          {/* All projects as toggleable */}
-          {showAllProjects && (
-            <div style={{ padding:"8px 12px 12px" }}>
-              <div style={{ fontSize:11, color:t.text3, marginBottom:6, fontWeight:700 }}>Další propojené projekty</div>
-              <div style={{ display:"flex", flexDirection:"column", gap:4, maxHeight:200, overflowY:"auto" }}>
-                {projects.length === 0 && <div style={{ fontSize:11, color:t.text3 }}>Žádné projekty</div>}
-                {projects.map(p => {
-                  const isPrimary = p.id === note.primaryProjectId;
-                  const isExtra   = (note.extraProjectIds || []).includes(p.id);
-                  const col = projectColor(p.id);
-                  return (
-                    <button key={p.id}
-                      onClick={() => {
-                        if (isPrimary) return;
-                        toggleExtraProject(p.id);
-                      }}
-                      style={{
-                        display:"flex", alignItems:"center", gap:8, padding:"6px 9px", borderRadius:8,
-                        border:`1px solid ${isPrimary ? col+"70" : isExtra ? col+"50" : t.border}`,
-                        background: isPrimary ? col+"20" : isExtra ? col+"12" : "transparent",
-                        color: isPrimary || isExtra ? col : t.text2,
-                        fontSize:12, cursor:isPrimary?"default":"pointer", textAlign:"left",
-                        opacity: isPrimary ? 1 : 1,
-                      }}
-                    >
-                      <div style={{ width:7, height:7, borderRadius:"50%", background:col, flexShrink:0 }} />
-                      <span style={{ flex:1 }}>{p.name}</span>
-                      {isPrimary && <span style={{ fontSize:10, color:col, fontWeight:700 }}>primární</span>}
-                      {isExtra   && <Icon name="check" size={10} color={col} strokeWidth={2.5} />}
-                    </button>
-                  );
-                })}
-              </div>
             </div>
           )}
-        </PropCard>
-
-        {/* Tasks */}
-        <PropCard t={t} noPad>
-          <div style={{ padding:"12px 12px 8px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-            <div style={{ fontSize:12, fontWeight:750, color:t.text }}>Úkoly</div>
-            <button onClick={()=>setShowAllTasks(v=>!v)} style={{ background:"none", border:"none", cursor:"pointer", padding:2, display:"flex", color:t.text3 }}>
-              <Icon name={showAllTasks?"chevron-up":"chevron-down"} size={13} color={t.text3} strokeWidth={2} />
-            </button>
-          </div>
-
-          {/* Primary task selector */}
-          <div style={{ padding:"0 12px 8px", borderBottom:`1px solid rgba(255,255,255,.055)` }}>
-            <div style={{ fontSize:11, color:t.text3, marginBottom:5, fontWeight:700 }}>Primární úkol</div>
-            <select
-              value={note.primaryTaskId || ""}
-              onChange={e => {
-                const v = e.target.value;
-                updateNote(note.id, { primaryTaskId: v || null });
+          <div style={{ position:"relative", marginBottom:6 }}>
+            <Icon name="search" size={12} color={t.text3} strokeWidth={2} style={{ position:"absolute", left:9, top:"50%", transform:"translateY(-50%)", pointerEvents:"none" }} />
+            <input
+              value={tagSearch}
+              onChange={e=>setTagSearch(e.target.value)}
+              onKeyDown={e=>{
+                if ((e.key==="Enter"||e.key===",") && tagSearch.trim()) { e.preventDefault(); addTagByName(tagSearch); }
+                else if (e.key==="Backspace" && !tagSearch && note.tags?.length) removeTag(note.tags[note.tags.length-1]);
               }}
-              style={{ width:"100%", background:"var(--bg-2)", border:"1px solid var(--border-soft)", borderRadius:7, color:"var(--text-2)", fontSize:12, padding:"5px 8px", outline:"none", cursor:"pointer" }}
-            >
-              <option value="">— Bez úkolu</option>
-              {tasks.map(tk=><option key={tk.id} value={tk.id}>{tk.title||"Bez názvu"}</option>)}
-            </select>
+              placeholder="Hledat nebo přidat štítek…"
+              style={{ width:"100%", padding:"6px 10px 6px 28px", borderRadius:8, border:"1px solid var(--border-soft)", background:"var(--bg)", color:t.text, fontSize:12, outline:"none", boxSizing:"border-box" }}
+            />
           </div>
-
-          {/* All tasks toggleable */}
-          {showAllTasks && (
-            <div style={{ padding:"8px 12px 12px" }}>
-              <div style={{ fontSize:11, color:t.text3, marginBottom:6, fontWeight:700 }}>Další propojené úkoly</div>
-              <input
-                value={taskSearch}
-                onChange={e=>setTaskSearch(e.target.value)}
-                placeholder="Hledat úkol…"
-                style={{ width:"100%", padding:"5px 8px", borderRadius:7, border:"1px solid var(--border-soft)", background:"var(--bg-2)", color:"var(--text)", fontSize:11, outline:"none", boxSizing:"border-box", marginBottom:6 }}
-              />
-              <div style={{ display:"flex", flexDirection:"column", gap:3, maxHeight:180, overflowY:"auto" }}>
-                {filteredTasks.length === 0 && <div style={{ fontSize:11, color:t.text3 }}>Žádné úkoly</div>}
-                {filteredTasks.map(tk => {
-                  const isPrimary = tk.id === note.primaryTaskId;
-                  const isExtra   = (note.extraTaskIds || []).includes(tk.id);
-                  return (
-                    <button key={tk.id}
-                      onClick={() => { if (!isPrimary) toggleExtraTask(tk.id); }}
-                      style={{
-                        display:"flex", alignItems:"center", gap:8, padding:"5px 9px", borderRadius:8,
-                        border:`1px solid ${isPrimary||isExtra ? t.accent+"50" : t.border}`,
-                        background: isPrimary||isExtra ? t.accentBg : "transparent",
-                        color: isPrimary||isExtra ? t.accent : t.text2,
-                        fontSize:12, cursor:isPrimary?"default":"pointer", textAlign:"left",
-                      }}
-                    >
-                      <Icon name="check-square" size={11} color={isPrimary||isExtra ? t.accent : t.text3} strokeWidth={2} />
-                      <span style={{ flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{tk.title || "Bez názvu"}</span>
-                      {isPrimary && <span style={{ fontSize:10, color:t.accent, fontWeight:700 }}>primární</span>}
-                      {isExtra   && <Icon name="check" size={10} color={t.accent} strokeWidth={2.5} />}
-                    </button>
-                  );
-                })}
-              </div>
+          {filteredGlobalTags.length > 0 && (
+            <div style={{ display:"flex", flexWrap:"wrap", gap:5, maxHeight:100, overflowY:"auto", padding:"6px 8px", border:"1px solid var(--border-soft)", borderRadius:8, background:"var(--bg)" }}>
+              {filteredGlobalTags.map(gt => {
+                const active = note.tags?.some(t2 => t2.toLowerCase() === gt.name.toLowerCase());
+                return (
+                  <span key={gt.id} onClick={()=>toggleGlobalTag(gt)} style={{
+                    display:"inline-flex", alignItems:"center", gap:5, padding:"3px 9px", borderRadius:8, fontSize:11.5, fontWeight:600,
+                    background: active ? "var(--accent-soft)" : "transparent",
+                    color: active ? "var(--accent)" : t.text2,
+                    border:`1px solid ${active ? "color-mix(in srgb, var(--accent) 30%, transparent)" : "var(--border-soft)"}`,
+                    cursor:"pointer", transition:"all .12s",
+                  }}>
+                    <span style={{ width:7, height:7, borderRadius:"50%", background:gt.color||"var(--accent)", flexShrink:0 }} />
+                    {gt.name}
+                    {active ? " ✓" : " +"}
+                  </span>
+                );
+              })}
             </div>
           )}
-        </PropCard>
+          {tagSearch.trim() && !(globalTags||[]).some(gt=>gt.name.toLowerCase()===tagSearch.trim().toLowerCase()) && (
+            <button onClick={()=>addTagByName(tagSearch)} style={{ marginTop:7, display:"inline-flex", alignItems:"center", gap:5, padding:"5px 12px", borderRadius:8, border:"none", background:"var(--accent)", color:"var(--bg)", fontSize:11.5, fontWeight:700, cursor:"pointer" }}>
+              <Icon name="plus" size={11} color="currentColor" strokeWidth={2.5} />
+              Vytvořit „{tagSearch.trim()}"
+            </button>
+          )}
+        </div>
 
-        {/* Quick actions */}
-        <PropCard t={t} title="Rychlé akce">
-          <div style={{ display:"grid", gap:6 }}>
-            <MiniItem t={t} left={<><PinIcon size={11} filled={note.pinned} color="#f59e0b" /> {note.pinned ? "Odepnout poznámku" : "Připnout poznámku"}</>} right="⌥P" onClick={()=>updateNote(note.id,{pinned:!note.pinned})} />
+        {/* ── Ikona ── */}
+        <div>
+          <SH label="Ikona" />
+          <button onClick={() => {
+            const em = prompt("Emoji nebo ikona:", note.icon || "📝");
+            if (em !== null) updateNote(note.id, { icon: em.trim().slice(0,2) || null });
+          }} style={{ display:"flex", alignItems:"center", gap:8, padding:"6px 10px", borderRadius:9, border:"1px solid var(--border-soft)", background:"var(--bg)", color:t.text2, fontSize:13, cursor:"pointer" }}>
+            <span style={{ fontSize:20 }}>{note.icon || "📝"}</span>
+            <span style={{ fontSize:12, color:t.text3 }}>změnit</span>
+          </button>
+        </div>
+
+        {/* ── Timestamps ── */}
+        <div style={{ fontSize:11, color:t.text3, display:"flex", flexDirection:"column", gap:3 }}>
+          <div>Vytvořeno: {formatDateTime(note.createdAt)}</div>
+          <div>Upraveno: {formatDateTime(note.updatedAt)}</div>
+        </div>
+
+        <Sep />
+
+        {/* ── Projekt ── */}
+        <div>
+          <SH label="Projekt" />
+          <select
+            value={note.primaryProjectId || ""}
+            onChange={e => {
+              const v = e.target.value;
+              updateNote(note.id, { primaryProjectId: v || null, primaryTaskId: v ? null : note.primaryTaskId });
+            }}
+            style={{ width:"100%", background:"var(--bg)", border:"1px solid var(--border-soft)", borderRadius:8, color:t.text2, fontSize:12, padding:"6px 8px", outline:"none", cursor:"pointer", boxSizing:"border-box" }}
+          >
+            <option value="">— Bez projektu</option>
+            {projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+          {projects.length > 0 && (
+            <div style={{ marginTop:8 }}>
+              <button onClick={()=>setShowAllProjects(v=>!v)} style={{ display:"flex", alignItems:"center", gap:5, background:"none", border:"none", color:t.text3, fontSize:11, cursor:"pointer", padding:"2px 0", fontWeight:600 }}>
+                <Icon name={showAllProjects?"chevron-up":"chevron-down"} size={11} color={t.text3} strokeWidth={2} />
+                Propojit více projektů
+              </button>
+              {showAllProjects && (
+                <div style={{ display:"flex", flexDirection:"column", gap:3, marginTop:6, maxHeight:160, overflowY:"auto" }}>
+                  {projects.map(p => {
+                    const isPrimary = p.id === note.primaryProjectId;
+                    const isExtra   = (note.extraProjectIds||[]).includes(p.id);
+                    const col = projectColor(p.id);
+                    return (
+                      <button key={p.id} onClick={()=>{ if(!isPrimary) toggleExtraProject(p.id); }} style={{
+                        display:"flex", alignItems:"center", gap:7, padding:"5px 8px", borderRadius:7,
+                        border:`1px solid ${isPrimary?col+"60":isExtra?col+"40":"var(--border-soft)"}`,
+                        background: isPrimary?col+"18":isExtra?col+"10":"transparent",
+                        color: isPrimary||isExtra?col:t.text2,
+                        fontSize:12, cursor:isPrimary?"default":"pointer", textAlign:"left",
+                      }}>
+                        <div style={{ width:7, height:7, borderRadius:"50%", background:col, flexShrink:0 }} />
+                        <span style={{ flex:1 }}>{p.name}</span>
+                        {isPrimary && <span style={{ fontSize:10, fontWeight:700 }}>primární</span>}
+                        {isExtra   && <Icon name="check" size={10} color={col} strokeWidth={2.5} />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* ── Úkol ── */}
+        <div>
+          <SH label="Úkol" />
+          <select
+            value={note.primaryTaskId || ""}
+            onChange={e => updateNote(note.id, { primaryTaskId: e.target.value || null })}
+            style={{ width:"100%", background:"var(--bg)", border:"1px solid var(--border-soft)", borderRadius:8, color:t.text2, fontSize:12, padding:"6px 8px", outline:"none", cursor:"pointer", boxSizing:"border-box" }}
+          >
+            <option value="">— Bez úkolu</option>
+            {tasks.map(tk=><option key={tk.id} value={tk.id}>{tk.title||"Bez názvu"}</option>)}
+          </select>
+          {tasks.length > 0 && (
+            <div style={{ marginTop:8 }}>
+              <button onClick={()=>setShowAllTasks(v=>!v)} style={{ display:"flex", alignItems:"center", gap:5, background:"none", border:"none", color:t.text3, fontSize:11, cursor:"pointer", padding:"2px 0", fontWeight:600 }}>
+                <Icon name={showAllTasks?"chevron-up":"chevron-down"} size={11} color={t.text3} strokeWidth={2} />
+                Propojit více úkolů
+              </button>
+              {showAllTasks && (
+                <div style={{ marginTop:6 }}>
+                  <input value={taskSearch} onChange={e=>setTaskSearch(e.target.value)} placeholder="Hledat úkol…"
+                    style={{ width:"100%", padding:"5px 8px", borderRadius:7, border:"1px solid var(--border-soft)", background:"var(--bg)", color:t.text, fontSize:11, outline:"none", boxSizing:"border-box", marginBottom:5 }}
+                  />
+                  <div style={{ display:"flex", flexDirection:"column", gap:3, maxHeight:160, overflowY:"auto" }}>
+                    {filteredTasks.length===0 && <div style={{ fontSize:11, color:t.text3 }}>Žádné úkoly</div>}
+                    {filteredTasks.map(tk => {
+                      const isPrimary = tk.id===note.primaryTaskId;
+                      const isExtra   = (note.extraTaskIds||[]).includes(tk.id);
+                      return (
+                        <button key={tk.id} onClick={()=>{ if(!isPrimary) toggleExtraTask(tk.id); }} style={{
+                          display:"flex", alignItems:"center", gap:7, padding:"5px 8px", borderRadius:7,
+                          border:`1px solid ${isPrimary||isExtra?"color-mix(in srgb, var(--accent) 35%, transparent)":"var(--border-soft)"}`,
+                          background: isPrimary||isExtra?"var(--accent-soft)":"transparent",
+                          color: isPrimary||isExtra?"var(--accent)":t.text2,
+                          fontSize:12, cursor:isPrimary?"default":"pointer", textAlign:"left",
+                        }}>
+                          <Icon name="check-square" size={11} color={isPrimary||isExtra?"var(--accent)":t.text3} strokeWidth={2} />
+                          <span style={{ flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{tk.title||"Bez názvu"}</span>
+                          {isPrimary && <span style={{ fontSize:10, fontWeight:700 }}>primární</span>}
+                          {isExtra   && <Icon name="check" size={10} color="var(--accent)" strokeWidth={2.5} />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <Sep />
+
+        {/* ── Rychlé akce ── */}
+        <div>
+          <SH label="Akce" />
+          <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+            <MiniItem t={t} left={<><PinIcon size={11} filled={note.pinned} color="#f59e0b" /> {note.pinned?"Odepnout":"Připnout poznámku"}</>} right="⌥P" onClick={()=>updateNote(note.id,{pinned:!note.pinned})} />
             <MiniItem t={t} left="🧠 Vytáhnout úkoly z textu" right="AI" onClick={runAIExtract} />
-            <MiniItem t={t} left={<>{note.archived ? "🗄️ Obnovit z archivu" : "🗄️ Archivovat poznámku"}</>} right="" onClick={()=>updateNote(note.id,{archived:!note.archived})} />
+            <MiniItem t={t} left={note.archived?"🗄️ Obnovit z archivu":"🗄️ Archivovat poznámku"} right="" onClick={()=>updateNote(note.id,{archived:!note.archived})} />
             <MiniItem t={t} left="📤 Export jako .md" right=".md" onClick={onExportMD} />
           </div>
-        </PropCard>
+        </div>
 
       </div>
     </div>
@@ -1243,6 +1279,7 @@ function NotesAtlasGrid({ notes, onOpenNote, onCreate, projects }) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const [sortBy, setSortBy] = useState("updated");
+  const [tagFilter, setTagFilter] = useState(null);
   const projectsById = Object.fromEntries(projects.map(p => [p.id, p]));
 
   const activeNotes = notes.filter(n => !n.archived);
@@ -1273,6 +1310,10 @@ function NotesAtlasGrid({ notes, onOpenNote, onCreate, projects }) {
     filtered = filtered.filter(n => !n.archived && n.updatedAt >= todayStart);
   } else if (filter === "week") {
     filtered = filtered.filter(n => !n.archived && n.updatedAt >= weekStart);
+  }
+
+  if (tagFilter) {
+    filtered = filtered.filter(n => n.tags?.some(tag => tag.toLowerCase() === tagFilter.toLowerCase()));
   }
 
   const sorted = [...filtered].sort((a, b) => {
@@ -1313,6 +1354,12 @@ function NotesAtlasGrid({ notes, onOpenNote, onCreate, projects }) {
             <span className="chip-count">{chip.count}</span>
           </button>
         ))}
+        {tagFilter && (
+          <button className="chip active" onClick={() => setTagFilter(null)} style={{ gap: 5 }}>
+            <span style={{ opacity: .7 }}>#</span>{tagFilter}
+            <Icon name="x" size={10} color="currentColor" strokeWidth={2.5} />
+          </button>
+        )}
         <span className="chips-sep" />
         <label className="chip" style={{ gap: 8, cursor: "default" }}>
           Seřadit
@@ -1372,8 +1419,18 @@ function NotesAtlasGrid({ notes, onOpenNote, onCreate, projects }) {
                   <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 12 }}>
                     {n.tags.slice(0, 4).map(tag => {
                       const col = getTagColor(tag, globalTags) || "var(--text-3)";
+                      const isFiltered = tagFilter?.toLowerCase() === tag.toLowerCase();
                       return (
-                        <span key={tag} style={{ fontFamily: "var(--mono)", fontSize: 10.5, color: col, border: `1px solid ${col}30`, background: `${col}12`, borderRadius: 999, padding: "3px 7px", fontWeight: 600 }}>
+                        <span key={tag}
+                          onClick={e => { e.stopPropagation(); setTagFilter(isFiltered ? null : tag); }}
+                          style={{
+                            fontFamily: "var(--mono)", fontSize: 10.5, color: col,
+                            border: `1px solid ${isFiltered ? col+"80" : col+"30"}`,
+                            background: isFiltered ? `${col}28` : `${col}12`,
+                            borderRadius: 999, padding: "3px 7px", fontWeight: 600,
+                            cursor: "pointer", transition: "all .12s",
+                          }}
+                        >
                           #{tag}
                         </span>
                       );
