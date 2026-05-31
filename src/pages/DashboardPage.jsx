@@ -715,7 +715,7 @@ export default function DashboardPage() {
                 )}
               </div>
 
-              {!isMobile && showDailyPlan && (
+              {showDailyPlan && (
                 <div className="fi" style={{ marginBottom: 18 }}>
                   <AIDailyPlan />
                 </div>
