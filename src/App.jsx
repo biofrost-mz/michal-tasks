@@ -97,6 +97,11 @@ function MobileFAB() {
     setOpen(false);
   };
 
+  const openTaskModal = () => {
+    window.dispatchEvent(new CustomEvent("openQuickAddModal"));
+    setOpen(false);
+  };
+
   const inputBottomStyle = inputBottom != null
     ? inputBottom + 12
     : "calc(66px + env(safe-area-inset-bottom, 0px) + 76px)";
@@ -112,27 +117,55 @@ function MobileFAB() {
             background: "var(--surface)", border: "1px solid var(--border-soft)",
             borderRadius: "var(--r, 14px)", padding: "12px 14px",
             boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
-            display: "flex", gap: 8, zIndex: 191,
+            display: "flex", gap: 8, zIndex: 191, alignItems: "center",
             transition: "bottom .25s cubic-bezier(.4,0,.2,1)",
           }}>
-            <input
-              ref={inputRef}
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); }}
-              placeholder={page === "quick-todos" ? "Nová položka…" : "Nový úkol…"}
-              style={{
-                flex: 1, padding: "10px 14px", borderRadius: 10,
-                border: "1px solid var(--border-soft)", background: "var(--bg-2)",
-                color: "var(--text)", fontSize: 16, outline: "none",
-              }}
-            />
-            <button onClick={handleAdd} disabled={!text.trim()} style={{
-              width: 44, borderRadius: 10, border: "none",
-              background: text.trim() ? "var(--accent)" : "var(--bg-2)",
-              color: text.trim() ? "var(--bg)" : "var(--text-3)",
-              fontWeight: 700, fontSize: 18,
-            }}>+</button>
+            {page === "quick-todos" ? (
+              <>
+                <input
+                  ref={inputRef}
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); }}
+                  placeholder="Nová položka…"
+                  style={{
+                    flex: 1, padding: "10px 14px", borderRadius: 10,
+                    border: "1px solid var(--border-soft)", background: "var(--bg-2)",
+                    color: "var(--text)", fontSize: 16, outline: "none",
+                  }}
+                />
+                <button onClick={handleAdd} disabled={!text.trim()} style={{
+                  width: 44, borderRadius: 10, border: "none",
+                  background: text.trim() ? "var(--accent)" : "var(--bg-2)",
+                  color: text.trim() ? "var(--bg)" : "var(--text-3)",
+                  fontWeight: 700, fontSize: 18,
+                }}>+</button>
+              </>
+            ) : (
+              <button
+                onClick={openTaskModal}
+                style={{
+                  width: "100%",
+                  border: "1px solid var(--border-soft)",
+                  background: "var(--bg-2)",
+                  color: "var(--text)",
+                  borderRadius: 12,
+                  minHeight: 52,
+                  padding: "0 14px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  fontSize: 15,
+                  fontWeight: 500,
+                  textAlign: "left",
+                }}
+              >
+                <span>Přidat nový úkol</span>
+                <span style={{ width: 28, height: 28, borderRadius: 8, background: "var(--accent-soft)", color: "var(--accent)", display: "grid", placeItems: "center" }}>
+                  <Icon name="plus" size={16} color="currentColor" strokeWidth={2.2} />
+                </span>
+              </button>
+            )}
           </div>
         </div>
       )}

@@ -196,31 +196,34 @@ export default function CommandPalette({ onClose }) {
         background: "rgba(6,8,14,0.55)", backdropFilter: "blur(20px) saturate(180%)",
         WebkitBackdropFilter: "blur(20px) saturate(180%)",
         display: "flex",
-        alignItems: isMobile ? "flex-end" : "flex-start",
+        alignItems: "flex-start",
         justifyContent: "center",
-        paddingTop: isMobile ? 0 : "15vh",
+        paddingTop: isMobile ? "calc(env(safe-area-inset-top, 0px) + 8px)" : "15vh",
+        paddingLeft: isMobile ? 8 : 0,
+        paddingRight: isMobile ? 8 : 0,
       }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className={isMobile ? "su" : "pop"}
+        className="pop"
         style={{
           width: isMobile ? "100%" : 600, maxWidth: isMobile ? "100%" : "90vw",
           background: "rgba(20,24,34,0.78)",
           backdropFilter: "blur(24px) saturate(150%)",
           WebkitBackdropFilter: "blur(24px) saturate(150%)",
           border: `1px solid rgba(255,255,255,0.06)`,
-          borderRadius: isMobile ? "16px 16px 0 0" : 14,
+          borderRadius: isMobile ? 14 : 14,
           boxShadow: isMobile
-            ? "0 -8px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)"
+            ? "0 12px 44px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.04)"
             : "0 24px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.04)",
           overflow: "hidden",
+          minHeight: isMobile ? 380 : undefined,
+          maxHeight: isMobile ? "78svh" : undefined,
         }}
       >
         {isMobile && (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", paddingTop: 10, paddingBottom: 2, position: "relative" }}>
-            <div style={{ width: 36, height: 4, borderRadius: 2, background: t.border }} />
-            <button onClick={onClose} style={{ background: "none", border: "none", color: t.text3, cursor: "pointer", display: "flex", alignItems: "center", padding: 4, position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", paddingTop: 8, paddingBottom: 2, paddingRight: 10 }}>
+            <button onClick={onClose} style={{ background: "none", border: "none", color: t.text3, cursor: "pointer", display: "flex", alignItems: "center", padding: 4 }}>
               <Icon name="x" size={18} color={t.text3} strokeWidth={2} />
             </button>
           </div>
@@ -289,7 +292,7 @@ export default function CommandPalette({ onClose }) {
           )}
         </div>
 
-        <div style={{ maxHeight: isMobile ? "75vh" : 340, overflowY: "auto", padding: "8px 0" }}>
+        <div style={{ maxHeight: isMobile ? "52svh" : 340, overflowY: "auto", padding: "8px 0" }}>
           {items.length === 0 ? (
             <div style={{ padding: "28px 20px", textAlign: "center", color: t.text3, fontSize: 13 }}>
               Nic nenalezeno

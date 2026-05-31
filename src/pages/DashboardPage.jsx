@@ -654,7 +654,7 @@ export default function DashboardPage() {
   const donutC = 2 * Math.PI * donutR;
 
   return (
-    <div className="content">
+    <div className="content dashboard-content">
       <Headline
         overdueCount={overdue.length}
         activeCount={activeTasks.length}

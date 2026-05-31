@@ -1978,6 +1978,10 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
     max-width: 100%;
     min-width: 0;
   }
+  .dashboard-content {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
   .work {
     grid-template-columns: minmax(0, 1fr);
     gap: 12px;
@@ -2040,6 +2044,13 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   .chips .chips-sep,
   .chips .chips-div { display: none !important; }
   .chips .chip-count-only { display: none !important; }
+  .dashboard-content .chips {
+    margin-left: 0;
+    margin-right: 0;
+    border: 1px solid var(--border-soft);
+    border-radius: var(--r);
+    padding: 8px;
+  }
 
   .sec,
   .tcards,

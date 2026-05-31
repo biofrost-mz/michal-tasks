@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { useApp } from '../context/AppContext.jsx'
 import { useToast } from './Toast.jsx'
 import Icon from './Icon.jsx'
@@ -29,15 +29,10 @@ export default function QuickAdd({ defaultProjectId = null }) {
   const [newTagName, setNewTagName] = useState("");
   const [newTagColor, setNewTagColor] = useState("#6366f1");
 
-  useEffect(() => {
-    const handler = () => inputRef.current?.focus();
-    window.addEventListener("focusQuickAdd", handler);
-    return () => window.removeEventListener("focusQuickAdd", handler);
-  }, []);
-
   // Triggered when clicking inline "Přidat" or pressing Enter
-  const handleOpenModal = () => {
-    setModalTitle(val.trim());
+  const handleOpenModal = useCallback((initialTitle = "") => {
+    const prefTitle = typeof initialTitle === "string" ? initialTitle.trim() : "";
+    setModalTitle(prefTitle || val.trim());
     setStatus("todo");
     setPriority(null);
     setProjectId(defaultProjectId);
@@ -47,7 +42,21 @@ export default function QuickAdd({ defaultProjectId = null }) {
     setNewTagOpen(false);
     setModalOpen(true);
     setVal("");
-  };
+  }, [defaultProjectId, val]);
+
+  useEffect(() => {
+    const focusHandler = () => inputRef.current?.focus();
+    const modalHandler = (event) => {
+      const title = event?.detail?.title || "";
+      handleOpenModal(title);
+    };
+    window.addEventListener("focusQuickAdd", focusHandler);
+    window.addEventListener("openQuickAddModal", modalHandler);
+    return () => {
+      window.removeEventListener("focusQuickAdd", focusHandler);
+      window.removeEventListener("openQuickAddModal", modalHandler);
+    };
+  }, [handleOpenModal]);
 
   // Saves the task and closes modal
   const handleCreate = (openDetailAfter = false) => {
