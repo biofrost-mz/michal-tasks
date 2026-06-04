@@ -54,9 +54,9 @@ serve(async (req) => {
       );
     }
 
-    let action, task, note, availableTags;
+    let body, action, task, note, availableTags;
     try {
-      const body = await req.json();
+      body = await req.json();
       action = body?.action;
       task = body?.task;
       note = body?.note;
