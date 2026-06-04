@@ -75,66 +75,51 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
 
   const onPointerDown = (e) => {
     if (!isMobile) return;
-    if (e.pointerType === "mouse" && !isMobile) return; // Ignore actual mouse drags on desktop unless simulated viewport
+    if (exiting) return;
     startXRef.current = e.clientX;
-    startYRef.current = e.clientY;
-    swipeAxisRef.current = null;
     pointerIdRef.current = e.pointerId;
+    offsetXRef.current = 0;
+    setSwiping(true);
     hasSwipedRef.current = false;
-    setSwiping(false);
     try { e.currentTarget.setPointerCapture?.(e.pointerId); } catch(err) {}
   };
+
   const onPointerMove = (e) => {
     if (pointerIdRef.current !== e.pointerId) return;
-    if (startXRef.current == null || startYRef.current == null) return;
-    const dx = e.clientX - startXRef.current;
-    const dy = e.clientY - startYRef.current;
+    if (startXRef.current == null) return;
 
-    if (!swipeAxisRef.current) {
-      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
-      if (Math.abs(dx) > Math.abs(dy)) {
-        if (dx < 0) {
-          swipeAxisRef.current = "x";
-          setSwiping(true);
-        } else {
-          swipeAxisRef.current = "ignored"; // Ignore swiping right
-          try { e.currentTarget.releasePointerCapture?.(e.pointerId); } catch(err) {}
-        }
-      } else {
-        swipeAxisRef.current = "y"; // Scroll list vertically instead
-        try { e.currentTarget.releasePointerCapture?.(e.pointerId); } catch(err) {}
-      }
-    }
+    const diff = e.clientX - startXRef.current;
+    // ignore right swipe, use left swipe
+    const currentX = Math.min(0, diff);
+    const clamped = Math.max(-maxSwipeRef.current, currentX);
 
-    if (swipeAxisRef.current !== "x") return;
-    if (e.cancelable) e.preventDefault();
-    if (Math.abs(dx) > 8) {
-      hasSwipedRef.current = true;
-    }
-    const clamped = Math.max(dx, -maxSwipeRef.current);
     offsetXRef.current = clamped;
     setOffsetX(clamped);
+    if (Math.abs(clamped) > 10) {
+      hasSwipedRef.current = true;
+    }
   };
+
   const onPointerEnd = (e) => {
-    if (pointerIdRef.current != null && pointerIdRef.current !== e.pointerId) return;
-    const wasHorizontalSwipe = swipeAxisRef.current === "x";
+    if (pointerIdRef.current == null || pointerIdRef.current !== e.pointerId) return;
     setSwiping(false);
-    if (wasHorizontalSwipe && offsetXRef.current < -thresholdRef.current) triggerArchive();
-    else setOffsetX(0);
-    offsetXRef.current = 0;
+    const finalX = offsetXRef.current;
+    
+    if (finalX < -thresholdRef.current) {
+      triggerArchive();
+    } else {
+      setOffsetX(0);
+    }
+    
     startXRef.current = null;
-    startYRef.current = null;
-    swipeAxisRef.current = null;
     pointerIdRef.current = null;
     try { e.currentTarget.releasePointerCapture?.(e.pointerId); } catch(err) {}
   };
+
   const onPointerCancel = (e) => {
     setSwiping(false);
     setOffsetX(0);
-    offsetXRef.current = 0;
     startXRef.current = null;
-    startYRef.current = null;
-    swipeAxisRef.current = null;
     pointerIdRef.current = null;
     try { e.currentTarget.releasePointerCapture?.(e.pointerId); } catch(err) {}
   };
