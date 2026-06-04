@@ -125,6 +125,11 @@ export default function TasksPage() {
     d.setDate(d.getDate() + 6);
     return formatDateKey(d);
   }, [today]);
+  const soonEndKey = useMemo(() => {
+    const d = new Date(today);
+    d.setDate(d.getDate() + 2); // today + 2 days = 3 days total (today, tomorrow, day after)
+    return formatDateKey(d);
+  }, [today]);
   const projectsById = useMemo(() => new Map(projects.map((p) => [p.id, p])), [projects]);
   const tagsById = useMemo(() => new Map(tags.map((tg) => [tg.id, tg])), [tags]);
 
@@ -167,6 +172,8 @@ export default function TasksPage() {
 
     if (dateFilter === "today") {
       list = list.filter((t) => t.dueDate === todayKey);
+    } else if (dateFilter === "soon") {
+      list = list.filter((t) => t.dueDate && t.dueDate >= todayKey && t.dueDate <= soonEndKey && t.status !== "done");
     } else if (dateFilter === "week") {
       list = list.filter((t) => t.dueDate && t.dueDate >= todayKey && t.dueDate <= weekEndKey);
     } else if (dateFilter === "overdue") {
@@ -174,7 +181,7 @@ export default function TasksPage() {
     }
 
     return list;
-  }, [mappedTasks, search, projectFilter, priorityFilter, tagFilter, dateFilter, todayKey, weekEndKey]);
+  }, [mappedTasks, search, projectFilter, priorityFilter, tagFilter, dateFilter, todayKey, weekEndKey, soonEndKey]);
 
   const filtered = useMemo(() => {
     let list = baseFiltered;
@@ -301,6 +308,7 @@ export default function TasksPage() {
             >
               <option value="all">Všechny termíny</option>
               <option value="today">Dnes</option>
+              <option value="soon">Blížící se termín</option>
               <option value="week">Tento týden</option>
               <option value="overdue">Po termínu</option>
             </select>
@@ -397,7 +405,7 @@ export default function TasksPage() {
                 Termín
               </div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {[["all","Vše"], ["today","Dnes"], ["week","Tento týden"], ["overdue","Po termínu"]].map(([v, label]) => (
+                {[["all","Vše"], ["today","Dnes"], ["soon","Blížící se"], ["week","Tento týden"], ["overdue","Po termínu"]].map(([v, label]) => (
                   <button
                     key={v}
                     onClick={() => setDateFilter(v)}

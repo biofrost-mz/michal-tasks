@@ -1,8 +1,10 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { useApp } from '../context/AppContext.jsx'
 import { useToast } from './Toast.jsx'
 import Icon from './Icon.jsx'
 import { STATUSES, PRIORITIES } from '../constants.js'
+import { supabase } from '../supabase.js'
 
 export default function QuickAdd({ defaultProjectId = null }) {
   const { t, dk, tasks, addTask, projects, tags, addProject, addTag, setTaskDetail, isMobile } = useApp();
@@ -19,6 +21,13 @@ export default function QuickAdd({ defaultProjectId = null }) {
   const [projectId, setProjectId] = useState(defaultProjectId);
   const [dueDate, setDueDate] = useState("");
   const [tagIds, setTagIds] = useState([]);
+
+  // AI Drafting States
+  const [showAiDraft, setShowAiDraft] = useState(false);
+  const [aiInputText, setAiInputText] = useState("");
+  const [aiLength, setAiLength] = useState("short"); // "short" or "long"
+  const [aiLoading, setAiLoading] = useState(false);
+  const [description, setDescription] = useState(""); // Description state for manual preview and edit
 
   // Inline additions inside modal
   const [newProjOpen, setNewProjOpen] = useState(false);
@@ -38,6 +47,11 @@ export default function QuickAdd({ defaultProjectId = null }) {
     setProjectId(defaultProjectId);
     setDueDate("");
     setTagIds([]);
+    setDescription("");
+    setShowAiDraft(false);
+    setAiInputText("");
+    setAiLength("short");
+    setAiLoading(false);
     setNewProjOpen(false);
     setNewTagOpen(false);
     setModalOpen(true);
@@ -58,6 +72,122 @@ export default function QuickAdd({ defaultProjectId = null }) {
     };
   }, [handleOpenModal]);
 
+  // Robust scroll lock for iOS and general mobile devices
+  useEffect(() => {
+    if (!modalOpen) return;
+
+    const scrollY = window.scrollY;
+
+    const originalPosition = document.body.style.position;
+    const originalTop = document.body.style.top;
+    const originalWidth = document.body.style.width;
+    const originalOverflow = document.body.style.overflow;
+
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = "100%";
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.position = originalPosition;
+      document.body.style.top = originalTop;
+      document.body.style.width = originalWidth;
+      document.body.style.overflow = originalOverflow;
+      window.scrollTo(0, scrollY);
+    };
+  }, [modalOpen]);
+
+  // AI draft generation
+  const handleGenerateAiDraft = async () => {
+    const text = aiInputText.trim();
+    if (!text) {
+      toast("Zadej text pro návrh úkolu", "error");
+      return;
+    }
+
+    setAiLoading(true);
+    try {
+      const todayDate = new Date().toISOString().slice(0, 10);
+      const availableProjects = projects.map(p => p.name);
+      const availableTags = tags.map(t => t.name);
+
+      const { data, error } = await supabase.functions.invoke("ai-task-assist", {
+        body: {
+          action: "draft_task",
+          text,
+          length: aiLength,
+          todayDate,
+          availableProjects,
+          availableTags,
+        }
+      });
+
+      if (error) {
+        const msg = data?.error || error.message || String(error);
+        if (msg.includes("non-2xx") || msg.includes("Unauthorized") || error.status === 401) {
+          toast("Chyba přihlášení k AI službám.", "error");
+        } else if (error.status === 429 || msg.includes("Rate limit")) {
+          toast("Příliš mnoho AI dotazů — zkus to za hodinu.", "error");
+        } else {
+          toast(`Chyba AI: ${msg || "neznámá chyba"}`, "error");
+        }
+        return;
+      }
+
+      const raw = data?.result ?? "";
+      if (!raw) {
+        toast("AI neposkytlo žádný návrh.", "error");
+        return;
+      }
+
+      const cleaned = raw.replace(/^```[a-z]*\n?/i, "").replace(/```$/, "").trim();
+      const parsed = JSON.parse(cleaned);
+
+      if (parsed.title) setModalTitle(parsed.title);
+      if (parsed.description) setDescription(parsed.description);
+      
+      if (parsed.suggestedProject) {
+        const matchedProj = projects.find(
+          (p) => p.name.toLowerCase() === parsed.suggestedProject.toLowerCase()
+        );
+        if (matchedProj) {
+          setProjectId(matchedProj.id);
+        }
+      }
+
+      if (Array.isArray(parsed.suggestedTags)) {
+        const matchedTagIds = [];
+        parsed.suggestedTags.forEach((name) => {
+          const matchedTag = tags.find(
+            (t) => t.name.toLowerCase() === name.toLowerCase()
+          );
+          if (matchedTag) {
+            matchedTagIds.push(matchedTag.id);
+          }
+        });
+        setTagIds((prev) => {
+          const merged = [...prev, ...matchedTagIds];
+          return [...new Set(merged)];
+        });
+      }
+
+      if (parsed.priority && ["high", "medium", "low"].includes(parsed.priority)) {
+        setPriority(parsed.priority);
+      }
+
+      if (parsed.dueDate) {
+        setDueDate(parsed.dueDate);
+      }
+
+      toast("Návrh vytvořen ✨", "success");
+    } catch (err) {
+      console.error("AI draft generation failed:", err);
+      toast("Chyba při parsování návrhu z AI.", "error");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   // Saves the task and closes modal
   const handleCreate = (openDetailAfter = false) => {
     const title = modalTitle.trim();
@@ -68,6 +198,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
 
     const tsk = addTask({
       title,
+      description: description.trim(),
       status,
       priority,
       projectId,
@@ -76,7 +207,6 @@ export default function QuickAdd({ defaultProjectId = null }) {
     });
 
     setModalOpen(false);
-    toast("Úkol úspěšně vytvořen", "success");
 
     if (openDetailAfter && tsk) {
       setTimeout(() => {
@@ -192,17 +322,18 @@ export default function QuickAdd({ defaultProjectId = null }) {
       </div>
 
       {/* Modal Dialog */}
-      {modalOpen && (
+      {modalOpen && createPortal(
         <div
+          className="modal-backdrop"
           style={{
             position: "fixed",
             inset: 0,
-            zIndex: 5000,
+            zIndex: 9999,
             display: "flex",
-            alignItems: isMobile ? "flex-start" : "center",
+            alignItems: isMobile ? "flex-end" : "center",
             justifyContent: "center",
-            padding: isMobile ? "calc(46px + env(safe-area-inset-top, 0px) + 10px) 14px calc(84px + env(safe-area-inset-bottom, 0px))" : 0,
-            background: dk ? "rgba(10, 12, 18, 0.65)" : "rgba(0, 0, 0, 0.4)",
+            padding: isMobile ? "env(safe-area-inset-top, 16px) 16px env(safe-area-inset-bottom, 16px)" : 0,
+            background: dk ? "rgba(10, 12, 18, 0.45)" : "rgba(15, 18, 28, 0.45)",
             backdropFilter: "blur(20px) saturate(180%)",
             WebkitBackdropFilter: "blur(20px) saturate(180%)",
             animation: "fadeIn .2s ease-out",
@@ -211,18 +342,18 @@ export default function QuickAdd({ defaultProjectId = null }) {
           onClick={() => setModalOpen(false)}
         >
           <div
-            className="pop"
+            className="pop modal-dialog"
             style={{
               background: t.card,
               border: `1px solid ${dk ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.08)"}`,
-              borderRadius: isMobile ? 16 : 16,
+              borderRadius: isMobile ? 24 : 16,
               boxShadow: isMobile
                 ? "0 18px 48px rgba(0,0,0,0.48)"
-                : t.shadow,
+                : "0 18px 42px rgba(20, 28, 45, .10)",
               padding: isMobile ? "16px" : "24px 28px",
-              width: isMobile ? "100%" : "calc(100% - 32px)",
-              maxWidth: isMobile ? 560 : 600,
-              maxHeight: isMobile ? "calc(100svh - 150px)" : "90vh",
+              width: "100%",
+              maxWidth: isMobile ? 420 : 600,
+              maxHeight: isMobile ? "calc(100svh - 32px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))" : "90vh",
               overflowY: "auto",
               overscrollBehavior: "contain",
               display: "flex",
@@ -281,6 +412,194 @@ export default function QuickAdd({ defaultProjectId = null }) {
                 onFocus={(e) => e.target.style.borderColor = t.accent}
                 onBlur={(e) => e.target.style.borderColor = t.border}
               />
+            </div>
+
+            {/* AI Draft Section */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <button
+                type="button"
+                onClick={() => setShowAiDraft(!showAiDraft)}
+                style={{
+                  background: showAiDraft ? t.accentBg : "transparent",
+                  border: `1.5px dashed ${showAiDraft ? t.accent : t.border}`,
+                  borderRadius: 10,
+                  padding: "10px 14px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  color: showAiDraft ? t.accent : t.text2,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  width: "100%",
+                  transition: "all 0.15s ease",
+                  outline: "none",
+                }}
+              >
+                <Icon name="zap" size={14} color="currentColor" strokeWidth={2} />
+                {showAiDraft ? "Zavřít AI návrh" : "Návrh pomocí AI ✨"}
+              </button>
+
+              {showAiDraft && (
+                <div
+                  style={{
+                    background: t.bg2,
+                    border: `1px solid ${t.border}`,
+                    borderRadius: 12,
+                    padding: "14px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 12,
+                    animation: "fadeIn .2s ease-out",
+                    boxShadow: "inset 0 1px 2px rgba(0,0,0,0.02)"
+                  }}
+                >
+                  <div style={{ fontSize: 11, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "var(--font-mono)" }}>
+                    Napište, co je potřeba udělat (AI navrhne parametry)
+                  </div>
+
+                  <textarea
+                    value={aiInputText}
+                    onChange={(e) => setAiInputText(e.target.value)}
+                    placeholder="Napiš např.: Do zítra musím naprogramovat novou komponentu pro web, dej to do projektu Web a označ jako vysoká priorita..."
+                    rows={3}
+                    style={{
+                      fontSize: 13,
+                      padding: "10px 12px",
+                      borderRadius: 8,
+                      border: `1.5px solid ${t.border}`,
+                      background: t.input,
+                      color: t.text,
+                      width: "100%",
+                      outline: "none",
+                      resize: "vertical",
+                      fontFamily: "inherit",
+                      boxShadow: dk ? "inset 0 1px 2px rgba(0,0,0,0.2)" : "inset 0 1px 2px rgba(0,0,0,0.03)",
+                      transition: "border-color .15s"
+                    }}
+                    onFocus={(e) => e.target.style.borderColor = t.accent}
+                    onBlur={(e) => e.target.style.borderColor = t.border}
+                  />
+
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                    {/* Length toggler */}
+                    <div style={{ display: "flex", gap: 4, background: t.border, padding: 3, borderRadius: 8 }}>
+                      <button
+                        type="button"
+                        onClick={() => setAiLength("short")}
+                        style={{
+                          padding: "5px 12px",
+                          borderRadius: 6,
+                          fontSize: 11.5,
+                          fontWeight: 600,
+                          border: "none",
+                          background: aiLength === "short" ? t.card : "transparent",
+                          color: aiLength === "short" ? t.text : t.text3,
+                          cursor: "pointer",
+                          transition: "all .12s"
+                        }}
+                      >
+                        Kratší
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAiLength("long")}
+                        style={{
+                          padding: "5px 12px",
+                          borderRadius: 6,
+                          fontSize: 11.5,
+                          fontWeight: 600,
+                          border: "none",
+                          background: aiLength === "long" ? t.card : "transparent",
+                          color: aiLength === "long" ? t.text : t.text3,
+                          cursor: "pointer",
+                          transition: "all .12s"
+                        }}
+                      >
+                        Delší
+                      </button>
+                    </div>
+
+                    {/* Generate button */}
+                    <button
+                      type="button"
+                      onClick={handleGenerateAiDraft}
+                      disabled={aiLoading}
+                      style={{
+                        padding: "8px 16px",
+                        borderRadius: 8,
+                        fontSize: 12.5,
+                        fontWeight: 700,
+                        border: "none",
+                        background: t.accent,
+                        color: "#fff",
+                        cursor: aiLoading ? "not-allowed" : "pointer",
+                        boxShadow: `0 4px 10px ${t.accentGlow}`,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        opacity: aiLoading ? 0.7 : 1,
+                        transition: "all .15s"
+                      }}
+                    >
+                      {aiLoading ? (
+                        <>
+                          <div className="spinner" style={{ width: 12, height: 12, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.6s linear infinite" }} />
+                          Navrhuji...
+                        </>
+                      ) : (
+                        <>
+                          <Icon name="zap" size={12} color="currentColor" strokeWidth={2.5} />
+                          Generovat
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Description Input */}
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "var(--font-mono)" }}>
+                  Popis úkolu (volitelný)
+                </div>
+                {!description && (
+                  <button
+                    type="button"
+                    onClick={() => setDescription(" ")}
+                    style={{ background: "none", border: "none", color: t.accent, fontSize: 11, fontWeight: 600, cursor: "pointer" }}
+                  >
+                    + Přidat popis
+                  </button>
+                )}
+              </div>
+              {(description || description === " ") && (
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Zadej podrobnosti k úkolu..."
+                  rows={description.split('\n').length > 5 ? 6 : 3}
+                  style={{
+                    fontSize: 13,
+                    padding: "10px 12px",
+                    borderRadius: 10,
+                    border: `1.5px solid ${t.border}`,
+                    background: t.input,
+                    color: t.text,
+                    width: "100%",
+                    outline: "none",
+                    resize: "vertical",
+                    fontFamily: "inherit",
+                    boxShadow: dk ? "inset 0 1px 2px rgba(0,0,0,0.2)" : "inset 0 1px 2px rgba(0,0,0,0.03)",
+                    transition: "border-color .15s"
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = t.accent}
+                  onBlur={(e) => e.target.style.borderColor = t.border}
+                />
+              )}
             </div>
 
             {/* SECTION 1: Základní nastavení (Status, Priorita) */}
@@ -803,7 +1122,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
     </>
   );
 }

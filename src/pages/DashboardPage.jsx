@@ -673,44 +673,42 @@ export default function DashboardPage() {
 
       <div className="work">
         <div>
-          {/* AI hero — desktop only */}
-          {!isMobile && (
-            <>
-              <div className="ai-hero">
-                <div className="ai-orb">✦</div>
-                <div>
-                  <div className="ai-text-h">
-                    Mám pro tebe <span className="num">{aiSuggestions.length}</span> návrhů, jak začít dnešní den.
-                  </div>
-                  <div className="ai-text-sub">
-                    {activeTasks.length} aktivních · {overdue.length} po termínu · streak {streak.current} dní · Gemini 2.0
-                  </div>
-                </div>
-                <button className="ai-act" onClick={() => setShowDailyPlan((p) => !p)}>
-                  <Icon name="zap" size={13} color="currentColor" strokeWidth={1.9} />
-                  {showDailyPlan ? "Skrýt plán" : "Vygenerovat plán"}
-                </button>
+          {/* AI hero — desktop and mobile */}
+          <div className="ai-hero">
+            <div className="ai-orb">✦</div>
+            <div>
+              <div className="ai-text-h">
+                Mám pro tebe <span className="num">{aiSuggestions.length}</span> návrhů, jak začít dnešní den.
               </div>
-
-              {showDailyPlan && (
-                <div className="fi" style={{ marginBottom: 18 }}>
-                  <AIDailyPlan />
-                </div>
-              )}
-
-              <div className="aisug">
-                {aiSuggestions.map((t, i) => (
-                  <div key={t.id} className="aisug-card" onClick={() => setTaskDetail(t.id)}>
-                    <span className={`aisug-num${i === 0 ? " aisug-num-top" : ""}`}>{String(i + 1).padStart(2, "0")}</span>
-                    <div>
-                      <div className="aisug-title">{t.title}</div>
-                      <div className="aisug-reason">{railSuggestion(t)}</div>
-                    </div>
-                    <span className="aisug-tag">{railWeight(t)}</span>
-                  </div>
-                ))}
+              <div className="ai-text-sub">
+                {activeTasks.length} aktivních · {overdue.length} po termínu · streak {streak.current} dní · Gemini 2.0
               </div>
-            </>
+            </div>
+            <button className="ai-act" onClick={() => setShowDailyPlan((p) => !p)}>
+              <Icon name="zap" size={13} color="currentColor" strokeWidth={1.9} />
+              {showDailyPlan ? "Skrýt plán" : "Vygenerovat plán"}
+            </button>
+          </div>
+
+          {showDailyPlan && (
+            <div className="fi" style={{ marginBottom: 18 }}>
+              <AIDailyPlan />
+            </div>
+          )}
+
+          {aiSuggestions.length > 0 && (
+            <div className="aisug" style={{ marginBottom: isMobile ? 12 : 22 }}>
+              {aiSuggestions.map((t, i) => (
+                <div key={t.id} className="aisug-card" onClick={() => setTaskDetail(t.id)}>
+                  <span className={`aisug-num${i === 0 ? " aisug-num-top" : ""}`}>{String(i + 1).padStart(2, "0")}</span>
+                  <div>
+                    <div className="aisug-title">{t.title}</div>
+                    <div className="aisug-reason">{railSuggestion(t)}</div>
+                  </div>
+                  <span className="aisug-tag">{railWeight(t)}</span>
+                </div>
+              ))}
+            </div>
           )}
 
           <div className="dashboard-quickadd-host" style={{ marginBottom: isMobile ? 0 : 18 }}>

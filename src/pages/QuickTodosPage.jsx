@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react'
 import { useApp } from '../context/AppContext.jsx'
+import { useToast } from '../components/Toast.jsx'
 import Icon from '../components/Icon.jsx'
 import { PrioChip, TagPill } from '../components/atlas/AtlasTaskCard.jsx'
 import EmptyState from '../components/EmptyState.jsx'
@@ -16,19 +17,20 @@ const PRIORITY_CONFIG = {
    QuickTodoCard — Atlas .tcard design with swipe support
 ───────────────────────────────────────────── */
 function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) {
-  const { updateQuickTodo } = useApp();
+  const { updateQuickTodo, restoreQuickTodo } = useApp();
+  const toast = useToast();
   const [offsetX, setOffsetX] = useState(0);
   const [swiping, setSwiping] = useState(false);
   const [exiting, setExiting] = useState(false);
   const startXRef = useRef(null);
   const startYRef = useRef(null);
-  const swipeAxisRef = useRef(null); // null | "x" | "y"
+  const swipeAxisRef = useRef(null); // null | "x" | "y" | "ignored"
   const hasSwipedRef = useRef(false);
   const offsetXRef = useRef(0);
   const cardRef = useRef(null);
   const pointerIdRef = useRef(null);
-  const maxSwipeRef = useRef(180);
-  const thresholdRef = useRef(84);
+  const maxSwipeRef = useRef(132);   // fixed max swipe (approx 120-140px)
+  const thresholdRef = useRef(92);   // fixed complete threshold (approx 80-110px)
 
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(todo.text || "");
@@ -40,43 +42,65 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
   const triggerArchive = useCallback(() => {
     navigator.vibrate?.([20, 30, 60]);
     setExiting(true);
-    setTimeout(() => onArchive(todo.id), 320);
-  }, [onArchive, todo.id]);
 
-  useEffect(() => {
-    const recalcSwipeMetrics = () => {
-      const width = cardRef.current?.offsetWidth || (typeof window !== "undefined" ? window.innerWidth : 390);
-      maxSwipeRef.current = Math.round(Math.min(220, Math.max(130, width * 0.72)));
-      thresholdRef.current = Math.round(Math.min(132, Math.max(76, width * 0.32)));
-    };
-    recalcSwipeMetrics();
-    window.addEventListener("resize", recalcSwipeMetrics);
-    return () => window.removeEventListener("resize", recalcSwipeMetrics);
-  }, []);
+    toast(
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <span>Položka byla dokončena</span>
+        <button 
+          onClick={(e) => {
+            e.stopPropagation();
+            restoreQuickTodo(todo.id);
+          }}
+          style={{
+            background: 'rgba(34, 197, 94, 0.15)',
+            border: '1px solid rgba(34, 197, 94, 0.3)',
+            color: '#22c55e',
+            padding: '3px 8px',
+            borderRadius: '6px',
+            fontSize: '11px',
+            fontWeight: '700',
+            cursor: 'pointer',
+            textTransform: 'uppercase',
+            transition: 'background 0.12s',
+          }}
+        >
+          Zpět
+        </button>
+      </div>,
+      "success"
+    );
+
+    setTimeout(() => onArchive(todo.id), 320);
+  }, [onArchive, todo.id, toast, restoreQuickTodo]);
 
   const onPointerDown = (e) => {
-    if (!isMobile || e.pointerType === "mouse") return;
+    if (!isMobile) return;
+    if (e.pointerType === "mouse" && !isMobile) return; // Ignore actual mouse drags on desktop unless simulated viewport
     startXRef.current = e.clientX;
     startYRef.current = e.clientY;
     swipeAxisRef.current = null;
     pointerIdRef.current = e.pointerId;
     hasSwipedRef.current = false;
     setSwiping(false);
-    e.currentTarget.setPointerCapture?.(e.pointerId);
   };
   const onPointerMove = (e) => {
-    if (!isMobile || pointerIdRef.current !== e.pointerId) return;
+    if (pointerIdRef.current !== e.pointerId) return;
     if (startXRef.current == null || startYRef.current == null) return;
     const dx = e.clientX - startXRef.current;
     const dy = e.clientY - startYRef.current;
 
     if (!swipeAxisRef.current) {
-      if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
-      if (Math.abs(dx) > Math.abs(dy) && dx < 0) {
-        swipeAxisRef.current = "x";
-        setSwiping(true);
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+      if (Math.abs(dx) > Math.abs(dy)) {
+        if (dx < 0) {
+          swipeAxisRef.current = "x";
+          setSwiping(true);
+          try { e.currentTarget.setPointerCapture?.(e.pointerId); } catch(err) {}
+        } else {
+          swipeAxisRef.current = "ignored"; // Ignore swiping right
+        }
       } else {
-        swipeAxisRef.current = "y";
+        swipeAxisRef.current = "y"; // Scroll list vertically instead
       }
     }
 
@@ -90,7 +114,7 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
     setOffsetX(clamped);
   };
   const onPointerEnd = (e) => {
-    if (!isMobile || (pointerIdRef.current != null && pointerIdRef.current !== e.pointerId)) return;
+    if (pointerIdRef.current != null && pointerIdRef.current !== e.pointerId) return;
     const wasHorizontalSwipe = swipeAxisRef.current === "x";
     setSwiping(false);
     if (wasHorizontalSwipe && offsetXRef.current < -thresholdRef.current) triggerArchive();
@@ -100,7 +124,7 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
     startYRef.current = null;
     swipeAxisRef.current = null;
     pointerIdRef.current = null;
-    e.currentTarget.releasePointerCapture?.(e.pointerId);
+    try { e.currentTarget.releasePointerCapture?.(e.pointerId); } catch(err) {}
   };
   const onPointerCancel = (e) => {
     setSwiping(false);
@@ -110,7 +134,7 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
     startYRef.current = null;
     swipeAxisRef.current = null;
     pointerIdRef.current = null;
-    e.currentTarget.releasePointerCapture?.(e.pointerId);
+    try { e.currentTarget.releasePointerCapture?.(e.pointerId); } catch(err) {}
   };
 
   const swipeFraction = Math.min(Math.abs(offsetX + hintOffset) / thresholdRef.current, 1);
@@ -295,13 +319,28 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
           borderRadius: "inherit",
         }}>
           <div style={{
-            display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
-            transform: pastThreshold ? "scale(1.15)" : `scale(${0.7 + swipeFraction * 0.3})`,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 4,
+            transform: pastThreshold ? "scale(1.2) rotate(-8deg)" : `scale(${0.75 + swipeFraction * 0.25})`,
             transition: swiping ? "transform .08s" : "transform .25s cubic-bezier(0.34,1.56,0.64,1)",
             opacity: bgOpacity,
+            color: "#ffffff"
           }}>
-            <Icon name="check" size={22} color="var(--bg)" strokeWidth={2.5} />
-            <span style={{ fontSize: 11, color: "var(--bg)", fontWeight: 700, letterSpacing: "0.04em" }}>
+            <div style={{
+              background: pastThreshold ? "rgba(255, 255, 255, 0.35)" : "rgba(255, 255, 255, 0.15)",
+              borderRadius: "50%",
+              width: "36px",
+              height: "36px",
+              display: "grid",
+              placeItems: "center",
+              transition: "all 0.15s ease",
+              boxShadow: pastThreshold ? "0 4px 12px rgba(0,0,0,0.12)" : "none"
+            }}>
+              <Icon name="check" size={20} color="#ffffff" strokeWidth={3} />
+            </div>
+            <span style={{ fontSize: 11, color: "#ffffff", fontWeight: 700, letterSpacing: "0.04em" }}>
               {pastThreshold ? "Pusť!" : "Hotovo"}
             </span>
           </div>
