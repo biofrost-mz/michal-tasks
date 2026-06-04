@@ -279,25 +279,45 @@ export default function TasksPage() {
       </div>
 
       <div className="chips">
-        {CHIP_STATUSES.map((k) => (
-          <span key={k} className={`chip ${statusFilter === k ? "active" : ""}`} onClick={() => setStatusFilter(k)}>
-            {k === "all" ? (
-              <span className="chip-dot" style={{ background: "var(--text-2)" }} />
-            ) : k === "active" ? (
-              <span className="chip-dot" style={{ background: "var(--accent)" }} />
-            ) : (
-              <span className="chip-dot" style={{ background: statusColor(k) }} />
-            )}
-            {STATUS_LABELS[k]}
-            <span className="chip-count">
-              {k === "all"
-                ? baseFiltered.length
-                : k === "active"
-                ? baseFiltered.filter((t) => t.status !== "done").length
-                : baseFiltered.filter((t) => t.statusClass === k).length}
+        {CHIP_STATUSES.map((k) => {
+          const chipElements = [
+            <span key={k} className={`chip ${statusFilter === k ? "active" : ""}`} onClick={() => setStatusFilter(k)}>
+              {k === "all" ? (
+                <span className="chip-dot" style={{ background: "var(--text-2)" }} />
+              ) : k === "active" ? (
+                <span className="chip-dot" style={{ background: "var(--accent)" }} />
+              ) : (
+                <span className="chip-dot" style={{ background: statusColor(k) }} />
+              )}
+              {STATUS_LABELS[k]}
+              <span className="chip-count">
+                {k === "all"
+                  ? baseFiltered.length
+                  : k === "active"
+                  ? baseFiltered.filter((t) => t.status !== "done").length
+                  : baseFiltered.filter((t) => t.statusClass === k).length}
+              </span>
             </span>
-          </span>
-        ))}
+          ];
+
+          if (k === "active") {
+            const soonCount = mappedTasks.filter((t) => t.dueDate && t.dueDate >= todayKey && t.dueDate <= soonEndKey && t.status !== "done").length;
+            chipElements.push(
+              <span
+                key="soon-quick"
+                className={`chip ${dateFilter === "soon" ? "active" : ""}`}
+                onClick={() => setDateFilter(dateFilter === "soon" ? "all" : "soon")}
+                style={dateFilter === "soon" ? { background: "var(--accent-soft)", color: "var(--accent)", borderColor: "var(--accent)" } : undefined}
+              >
+                <span className="chip-dot" style={{ background: "var(--orange)" }} />
+                Blížící se
+                <span className="chip-count">{soonCount}</span>
+              </span>
+            );
+          }
+
+          return chipElements;
+        })}
         {!isMobile && (
           <>
             <span className="chips-div" />

@@ -82,6 +82,7 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
     pointerIdRef.current = e.pointerId;
     hasSwipedRef.current = false;
     setSwiping(false);
+    try { e.currentTarget.setPointerCapture?.(e.pointerId); } catch(err) {}
   };
   const onPointerMove = (e) => {
     if (pointerIdRef.current !== e.pointerId) return;
@@ -95,12 +96,13 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
         if (dx < 0) {
           swipeAxisRef.current = "x";
           setSwiping(true);
-          try { e.currentTarget.setPointerCapture?.(e.pointerId); } catch(err) {}
         } else {
           swipeAxisRef.current = "ignored"; // Ignore swiping right
+          try { e.currentTarget.releasePointerCapture?.(e.pointerId); } catch(err) {}
         }
       } else {
         swipeAxisRef.current = "y"; // Scroll list vertically instead
+        try { e.currentTarget.releasePointerCapture?.(e.pointerId); } catch(err) {}
       }
     }
 

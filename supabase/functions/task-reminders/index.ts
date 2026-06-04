@@ -75,7 +75,7 @@ async function sendReminderEmail(to: string, tasks: Record<string, string>[], pr
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: "Michal Tasks <onboarding@resend.dev>",
+      from: "Zontero <notifikace@tasks.zichmichal.cz>",
       to,
       subject: `🔔 Připomínka: ${tasks.length === 1 ? tasks[0].title : `${tasks.length} úkolů`} · Michal Tasks`,
       html,

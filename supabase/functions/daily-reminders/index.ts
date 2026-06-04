@@ -107,7 +107,7 @@ async function sendDailyEmail(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: "Michal Tasks <onboarding@resend.dev>",
+      from: "Zontero <notifikace@tasks.zichmichal.cz>",
       to,
       subject: `📋 ${subjectParts} · Michal Tasks`,
       html,

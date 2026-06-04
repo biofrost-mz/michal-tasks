@@ -122,11 +122,13 @@ export default function QuickAdd({ defaultProjectId = null }) {
         }
       });
 
-      if (error) {
-        const msg = data?.error || error.message || String(error);
-        if (msg.includes("non-2xx") || msg.includes("Unauthorized") || error.status === 401) {
+      if (error || data?.error) {
+        const msg = data?.error || error?.message || String(error);
+        if (msg.includes("non-2xx")) {
+          toast("Chyba: AI služba není nasazená v Supabase (použij: supabase functions deploy ai-task-assist)", "error");
+        } else if (msg.includes("Unauthorized") || error?.status === 401) {
           toast("Chyba přihlášení k AI službám.", "error");
-        } else if (error.status === 429 || msg.includes("Rate limit")) {
+        } else if (error?.status === 429 || msg.includes("Rate limit")) {
           toast("Příliš mnoho AI dotazů — zkus to za hodinu.", "error");
         } else {
           toast(`Chyba AI: ${msg || "neznámá chyba"}`, "error");

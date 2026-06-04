@@ -352,6 +352,7 @@ export default function DashboardPage() {
   const [showDailyPlan, setShowDailyPlan] = useState(false);
   const [expandedSections, setExpandedSections] = useState({});
   const [hoveredDay, setHoveredDay] = useState(null);
+  const [showAiTasks, setShowAiTasks] = useState(!isMobile);
 
   const groupBy = "status";
   const [sortBy, setSortBy] = useState("default"); // "default", "dueDate", "priority", "title"
@@ -676,7 +677,7 @@ export default function DashboardPage() {
           {/* AI hero — desktop and mobile */}
           <div className="ai-hero">
             <div className="ai-orb">✦</div>
-            <div>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <div className="ai-text-h">
                 Mám pro tebe <span className="num">{aiSuggestions.length}</span> návrhů, jak začít dnešní den.
               </div>
@@ -684,10 +685,18 @@ export default function DashboardPage() {
                 {activeTasks.length} aktivních · {overdue.length} po termínu · streak {streak.current} dní · Gemini 2.0
               </div>
             </div>
-            <button className="ai-act" onClick={() => setShowDailyPlan((p) => !p)}>
-              <Icon name="zap" size={13} color="currentColor" strokeWidth={1.9} />
-              {showDailyPlan ? "Skrýt plán" : "Vygenerovat plán"}
-            </button>
+            <div style={{ gridColumn: isMobile ? "1 / -1" : "auto", display: "flex", flexDirection: isMobile ? "column" : "row", gap: 8, width: isMobile ? "100%" : "auto" }}>
+              <button className="ai-act" onClick={() => setShowDailyPlan((p) => !p)} style={isMobile ? { width: "100%", margin: 0, justifyContent: "center" } : undefined}>
+                <Icon name="zap" size={13} color="currentColor" strokeWidth={1.9} />
+                {showDailyPlan ? "Skrýt plán" : "Vygenerovat plán"}
+              </button>
+              {isMobile && aiSuggestions.length > 0 && (
+                <button className="ai-act" onClick={() => setShowAiTasks((p) => !p)} style={{ width: "100%", margin: 0, justifyContent: "center", background: "var(--surface)", border: "1px solid var(--border-soft)", color: "var(--text-2)" }}>
+                  <Icon name={showAiTasks ? "eye-off" : "eye"} size={13} color="currentColor" strokeWidth={1.9} />
+                  {showAiTasks ? "Skrýt návrhy úkolů" : `Zobrazit návrhy úkolů (${aiSuggestions.length})`}
+                </button>
+              )}
+            </div>
           </div>
 
           {showDailyPlan && (
@@ -696,7 +705,7 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {aiSuggestions.length > 0 && (
+          {aiSuggestions.length > 0 && showAiTasks && (
             <div className="aisug" style={{ marginBottom: isMobile ? 12 : 22 }}>
               {aiSuggestions.map((t, i) => (
                 <div key={t.id} className="aisug-card" onClick={() => setTaskDetail(t.id)}>
@@ -711,7 +720,7 @@ export default function DashboardPage() {
             </div>
           )}
 
-          <div className="dashboard-quickadd-host" style={{ marginBottom: isMobile ? 0 : 18 }}>
+          <div className="dashboard-quickadd-host" style={{ marginBottom: 18 }}>
             <QuickAdd />
           </div>
 
@@ -735,50 +744,77 @@ export default function DashboardPage() {
               <span className="chip-dot" style={{ background: "var(--accent)" }} /> Top úkoly <span className="chip-count">{starred.length}</span>
             </span>
 
-            <span style={{ position: "relative" }} ref={sortRef}>
-              <span className={`chip ${sortBy !== "default" ? "active" : ""}`} onClick={() => setSortByOpen(!sortByOpen)}>
-                Řadit podle: {SORT_LABELS[sortBy]} ▾
-              </span>
-              {sortByOpen && (
-                <div className="pop" style={{
-                  position: "absolute",
-                  top: "calc(100% + 6px)",
-                  right: 0,
-                  background: "var(--bg-2)",
-                  border: "1px solid var(--border)",
-                  borderRadius: 12,
-                  boxShadow: "var(--shadow)",
-                  zIndex: 200,
-                  minWidth: 180,
-                  padding: "6px"
-                }}>
+            {isMobile ? (
+              <span className={`chip ${sortBy !== "default" ? "active" : ""}`} style={{ position: "relative", padding: 0, overflow: "hidden" }}>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    opacity: 0,
+                    width: "100%",
+                    height: "100%",
+                    cursor: "pointer",
+                    appearance: "none",
+                    WebkitAppearance: "none",
+                    zIndex: 10,
+                  }}
+                >
                   {Object.entries(SORT_LABELS).map(([k, label]) => (
-                    <button
-                      key={k}
-                      onClick={() => { setSortBy(k); setSortByOpen(false); }}
-                      style={{
-                        width: "100%",
-                        display: "flex",
-                        alignItems: "center",
-                        padding: "8px 12px",
-                        borderRadius: 8,
-                        border: "none",
-                        background: sortBy === k ? "var(--accent-soft)" : "transparent",
-                        color: sortBy === k ? "var(--accent)" : "var(--text-2)",
-                        fontSize: 13,
-                        fontWeight: sortBy === k ? 600 : 400,
-                        cursor: "pointer",
-                        textAlign: "left"
-                      }}
-                      onMouseEnter={(e) => { if (sortBy !== k) e.currentTarget.style.background = "var(--card-h)"; }}
-                      onMouseLeave={(e) => { if (sortBy !== k) e.currentTarget.style.background = "transparent"; }}
-                    >
-                      {label}
-                    </button>
+                    <option key={k} value={k}>{label}</option>
                   ))}
-                </div>
-              )}
-            </span>
+                </select>
+                <span style={{ padding: "6px 12px", display: "inline-flex", alignItems: "center", gap: 6, pointerEvents: "none" }}>
+                  Řadit podle: {SORT_LABELS[sortBy]} ▾
+                </span>
+              </span>
+            ) : (
+              <span style={{ position: "relative" }} ref={sortRef}>
+                <span className={`chip ${sortBy !== "default" ? "active" : ""}`} onClick={() => setSortByOpen(!sortByOpen)}>
+                  Řadit podle: {SORT_LABELS[sortBy]} ▾
+                </span>
+                {sortByOpen && (
+                  <div className="pop" style={{
+                    position: "absolute",
+                    top: "calc(100% + 6px)",
+                    right: 0,
+                    background: "var(--bg-2)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 12,
+                    boxShadow: "var(--shadow)",
+                    zIndex: 200,
+                    minWidth: 180,
+                    padding: "6px"
+                  }}>
+                    {Object.entries(SORT_LABELS).map(([k, label]) => (
+                      <button
+                        key={k}
+                        onClick={() => { setSortBy(k); setSortByOpen(false); }}
+                        style={{
+                          width: "100%",
+                          display: "flex",
+                          alignItems: "center",
+                          padding: "8px 12px",
+                          borderRadius: 8,
+                          border: "none",
+                          background: sortBy === k ? "var(--accent-soft)" : "transparent",
+                          color: sortBy === k ? "var(--accent)" : "var(--text-2)",
+                          fontSize: 13,
+                          fontWeight: sortBy === k ? 600 : 400,
+                          cursor: "pointer",
+                          textAlign: "left"
+                        }}
+                        onMouseEnter={(e) => { if (sortBy !== k) e.currentTarget.style.background = "var(--card-h)"; }}
+                        onMouseLeave={(e) => { if (sortBy !== k) e.currentTarget.style.background = "transparent"; }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </span>
+            )}
           </div>
 
           {groupBy === "status" && (
