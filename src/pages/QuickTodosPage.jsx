@@ -27,8 +27,9 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
   const swipeAxisRef = useRef(null); // null | "x" | "y" | "ignored"
   const hasSwipedRef = useRef(false);
   const offsetXRef = useRef(0);
-  const cardRef = useRef(null);
   const pointerIdRef = useRef(null);
+  const archiveTimerRef = useRef(null);
+  const completingRef = useRef(false);
   const maxSwipeRef = useRef(132);   // fixed max swipe (approx 120-140px)
   const thresholdRef = useRef(92);   // fixed complete threshold (approx 80-110px)
 
@@ -39,9 +40,17 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
   const [editDue, setEditDue] = useState(todo.dueDate || "");
   const [editTags, setEditTags] = useState(todo.tags ? todo.tags.join(", ") : "");
 
+  useEffect(() => () => {
+    if (archiveTimerRef.current) clearTimeout(archiveTimerRef.current);
+  }, []);
+
   const triggerArchive = useCallback(() => {
+    if (completingRef.current) return;
+    completingRef.current = true;
     navigator.vibrate?.([20, 30, 60]);
     setExiting(true);
+    setOffsetX(-maxSwipeRef.current);
+    offsetXRef.current = -maxSwipeRef.current;
 
     toast(
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -49,6 +58,14 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
         <button 
           onClick={(e) => {
             e.stopPropagation();
+            if (archiveTimerRef.current) {
+              clearTimeout(archiveTimerRef.current);
+              archiveTimerRef.current = null;
+            }
+            completingRef.current = false;
+            setExiting(false);
+            setOffsetX(0);
+            offsetXRef.current = 0;
             restoreQuickTodo(todo.id);
           }}
           style={{
@@ -70,18 +87,23 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
       "success"
     );
 
-    setTimeout(() => onArchive(todo.id), 320);
+    archiveTimerRef.current = setTimeout(() => {
+      archiveTimerRef.current = null;
+      onArchive(todo.id, { silent: true });
+    }, 180);
   }, [onArchive, todo.id, toast, restoreQuickTodo]);
 
   const onPointerDown = (e) => {
-    if (!isMobile) return;
     if (exiting) return;
+    if (e.button !== undefined && e.button !== 0) return;
+    if (e.target.closest?.("button, input, textarea, select, a")) return;
     startXRef.current = e.clientX;
+    startYRef.current = e.clientY;
     pointerIdRef.current = e.pointerId;
     offsetXRef.current = 0;
-    setSwiping(true);
+    swipeAxisRef.current = null;
+    setSwiping(false);
     hasSwipedRef.current = false;
-    try { e.currentTarget.setPointerCapture?.(e.pointerId); } catch(err) {}
   };
 
   const onPointerMove = (e) => {
@@ -89,6 +111,26 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
     if (startXRef.current == null) return;
 
     const diff = e.clientX - startXRef.current;
+    const diffY = e.clientY - startYRef.current;
+    const absX = Math.abs(diff);
+    const absY = Math.abs(diffY);
+
+    if (swipeAxisRef.current == null) {
+      if (absX < 6 && absY < 6) return;
+      if (absY > absX || diff >= 0) {
+        swipeAxisRef.current = "ignored";
+        setSwiping(false);
+        return;
+      }
+      swipeAxisRef.current = "x";
+      setSwiping(true);
+      hasSwipedRef.current = true;
+      try { e.currentTarget.setPointerCapture?.(e.pointerId); } catch(err) {}
+    }
+
+    if (swipeAxisRef.current !== "x") return;
+    e.preventDefault();
+
     // ignore right swipe, use left swipe
     const currentX = Math.min(0, diff);
     const clamped = Math.max(-maxSwipeRef.current, currentX);
@@ -105,13 +147,16 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
     setSwiping(false);
     const finalX = offsetXRef.current;
     
-    if (finalX < -thresholdRef.current) {
+    if (swipeAxisRef.current === "x" && finalX <= -thresholdRef.current) {
       triggerArchive();
     } else {
       setOffsetX(0);
+      offsetXRef.current = 0;
     }
     
     startXRef.current = null;
+    startYRef.current = null;
+    swipeAxisRef.current = null;
     pointerIdRef.current = null;
     try { e.currentTarget.releasePointerCapture?.(e.pointerId); } catch(err) {}
   };
@@ -119,7 +164,10 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
   const onPointerCancel = (e) => {
     setSwiping(false);
     setOffsetX(0);
+    offsetXRef.current = 0;
     startXRef.current = null;
+    startYRef.current = null;
+    swipeAxisRef.current = null;
     pointerIdRef.current = null;
     try { e.currentTarget.releasePointerCapture?.(e.pointerId); } catch(err) {}
   };
@@ -130,14 +178,6 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
 
   // Map quickTodo to a visual status — active items are "todo"
   const statusClass = "todo";
-
-  const swipeWrap = isMobile ? {
-    position: "relative",
-    overflow: "hidden",
-    borderRadius: "var(--r, 14px)",
-    touchAction: "pan-y",
-    userSelect: "none",
-  } : {};
 
   if (isEditing) {
     return (
@@ -293,71 +333,35 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
   }
 
   return (
-    <div style={swipeWrap}>
-      {/* Swipe background (mobile only) */}
-      {isMobile && (
-        <div style={{
-          position: "absolute", inset: 0,
-          background: pastThreshold
-            ? `rgba(34,197,94,0.95)`
-            : `rgba(34,197,94,${bgOpacity * 0.8})`,
-          display: "flex", alignItems: "center", justifyContent: "flex-end", paddingRight: 24,
-          transition: swiping ? "background .08s" : "background .25s",
-          borderRadius: "inherit",
-        }}>
-          <div style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 4,
-            transform: pastThreshold ? "scale(1.2) rotate(-8deg)" : `scale(${0.75 + swipeFraction * 0.25})`,
-            transition: swiping ? "transform .08s" : "transform .25s cubic-bezier(0.34,1.56,0.64,1)",
-            opacity: bgOpacity,
-            color: "#ffffff"
-          }}>
-            <div style={{
-              background: pastThreshold ? "rgba(255, 255, 255, 0.35)" : "rgba(255, 255, 255, 0.15)",
-              borderRadius: "50%",
-              width: "36px",
-              height: "36px",
-              display: "grid",
-              placeItems: "center",
-              transition: "all 0.15s ease",
-              boxShadow: pastThreshold ? "0 4px 12px rgba(0,0,0,0.12)" : "none"
-            }}>
-              <Icon name="check" size={20} color="#ffffff" strokeWidth={3} />
-            </div>
-            <span style={{ fontSize: 11, color: "#ffffff", fontWeight: 700, letterSpacing: "0.04em" }}>
-              {pastThreshold ? "Pusť!" : "Hotovo"}
-            </span>
+    <div
+      className={`quick-todo-swipe-shell${swiping ? " is-swiping" : ""}${pastThreshold ? " is-complete-ready" : ""}${exiting ? " is-exiting" : ""}`}
+      style={{
+        "--drag-x": exiting ? "-115%" : `${offsetX + hintOffset}px`,
+        "--swipe-progress": bgOpacity,
+        "--swipe-scale": pastThreshold ? 1.14 : 0.76 + swipeFraction * 0.24,
+      }}
+    >
+      <div className="quick-todo-swipe-bg" aria-hidden="true">
+        <div className="quick-todo-swipe-action">
+          <div className="quick-todo-swipe-icon">
+            <Icon name="check" size={20} color="#ffffff" strokeWidth={3} />
           </div>
+          <span>Hotovo</span>
         </div>
-      )}
+      </div>
 
       <div
-        ref={cardRef}
-        className={`tcard ${statusClass}`}
-        onPointerDown={isMobile ? onPointerDown : undefined}
-        onPointerMove={isMobile ? onPointerMove : undefined}
-        onPointerUp={isMobile ? onPointerEnd : undefined}
-        onPointerCancel={isMobile ? onPointerCancel : undefined}
+        className={`tcard ${statusClass} quick-todo-swipe-card`}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerEnd}
+        onPointerCancel={onPointerCancel}
+        onLostPointerCapture={onPointerEnd}
         onClick={() => {
           if (hasSwipedRef.current) return;
           if (Math.abs(offsetX) > 5) return;
           setIsEditing(true);
         }}
-        style={isMobile ? {
-          transform: exiting ? "translateX(-115%) scale(0.95)" : `translateX(${offsetX + hintOffset}px)`,
-          opacity: exiting ? 0 : 1,
-          touchAction: "pan-y",
-          cursor: swiping ? "grabbing" : "grab",
-          transition: swiping
-            ? "none"
-            : exiting
-              ? "transform .32s cubic-bezier(.4,0,.2,1), opacity .22s"
-              : "transform .35s cubic-bezier(0.34,1.56,0.64,1), opacity .2s",
-          willChange: "transform",
-        } : undefined}
       >
         <div
           className="tcard-state"

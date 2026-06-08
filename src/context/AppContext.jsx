@@ -966,10 +966,10 @@ export function AppProvider({ children }) {
     return qt;
   }, [userId, activeWorkspaceId, reportError, toast]);
 
-  const archiveQuickTodo = useCallback((id) => {
+  const archiveQuickTodo = useCallback((id, options = {}) => {
     const prevTodos = quickTodos;
     setQuickTodos((prev) => prev.map((q) => q.id === id ? { ...q, done: true } : q));
-    toast("Položka označena jako hotová ✓", "success");
+    if (!options.silent) toast("Položka byla dokončena", "success");
     (async () => {
       try {
         await quickTodoService.updateQuickTodoDB(id, { done: true });

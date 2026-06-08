@@ -2898,6 +2898,90 @@ body, p, li, td, th {
   display: none !important;
 }
 
+/* Quick todos: Gmail-style swipe-to-done. Keep this after generic .tcard hover rules. */
+.quick-todo-swipe-shell {
+  --drag-x: 0px;
+  --swipe-progress: 0;
+  --swipe-scale: 0.76;
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--r);
+  touch-action: pan-y;
+  user-select: none;
+}
+.quick-todo-swipe-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 24px;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #4ea85b, #75b77a 48%, #98d29c);
+  opacity: var(--swipe-progress);
+  transition: opacity .2s ease;
+  pointer-events: none;
+}
+.quick-todo-swipe-action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: #fff;
+  opacity: var(--swipe-progress);
+  transform: scale(var(--swipe-scale));
+  transition: transform .22s cubic-bezier(.34,1.56,.64,1), opacity .16s ease;
+}
+.quick-todo-swipe-icon {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255,255,255,.16);
+  box-shadow: none;
+  transition: background .16s ease, box-shadow .16s ease, transform .16s ease;
+}
+.quick-todo-swipe-action span {
+  font-size: 11px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.quick-todo-swipe-shell.is-complete-ready .quick-todo-swipe-icon {
+  background: rgba(255,255,255,.34);
+  box-shadow: 0 5px 16px rgba(0,0,0,.16);
+  transform: rotate(-8deg);
+}
+.quick-todo-swipe-card.tcard {
+  position: relative;
+  z-index: 2;
+  touch-action: pan-y;
+  cursor: grab;
+  transform: translateX(var(--drag-x)) !important;
+  transition: transform .32s cubic-bezier(.34,1.56,.64,1), opacity .18s ease, background .15s, border-color .18s, box-shadow .18s !important;
+  will-change: transform;
+}
+.quick-todo-swipe-card.tcard:hover,
+.quick-todo-swipe-card.tcard:active {
+  transform: translateX(var(--drag-x)) !important;
+}
+.quick-todo-swipe-shell.is-swiping .quick-todo-swipe-card.tcard {
+  cursor: grabbing;
+  transition: none !important;
+}
+.quick-todo-swipe-shell.is-swiping .quick-todo-swipe-bg,
+.quick-todo-swipe-shell.is-swiping .quick-todo-swipe-action {
+  transition: none;
+}
+.quick-todo-swipe-shell.is-exiting .quick-todo-swipe-card.tcard {
+  opacity: 0;
+  transform: translateX(var(--drag-x)) scale(.95) !important;
+  transition: transform .32s cubic-bezier(.4,0,.2,1), opacity .22s ease !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .headline,
   .hl-stat,
