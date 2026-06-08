@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { useCreateBlockNote } from '@blocknote/react'
+import { BlockNoteView } from '@blocknote/mantine'
 import { useApp } from '../context/AppContext.jsx'
 import { useToast } from '../components/Toast.jsx'
 import { useConfirm } from '../components/Confirm.jsx'
@@ -58,6 +60,29 @@ function injectNoteCSS(dk) {
 .note-ce [data-type="todo"] input[type="checkbox"] { margin-top:4px; accent-color:${accent}; transform:scale(1.1); cursor:pointer; flex-shrink:0; }
 .note-ce [data-type="todo"].done span { text-decoration:line-through; color:${text3}; }
 .note-ce:empty:before { content: attr(data-placeholder); color: ${text3}; pointer-events:none; }
+.note-blocknote {
+  min-height: 460px;
+  color: ${text};
+  --bn-colors-editor-text: ${text};
+  --bn-colors-editor-background: transparent;
+}
+.note-blocknote .bn-container,
+.note-blocknote .bn-editor {
+  background: transparent;
+  color: ${text};
+  font-family: var(--font-body);
+}
+.note-blocknote .bn-editor {
+  padding-inline: 0;
+  min-height: 420px;
+}
+.note-blocknote .bn-block-content {
+  font-size: 16px;
+  line-height: 1.75;
+}
+.note-blocknote .bn-block-content a {
+  color: ${accent};
+}
 .notes-workspace {
   width: min(1480px, calc(100vw - 32px));
   height: calc(100vh - 48px);
@@ -401,32 +426,6 @@ const NOTE_AI_ACTIONS = [
   { id:"note_extract_tasks",  icon:"check-square", label:"Úkoly" },
 ];
 
-/* ─── Slash commands ────────────────────────── */
-const SLASH_COMMANDS = [
-  { id:"h1",      label:"Nadpis 1",  icon:"type",         desc:"Velký nadpis"      },
-  { id:"h2",      label:"Nadpis 2",  icon:"type",         desc:"Střední nadpis"    },
-  { id:"h3",      label:"Nadpis 3",  icon:"type",         desc:"Malý nadpis"       },
-  { id:"ul",      label:"Odrážky",   icon:"list",         desc:"Odrážkový seznam"  },
-  { id:"ol",      label:"Číslování", icon:"list",         desc:"Číslovaný seznam"  },
-  { id:"todo",    label:"To-do",     icon:"check-square", desc:"Akční bod s checkboxem" },
-  { id:"quote",   label:"Citace",    icon:"align-left",   desc:"Blok citace"       },
-  { id:"callout", label:"Callout",   icon:"alert-circle", desc:"Zvýrazněný blok"   },
-  { id:"table",   label:"Tabulka",   icon:"file-text",    desc:"Tabulka 2×2"       },
-  { id:"code",    label:"Kód",       icon:"code",         desc:"Blok kódu"         },
-  { id:"divider", label:"Oddělovač", icon:"minus",        desc:"Vodorovná linka"   },
-];
-
-const TEXT_COLORS = [
-  { c:"#ef4444", l:"Červená" }, { c:"#f97316", l:"Oranžová" }, { c:"#eab308", l:"Žlutá" },
-  { c:"#22c55e", l:"Zelená"  }, { c:"#3b82f6", l:"Modrá"    }, { c:"#8b5cf6", l:"Fialová"},
-  { c:"#ec4899", l:"Růžová"  }, { c:"#94a3b8", l:"Šedá"     }, { c:"currentColor", l:"Výchozí" },
-];
-const BG_COLORS = [
-  { c:"#fef2f2", l:"Červené" }, { c:"#fff7ed", l:"Oranžové" }, { c:"#fefce8", l:"Žluté" },
-  { c:"#f0fdf4", l:"Zelené"  }, { c:"#eff6ff", l:"Modré"    }, { c:"#f5f3ff", l:"Fialové"},
-  { c:"#fdf4ff", l:"Růžové"  }, { c:"rgba(255,255,255,.12)", l:"Bílé" }, { c:"transparent", l:"Žádné" },
-];
-
 const NOTE_AI_MOCK_ACTIONS = [
   "Shrnout poznámku",
   "Vytáhnout úkoly",
@@ -453,6 +452,23 @@ function stripHtmlText(value = "") {
     .replace(/&nbsp;/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function blockContentText(content) {
+  if (!Array.isArray(content)) return "";
+  return content.map(item => {
+    if (typeof item === "string") return item;
+    if (item?.type === "text") return item.text || "";
+    if (Array.isArray(item?.content)) return blockContentText(item.content);
+    return "";
+  }).join("");
+}
+
+function blocksToPlainText(blocks = []) {
+  return blocks
+    .map(block => [blockContentText(block.content), blocksToPlainText(block.children || [])].filter(Boolean).join("\n"))
+    .filter(Boolean)
+    .join("\n");
 }
 
 function noteTemplateLabel(note) {
@@ -493,53 +509,25 @@ function linkedItemsForNote(note, projects, tasks) {
 }
 
 /* ─── NoteEditor ────────────────────────────── */
-function NoteEditor({ note, onSave, t, isMobile, showProps, onToggleProps, onDelete, onTogglePin, projects, tasks, addTask }) {
+function NoteEditor({ note, onSave, t, dk, isMobile, showProps, onToggleProps, onDelete, onTogglePin, projects, tasks, addTask }) {
   const { tags: globalTags } = useApp();
-  const editorRef   = useRef(null);
-  const titleRef    = useRef(null);
-  const saveTimer   = useRef(null);
-  const savedRange  = useRef(null);
-  const slashRangeRef = useRef(null);
+  const editor = useCreateBlockNote();
+  const titleRef = useRef(null);
+  const saveTimer = useRef(null);
+  const loadingNoteRef = useRef(false);
+  const latestContentRef = useRef(initEditorContent(note.content));
 
-  const [title,     setTitle]     = useState(note.title);
+  const [title, setTitle] = useState(note.title);
   const [saveState, setSaveState] = useState("idle");
-  const [aiOpen,    setAiOpen]    = useState(false);
-  const [aiAction,  setAiAction]  = useState(null);
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiAction, setAiAction] = useState(null);
   const [aiLoading, setAiLoading] = useState(null);
-  const [aiResult,  setAiResult]  = useState(null);
+  const [aiResult, setAiResult] = useState(null);
 
-  // Slash command menu
-  const [slashMenu,  setSlashMenu]  = useState(null); // { x, y, query } | null
-  const [slashIdx,   setSlashIdx]   = useState(0);
-
-  // Color picker
-  const [colorMenu,  setColorMenu]  = useState(null); // "text" | "bg" | null
-  const [colorPos,   setColorPos]   = useState({ x:0, y:0 });
-
-  useEffect(() => {
-    setTitle(note.title);
-    if (titleRef.current) titleRef.current.value = note.title;
-    if (editorRef.current) editorRef.current.innerHTML = initEditorContent(note.content);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [note.id]);
-
-  // Close slash menu on outside click
-  useEffect(() => {
-    if (!slashMenu) return;
-    const handler = (e) => {
-      if (!editorRef.current?.contains(e.target)) setSlashMenu(null);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [slashMenu]);
-
-  // Close color menu on outside click
-  useEffect(() => {
-    if (!colorMenu) return;
-    const handler = () => setColorMenu(null);
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [colorMenu]);
+  const serializeEditor = useCallback(() => {
+    const html = editor.blocksToHTMLLossy(editor.document);
+    return initEditorContent(html || "");
+  }, [editor]);
 
   const triggerSave = useCallback((data) => {
     setSaveState("saving");
@@ -549,229 +537,63 @@ function NoteEditor({ note, onSave, t, isMobile, showProps, onToggleProps, onDel
         await onSave({ ...data, content: initEditorContent(data.content || "") });
         setSaveState("saved");
         setTimeout(() => setSaveState("idle"), 2000);
-      } catch { setSaveState("idle"); }
+      } catch {
+        setSaveState("idle");
+      }
     }, 700);
   }, [onSave]);
 
-  const handleTitleChange = (e) => {
-    setTitle(e.target.value);
-    triggerSave({ title: e.target.value, content: editorRef.current?.innerHTML || "" });
-  };
-
-  const handleContentInput = useCallback(() => {
-    triggerSave({ title: titleRef.current?.value || title, content: editorRef.current?.innerHTML || "" });
-  }, [triggerSave, title]);
-
-  const saveRange = () => {
-    const sel = window.getSelection();
-    if (sel && sel.rangeCount > 0 && editorRef.current?.contains(sel.getRangeAt(0).startContainer)) {
-      savedRange.current = sel.getRangeAt(0).cloneRange();
-    }
-  };
-
-  const restoreRange = () => {
-    if (!savedRange.current) return;
-    const sel = window.getSelection();
-    sel.removeAllRanges();
-    sel.addRange(savedRange.current);
-  };
-
-  const exec = useCallback((cmd, value = null) => {
-    editorRef.current?.focus();
-    restoreRange();
-    document.execCommand(cmd, false, value);
-    handleContentInput();
-  }, [handleContentInput]);
-
-  // Ensure cursor is at a new block line before inserting block elements
-  const ensureNewLine = useCallback(() => {
-    const sel = window.getSelection();
-    if (!sel || !sel.rangeCount) return;
-    const range = sel.getRangeAt(0);
-    let node = range.startContainer;
-    if (node.nodeType === Node.TEXT_NODE) node = node.parentNode;
-    const BLOCKS = ["P","H1","H2","H3","H4","H5","H6","LI","BLOCKQUOTE","DIV","PRE","TABLE"];
-    let block = node;
-    while (block && block !== editorRef.current && !BLOCKS.includes(block.tagName?.toUpperCase())) {
-      block = block.parentNode;
-    }
-    if (block && block !== editorRef.current && (block.textContent || "").trim() !== "") {
-      const endRange = document.createRange();
-      endRange.selectNodeContents(block);
-      endRange.collapse(false);
-      sel.removeAllRanges();
-      sel.addRange(endRange);
-      document.execCommand("insertParagraph", false, null);
-    }
-  }, []);
-
-  const insertHtml = useCallback((html) => {
-    editorRef.current?.focus();
-    restoreRange();
-    document.execCommand("insertHTML", false, html);
-    handleContentInput();
-  }, [handleContentInput]);
-
-  // Todo uses direct DOM insertion so checkbox doesn't get stripped
-  const insertTodo = useCallback(() => {
-    editorRef.current?.focus();
-    restoreRange();
-    ensureNewLine();
-    const sel = window.getSelection();
-    if (!sel || !sel.rangeCount) return;
-    const range = sel.getRangeAt(0);
-    range.collapse(true);
-
-    const wrap = document.createElement("div");
-    wrap.setAttribute("data-type", "todo");
-    const cb = document.createElement("input");
-    cb.type = "checkbox";
-    cb.addEventListener("change", (e) => {
-      const parent = e.target.closest("[data-type='todo']");
-      if (parent) parent.classList.toggle("done", e.target.checked);
-      triggerSave({ title: titleRef.current?.value || "", content: editorRef.current?.innerHTML || "" });
-    });
-    const span = document.createElement("span");
-    span.textContent = "Nový akční bod";
-    wrap.appendChild(cb);
-    wrap.appendChild(span);
-    range.insertNode(wrap);
-
-    // Place cursor inside span
-    const newRange = document.createRange();
-    newRange.selectNodeContents(span);
-    newRange.collapse(false);
-    sel.removeAllRanges();
-    sel.addRange(newRange);
-    handleContentInput();
-  }, [ensureNewLine, handleContentInput, triggerSave]);
-
-  const insertCallout = useCallback(() => {
-    editorRef.current?.focus();
-    restoreRange();
-    ensureNewLine();
-    document.execCommand("insertHTML", false, `<div class="callout"><span class="callout-icon">💡</span><div><strong>Poznámka:</strong> doplň obsah callout bloku.</div></div><p><br></p>`);
-    handleContentInput();
-  }, [ensureNewLine, handleContentInput]);
-
-  const insertTable = useCallback(() => {
-    editorRef.current?.focus();
-    restoreRange();
-    ensureNewLine();
-    document.execCommand("insertHTML", false, `<table><tr><th>Věc</th><th>Stav</th></tr><tr><td>Položka 1</td><td>Přidat</td></tr></table><p><br></p>`);
-    handleContentInput();
-  }, [ensureNewLine, handleContentInput]);
-
-  const insertCodeBlock = useCallback(() => {
-    editorRef.current?.focus();
-    restoreRange();
-    ensureNewLine();
-    document.execCommand("insertHTML", false, `<pre><code>// kód zde</code></pre><p><br></p>`);
-    handleContentInput();
-  }, [ensureNewLine, handleContentInput]);
-
-  const insertDivider = useCallback(() => {
-    editorRef.current?.focus();
-    restoreRange();
-    document.execCommand("insertHTML", false, `<hr><p><br></p>`);
-    handleContentInput();
-  }, [handleContentInput]);
-
-  const insertInlineCode = useCallback(() => {
-    editorRef.current?.focus();
-    restoreRange();
-    const sel = window.getSelection();
-    if (sel && sel.toString().length > 0) {
-      document.execCommand("insertHTML", false, `<code>${sel.toString()}</code>`);
-    } else {
-      document.execCommand("insertHTML", false, `<code>kód</code>`);
-    }
-    handleContentInput();
-  }, [handleContentInput]);
-
-  // ── Slash command detection ──────────────────
-  const getSlashFiltered = (query) =>
-    SLASH_COMMANDS.filter(c =>
-      !query || c.label.toLowerCase().includes(query) || c.id.includes(query)
-    );
-
-  const checkSlashMenu = useCallback(() => {
-    const sel = window.getSelection();
-    if (!sel || !sel.rangeCount) { setSlashMenu(null); return; }
-    const range = sel.getRangeAt(0);
-    if (!range.collapsed) { setSlashMenu(null); return; }
-    const node = range.startContainer;
-    if (node.nodeType !== Node.TEXT_NODE) { setSlashMenu(null); return; }
-    const text = node.textContent.slice(0, range.startOffset);
-    const slashIdx = text.lastIndexOf("/");
-    if (slashIdx === -1) { setSlashMenu(null); return; }
-    const between = text.slice(slashIdx + 1);
-    if (/\s/.test(between)) { setSlashMenu(null); return; }
-
-    // Store range at slash for deletion
-    const slashRange = range.cloneRange();
-    slashRange.setStart(node, slashIdx);
-    slashRangeRef.current = slashRange;
-
-    const rect = slashRange.getBoundingClientRect();
-    setSlashMenu({ x: rect.left, y: rect.bottom + 6, query: between.toLowerCase() });
-    setSlashIdx(0);
-  }, []);
-
-  const executeSlashCommand = useCallback((cmdId) => {
-    setSlashMenu(null);
-    // Delete "/query" text
-    if (slashRangeRef.current) {
-      const sel = window.getSelection();
-      if (sel && sel.rangeCount) {
-        const curRange = sel.getRangeAt(0);
-        const delRange = slashRangeRef.current.cloneRange();
-        delRange.setEnd(curRange.startContainer, curRange.startOffset);
-        delRange.deleteContents();
-        sel.removeAllRanges();
-        sel.addRange(delRange);
-        delRange.collapse(true);
-        sel.removeAllRanges();
-        sel.addRange(delRange);
-      }
-    }
-    editorRef.current?.focus();
-    switch (cmdId) {
-      case "h1":      document.execCommand("formatBlock", false, "h1"); break;
-      case "h2":      document.execCommand("formatBlock", false, "h2"); break;
-      case "h3":      document.execCommand("formatBlock", false, "h3"); break;
-      case "ul":      document.execCommand("insertUnorderedList", false, null); break;
-      case "ol":      document.execCommand("insertOrderedList",   false, null); break;
-      case "todo":    insertTodo(); return;
-      case "quote":   document.execCommand("formatBlock", false, "blockquote"); break;
-      case "callout": insertCallout(); return;
-      case "table":   insertTable(); return;
-      case "code":    insertCodeBlock(); return;
-      case "divider": insertDivider(); return;
-    }
-    handleContentInput();
-  }, [insertTodo, insertCallout, insertTable, insertCodeBlock, insertDivider, handleContentInput]);
-
-  const handleEditorKeyDown = (e) => {
-    if (slashMenu) {
-      const filtered = getSlashFiltered(slashMenu.query);
-      if (e.key === "ArrowDown") { e.preventDefault(); setSlashIdx(i => Math.min(i+1, filtered.length-1)); return; }
-      if (e.key === "ArrowUp")   { e.preventDefault(); setSlashIdx(i => Math.max(i-1, 0)); return; }
-      if (e.key === "Enter")     { e.preventDefault(); if (filtered[slashIdx]) executeSlashCommand(filtered[slashIdx].id); return; }
-      if (e.key === "Escape")    { e.preventDefault(); setSlashMenu(null); return; }
-    }
-  };
-
-  const handleEditorKeyUp = (e) => {
-    if (e.key === "Escape") return;
-    checkSlashMenu();
-  };
-
-  // AI
-  const runAI = async (action) => {
-    setAiLoading(action); setAiResult(null); setAiAction(action);
+  useEffect(() => {
+    loadingNoteRef.current = true;
+    setTitle(note.title);
+    if (titleRef.current) titleRef.current.value = note.title;
+    latestContentRef.current = initEditorContent(note.content);
+    const blocks = editor.tryParseHTMLToBlocks(latestContentRef.current || "<p></p>");
+    editor.replaceBlocks(editor.document, blocks.length ? blocks : [{ type: "paragraph", content: "" }]);
     window.setTimeout(() => {
-      const text = (editorRef.current?.innerText || "").trim();
+      loadingNoteRef.current = false;
+    }, 0);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editor, note.id]);
+
+  useEffect(() => () => clearTimeout(saveTimer.current), []);
+
+  const handleTitleChange = (e) => {
+    const nextTitle = e.target.value;
+    setTitle(nextTitle);
+    triggerSave({ title: nextTitle, content: latestContentRef.current });
+  };
+
+  const handleEditorChange = useCallback(() => {
+    if (loadingNoteRef.current) return;
+    const content = serializeEditor();
+    latestContentRef.current = content;
+    triggerSave({ title: titleRef.current?.value || title, content });
+  }, [serializeEditor, title, triggerSave]);
+
+  const getEditorText = useCallback(() => {
+    const text = blocksToPlainText(editor.document).trim();
+    return text || stripHtmlText(latestContentRef.current || note.content || "");
+  }, [editor, note.content]);
+
+  const appendParagraphs = useCallback((text) => {
+    const blocks = String(text)
+      .split(/\n+/)
+      .map(line => line.trim())
+      .filter(Boolean)
+      .map(line => ({ type: "paragraph", content: line }));
+    if (!blocks.length) return;
+    const reference = editor.document[editor.document.length - 1];
+    editor.insertBlocks(blocks, reference, "after");
+    editor.focus();
+  }, [editor]);
+
+  const runAI = async (action) => {
+    setAiLoading(action);
+    setAiResult(null);
+    setAiAction(action);
+    window.setTimeout(() => {
+      const text = getEditorText();
       if (action === "note_extract_tasks") {
         const lines = text.split("\n").map(line => line.replace(/^[-\d. [\]x]+/i, "").trim()).filter(Boolean);
         setAiResult((lines.length ? lines : ["Doplnit hlavní myšlenku", "Připravit finální verzi"]).slice(0, 5));
@@ -788,117 +610,23 @@ function NoteEditor({ note, onSave, t, isMobile, showProps, onToggleProps, onDel
 
   const applyAI = () => {
     if (typeof aiResult === "string" && aiResult.trim()) {
-      insertHtml("<p>" + aiResult.replace(/\n/g, "<br>") + "</p>");
+      appendParagraphs(aiResult);
     } else if (aiAction === "note_extract_tasks" && Array.isArray(aiResult)) {
       aiResult.forEach(text => { if (typeof text === "string" && text.trim()) addTask({ title: text.trim() }); });
     }
-    setAiResult(null); setAiAction(null);
+    setAiResult(null);
+    setAiAction(null);
   };
 
-  const statusInfo    = NOTE_STATUSES[note.status] ?? NOTE_STATUSES.draft;
+  const statusInfo = NOTE_STATUSES[note.status] ?? NOTE_STATUSES.draft;
   const linkedProject = note.primaryProjectId ? projects.find(p => p.id === note.primaryProjectId) : null;
-  const linkedTask    = note.primaryTaskId    ? tasks.find(tk => tk.id === note.primaryTaskId)     : null;
-  const linkedItems   = linkedItemsForNote(note, projects, tasks);
-  const priorityKey   = notePriority(note);
+  const linkedTask = note.primaryTaskId ? tasks.find(tk => tk.id === note.primaryTaskId) : null;
+  const linkedItems = linkedItemsForNote(note, projects, tasks);
+  const priorityKey = notePriority(note);
   const templateLabel = noteTemplateLabel(note);
-
-  // Format bar helpers
-  const FmtBtn = ({ label, title: ttl, onClick, mono, active }) => (
-    <button
-      onMouseDown={e => { e.preventDefault(); saveRange(); onClick(); }}
-      title={ttl}
-      style={{
-        height:30, border:"none", borderRadius:8,
-        background: active ? `${t.accent}22` : "transparent",
-        color: active ? t.accent : t.text2,
-        padding:"0 9px", fontWeight:700, fontSize:13, cursor:"pointer", whiteSpace:"nowrap",
-        fontFamily: mono ? "'JetBrains Mono',monospace" : "inherit",
-        transition:"background .1s",
-      }}
-      onMouseEnter={e => { if (!active) e.currentTarget.style.background = "rgba(255,255,255,.07)"; }}
-      onMouseLeave={e => { if (!active) e.currentTarget.style.background = "transparent"; }}
-    >{label}</button>
-  );
-
-  const FmtDivider = () => <div style={{ width:1, height:18, background:t.border, flexShrink:0, margin:"0 2px" }} />;
-
-  const slashFiltered = slashMenu ? getSlashFiltered(slashMenu.query) : [];
 
   return (
     <div style={{ display:"flex", flexDirection:"column", height:"100%", overflow:"hidden", position:"relative" }}>
-
-      {/* Slash command popup */}
-      {slashMenu && slashFiltered.length > 0 && (
-        <div style={{
-          position:"fixed", left:Math.min(slashMenu.x, window.innerWidth - 260), top:slashMenu.y,
-          zIndex:500, width:240, background:t.bg2, border:`1px solid ${t.border}`,
-          borderRadius:12, boxShadow:t.shadow, overflow:"hidden",
-        }}>
-          <div style={{ padding:"6px 10px 4px", fontSize:11, color:t.text3, fontWeight:700, borderBottom:`1px solid ${t.border}` }}>
-            Příkazy{slashMenu.query ? ` · ${slashMenu.query}` : ""}
-          </div>
-          {slashFiltered.map((cmd, i) => (
-            <div key={cmd.id}
-              onMouseDown={e => { e.preventDefault(); executeSlashCommand(cmd.id); }}
-              style={{
-                display:"flex", alignItems:"center", gap:10, padding:"8px 12px",
-                background: i === slashIdx ? t.accentBg : "transparent",
-                color: i === slashIdx ? t.accent : t.text2,
-                cursor:"pointer", transition:"background .08s",
-              }}
-              onMouseEnter={() => setSlashIdx(i)}
-            >
-              <div style={{ width:28, height:28, borderRadius:7, background: i===slashIdx ? `${t.accent}22` : "rgba(255,255,255,.06)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                <Icon name={cmd.icon} size={13} color={i===slashIdx ? t.accent : t.text3} strokeWidth={2} />
-              </div>
-              <div>
-                <div style={{ fontSize:13, fontWeight:700 }}>{cmd.label}</div>
-                <div style={{ fontSize:11, color:t.text3, marginTop:1 }}>{cmd.desc}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Color picker popup */}
-      {colorMenu && (
-        <div
-          onMouseDown={e => e.stopPropagation()}
-          style={{
-            position:"fixed", left:colorPos.x, top:colorPos.y, zIndex:500,
-            background:t.bg2, border:`1px solid ${t.border}`, borderRadius:12, boxShadow:t.shadow,
-            padding:12, width:200,
-          }}
-        >
-          <div style={{ fontSize:11, fontWeight:700, color:t.text3, marginBottom:8 }}>
-            {colorMenu === "text" ? "Barva textu" : "Zvýraznění"}
-          </div>
-          <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
-            {(colorMenu === "text" ? TEXT_COLORS : BG_COLORS).map(({c,l}) => (
-              <button key={c} title={l}
-                onMouseDown={e => {
-                  e.preventDefault();
-                  setColorMenu(null);
-                  editorRef.current?.focus();
-                  restoreRange();
-                  if (colorMenu === "text") {
-                    document.execCommand("foreColor", false, c === "currentColor" ? "inherit" : c);
-                  } else {
-                    document.execCommand("hiliteColor", false, c);
-                  }
-                  handleContentInput();
-                }}
-                style={{
-                  width:22, height:22, borderRadius:6, border:`2px solid ${t.border}`,
-                  background: c, cursor:"pointer", flexShrink:0,
-                  boxSizing:"border-box",
-                }}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Topbar */}
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", borderBottom:`1px solid ${t.border}`, padding:"0 20px", height:54, flexShrink:0, background:t.bg2 }}>
         <div style={{ display:"flex", alignItems:"center", gap:7, fontSize:13, color:t.text3, minWidth:0 }}>
@@ -993,101 +721,8 @@ function NoteEditor({ note, onSave, t, isMobile, showProps, onToggleProps, onDel
 
       {/* Scrollable editor area */}
       <div style={{ flex:1, overflow:"auto", position:"relative" }}>
-
-        {/* Sticky formatbar */}
-        <div className="notes-toolbar-wrap">
-          <div className="notes-toolbar">
-            <div className="notes-toolbar-main">
-            <select
-              onChange={e => { saveRange(); exec("formatBlock", e.target.value); e.target.value = "p"; }}
-              style={{ height:30, border:`1px solid ${t.border}`, borderRadius:8, background:t.input, color:t.text2, padding:"0 8px", fontSize:12, fontWeight:700, cursor:"pointer", outline:"none" }}
-              defaultValue="p"
-            >
-              <option value="p">Text</option>
-              <option value="h1">Nadpis 1</option>
-              <option value="h2">Nadpis 2</option>
-              <option value="h3">Nadpis 3</option>
-              <option value="blockquote">Citace</option>
-              <option value="pre">Kód</option>
-            </select>
-            <FmtBtn label="↶" ttl="Zpět" onClick={()=>exec("undo")} />
-            <FmtBtn label="↷" ttl="Znovu" onClick={()=>exec("redo")} />
-            <FmtDivider />
-            <FmtBtn label="B" ttl="Tučné (Ctrl+B)" onClick={()=>exec("bold")} />
-            <FmtBtn label={<em style={{fontStyle:"italic"}}>I</em>} ttl="Kurzíva (Ctrl+I)" onClick={()=>exec("italic")} />
-            <FmtBtn label={<u>U</u>} ttl="Podtržení (Ctrl+U)" onClick={()=>exec("underline")} />
-            <FmtBtn label={<s>S</s>} ttl="Přeškrtnutí" onClick={()=>exec("strikeThrough")} />
-            <FmtBtn label={<span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:12}}>{"<>"}</span>} ttl="Inline kód" onClick={insertInlineCode} mono />
-            <FmtDivider />
-            <FmtBtn label="• Odrážky" ttl="Odrážkový seznam" onClick={()=>exec("insertUnorderedList")} />
-            <FmtBtn label="1. Číslování" ttl="Číslovaný seznam" onClick={()=>exec("insertOrderedList")} />
-            <FmtBtn label="☑ To-do" ttl="Akční bod s checkboxem" onClick={insertTodo} />
-            <FmtDivider />
-            <FmtBtn label="🔗 Odkaz" ttl="Vložit odkaz" onClick={()=>{ saveRange(); const url=prompt("URL:","https://"); if(url) { restoreRange(); document.execCommand("createLink",false,url); handleContentInput(); } }} />
-            <FmtBtn label="💡 Callout" ttl="Callout blok" onClick={insertCallout} />
-            <FmtBtn label="▦ Tabulka" ttl="Vložit tabulku" onClick={insertTable} />
-            <FmtBtn label="</> Kód" ttl="Blok kódu" onClick={insertCodeBlock} />
-            <FmtBtn label="— Oddělovač" ttl="Vodorovná linka" onClick={insertDivider} />
-            <FmtDivider />
-            {/* Text color */}
-            <button
-              onMouseDown={e => {
-                e.preventDefault();
-                saveRange();
-                const rect = e.currentTarget.getBoundingClientRect();
-                setColorPos({ x: rect.left, y: rect.bottom + 4 });
-                setColorMenu(v => v === "text" ? null : "text");
-              }}
-              title="Barva textu"
-              style={{ height:30, border:"none", borderRadius:8, background: colorMenu==="text" ? `${t.accent}22` : "transparent", color:t.text2, padding:"0 8px", fontWeight:700, fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", gap:4 }}
-            >
-              <span style={{ fontWeight:900 }}>A</span>
-              <div style={{ width:14, height:3, borderRadius:2, background:"#ef4444" }} />
-            </button>
-            {/* Highlight */}
-            <button
-              onMouseDown={e => {
-                e.preventDefault();
-                saveRange();
-                const rect = e.currentTarget.getBoundingClientRect();
-                setColorPos({ x: rect.left, y: rect.bottom + 4 });
-                setColorMenu(v => v === "bg" ? null : "bg");
-              }}
-              title="Zvýraznění"
-              style={{ height:30, border:"none", borderRadius:8, background: colorMenu==="bg" ? `${t.accent}22` : "transparent", color:t.text2, padding:"0 8px", fontWeight:700, fontSize:13, cursor:"pointer", display:"flex", alignItems:"center", gap:3 }}
-            >
-              <span>Aa</span>
-              <div style={{ width:14, height:10, borderRadius:2, background:"#eab308", opacity:.8 }} />
-            </button>
-            <FmtDivider />
-            <FmtBtn label="✨ Zestručnit" ttl="AI shrnutí" onClick={()=>{ setAiOpen(true); runAI("note_summary"); }} />
-            <FmtBtn label="•••" ttl="Další možnosti" onClick={()=>setAiOpen(v=>!v)} />
-            </div>
-            <div className="notes-toolbar-sub">
-              <span className="notes-quick-label">Vložit blok</span>
-              <button className="notes-quick-chip" onMouseDown={e=>{ e.preventDefault(); saveRange(); exec("formatBlock", "h2"); }}>+ Nadpis</button>
-              <button className="notes-quick-chip" onMouseDown={e=>{ e.preventDefault(); saveRange(); insertCallout(); }}>💡 Callout</button>
-              <button className="notes-quick-chip" onMouseDown={e=>{ e.preventDefault(); saveRange(); insertTable(); }}>▦ Tabulka</button>
-              <button className="notes-quick-chip" onMouseDown={e=>{ e.preventDefault(); saveRange(); insertCodeBlock(); }}>&lt;/&gt; Kód</button>
-              <button className="notes-quick-chip" onMouseDown={e=>{ e.preventDefault(); saveRange(); insertDivider(); }}>— Oddělovač</button>
-              <button className="notes-quick-chip" onMouseDown={e=>{ e.preventDefault(); saveRange(); insertTodo(); }}>✓ Převést na úkol</button>
-              <button className="notes-quick-chip" onMouseDown={e=>{ e.preventDefault(); setAiOpen(true); }}>Šablona</button>
-            </div>
-          </div>
-        </div>
-
         {/* Page content */}
         <div style={{ width:"min(740px, calc(100% - 56px))", margin:"0 auto", padding:"16px 0 100px" }}>
-          <div className="notes-inline-bubble" aria-label="Plovoucí toolbar ukázka">
-            <FmtBtn label="B" ttl="Tučně" active onClick={()=>exec("bold")} />
-            <FmtBtn label={<em style={{fontStyle:"italic"}}>I</em>} ttl="Kurzíva" onClick={()=>exec("italic")} />
-            <FmtBtn label="🔗" ttl="Odkaz" onClick={()=>{}} />
-            <FmtBtn label="💬" ttl="Komentář" onClick={()=>{}} />
-            <FmtDivider />
-            <FmtBtn label="✨ Přepsat" ttl="AI přepsat" onClick={()=>{ setAiOpen(true); runAI("note_fix_tone"); }} />
-            <FmtBtn label="Zkrátit" ttl="AI zkrátit" onClick={()=>{ setAiOpen(true); runAI("note_summary"); }} />
-          </div>
-
           {/* Page icon */}
           <div
             style={{ width:52, height:52, borderRadius:14, display:"grid", placeItems:"center", fontSize:26, background:"rgba(255,255,255,.055)", border:`1px solid ${t.border}`, marginBottom:14, cursor:"text" }}
@@ -1155,19 +790,13 @@ function NoteEditor({ note, onSave, t, isMobile, showProps, onToggleProps, onDel
             <div className="notes-meta-item"><small>Priorita</small><span>{NOTE_PRIORITIES[priorityKey]}</span></div>
           </div>
 
-          {/* Contenteditable */}
-          <div
-            ref={editorRef}
-            contentEditable
-            suppressContentEditableWarning
-            className="note-ce"
-            onInput={handleContentInput}
-            onBlur={saveRange}
-            onKeyDown={handleEditorKeyDown}
-            onKeyUp={handleEditorKeyUp}
-            data-placeholder="Začni psát… nebo napiš / pro příkazy"
-            style={{ outline:"none" }}
-          />
+          <div className="note-blocknote">
+            <BlockNoteView
+              editor={editor}
+              onChange={handleEditorChange}
+              theme={dk ? "dark" : "light"}
+            />
+          </div>
 
           <div className="notes-linked-panel">
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, marginBottom:12 }}>
@@ -1214,28 +843,6 @@ function NoteEditor({ note, onSave, t, isMobile, showProps, onToggleProps, onDel
           </div>
         </div>
 
-        {/* Bottom slash quick commands */}
-        <div style={{ position:"sticky", bottom:16, display:"flex", justifyContent:"center", pointerEvents:"none", zIndex:10 }}>
-          <div style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 10px", border:`1px solid ${t.border}`, borderRadius:16, background:t.bg2, boxShadow:t.shadow, pointerEvents:"all" }}>
-            {[
-              { label:"/nadpis", fn:()=>exec("formatBlock","h2") },
-              { label:"/todo",   fn:insertTodo },
-              { label:"/citace", fn:()=>exec("formatBlock","blockquote") },
-              { label:"/callout",fn:insertCallout },
-              { label:"/tabulka",fn:insertTable },
-              { label:"/kód",    fn:insertCodeBlock },
-            ].map(cmd => (
-              <button key={cmd.label} onMouseDown={e=>{ e.preventDefault(); saveRange(); cmd.fn(); }} style={{
-                border:`1px solid rgba(255,255,255,.06)`, background:"rgba(255,255,255,.04)",
-                color:t.text2, borderRadius:10, padding:"6px 10px", fontWeight:700, fontSize:12,
-                cursor:"pointer", transition:"all .12s",
-              }}
-                onMouseEnter={e=>{ e.currentTarget.style.borderColor=`${t.accent}50`; e.currentTarget.style.background=t.accentBg; e.currentTarget.style.color=t.accent; }}
-                onMouseLeave={e=>{ e.currentTarget.style.borderColor="rgba(255,255,255,.06)"; e.currentTarget.style.background="rgba(255,255,255,.04)"; e.currentTarget.style.color=t.text2; }}
-              >{cmd.label}</button>
-            ))}
-          </div>
-        </div>
       </div>
     </div>
   );
@@ -1281,7 +888,7 @@ function NotePropertiesPanel({ note, onClose, t, isMobile, onExportMD, projects,
     : (globalTags || []);
 
   const runAIExtract = async () => {
-    const content = document.querySelector('.note-ce')?.innerText || stripHtmlText(note.content || "");
+    const content = document.querySelector('.note-blocknote')?.innerText || stripHtmlText(note.content || "");
     const candidates = content
       .split("\n")
       .map(line => line.replace(/^[-\d. [\]x]+/i, "").trim())
@@ -2054,7 +1661,7 @@ export default function NotesPage() {
 
   const handleExportMD = useCallback(() => {
     if (!selNote) return;
-    const content = document.querySelector('.note-ce')?.innerText || selNote.content;
+    const content = document.querySelector('.note-blocknote')?.innerText || stripHtmlText(selNote.content || "");
     const blob = new Blob([`# ${selNote.title}\n\n${content}`], { type: "text/plain" });
     const url  = URL.createObjectURL(blob);
     const a = Object.assign(document.createElement("a"), { href: url, download: `${selNote.title || "poznamka"}.md` });
@@ -2126,6 +1733,7 @@ export default function NotesPage() {
                     note={selNote}
                     onSave={upd => updateNote(selNote.id, upd)}
                     t={t}
+                    dk={dk}
                     isMobile={false}
                     showProps={showProps}
                     onToggleProps={() => setShowProps(v => !v)}
@@ -2196,6 +1804,7 @@ export default function NotesPage() {
                 note={selNote}
                 onSave={upd => updateNote(selNote.id, upd)}
                 t={t}
+                dk={dk}
                 isMobile
                 showProps={showProps}
                 onToggleProps={() => setShowProps(v => !v)}
