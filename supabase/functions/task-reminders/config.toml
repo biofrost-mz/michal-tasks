@@ -1,3 +1,4 @@
 [functions.task-reminders]
 # Spouští se každou hodinu — kontroluje úkoly s remind_at v uplynulé hodině
 schedule = "0 * * * *"
+verify_jwt = false
