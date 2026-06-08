@@ -93,8 +93,18 @@ async function sendReminderEmail(to: string, tasks: Record<string, string>[], pr
 Deno.serve(async (req) => {
   // Only the internal scheduler may trigger this — verify shared secret.
   const cronSecret = Deno.env.get("CRON_SECRET");
-  if (!cronSecret || req.headers.get("x-cron-secret") !== cronSecret) {
-    console.warn("task-reminders: unauthorized call from", req.headers.get("x-forwarded-for") ?? "unknown");
+  const providedCronSecret = req.headers.get("x-cron-secret");
+  if (!cronSecret || providedCronSecret !== cronSecret) {
+    console.warn("task-reminders: unauthorized call", {
+      ip: req.headers.get("x-forwarded-for") ?? "unknown",
+      hasRuntimeCronSecret: Boolean(cronSecret),
+      runtimeCronSecretLength: cronSecret?.length ?? 0,
+      runtimeCronSecretSuffix: cronSecret ? cronSecret.slice(-4) : null,
+      hasRequestCronSecret: Boolean(providedCronSecret),
+      requestCronSecretLength: providedCronSecret?.length ?? 0,
+      requestCronSecretSuffix: providedCronSecret ? providedCronSecret.slice(-4) : null,
+      headerKeys: [...req.headers.keys()],
+    });
     return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403 });
   }
 
