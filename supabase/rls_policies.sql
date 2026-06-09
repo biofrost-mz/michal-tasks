@@ -20,6 +20,36 @@ RETURNS uuid[] LANGUAGE sql STABLE SECURITY DEFINER AS $$
   WHERE user_id = auth.uid() AND role IN ('owner', 'admin');
 $$;
 
+-- Global application admins. Use this for system-wide admin UI and policies;
+-- workspace roles stay scoped to their workspace.
+CREATE TABLE IF NOT EXISTS public.app_admins (
+  user_id    uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.app_admins ENABLE ROW LEVEL SECURITY;
+
+CREATE OR REPLACE FUNCTION public.is_system_admin(check_user_id uuid DEFAULT auth.uid())
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.app_admins
+    WHERE user_id = check_user_id
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION public.current_user_is_system_admin()
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER AS $$
+  SELECT public.is_system_admin(auth.uid());
+$$;
+
+REVOKE ALL ON FUNCTION public.current_user_is_system_admin() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.current_user_is_system_admin() TO authenticated;
+
+DROP POLICY IF EXISTS "app_admins_select_self_admin" ON public.app_admins;
+CREATE POLICY "app_admins_select_self_admin" ON public.app_admins FOR SELECT
+  USING (user_id = auth.uid() OR public.is_system_admin());
+
 -- ── workspaces ─────────────────────────────────────────────────────────
 ALTER TABLE workspaces ENABLE ROW LEVEL SECURITY;
 
@@ -36,7 +66,10 @@ ALTER TABLE workspace_members ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "members_select" ON workspace_members;
 CREATE POLICY "members_select" ON workspace_members FOR SELECT
-  USING (workspace_id = ANY(public.user_workspace_ids()));
+  USING (
+    workspace_id = ANY(public.user_workspace_ids())
+    OR public.is_system_admin()
+  );
 
 -- Only admins/owners may add or change members.
 DROP POLICY IF EXISTS "members_insert" ON workspace_members;
@@ -188,6 +221,7 @@ DROP POLICY IF EXISTS "profiles_select_self_or_workspace_member" ON user_profile
 CREATE POLICY "profiles_select_self_or_workspace_member" ON user_profiles FOR SELECT
   USING (
     id = auth.uid()
+    OR public.is_system_admin()
     OR EXISTS (
       SELECT 1
       FROM workspace_members viewer

@@ -236,7 +236,7 @@ export function AppProvider({ children }) {
   const [session, setSession] = useState(null);
   const userId = session?.user?.id ?? null;
   const userEmail = session?.user?.email ?? null;
-  const isSystemAdmin = isSystemAdminEmail(userEmail);
+  const [isSystemAdmin, setIsSystemAdmin] = useState(false);
   const [uiSettings, setUiSettings] = useState(DEFAULT_UI_SETTINGS);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [dk, setDkRaw] = useState(true);
@@ -308,6 +308,24 @@ export function AppProvider({ children }) {
     });
     return () => sub?.subscription?.unsubscribe?.();
   }, []);
+
+  useEffect(() => {
+    if (!userId) {
+      setIsSystemAdmin(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase.rpc("current_user_is_system_admin");
+      if (cancelled) return;
+      if (error) {
+        setIsSystemAdmin(isSystemAdminEmail(userEmail));
+        return;
+      }
+      setIsSystemAdmin(Boolean(data));
+    })();
+    return () => { cancelled = true; };
+  }, [userId, userEmail]);
 
   const updateUiSettings = useCallback((patch) => {
     setUiSettings((prev) => normalizeUiSettings({
