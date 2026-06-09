@@ -1,4 +1,16 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  heroBlock,
+  section,
+  intro,
+  ctaCard,
+  contentRow,
+  footer,
+  emailShell,
+  type Chip,
+  type ChipTone,
+  type TaskRow,
+} from "../_shared/email.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -14,23 +26,7 @@ const PRIORITY_LABELS: Record<string, string> = {
 };
 
 const APP_URL = Deno.env.get("APP_URL") ?? "https://tasks.zichmichal.cz";
-const LOGO_PATH = "/icon.svg";
-
-function escHtml(s: string): string {
-  return String(s ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-function priorityColor(priority?: string): string {
-  if (priority === "critical") return "#dc2626";
-  if (priority === "high") return "#ea580c";
-  if (priority === "low") return "#16a34a";
-  return "#d97706";
-}
+const SECTION_LIMIT = 5;
 
 function formatDate(dateStr?: string): string {
   if (!dateStr) return "Bez termínu";
@@ -40,44 +36,72 @@ function formatDate(dateStr?: string): string {
   });
 }
 
-function metricCard(label: string, value: number, color: string, note: string): string {
-  if (!value) return "";
-  return `
-    <td style="width:33.33%;padding:0 6px 0 0;vertical-align:top">
-      <div style="min-height:92px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.26);border-radius:20px;padding:15px 15px 14px;box-shadow:inset 0 1px 0 rgba(255,255,255,.18)">
-        <div style="font-size:11px;line-height:1.2;font-weight:850;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.88)">
-          <span style="display:inline-block;width:8px;height:8px;border-radius:999px;background:${color};box-shadow:0 0 0 4px rgba(255,255,255,.16);vertical-align:1px;margin-right:7px"></span>${label}
-        </div>
-        <div style="display:block;margin-top:12px;color:#ffffff;font-size:40px;line-height:.9;font-weight:900;letter-spacing:-.07em">${value}</div>
-        <div style="display:block;margin-top:8px;color:rgba(255,255,255,.82);font-size:12px;font-weight:720">${note}</div>
-      </div>
-    </td>`;
+function plUkol(n: number): string {
+  return n === 1 ? "úkol" : n >= 2 && n <= 4 ? "úkoly" : "úkolů";
+}
+function plDni(n: number): string {
+  return n === 1 ? "den" : n >= 2 && n <= 4 ? "dny" : "dní";
 }
 
-function taskCard(task: Record<string, string>, projectName: string, dueLabel: string, tone: string): string {
-  const priority = task.priority ? PRIORITY_LABELS[task.priority] ?? task.priority : "Normální";
-  const priorityTone = priorityColor(task.priority);
-  return `
-    <div style="background:#ffffff;border:1px solid #e7eaf2;border-radius:18px;padding:16px 18px;margin:0 0 10px;box-shadow:0 12px 30px rgba(15,23,42,.055)">
-      <div style="display:block">
-        <div style="font-size:15px;line-height:1.4;font-weight:850;color:#111827">${escHtml(task.title || "Bez názvu")}</div>
-        ${task.description ? `<div style="margin-top:6px;font-size:12px;line-height:1.55;color:#667085">${escHtml(task.description)}</div>` : ""}
-      </div>
-      <div style="margin-top:12px">
-        <span style="display:inline-block;margin:0 6px 6px 0;padding:5px 9px;border-radius:999px;background:#f6f7fb;border:1px solid #e7eaf2;color:#4b5565;font-size:11px;font-weight:750">${escHtml(projectName || "Bez projektu")}</span>
-        <span style="display:inline-block;margin:0 6px 6px 0;padding:5px 9px;border-radius:999px;background:${tone}14;border:1px solid ${tone}35;color:${tone};font-size:11px;font-weight:800">${escHtml(dueLabel)}</span>
-        <span style="display:inline-block;margin:0 0 6px 0;padding:5px 9px;border-radius:999px;background:${priorityTone}12;border:1px solid ${priorityTone}30;color:${priorityTone};font-size:11px;font-weight:800">${escHtml(priority)}</span>
-      </div>
-    </div>`;
+function prioChip(priority?: string): Chip | null {
+  if (!priority) return null;
+  const label = PRIORITY_LABELS[priority] ?? priority;
+  const tone: ChipTone = priority === "critical" || priority === "high" ? "red" : priority === "low" ? "green" : "amber";
+  return { text: label, tone };
 }
 
-function section(title: string, color: string, items: Record<string, string>[], projectMap: Record<string, string>, dueLabel: string): string {
+function daysOverdue(due: string, todayStr: string): number {
+  const diff = (new Date(todayStr + "T00:00:00Z").getTime() - new Date(due + "T00:00:00Z").getTime()) / 86400000;
+  return Math.max(1, Math.round(diff));
+}
+
+function toRow(
+  t: Record<string, string>,
+  projectMap: Record<string, string>,
+  kind: "overdue" | "today" | "tomorrow",
+  todayStr: string,
+): TaskRow {
+  const accent = kind === "overdue" ? "#ef4444" : kind === "today" ? "#f59e0b" : "#22c55e";
+  const chips: Chip[] = [{ text: projectMap[t.project_id] ?? "Bez projektu", tone: "neutral" }];
+  if (kind === "overdue") {
+    const n = daysOverdue(t.due_date, todayStr);
+    chips.push({ text: `${n} ${plDni(n)} po termínu`, tone: "red" });
+  } else if (kind === "today") {
+    chips.push({ text: "Dnes", tone: "amber" });
+  } else {
+    chips.push({ text: "Zítra", tone: "green" });
+  }
+  const p = prioChip(t.priority);
+  if (p) chips.push(p);
+  return {
+    title: t.title || "Bez názvu",
+    url: `${APP_URL}/?task=${t.id}`,
+    desc: t.description || undefined,
+    chips,
+    accent,
+  };
+}
+
+function buildSection(
+  label: string,
+  dotColor: string,
+  pillTone: "red" | "amber" | "green",
+  items: Record<string, string>[],
+  kind: "overdue" | "today" | "tomorrow",
+  projectMap: Record<string, string>,
+  todayStr: string,
+): string {
   if (!items.length) return "";
-  return `
-    <div style="margin:0 0 28px">
-      <div style="margin:0 0 10px;font-size:12px;font-weight:850;color:${color};text-transform:uppercase;letter-spacing:.08em">${title} <span style="color:#98a2b3">/ ${items.length}</span></div>
-      ${items.map((t) => taskCard(t, projectMap[t.project_id] ?? "Bez projektu", dueLabel === "date" ? formatDate(t.due_date) : dueLabel, color)).join("")}
-    </div>`;
+  const rows = items.slice(0, SECTION_LIMIT).map((t) => toRow(t, projectMap, kind, todayStr));
+  const extra = items.length - SECTION_LIMIT;
+  return section({
+    label,
+    dotColor,
+    countPill: { text: String(items.length), tone: pillTone },
+    tasks: rows,
+    moreHref: extra > 0 ? APP_URL : undefined,
+    moreText: extra > 0 ? `Zobrazit další ${extra} ${plUkol(extra)}` : undefined,
+  });
 }
 
 function textTaskLines(title: string, tasks: Record<string, string>[], projectMap: Record<string, string>, dueLabel: string): string {
@@ -102,16 +126,16 @@ async function sendDailyEmail(
   tomorrowStr: string,
 ) {
   const today = new Date(todayStr + "T00:00:00Z");
-  const overdue     = tasks.filter((t) => t.due_date < todayStr);
-  const dueToday    = tasks.filter((t) => t.due_date === todayStr);
+  const overdue = tasks.filter((t) => t.due_date < todayStr);
+  const dueToday = tasks.filter((t) => t.due_date === todayStr);
   const dueTomorrow = tasks.filter((t) => t.due_date === tomorrowStr);
 
   if (!overdue.length && !dueToday.length && !dueTomorrow.length) return false;
 
   const dateLabel = today.toLocaleDateString("cs-CZ", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   const subjectParts = [
-    overdue.length     ? `${overdue.length} prošlých`  : "",
-    dueToday.length    ? `${dueToday.length} dnes`     : "",
+    overdue.length ? `${overdue.length} prošlých` : "",
+    dueToday.length ? `${dueToday.length} dnes` : "",
     dueTomorrow.length ? `${dueTomorrow.length} zítra` : "",
   ].filter(Boolean).join(", ");
 
@@ -125,66 +149,41 @@ async function sendDailyEmail(
     textTaskLines("Splatné zítra", dueTomorrow, projectMap, "Zítra"),
     `Otevřít aplikaci: ${APP_URL}`,
   ].join("\n");
-  const appUrl = escHtml(APP_URL);
-  const appHost = escHtml(APP_URL.replace(/^https?:\/\//, ""));
-  const logoUrl = escHtml(new URL(LOGO_PATH, APP_URL).toString());
 
-  const html = `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:#09090b;margin:0;padding:0;color:#111827">
-<div style="display:none;max-height:0;overflow:hidden;color:transparent">${escHtml(subjectParts)} čeká v dnešním plánu.</div>
-<div style="padding:28px 14px">
-  <div style="max-width:700px;margin:0 auto">
-    <div style="border-radius:28px;overflow:hidden;box-shadow:0 28px 80px rgba(0,0,0,.42)">
-      <div style="background:radial-gradient(circle at 18% 0%,rgba(251,191,36,.34),transparent 30%),radial-gradient(circle at 92% 12%,rgba(168,85,247,.22),transparent 26%),linear-gradient(135deg,#111111 0%,#2a1c05 48%,#b7791f 100%);padding:30px 30px 28px;color:#ffffff">
-        <table role="presentation" style="width:100%;border-collapse:collapse;margin:0 0 25px">
-          <tr>
-            <td style="vertical-align:middle">
-              <img src="${logoUrl}" width="36" height="36" alt="Zentero" style="display:inline-block;width:36px;height:36px;border-radius:14px;vertical-align:middle;margin-right:10px;background:rgba(17,24,39,.28);border:1px solid rgba(255,255,255,.22)">
-              <span style="vertical-align:middle;font-size:14px;font-weight:850;letter-spacing:-.01em">Zentero</span>
-            </td>
-            <td style="text-align:right;vertical-align:middle">
-              <span style="display:inline-block;padding:8px 12px;border-radius:999px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.24);color:rgba(255,255,255,.92);font-size:12px;line-height:1;font-weight:750;white-space:nowrap">${dateLabel}</span>
-            </td>
-          </tr>
-        </table>
-        <div style="max-width:560px;font-size:30px;line-height:1.12;letter-spacing:-.045em;font-weight:900">Denní přehled úkolů</div>
-        <div style="max-width:555px;margin-top:11px;color:rgba(255,255,255,.86);font-size:15px;line-height:1.58">Rychlý přehled toho, co hoří, co patří na dnešek a co se blíží.</div>
-        <table role="presentation" style="width:100%;border-collapse:collapse;margin-top:24px">
-          <tr>
-            ${metricCard("Po termínu", overdue.length, "#ef4444", "vyžaduje pozornost")}
-            ${metricCard("Dnes", dueToday.length, "#f59e0b", "na dnešní plán")}
-            ${metricCard("Blíží se", dueTomorrow.length, "#22c55e", "na přípravu")}
-          </tr>
-        </table>
-      </div>
+  const total = overdue.length + dueToday.length + dueTomorrow.length;
+  const body =
+    heroBlock({
+      dateLabel,
+      title: "Denní přehled úkolů",
+      countBadge: `${total} ${plUkol(total)}`,
+      subtitle: "Co už hoří, co je potřeba dnes a co se blíží v dalších dnech.",
+      stats: [
+        { label: "Po termínu", value: overdue.length, color: "#ef4444" },
+        { label: "Dnes", value: dueToday.length, color: "#f59e0b" },
+        { label: "Blíží se", value: dueTomorrow.length, color: "#22c55e" },
+      ],
+    }) +
+    contentRow(
+      intro("Ahoj, tady je stručný přehled úkolů, které potřebují pozornost — nejdřív po termínu, pak dnešní a blížící se.") +
+        buildSection("Po termínu", "#ef4444", "red", overdue, "overdue", projectMap, todayStr) +
+        buildSection("Splatné dnes", "#f59e0b", "amber", dueToday, "today", projectMap, todayStr) +
+        buildSection("Blíží se termín", "#22c55e", "green", dueTomorrow, "tomorrow", projectMap, todayStr) +
+        ctaCard({
+          title: "Chceš to rovnou odbavit?",
+          text: "Otevři Zentero a projdi úkoly podle termínu, priority nebo projektu.",
+          buttonText: "Otevřít aplikaci",
+          url: APP_URL,
+        }),
+    ) +
+    footer({
+      note: "Automatický denní souhrn ze Zentero. Čas přehledu, projekty v e-mailu i typy upozornění upravíš v",
+      settingsUrl: APP_URL,
+      unsubscribeText: "Odhlásit denní přehled",
+      unsubscribeUrl: APP_URL,
+      host: APP_URL.replace(/^https?:\/\//, ""),
+    });
 
-      <div style="background:#ffffff;border-left:1px solid #e8dcc5;border-right:1px solid #e8dcc5;padding:24px">
-        ${section("Po termínu", "#dc2626", overdue, projectMap, "Po termínu")}
-        ${section("Splatné dnes", "#d97706", dueToday, projectMap, "Dnes")}
-        ${section("Blíží se", "#16a34a", dueTomorrow, projectMap, "Zítra")}
-
-        <div style="margin-top:24px;border-radius:22px;background:linear-gradient(135deg,#fffbeb,#fff7d6);border:1px solid #f2d69b;padding:19px">
-          <div style="font-size:16px;line-height:1.35;font-weight:860;letter-spacing:-.02em;color:#111827">Pokračuj přímo v aplikaci</div>
-          <div style="margin-top:5px;color:#667085;font-size:13px;line-height:1.5">Otevři úkoly, doplň priority a odškrtni hotové věci.</div>
-          <div style="margin-top:15px">
-            <a href="${appUrl}" style="display:inline-block;background:linear-gradient(135deg,#8a5a08,#f2b84b);color:#ffffff;text-decoration:none;border-radius:15px;padding:13px 17px;font-size:14px;line-height:1;font-weight:850;box-shadow:0 13px 28px rgba(180,120,28,.25)">Otevřít úkoly</a>
-          </div>
-        </div>
-      </div>
-
-      <div style="background:#ffffff;border:1px solid #e8dcc5;border-top:0;border-radius:0 0 28px 28px;overflow:hidden">
-        <div style="height:5px;background:linear-gradient(90deg,#ef4444,#f59e0b,#22c55e,#f2b84b)"></div>
-        <div style="padding:20px 24px 22px;color:#667085;font-size:12px;line-height:1.55">
-          <img src="${logoUrl}" width="30" height="30" alt="Zentero" style="display:inline-block;width:30px;height:30px;border-radius:11px;vertical-align:middle;margin-right:9px;background:#111827">
-          <strong style="vertical-align:middle;color:#1f2937;font-size:13px">Zentero</strong>
-          <div style="margin-top:10px">Automatický souhrn z aplikace Zentero. <a href="${appUrl}" style="color:#8a5a08;text-decoration:none">${appHost}</a></div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-</body></html>`;
+  const html = emailShell({ preheader: `${subjectParts} čeká v dnešním plánu.`, title: "Denní přehled úkolů — Zentero", body });
 
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -229,7 +228,7 @@ Deno.serve(async (req) => {
 
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0);
-  const todayStr    = today.toISOString().slice(0, 10);
+  const todayStr = today.toISOString().slice(0, 10);
   const tomorrowStr = new Date(today.getTime() + 86400000).toISOString().slice(0, 10);
 
   // Fetch relevant tasks (all users, not done, due today or earlier or tomorrow)

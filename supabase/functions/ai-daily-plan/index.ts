@@ -120,7 +120,6 @@ serve(async (req) => {
       weekday: "long", day: "numeric", month: "long", year: "numeric",
     });
 
-    // Sestav přehled úkolů pro prompt
     const taskList = (tasks ?? []).map((t: Record<string, string | boolean | null>) => {
       const proj = t.project_id ? projMap[t.project_id as string] : null;
       const dueDate = t.due_date as string | null;
@@ -144,33 +143,54 @@ serve(async (req) => {
       );
     }
 
-    const systemPrompt = `Jsi elitní osobní kouč produktivity a executive mentor. Odpovídáš vždy v češtině. Tvůj tón je vysoce profesionální, energický, přímočarý a hluboce motivující. Nepoužíváš otřepané fráze ani klišé. Pomáháš uživateli přetavit chaos v naprosto přehlednou, strukturovanou a nekompromisně realizovatelnou denní strategii.`;
+    const systemPrompt = `Jsi špičkový executive mentor, elitní osobní kouč produktivity a přední expert na metodologii GTD (Getting Things Done), atomové návyky (Atomic Habits) a nekompromisní osobní efektivitu (Cal Newport's Deep Work).
+Odpovídáš výhradně v češtině. Tvůj tón je vysoce profesionální, charismatický, energický, přímočarý, pragmatický, intelektuálně stimulující a hluboce motivující.
+Nepoužíváš žádný prázdný balast, klišé, otřepané korporátní fráze ani zdvořilostní omáčky typu "Zde je tvůj plán".
+Pomáháš uživateli přetavit nepřehledný chaos úkolů v naprosto čistou, krystalicky jasnou, realistickou a nekompromisně realizovatelnou denní strategii.
+Působíš jako neúprosný, ale chápavý parťák (Accountability Partner), který dohlíží na to, aby se uživatel nepřetěžoval (respektování WIP limitů), ale zároveň dnes doručil ty nejdůležitější výsledky s největším pákovým efektem (high leverage).`;
 
-    const userPrompt = `Dnes je ${dateLabel}.
- 
-Zde je seznam mých aktuálních aktivních úkolů z mého workspace:
+    const userPrompt = `Dnes je ${dateLabel}. Aktuální systémový čas a datum: ${todayStr}.
+
+Zde je kompletní seznam mých aktuálních aktivních úkolů z mého osobního workspace:
 ${taskList}
- 
-Sestav mi vysoce efektivní, profesionální denní plán v češtině, který ze mě vymáčkne maximum. Strukturuj odpověď přesně do těchto sekcí za použití formátu Markdown (pokud pro některou sekci nemám úkol, přizpůsob to, ale nevynechávej celou sekci):
+
+Zanalyzuj tento seznam a sestav mi vysoce efektivní, na míru šitý denní plán v češtině, který maximalizuje myšlenkový fokus a zredukuje kognitivní tření.
+
+Strukturu odpovědi vygeneruj PŘESNĚ ve formátu Markdown s následujícími sekcemi (nevynechávej žádnou sekci, nepoužívej úvodní ani závěrečné pozdravy typu "Ahoj Michale, tady je...", začni přímo prvním nadpisem):
+
+## 📊 Diagnostika kapacity a kognitivní zátěže (WIP Check)
+- Posuď celkový počet aktivních úkolů a kognitivní zátěž. Pokud je aktivních úkolů více než 10, důrazně varuj před přemotivovaností, rizikem multitaskingu a syndromem vyhoření.
+- Zhodnoť zastoupení prošlých termínů (⚠️), úkolů s vysokou prioritou (🔴) a rozpracovaných úkolů.
+- Navrhni stručné, hluboké doporučení pro dnešní kapacitu (např. zda dnes "tlačit na pilu" nebo spíše stabilizovat a dokončovat rozpracované věci, tzv. "stop starting, start finishing").
 
 ## 🐸 Sněz tu žábu (Klíčový úkol dne)
-(Vyber přesně JEDEN nejdůležitější úkol s nejvyšší prioritou nebo ten, který má dnes či prošlý termín. Zdůvodni jednou silnou větou, proč právě tento úkol musíš vyřídit hned ráno jako první a jaké to přinese uvolnění.)
+- Vyber s absolutní nekompromisností **přesně JEDEN** nejdůležitější úkol z mého seznamu.
+- **Pravidla výběru:** Upřednostni úkol označený hvězdičkou (⭐), následně s prošlým termínem (⚠️) nebo vysokou prioritou (🔴), který má největší dopad (leverage) na zbytek projektů.
+- Uveď přesný název úkolu zvýrazněný tučně v uvozovkách (např. "**[Název úkolu]**").
+- Napiš dvě věty: První věta jasně zdůvodní, proč je toto dnešní "žába" (přínos, eliminace úzkého hrdla), a druhá popíše, jaké obrovské mentální uvolnění a úlevu pocítím, až ji hned ráno v dopoledním bloku dokončím.
 
-## 🔥 Musí se dnes dokončit
-(Maximálně 2 další kritické položky, které mají prošlý termín nebo termín dnes. Ukaž na ně jako na dnešní absolutní priority.)
+## 🔥 Kritické priority pro dnešní den
+- Vyber **maximálně 2 další** kritické úkoly, které mají prošlý termín nebo termín dnes a musí se bezpodmínečně uzavřít. Pokud takové v seznamu nejsou, vyber úkoly, které nejvíce blokují další práci.
+- Pro každý z těchto 2 úkolů napiš 1 vysoce akční a praktickou doporučující větu, jak k němu dnes přistoupit a co přesně vyřešit.
 
-## 🎯 Navržené Focus Bloky (Bloky hluboké práce)
-(Navrhni konkrétní, strukturovaný časový harmonogram pro hlubokou práci – Deep Work. Např.:
-- **9:00 - 10:30 (90 min)**: Nerušený focus na úkol *[název úkolu]*
-- **11:00 - 12:00 (60 min)**: Rychlé vyřízení *[název úkolu]* a administrativy)
+## 🎯 Navržené Focus Bloky (Časový harmonogram hluboké práce)
+- Sestav realistický, biorytmy respektující časový harmonogram pro dnešní den (předpokládej standardní pracovní dobu od 9:00, celkem max 4 hodiny čisté Deep Work za den pro zachování mentální svěžesti).
+- Harmonogram naformátuj přehledně jako odrážky s časovým rozmezím, délkou v minutách a konkrétním názvem úkolu v uvozovkách.
+- **Struktura harmonogramu:**
+  - **Dopolední Focus Blok (Deep Work, 90-120 min):** Vyhrazen striktně pro dnešní "žábu" (🐸). Žádné e-maily, žádné vyrušování, plná koncentrace.
+  - **Administrativní okno (30-45 min):** Vyřízení drobných administrativních úkolů, štítků, rychlých reakcí a organizace.
+  - **Odpolední Focus Blok (60-90 min):** Práce na kritických prioritách (🔥).
+  - **Reflexe a úklid (15 min):** Uzavření rozdělaných věcí a příprava na zítřek.
 
-## 💡 Co je dobré posunout
-(Max 2 položky s nižší prioritou nebo rozpracované věci, které je skvělé dnes aspoň o kousek posunout dál.)
+## 💡 Co je dobré dnes posunout (Světlé body)
+- Vyber **1 až 2 úkoly** s nižší prioritou (🟢, 🟡) nebo rozpracované věci, u kterých dnes stačí udělat i malý pokrok (např. posunout o 15-30 minut), aby se udrželo momentum a pokrok v projektech bez pocitu zahlcení.
+- Ukaž mi, že i malé kroky vedou k velkým cílům.
 
 ## ✨ Záměr a motto pro dnešní den
-(Vytvoř 1-2 věty silného, personalizovaného motivačního shrnutí dne šitého na míru mému seznamu úkolů. Žádné generické citáty, ale konkrétní, energické povzbuzení, které mi dodá chuť se do toho pustit.)
+- Vytvoř jedno unikátní, vysoce energické a hluboce personalizované motto pro dnešní den.
+- Motto musí vzniknout syntézou témat mých dnešních úkolů (např. pokud mám hodně úkolů ohledně designu a psaní, motto bude o "tvořivé preciznosti", pokud o restech, tak o "čištění stolu"). Žádné generické citáty, ale originální, vysoce energické povzbuzení na míru.
 
-Buď maximálně konkrétní — uváděj skutečné názvy úkolů z mého seznamu a provazuj je logicky dohromady. Nepiš žádné zbytečné zdvořilostní úvody ani závěry mimo tuto strukturu.`;
+Buď maximálně konkrétní — uváděj skutečné názvy úkolů z mého seznamu a provazuj je logicky dohromady. Nepiš žádné zbytečné úvodní ani závěrečné texty, začni rovnou prvním nadpisem.`;
 
     let plan = "";
     let success = false;
