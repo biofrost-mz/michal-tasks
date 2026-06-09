@@ -22,7 +22,6 @@ const ProjectDetailPage    = lazy(() => import("./pages/ProjectsPage.jsx").then(
 const TimelinePage         = lazy(() => import("./pages/TimelinePage.jsx"));
 const TagsPage             = lazy(() => import("./pages/TagsPage.jsx"));
 const WorkspaceSettingsPage = lazy(() => import("./pages/WorkspaceSettingsPage.jsx"));
-const UserProfilePage      = lazy(() => import("./pages/UserProfilePage.jsx"));
 const QuickTodosPage       = lazy(() => import("./pages/QuickTodosPage.jsx"));
 const AdminPage            = lazy(() => import("./pages/AdminPage.jsx"));
 
@@ -297,8 +296,8 @@ function AppShell() {
                 {page === "timeline"           && <PageErrorBoundary label="Plán">            <TimelinePage />          </PageErrorBoundary>}
                 {page === "tags"               && <PageErrorBoundary label="Tagy">            <TagsPage />              </PageErrorBoundary>}
                 {page === "notes"              && <PageErrorBoundary label="Poznámky">        <NotesPage />             </PageErrorBoundary>}
-                {page === "workspace-settings" && <PageErrorBoundary label="Nastavení">       <WorkspaceSettingsPage /> </PageErrorBoundary>}
-                {page === "user-profile"       && <PageErrorBoundary label="Profil">          <UserProfilePage />       </PageErrorBoundary>}
+                {page === "workspace-settings" && <PageErrorBoundary label="Nastavení">       <WorkspaceSettingsPage initialTab="workspace" /> </PageErrorBoundary>}
+                {page === "user-profile"       && <PageErrorBoundary label="Nastavení">       <WorkspaceSettingsPage initialTab="account" />   </PageErrorBoundary>}
                 {page === "quick-todos"        && <PageErrorBoundary label="Rychlý seznam">   <QuickTodosPage />        </PageErrorBoundary>}
                 {page === "admin"              && <PageErrorBoundary label="Administrace">    <AdminPage />             </PageErrorBoundary>}
               </Suspense>

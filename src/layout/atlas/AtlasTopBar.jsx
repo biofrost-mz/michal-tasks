@@ -13,7 +13,7 @@ const PAGE_LABELS = {
   tags: "Tagy",
   notes: "Poznámky",
   "workspace-settings": "Nastavení",
-  "user-profile": "Profil",
+  "user-profile": "Nastavení",
 };
 
 export default function AtlasTopBar() {

@@ -5,22 +5,29 @@ import { useConfirm } from '../components/Confirm.jsx'
 import Icon from '../components/Icon.jsx'
 import { formatDate } from '../locale.js'
 import { usePushNotifications } from '../hooks/usePushNotifications.js'
+import { supabase } from '../supabase.js'
 
-export default function WorkspaceSettingsPage() {
+export default function WorkspaceSettingsPage({ initialTab = "workspace" }) {
   const { workspaces, activeWorkspaceId, workspaceMembers, workspaceRole, userId,
     renameWorkspace, updateMemberRole, removeMember, leaveWorkspace,
-    generateInviteLink, fetchWorkspaceInvites, revokeInvite, setPage, isMobile } = useApp();
+    generateInviteLink, fetchWorkspaceInvites, revokeInvite, setPage, isMobile,
+    userEmail, logout, updateProfileDisplayName } = useApp();
   const toast = useToast();
   const confirm = useConfirm();
   const push = usePushNotifications();
 
   const active = workspaces.find((w) => w.id === activeWorkspaceId);
+  const me = workspaceMembers.find((m) => m.userId === userId);
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [editingName, setEditingName] = useState(false);
   const [newWsName, setNewWsName] = useState(active?.name ?? "");
   const [invites, setInvites] = useState([]);
   const [inviteRole, setInviteRole] = useState("member");
   const [inviteLink, setInviteLink] = useState("");
   const [loadingInvites, setLoadingInvites] = useState(false);
+  const [displayName, setDisplayName] = useState(me?.displayName || "");
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
   const canManage = workspaceRole === "owner" || workspaceRole === "admin";
   const isOwner = workspaceRole === "owner";
@@ -29,7 +36,46 @@ export default function WorkspaceSettingsPage() {
     if (!canManage) return;
     setLoadingInvites(true);
     fetchWorkspaceInvites().then(setInvites).catch(() => {}).finally(() => setLoadingInvites(false));
-  }, [activeWorkspaceId, canManage]);
+  }, [activeWorkspaceId, canManage, fetchWorkspaceInvites]);
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
+
+  useEffect(() => {
+    setNewWsName(active?.name ?? "");
+  }, [active?.name]);
+
+  useEffect(() => {
+    setDisplayName(me?.displayName || "");
+  }, [me?.displayName]);
+
+  const handleSaveName = async () => {
+    if (!displayName.trim()) return;
+    setSavingProfile(true);
+    try {
+      await updateProfileDisplayName(displayName.trim());
+      toast("Jméno uloženo", "success");
+    } catch (e) {
+      toast(e.message || "Chyba", "error");
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    const { error } = await supabase.auth.resetPasswordForEmail(userEmail, {
+      redirectTo: `${window.location.origin}?reset=1`,
+    });
+    if (error) { toast(error.message || "Chyba", "error"); return; }
+    setResetSent(true);
+    toast("Odkaz pro reset hesla odeslán na email", "success");
+  };
+
+  const handleLogout = async () => {
+    if (!await confirm("Odhlásit se?")) return;
+    await logout();
+  };
 
   const handleRename = async () => {
     if (!newWsName.trim()) return;
@@ -96,8 +142,16 @@ export default function WorkspaceSettingsPage() {
 
   const getMemberLabel = (m) => m.displayName || m.email || `${m.userId.slice(0, 8)}…`;
   const getInitials = (m) => (m.email || m.userId).slice(0, 2).toUpperCase();
+  const profileInitials = (me?.displayName || userEmail || "?").slice(0, 2).toUpperCase();
 
   const roleColors = { owner: "#f59e0b", admin: "#3b82f6", member: "#22c55e", viewer: "#8b95a5" };
+  const tabs = [
+    { id: "account", label: "Účet", icon: "user" },
+    { id: "workspace", label: "Workspace", icon: "settings" },
+    { id: "members", label: "Členové", icon: "users" },
+    { id: "notifications", label: "Notifikace", icon: "bell" },
+    { id: "app", label: "Aplikace", icon: "settings" },
+  ];
 
   const panel = {
     background: "var(--surface)",
@@ -123,9 +177,11 @@ export default function WorkspaceSettingsPage() {
     letterSpacing: "0.1em",
     marginBottom: 10,
   };
+  const mutedText = { fontSize: 13, color: "var(--text-3)", lineHeight: 1.55 };
+  const isSystemAdmin = me?.role === "owner" || me?.role === "admin" || userEmail?.includes("zich");
 
   return (
-    <div className="content" style={{ maxWidth: 980 }}>
+    <div className="content" style={{ maxWidth: 1180 }}>
       <div className="ph">
         <div>
           <button className="ph-eyebrow" style={{ border: "none", background: "none", cursor: "pointer", padding: 0 }} onClick={() => setPage("dashboard")}>
@@ -133,15 +189,113 @@ export default function WorkspaceSettingsPage() {
           </button>
           <h1 className="ph-title">Nastavení</h1>
           <div className="ph-sub">
-            <span>{active?.name || "Workspace"} · role {workspaceRole}</span>
+            <span>{userEmail}</span>
             <span className="dot" />
-            <span>{workspaceMembers.length} členů</span>
+            <span>{active?.name || "Workspace"} · role {workspaceRole}</span>
           </div>
         </div>
       </div>
 
-      <div style={{ display: "grid", gap: 14 }}>
-        <section style={panel}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "220px minmax(0, 1fr)", gap: 16, alignItems: "start" }}>
+        <aside style={{ ...panel, padding: 8, position: isMobile ? "static" : "sticky", top: 16 }}>
+          <div style={{ display: isMobile ? "flex" : "grid", gap: 4, overflowX: isMobile ? "auto" : "visible" }}>
+            {tabs.map((tab) => {
+              const activeTabSelected = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 9,
+                    width: isMobile ? "auto" : "100%",
+                    minWidth: isMobile ? 132 : 0,
+                    padding: "10px 11px",
+                    borderRadius: 10,
+                    border: "1px solid transparent",
+                    background: activeTabSelected ? "var(--accent-soft)" : "transparent",
+                    color: activeTabSelected ? "var(--accent)" : "var(--text-2)",
+                    fontSize: 13,
+                    fontWeight: activeTabSelected ? 850 : 650,
+                    textAlign: "left",
+                  }}
+                >
+                  <Icon name={tab.icon} size={15} color="currentColor" strokeWidth={1.9} />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </aside>
+
+        <div style={{ display: "grid", gap: 14, minWidth: 0 }}>
+        {activeTab === "account" && (
+          <>
+          <section style={{ ...panel, display: "flex", alignItems: "center", gap: 16 }}>
+            <div style={{ width: 64, height: 64, borderRadius: "50%", background: "linear-gradient(135deg,var(--accent),var(--accent-2))", color: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", fontSize: 20, fontWeight: 700, boxShadow: "0 0 12px var(--accent-glow)", flexShrink: 0 }}>
+              {profileInitials}
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontFamily: "var(--font-ui)", fontSize: 30, lineHeight: 1.05, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {me?.displayName || "Bez jména"}
+              </div>
+              <div style={{ fontSize: 13, color: "var(--text-2)" }}>{userEmail}</div>
+              <div style={{ fontFamily: "var(--mono)", fontSize: 10.5, color: "var(--text-4)", marginTop: 2 }}>
+                role {me?.role ?? workspaceRole}
+              </div>
+            </div>
+          </section>
+
+          <section style={panel}>
+            <div style={sectionLabel}>Zobrazované jméno</div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <input
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSaveName()}
+                placeholder="Tvoje jméno..."
+                style={{ ...inputStyle, flex: 1, minWidth: 220 }}
+              />
+              <button className="btn primary" onClick={handleSaveName} disabled={!displayName.trim() || savingProfile} style={{ opacity: !displayName.trim() || savingProfile ? 0.6 : 1 }}>
+                {savingProfile ? "Ukládám..." : "Uložit"}
+              </button>
+            </div>
+            <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 7 }}>Tohle jméno vidí ostatní členové workspace.</div>
+          </section>
+
+          {isSystemAdmin && (
+            <section style={{ ...panel, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, borderLeft: "4px solid var(--accent)" }}>
+              <div>
+                <div style={sectionLabel}>Správa systému</div>
+                <div style={{ fontSize: 13, color: "var(--text-1)", fontWeight: 600, marginBottom: 4 }}>Administrace systému Zentero</div>
+                <div style={{ fontSize: 12, color: "var(--text-3)" }}>Globální správa uživatelů, profilů a obnovení smazaných dat z koše.</div>
+              </div>
+              <button className="btn primary" onClick={() => setPage("admin")} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <Icon name="settings" size={14} /> Vstoupit do administrace
+              </button>
+            </section>
+          )}
+
+          <section style={panel}>
+            <div style={sectionLabel}>Heslo</div>
+            {resetSent ? (
+              <div style={{ fontSize: 13, color: "var(--green)" }}>Odkaz pro reset hesla byl odeslán na {userEmail}.</div>
+            ) : (
+              <button className="btn" onClick={handleResetPassword}>Odeslat odkaz pro reset hesla</button>
+            )}
+          </section>
+
+          <section style={{ ...panel, borderColor: "rgba(239,68,68,.28)" }}>
+            <div style={{ ...sectionLabel, color: "var(--red)" }}>Odhlášení</div>
+            <button className="btn danger" onClick={handleLogout}>Odhlásit se</button>
+          </section>
+          </>
+        )}
+
+        {activeTab === "workspace" && (
+          <>
+          <section style={panel}>
           <div style={sectionLabel}>Název Workspace</div>
           {editingName ? (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -163,6 +317,23 @@ export default function WorkspaceSettingsPage() {
           )}
         </section>
 
+        <section style={{ ...panel, borderColor: "rgba(239,68,68,.28)" }}>
+          <div style={{ ...sectionLabel, color: "var(--red)" }}>Nebezpečná zóna</div>
+          {!isOwner && (
+            <button className="btn danger" onClick={handleLeave}>Opustit workspace</button>
+          )}
+          {isOwner && workspaceMembers.length === 1 && (
+            <div style={{ fontSize: 12, color: "var(--text-3)" }}>Workspace nelze opustit, jsi jediný člen.</div>
+          )}
+          {isOwner && workspaceMembers.length > 1 && (
+            <div style={{ fontSize: 12, color: "var(--text-3)" }}>Jako owner nemůžeš workspace opustit. Nejprve předej ownership.</div>
+          )}
+        </section>
+          </>
+        )}
+
+        {activeTab === "members" && (
+          <>
         <section style={panel}>
           <div style={sectionLabel}>Členové ({workspaceMembers.length})</div>
           <div style={{ border: "1px solid var(--border-soft)", borderRadius: 10, overflow: "hidden" }}>
@@ -242,7 +413,10 @@ export default function WorkspaceSettingsPage() {
             )}
           </section>
         )}
+          </>
+        )}
 
+        {activeTab === "notifications" && (
         <section style={panel}>
           <div style={sectionLabel}>Notifikace</div>
           {!push.supported ? (
@@ -276,19 +450,17 @@ export default function WorkspaceSettingsPage() {
             </div>
           )}
         </section>
+        )}
 
-        <section style={{ ...panel, borderColor: "rgba(239,68,68,.28)" }}>
-          <div style={{ ...sectionLabel, color: "var(--red)" }}>Nebezpečná Zóna</div>
-          {!isOwner && (
-            <button className="btn danger" onClick={handleLeave}>Opustit workspace</button>
-          )}
-          {isOwner && workspaceMembers.length === 1 && (
-            <div style={{ fontSize: 12, color: "var(--text-3)" }}>Workspace nelze opustit, jsi jediný člen.</div>
-          )}
-          {isOwner && workspaceMembers.length > 1 && (
-            <div style={{ fontSize: 12, color: "var(--text-3)" }}>Jako owner nemůžeš workspace opustit. Nejprve předej ownership.</div>
-          )}
-        </section>
+        {activeTab === "app" && (
+          <section style={panel}>
+            <div style={sectionLabel}>Aplikace</div>
+            <div style={mutedText}>
+              Sem patří další uživatelské volby: výchozí stránka po otevření, hustota rozhraní, jazyk, systémový režim vzhledu, chování poznámek a rychlých úkolů. Zatím je to připravené jako společné místo pro další krok.
+            </div>
+          </section>
+        )}
+        </div>
       </div>
     </div>
   );

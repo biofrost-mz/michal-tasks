@@ -12,8 +12,8 @@ export const PAGE_TITLES = {
   timeline: "Plán",
   tags: "Tagy",
   notes: "Poznámky",
-  "workspace-settings": "Nastavení workspace",
-  "user-profile": "Profil",
+  "workspace-settings": "Nastavení",
+  "user-profile": "Nastavení",
   admin: "Systém & Admin",
 };
 
