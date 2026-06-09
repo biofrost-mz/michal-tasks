@@ -1,7 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import '@blocknote/core/fonts/inter.css'
-import '@blocknote/mantine/style.css'
+import { registerSW } from 'virtual:pwa-register'
 import './index.css'
 import App from './App.jsx'
 import { initGlobalErrorLogging } from './utils/errorLogger.js'
@@ -15,9 +14,21 @@ createRoot(document.getElementById('root')).render(
 )
 
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then(reg => console.log('SW registered successfully:', reg.scope))
-      .catch(err => console.warn('SW registration failed:', err));
+  let updateServiceWorker = () => Promise.resolve();
+
+  const notifyUpdateReady = () => {
+    window.dispatchEvent(new CustomEvent('app:update-ready', { detail: { updateSW: updateServiceWorker } }));
+  };
+
+  updateServiceWorker = registerSW({
+    immediate: true,
+    onNeedRefresh: notifyUpdateReady,
+    onNeedReload: notifyUpdateReady,
+    onOfflineReady() {
+      window.dispatchEvent(new CustomEvent('app:offline-ready'));
+    },
+    onRegisterError(error) {
+      console.warn('SW registration failed:', error);
+    },
   });
 }

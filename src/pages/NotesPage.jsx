@@ -13,6 +13,43 @@ import DOMPurify from 'dompurify'
 
 const CURATED_TAG_COLORS = ["#38bdf8", "#34d399", "#fb7185", "#f472b6", "#fbbf24", "#a78bfa", "#c084fc", "#60a5fa", "#2dd4bf", "#fb923c"];
 const getRandomTagColor = () => CURATED_TAG_COLORS[Math.floor(Math.random() * CURATED_TAG_COLORS.length)];
+const BLOCKNOTE_VENDOR_CSS_ID = "blocknote-vendor-css";
+let blockNoteStylesPromise = null;
+
+function ensureBlockNoteStyles() {
+  if (typeof document === "undefined" || document.getElementById(BLOCKNOTE_VENDOR_CSS_ID)) {
+    return Promise.resolve();
+  }
+
+  if (!blockNoteStylesPromise) {
+    blockNoteStylesPromise = Promise.all([
+      import('@blocknote/core/fonts/inter.css?inline'),
+      import('@blocknote/mantine/style.css?inline'),
+    ]).then((styles) => {
+      if (document.getElementById(BLOCKNOTE_VENDOR_CSS_ID)) return;
+      const el = document.createElement("style");
+      el.id = BLOCKNOTE_VENDOR_CSS_ID;
+      el.textContent = styles.map((style) => style.default || "").join("\n");
+      document.head.appendChild(el);
+    });
+  }
+
+  return blockNoteStylesPromise;
+}
+
+function useBlockNoteStyles() {
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    ensureBlockNoteStyles().then(() => {
+      if (active) setReady(true);
+    });
+    return () => { active = false; };
+  }, []);
+
+  return ready;
+}
 
 const getTagColor = (tagName, globalTags) => {
   if (!tagName || !globalTags) return null;
@@ -521,6 +558,7 @@ function linkedItemsForNote(note, projects, tasks) {
 /* ─── NoteEditor ────────────────────────────── */
 function NoteEditor({ note, onSave, t, dk, isMobile, showProps, onToggleProps, onDelete, onTogglePin, projects, tasks, addTask }) {
   const { tags: globalTags } = useApp();
+  const blockNoteStylesReady = useBlockNoteStyles();
   const editor = useCreateBlockNote();
   const titleRef = useRef(null);
   const saveTimer = useRef(null);
@@ -783,11 +821,17 @@ function NoteEditor({ note, onSave, t, dk, isMobile, showProps, onToggleProps, o
           </div>
 
           <div className="note-blocknote">
-            <BlockNoteView
-              editor={editor}
-              onChange={handleEditorChange}
-              theme={dk ? "dark" : "light"}
-            />
+            {blockNoteStylesReady ? (
+              <BlockNoteView
+                editor={editor}
+                onChange={handleEditorChange}
+                theme={dk ? "dark" : "light"}
+              />
+            ) : (
+              <div style={{ minHeight: 260, display: "grid", placeItems: "center", color: t.text3, fontSize: 13, fontWeight: 700 }}>
+                Načítám editor...
+              </div>
+            )}
           </div>
 
           <div className="notes-linked-panel">
