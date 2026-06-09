@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext.jsx'
 import { useToast } from './Toast.jsx'
 import Icon from './Icon.jsx'
 import { supabase } from '../supabase.js'
+import { fetchProjectChat, insertProjectChat, clearProjectChat } from '../services/projectChatService.js'
 
 const CHAT_STORAGE_KEY = (projectId) => `mt3:chat:${projectId}`;
 const MAX_MESSAGES = 50;
@@ -28,9 +29,16 @@ function saveMessages(projectId, messages) {
 }
 
 export default function ProjectChatPanel({ project, tasks, notes, onClose }) {
-  const { t, isMobile } = useApp();
+  const { t, isMobile, activeWorkspaceId, userId } = useApp();
   const toast = useToast();
   const [messages, setMessages] = useState(() => loadMessages(project.id));
+
+  // Uloží zprávu do DB (sdílená historie). Tiše ignoruje chyby —
+  // bez migrace / offline zůstává jen localStorage níže.
+  const persist = (role, content) => {
+    if (!activeWorkspaceId || !userId) return;
+    insertProjectChat({ projectId: project.id, workspaceId: activeWorkspaceId, userId, role, content }).catch(() => {});
+  };
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef(null);
@@ -44,6 +52,25 @@ export default function ProjectChatPanel({ project, tasks, notes, onClose }) {
     if (!isMobile) inputRef.current?.focus();
   }, [isMobile]);
 
+  // Načti sdílenou historii ze serveru; fallback = localStorage (init výše).
+  // Přepíšeme jen když server nějaké zprávy má, ať se nepřemaže lokální cache,
+  // dokud není migrace nasazená.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const server = await fetchProjectChat(project.id);
+        if (!cancelled && server.length) {
+          setMessages(server);
+          saveMessages(project.id, server);
+        }
+      } catch {
+        /* tabulka neexistuje / offline → necháme localStorage */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [project.id]);
+
   const send = async (text) => {
     const msg = (text ?? input).trim();
     if (!msg || loading) return;
@@ -52,6 +79,7 @@ export default function ProjectChatPanel({ project, tasks, notes, onClose }) {
     const next = [...messages, userMsg];
     setMessages(next);
     saveMessages(project.id, next);
+    persist("user", msg);
     setInput("");
     setLoading(true);
 
@@ -90,6 +118,7 @@ export default function ProjectChatPanel({ project, tasks, notes, onClose }) {
       const withReply = [...next, aiMsg];
       setMessages(withReply);
       saveMessages(project.id, withReply);
+      persist("assistant", data.reply);
     } catch (err) {
       const errMsg = err?.message || String(err);
       if (errMsg.includes("non-2xx")) {
@@ -113,6 +142,7 @@ export default function ProjectChatPanel({ project, tasks, notes, onClose }) {
   const clearChat = () => {
     setMessages([]);
     saveMessages(project.id, []);
+    clearProjectChat(project.id).catch(() => {});
   };
 
   const panelStyle = isMobile

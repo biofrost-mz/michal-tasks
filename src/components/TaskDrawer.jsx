@@ -263,6 +263,10 @@ export default function TaskDrawer() {
   const dragStartRef = useRef(null);
   const DISMISS_THRESHOLD = 150;
 
+  // A11y: reference na dialog + stabilní odkaz na zavírací funkci
+  const dialogRef = useRef(null);
+  const closeRef = useRef(null);
+
   const task = tasks.find((x) => x.id === taskDetail) ?? null;
 
   const quickTags = useMemo(() => {
@@ -318,6 +322,36 @@ export default function TaskDrawer() {
     if (!title.trim() && task) deleteTask(task.id);
     setTaskDetail(null);
   };
+  // Drž v refu vždy nejnovější closeDrawer (kvůli ESC handleru níže).
+  useEffect(() => { closeRef.current = closeDrawer; });
+
+  // A11y: ESC zavře, fokus se přesune do dialogu a uvnitř ho udrží (focus-trap),
+  // po zavření se vrátí na prvek, ze kterého se drawer otevřel.
+  useEffect(() => {
+    if (!taskDetail) return;
+    const dialog = dialogRef.current;
+    const prevFocused = document.activeElement;
+    const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+    const visible = () => [...(dialog?.querySelectorAll(FOCUSABLE) || [])].filter((el) => el.offsetParent !== null);
+
+    const tid = setTimeout(() => { (visible()[0] || dialog)?.focus?.(); }, 30);
+    const onKey = (e) => {
+      if (e.key === "Escape") { e.stopPropagation(); closeRef.current?.(); return; }
+      if (e.key === "Tab" && dialog) {
+        const els = visible();
+        if (!els.length) return;
+        const first = els[0], last = els[els.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    };
+    document.addEventListener("keydown", onKey, true);
+    return () => {
+      clearTimeout(tid);
+      document.removeEventListener("keydown", onKey, true);
+      if (prevFocused && typeof prevFocused.focus === "function") prevFocused.focus();
+    };
+  }, [taskDetail]);
 
   if (!task) return null;
 
@@ -376,6 +410,11 @@ export default function TaskDrawer() {
     <div className="overlay" onClick={closeDrawer}>
       <div
         className="detail"
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Detail úkolu: ${task.title || "bez názvu"}`}
+        tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
         style={isMobile ? {
           transform: `translateY(${dragY}px)`,
