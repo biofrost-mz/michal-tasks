@@ -106,6 +106,46 @@
   --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
 }
 
+:root[data-density="compact"] {
+  --r-sm: 5px;
+  --r: 8px;
+  --r-lg: 11px;
+}
+
+:root[data-density="compact"] body {
+  font-size: 14px;
+}
+
+:root[data-density="compact"] .content {
+  padding-top: 18px;
+  padding-bottom: 28px;
+}
+
+:root[data-density="compact"] .ph {
+  margin-bottom: 18px;
+}
+
+:root[data-density="compact"] .sb-nav-item,
+:root[data-density="compact"] .sb-proj,
+:root[data-density="compact"] .chip,
+:root[data-density="compact"] .btn {
+  min-height: 0;
+}
+
+:root[data-density="compact"] .tcard {
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+:root[data-motion="reduced"] *,
+:root[data-motion="reduced"] *::before,
+:root[data-motion="reduced"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  scroll-behavior: auto !important;
+  transition-duration: 0.001ms !important;
+}
+
 * { box-sizing: border-box; }
 html, body {
   margin: 0; padding: 0;

@@ -11,7 +11,8 @@ export default function WorkspaceSettingsPage({ initialTab = "workspace" }) {
   const { workspaces, activeWorkspaceId, workspaceMembers, workspaceRole, userId,
     renameWorkspace, updateMemberRole, removeMember, leaveWorkspace,
     generateInviteLink, fetchWorkspaceInvites, revokeInvite, setPage, isMobile,
-    userEmail, logout, updateProfileDisplayName } = useApp();
+    userEmail, logout, updateProfileDisplayName, dk, setDk,
+    uiSettings, updateUiSettings, accentThemes } = useApp();
   const toast = useToast();
   const confirm = useConfirm();
   const push = usePushNotifications();
@@ -145,6 +146,14 @@ export default function WorkspaceSettingsPage({ initialTab = "workspace" }) {
   const profileInitials = (me?.displayName || userEmail || "?").slice(0, 2).toUpperCase();
 
   const roleColors = { owner: "#f59e0b", admin: "#3b82f6", member: "#22c55e", viewer: "#8b95a5" };
+  const defaultPages = [
+    { id: "dashboard", label: "Přehled" },
+    { id: "tasks", label: "Úkoly" },
+    { id: "quick-todos", label: "Rychlý seznam" },
+    { id: "projects", label: "Projekty" },
+    { id: "timeline", label: "Plán" },
+    { id: "notes", label: "Poznámky" },
+  ];
   const tabs = [
     { id: "account", label: "Účet", icon: "user" },
     { id: "workspace", label: "Workspace", icon: "settings" },
@@ -179,6 +188,35 @@ export default function WorkspaceSettingsPage({ initialTab = "workspace" }) {
   };
   const mutedText = { fontSize: 13, color: "var(--text-3)", lineHeight: 1.55 };
   const isSystemAdmin = me?.role === "owner" || me?.role === "admin" || userEmail?.includes("zich");
+  const segmentedButton = (active) => ({
+    padding: "8px 11px",
+    borderRadius: 9,
+    border: `1px solid ${active ? "color-mix(in srgb, var(--accent) 38%, transparent)" : "var(--border-soft)"}`,
+    background: active ? "var(--accent-soft)" : "var(--bg-2)",
+    color: active ? "var(--accent)" : "var(--text-2)",
+    fontSize: 12,
+    fontWeight: active ? 850 : 650,
+  });
+  const toggleStyle = (on) => ({
+    width: 46,
+    height: 26,
+    borderRadius: 999,
+    border: `1px solid ${on ? "color-mix(in srgb, var(--accent) 36%, transparent)" : "var(--border-soft)"}`,
+    background: on ? "var(--accent-soft)" : "var(--bg-2)",
+    position: "relative",
+    padding: 0,
+    flexShrink: 0,
+  });
+  const toggleKnobStyle = (on) => ({
+    position: "absolute",
+    top: 3,
+    left: on ? 23 : 3,
+    width: 18,
+    height: 18,
+    borderRadius: "50%",
+    background: on ? "var(--accent)" : "var(--text-3)",
+    transition: "left .16s ease, background .16s ease",
+  });
 
   return (
     <div className="content" style={{ maxWidth: 1180 }}>
@@ -453,12 +491,115 @@ export default function WorkspaceSettingsPage({ initialTab = "workspace" }) {
         )}
 
         {activeTab === "app" && (
+          <>
           <section style={panel}>
-            <div style={sectionLabel}>Aplikace</div>
-            <div style={mutedText}>
-              Sem patří další uživatelské volby: výchozí stránka po otevření, hustota rozhraní, jazyk, systémový režim vzhledu, chování poznámek a rychlých úkolů. Zatím je to připravené jako společné místo pro další krok.
+            <div style={sectionLabel}>Vzhled</div>
+            <div style={{ display: "grid", gap: 16 }}>
+              <div>
+                <div style={{ fontSize: 13.5, fontWeight: 800, color: "var(--text)", marginBottom: 8 }}>Režim</div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {[
+                    { id: "dark", label: "Tmavý" },
+                    { id: "light", label: "Světlý" },
+                    { id: "system", label: "Systém" },
+                  ].map((mode) => (
+                    <button
+                      key={mode.id}
+                      onClick={() => {
+                        updateUiSettings({ themeMode: mode.id });
+                        if (mode.id !== "system") setDk(mode.id === "dark");
+                      }}
+                      style={segmentedButton(uiSettings.themeMode === mode.id)}
+                    >
+                      {mode.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <div style={{ fontSize: 13.5, fontWeight: 800, color: "var(--text)", marginBottom: 8 }}>Accent barva</div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(132px, 1fr))", gap: 8 }}>
+                  {Object.entries(accentThemes || {}).map(([key, preset]) => {
+                    const palette = preset[dk ? "dark" : "light"];
+                    const active = uiSettings.accent === key;
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => updateUiSettings({ accent: key })}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 9,
+                          padding: "9px 10px",
+                          borderRadius: 10,
+                          border: `1px solid ${active ? palette.accent : "var(--border-soft)"}`,
+                          background: active ? "var(--accent-soft)" : "var(--bg-2)",
+                          color: active ? "var(--accent)" : "var(--text-2)",
+                          fontWeight: 800,
+                          fontSize: 12,
+                          textAlign: "left",
+                        }}
+                      >
+                        <span style={{ width: 18, height: 18, borderRadius: "50%", background: `linear-gradient(135deg, ${palette.accent}, ${palette.accent2})`, boxShadow: active ? "0 0 0 3px var(--accent-soft)" : "none", flexShrink: 0 }} />
+                        {preset.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </section>
+
+          <section style={panel}>
+            <div style={sectionLabel}>Rozhraní</div>
+            <div style={{ display: "grid", gap: 14 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap" }}>
+                <div>
+                  <div style={{ fontSize: 13.5, fontWeight: 800, color: "var(--text)" }}>Hustota UI</div>
+                  <div style={{ ...mutedText, fontSize: 12 }}>Kompaktní režim zmenší mezery a zrychlí skenování delších seznamů.</div>
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={() => updateUiSettings({ density: "comfortable" })} style={segmentedButton(uiSettings.density === "comfortable")}>Pohodlná</button>
+                  <button onClick={() => updateUiSettings({ density: "compact" })} style={segmentedButton(uiSettings.density === "compact")}>Kompaktní</button>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14 }}>
+                <div>
+                  <div style={{ fontSize: 13.5, fontWeight: 800, color: "var(--text)" }}>Omezit animace</div>
+                  <div style={{ ...mutedText, fontSize: 12 }}>Vypne většinu přechodů a animací v rozhraní.</div>
+                </div>
+                <button onClick={() => updateUiSettings((prev) => ({ reducedMotion: !prev.reducedMotion }))} style={toggleStyle(uiSettings.reducedMotion)} aria-label="Omezit animace">
+                  <span style={toggleKnobStyle(uiSettings.reducedMotion)} />
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <section style={panel}>
+            <div style={sectionLabel}>Start aplikace</div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {defaultPages.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => updateUiSettings({ defaultPage: item.id })}
+                  style={segmentedButton(uiSettings.defaultPage === item.id)}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+            <div style={{ ...mutedText, fontSize: 12, marginTop: 9 }}>Tahle stránka se otevře po dalším načtení aplikace.</div>
+          </section>
+
+          <section style={panel}>
+            <div style={sectionLabel}>Workspace branding</div>
+            <div style={mutedText}>
+              Sdílené barvy workspace, ikona a logo patří do dalšího kroku s uložením do backendu. Osobní accent výše je lokální preference a nijak nemění vzhled ostatním členům týmu.
+            </div>
+          </section>
+          </>
         )}
         </div>
       </div>
