@@ -1451,14 +1451,15 @@ function NotesAtlasGrid({ notes, onOpenNote, onCreate, projects }) {
 }
 
 /* ─── NotesSidebar ──────────────────────────── */
-function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects }) {
-  const { tags: globalTags, updateNote } = useApp();
+function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects, view = "editor", onSetView }) {
+  const { tags: globalTags, updateNote, uiSettings } = useApp();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("updated");
   const [hoveredId, setHoveredId] = useState(null);
 
+  const compact = uiSettings?.density === "compact";
   const togglePin = (n) => updateNote(n.id, { pinned: !n.pinned });
   const toggleArchive = (n) => updateNote(n.id, { archived: !n.archived });
 
@@ -1540,10 +1541,22 @@ function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects }) {
             </div>
             <span style={{ fontSize:11, color:t.text3, background:"rgba(255,255,255,.07)", padding:"1px 7px", borderRadius:99, fontWeight:700 }}>{activeCount}</span>
           </div>
-          <button onClick={onCreate} style={{ display:"flex", alignItems:"center", gap:5, padding:"7px 12px", borderRadius:9, border:"none", background:`linear-gradient(135deg, var(--accent), var(--accent-2))`, color:"var(--bg)", fontSize:12, fontWeight:800, cursor:"pointer", boxShadow:"0 6px 16px var(--accent-glow)" }}>
-            <Icon name="plus" size={13} color="var(--bg)" strokeWidth={2.5} />
-            Nová
-          </button>
+          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+            {onSetView && (
+              <div style={{ display:"flex", gap:2, background:"var(--bg-2)", border:`1px solid ${t.border}`, borderRadius:8, padding:2 }}>
+                <button onClick={()=>onSetView("editor")} title="Zobrazení: seznam" aria-label="Zobrazení seznam" style={{ display:"flex", padding:"4px 6px", borderRadius:6, border:"none", cursor:"pointer", background:view!=="gallery"?"var(--accent-soft)":"transparent", color:view!=="gallery"?"var(--accent)":t.text3 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><line x1="8" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="20" y2="12"/><line x1="8" y1="18" x2="20" y2="18"/><line x1="3.5" y1="6" x2="3.6" y2="6"/><line x1="3.5" y1="12" x2="3.6" y2="12"/><line x1="3.5" y1="18" x2="3.6" y2="18"/></svg>
+                </button>
+                <button onClick={()=>onSetView("gallery")} title="Zobrazení: galerie" aria-label="Zobrazení galerie" style={{ display:"flex", padding:"4px 6px", borderRadius:6, border:"none", cursor:"pointer", background:view==="gallery"?"var(--accent-soft)":"transparent", color:view==="gallery"?"var(--accent)":t.text3 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+                </button>
+              </div>
+            )}
+            <button onClick={onCreate} style={{ display:"flex", alignItems:"center", gap:5, padding:"7px 12px", borderRadius:9, border:"none", background:`linear-gradient(135deg, var(--accent), var(--accent-2))`, color:"var(--bg)", fontSize:12, fontWeight:800, cursor:"pointer", boxShadow:"0 6px 16px var(--accent-glow)" }}>
+              <Icon name="plus" size={13} color="var(--bg)" strokeWidth={2.5} />
+              Nová
+            </button>
+          </div>
         </div>
         <div style={{ position:"relative" }}>
           <Icon name="search" size={13} color={t.text3} strokeWidth={2} style={{ position:"absolute", left:9, top:"50%", transform:"translateY(-50%)", pointerEvents:"none" }} />
@@ -1636,7 +1649,7 @@ function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects }) {
                   onMouseLeave={e=>{ setHoveredId(id=>id===n.id?null:id); if(!isActive) e.currentTarget.style.background="transparent"; }}
                   style={{
                   display:"block", width:"100%", textAlign:"left",
-                  padding:"11px 10px 11px 14px", borderRadius:13, marginBottom:6,
+                  padding:compact ? "7px 8px 7px 12px" : "11px 10px 11px 14px", borderRadius:compact ? 11 : 13, marginBottom:compact ? 3 : 6,
                   background:isActive ? "var(--accent-soft)" : "transparent",
                   border:`1px solid ${isActive ? "color-mix(in srgb, var(--accent) 38%, transparent)" : "transparent"}`,
                   cursor:"pointer", position:"relative", overflow:"hidden",
@@ -1668,7 +1681,7 @@ function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects }) {
                     </div>
                   </div>
                   {preview && (
-                    <div style={{ fontSize:12, color:t.text3, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden", lineHeight:1.45, marginBottom:n.tags?.length ? 6 : 0 }}>
+                    <div style={{ fontSize:12, color:t.text3, display:"-webkit-box", WebkitLineClamp:compact ? 1 : 2, WebkitBoxOrient:"vertical", overflow:"hidden", lineHeight:1.45, marginBottom:n.tags?.length ? 6 : 0 }}>
                       {preview}
                     </div>
                   )}
@@ -1711,6 +1724,7 @@ export default function NotesPage() {
   const [mobileView,     setMobileView]     = useState("list");
   const [templatePicker, setTemplatePicker] = useState(false);
   const [showProps,      setShowProps]      = useState(false);
+  const [notesView,      setNotesView]      = useState("editor"); // "editor" | "gallery"
 
   useEffect(() => { injectNoteCSS(dk); }, [dk]);
 
@@ -1802,19 +1816,32 @@ export default function NotesPage() {
           <TemplatePickerModal onSelect={handleCreateFromTemplate} onClose={() => setTemplatePicker(false)} />
         )}
 
-        <div className={`notes-workspace ${showProps && selNote ? "" : "no-props"}`}>
+        <div className={`notes-workspace ${showProps && selNote && notesView !== "gallery" ? "" : "no-props"}`}>
           <div className="notes-workspace-panel">
             <NotesSidebar
               notes={notes}
               selId={selId}
-              onSelect={(id) => { setSelId(id); setShowProps(true); }}
+              onSelect={(id) => { setSelId(id); setShowProps(true); setNotesView("editor"); }}
               onCreate={handleCreate}
               t={t}
               projects={projects}
+              view={notesView}
+              onSetView={setNotesView}
             />
           </div>
 
-          {selNote ? (
+          {notesView === "gallery" ? (
+            <div className="notes-page-empty">
+              <div className="notes-grid-shell">
+                <NotesAtlasGrid
+                  notes={notes}
+                  projects={projects}
+                  onCreate={handleCreate}
+                  onOpenNote={(id) => { setSelId(id); setShowProps(true); setNotesView("editor"); }}
+                />
+              </div>
+            </div>
+          ) : selNote ? (
             <div className="notes-editor-shell">
               <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0, background: t.bg }}>
                 <NoteEditor
