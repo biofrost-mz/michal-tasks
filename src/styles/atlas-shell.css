@@ -2918,10 +2918,21 @@ body, p, li, td, th {
   justify-content: flex-end;
   padding-right: 24px;
   border-radius: inherit;
-  background: linear-gradient(90deg, #4ea85b, #75b77a 48%, #98d29c);
+  background:
+    radial-gradient(circle at 86% 50%, rgba(187, 247, 208, .22), transparent 34%),
+    linear-gradient(110deg, #064e3b 0%, #047857 55%, #0f766e 100%);
   opacity: var(--swipe-progress);
   transition: opacity .2s ease;
   pointer-events: none;
+}
+.quick-todo-swipe-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(135deg, transparent 0 43%, rgba(255,255,255,.13) 44% 45%, transparent 46% 100%),
+    linear-gradient(135deg, transparent 0 58%, rgba(255,255,255,.08) 59% 60%, transparent 61% 100%);
+  opacity: calc(var(--swipe-progress) * .72);
 }
 .quick-todo-swipe-action {
   display: flex;
@@ -2934,26 +2945,48 @@ body, p, li, td, th {
   transition: transform .22s cubic-bezier(.34,1.56,.64,1), opacity .16s ease;
 }
 .quick-todo-swipe-icon {
-  width: 36px;
-  height: 36px;
+  position: relative;
+  width: 31px;
+  height: 31px;
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: rgba(255,255,255,.16);
-  box-shadow: none;
+  background: rgba(2, 44, 34, .48);
+  border: 1px solid rgba(236,253,245,.34);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 10px 22px rgba(0,0,0,.18);
   transition: background .16s ease, box-shadow .16s ease, transform .16s ease;
 }
+.quick-todo-swipe-icon::before,
+.quick-todo-swipe-icon::after {
+  content: "";
+  position: absolute;
+  border-radius: 999px;
+  background: rgba(236,253,245,.7);
+  opacity: calc(var(--swipe-progress) * .8);
+}
+.quick-todo-swipe-icon::before {
+  width: 18px;
+  height: 1px;
+  right: 28px;
+  top: 9px;
+}
+.quick-todo-swipe-icon::after {
+  width: 11px;
+  height: 1px;
+  right: 30px;
+  bottom: 8px;
+}
 .quick-todo-swipe-action span {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 800;
-  color: #fff;
+  color: #d1fae5;
   letter-spacing: .04em;
   text-transform: uppercase;
 }
 .quick-todo-swipe-shell.is-complete-ready .quick-todo-swipe-icon {
-  background: rgba(255,255,255,.34);
-  box-shadow: 0 5px 16px rgba(0,0,0,.16);
-  transform: rotate(-8deg);
+  background: rgba(236,253,245,.2);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.28), 0 8px 22px rgba(0,0,0,.24), 0 0 0 5px rgba(209,250,229,.1);
+  transform: rotate(-6deg);
 }
 .quick-todo-swipe-card.tcard {
   position: relative;

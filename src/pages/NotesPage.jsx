@@ -84,25 +84,35 @@ function injectNoteCSS(dk) {
   color: ${accent};
 }
 .notes-workspace {
-  width: min(1480px, calc(100vw - 32px));
-  height: calc(100vh - 48px);
-  max-height: 980px;
-  margin: auto;
-  border-radius: 22px;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  border-radius: 0;
   overflow: hidden;
-  border: 1px solid var(--border);
+  border: 0;
   background: var(--bg);
   display: grid;
-  grid-template-columns: 286px minmax(0, 1fr) 330px;
-  box-shadow: 0 28px 90px rgba(0,0,0,.55);
+  grid-template-columns: 318px minmax(0, 1fr) 360px;
+  box-shadow: none;
 }
-.notes-workspace.no-props { grid-template-columns: 286px minmax(0, 1fr); }
+.notes-workspace.no-props { grid-template-columns: 318px minmax(0, 1fr); }
 .notes-workspace-panel {
   border-right: 1px solid var(--border-soft);
   min-height: 0;
   overflow: hidden;
 }
 .notes-editor-shell { min-width: 0; min-height: 0; display:flex; overflow:hidden; background: var(--bg); }
+.notes-page-empty {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  background: var(--bg);
+}
+.notes-page-empty .notes-grid-shell {
+  width: min(1180px, calc(100% - 56px));
+  margin: 0 auto;
+  padding: 28px 0 60px;
+}
 .notes-toolbar-wrap {
   position: sticky;
   top: 0;
@@ -622,9 +632,6 @@ function NoteEditor({ note, onSave, t, dk, isMobile, showProps, onToggleProps, o
   const linkedProject = note.primaryProjectId ? projects.find(p => p.id === note.primaryProjectId) : null;
   const linkedTask = note.primaryTaskId ? tasks.find(tk => tk.id === note.primaryTaskId) : null;
   const linkedItems = linkedItemsForNote(note, projects, tasks);
-  const priorityKey = notePriority(note);
-  const templateLabel = noteTemplateLabel(note);
-
   return (
     <div style={{ display:"flex", flexDirection:"column", height:"100%", overflow:"hidden", position:"relative" }}>
       {/* Topbar */}
@@ -722,10 +729,10 @@ function NoteEditor({ note, onSave, t, dk, isMobile, showProps, onToggleProps, o
       {/* Scrollable editor area */}
       <div style={{ flex:1, overflow:"auto", position:"relative" }}>
         {/* Page content */}
-        <div style={{ width:"min(740px, calc(100% - 56px))", margin:"0 auto", padding:"16px 0 100px" }}>
+        <div style={{ width:"min(1040px, calc(100% - 72px))", margin:"0 auto", padding:"24px 0 100px" }}>
           {/* Page icon */}
           <div
-            style={{ width:52, height:52, borderRadius:14, display:"grid", placeItems:"center", fontSize:26, background:"rgba(255,255,255,.055)", border:`1px solid ${t.border}`, marginBottom:14, cursor:"text" }}
+            style={{ width:44, height:44, borderRadius:12, display:"grid", placeItems:"center", fontSize:23, background:"rgba(255,255,255,.045)", border:`1px solid ${t.border}`, marginBottom:16, cursor:"text" }}
             title="Klikni pro změnu ikony / emoji"
             onClick={() => {
               const em = prompt("Emoji nebo ikona:", note.icon || "📝");
@@ -733,14 +740,6 @@ function NoteEditor({ note, onSave, t, dk, isMobile, showProps, onToggleProps, o
             }}
           >
             {note.icon || "📝"}
-          </div>
-
-          <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap", color:t.text3, fontSize:12, marginBottom:8 }}>
-            <span>Upraveno {formatDateTime(note.updatedAt)}</span>
-            {linkedItems.length > 0 && <span style={{ color:"#bbf7d0", background:"rgba(34,197,94,.12)", border:"1px solid rgba(34,197,94,.2)", padding:"3px 9px", borderRadius:999, fontWeight:800 }}>Vazba připojena</span>}
-            <span style={{ background:statusInfo.bg, color:statusInfo.color, border:`1px solid ${statusInfo.color}40`, padding:"3px 9px", borderRadius:999, fontWeight:800 }}>
-              {statusInfo.label}
-            </span>
           </div>
 
           {/* Title */}
@@ -753,12 +752,12 @@ function NoteEditor({ note, onSave, t, dk, isMobile, showProps, onToggleProps, o
               width:"100%", border:"none", background:"transparent", color:t.text, outline:"none",
               fontFamily:"var(--font-ui)",
               fontSize:"clamp(32px, 4vw, 50px)", fontWeight:900, letterSpacing:"-.04em", lineHeight:1.04,
-              marginBottom:12, display:"block",
+              marginBottom:14, display:"block",
             }}
           />
 
           {/* Meta-line */}
-          <div style={{ display:"flex", gap:10, alignItems:"center", flexWrap:"wrap", color:t.text3, fontSize:12, paddingBottom:18, borderBottom:`1px solid ${t.border}`, marginBottom:22 }}>
+          <div style={{ display:"flex", gap:10, alignItems:"center", flexWrap:"wrap", color:t.text3, fontSize:12, paddingBottom:20, borderBottom:`1px solid ${t.border}`, marginBottom:26 }}>
             <span>Upraveno {formatDateTime(note.updatedAt)}</span>
             {linkedProject && (
               <span style={{ color:"var(--accent)", background:"var(--accent-soft)", border:"1px solid color-mix(in srgb, var(--accent) 28%, transparent)", padding:"3px 9px", borderRadius:999, fontWeight:700, fontSize:12 }}>
@@ -781,13 +780,6 @@ function NoteEditor({ note, onSave, t, dk, isMobile, showProps, onToggleProps, o
                 </span>
               );
             })}
-          </div>
-
-          <div className="notes-meta-strip">
-            <div className="notes-meta-item"><small>Stav</small><span>{statusInfo.label}</span></div>
-            <div className="notes-meta-item"><small>Typ</small><span>{templateLabel}</span></div>
-            <div className="notes-meta-item"><small>Projekt</small><span>{linkedProject?.name || "Bez projektu"}</span></div>
-            <div className="notes-meta-item"><small>Priorita</small><span>{NOTE_PRIORITIES[priorityKey]}</span></div>
           </div>
 
           <div className="note-blocknote">
@@ -820,27 +812,6 @@ function NoteEditor({ note, onSave, t, dk, isMobile, showProps, onToggleProps, o
             </button>
           </div>
 
-          <div className="notes-state-panel" aria-label="Připravené stavy poznámek">
-            <div className="notes-state-card">
-              <b style={{ color:t.text, fontSize:13 }}>Žádná poznámka není vybraná</b>
-              <p style={{ margin:"6px 0 10px", color:t.text3, fontSize:12 }}>Vyber poznámku nebo vytvoř novou.</p>
-              <button onClick={() => window.dispatchEvent(new CustomEvent("notes:create"))} style={{ height:30, borderRadius:9, background:"var(--accent)", color:"var(--bg)", padding:"0 12px", fontWeight:850, fontSize:12 }}>Nová poznámka</button>
-            </div>
-            <div className="notes-state-card">
-              <b style={{ color:t.text, fontSize:13 }}>Žádné poznámky ve filtru</b>
-              <p style={{ margin:"6px 0 10px", color:t.text3, fontSize:12 }}>Nic tu není. Zruš filtr nebo začni novou poznámku.</p>
-              <button style={{ height:30, borderRadius:9, border:`1px solid ${t.border}`, color:t.text2, padding:"0 12px", fontWeight:800, fontSize:12 }}>Zrušit filtr</button>
-            </div>
-            <div className="notes-state-card">
-              <b style={{ color:t.text, fontSize:13 }}>Loading</b>
-              <div className="notes-skeleton" style={{ marginTop:12 }}><span></span><span></span><span></span></div>
-            </div>
-            <div className="notes-state-card">
-              <b style={{ color:"#fecdd3", fontSize:13 }}>Chyba uložení</b>
-              <p style={{ margin:"6px 0 10px", color:t.text3, fontSize:12 }}>Nepodařilo se uložit poslední změnu.</p>
-              <button style={{ height:30, borderRadius:9, border:"1px solid rgba(239,68,68,.32)", color:"#fecdd3", padding:"0 12px", fontWeight:800, fontSize:12 }}>Zkusit znovu</button>
-            </div>
-          </div>
         </div>
 
       </div>
@@ -1687,65 +1658,44 @@ export default function NotesPage() {
 
   if (!isMobile) {
     return (
-      <div style={{ minHeight: "100%", position: "relative" }}>
+      <div style={{ height: "100%", minHeight: 0, position: "relative" }}>
         {templatePicker && (
           <TemplatePickerModal onSelect={handleCreateFromTemplate} onClose={() => setTemplatePicker(false)} />
         )}
 
-        <NotesAtlasGrid
-          notes={notes}
-          projects={projects}
-          onCreate={handleCreate}
-          onOpenNote={(id) => { setSelId(id); setShowProps(true); }}
-        />
+        <div className={`notes-workspace ${showProps && selNote ? "" : "no-props"}`}>
+          <div className="notes-workspace-panel">
+            <NotesSidebar
+              notes={notes}
+              selId={selId}
+              onSelect={(id) => { setSelId(id); setShowProps(true); }}
+              onCreate={handleCreate}
+              t={t}
+              projects={projects}
+            />
+          </div>
 
-        {selNote && (
-          <div className="overlay" onClick={() => setSelId(null)}>
-            <div
-              onClick={e => e.stopPropagation()}
-              className={`notes-workspace ${showProps ? "" : "no-props"}`}
-              style={{
-                position: "relative",
-              }}
-            >
-              <button
-                onClick={() => setSelId(null)}
-                className="btn"
-                style={{ position: "absolute", top: 12, right: 12, zIndex: 10, padding: "6px 11px" }}
-              >
-                <Icon name="x" size={14} color="currentColor" strokeWidth={2} />
-                Zavřít
-              </button>
-              <div className="notes-workspace-panel">
-                <NotesSidebar
-                  notes={notes}
-                  selId={selId}
-                  onSelect={(id) => { setSelId(id); setShowProps(true); }}
-                  onCreate={handleCreate}
+          {selNote ? (
+            <div className="notes-editor-shell">
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0, background: t.bg }}>
+                <NoteEditor
+                  key={selNote.id}
+                  note={selNote}
+                  onSave={upd => updateNote(selNote.id, upd)}
                   t={t}
+                  dk={dk}
+                  isMobile={false}
+                  showProps={showProps}
+                  onToggleProps={() => setShowProps(v => !v)}
+                  onDelete={() => handleDelete(selNote.id)}
+                  onTogglePin={() => updateNote(selNote.id, { pinned: !selNote.pinned })}
                   projects={projects}
+                  tasks={tasks}
+                  addTask={addTask}
                 />
               </div>
-              <div className="notes-editor-shell">
-                <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0, background: t.bg }}>
-                  <NoteEditor
-                    key={selNote.id}
-                    note={selNote}
-                    onSave={upd => updateNote(selNote.id, upd)}
-                    t={t}
-                    dk={dk}
-                    isMobile={false}
-                    showProps={showProps}
-                    onToggleProps={() => setShowProps(v => !v)}
-                    onDelete={() => handleDelete(selNote.id)}
-                    onTogglePin={() => updateNote(selNote.id, { pinned: !selNote.pinned })}
-                    projects={projects}
-                    tasks={tasks}
-                    addTask={addTask}
-                  />
-                </div>
-                {showProps && (
-                  <div className="notes-props-desktop" style={{ display:"contents" }}>
+              {showProps && (
+                <div className="notes-props-desktop" style={{ display:"contents" }}>
                   <NotePropertiesPanel
                     note={selNote}
                     onClose={() => setShowProps(false)}
@@ -1756,12 +1706,22 @@ export default function NotesPage() {
                     tasks={tasks}
                     addTask={addTask}
                   />
-                  </div>
-                )}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="notes-page-empty">
+              <div className="notes-grid-shell">
+                <NotesAtlasGrid
+                  notes={notes}
+                  projects={projects}
+                  onCreate={handleCreate}
+                  onOpenNote={(id) => { setSelId(id); setShowProps(true); }}
+                />
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     );
   }
