@@ -1408,10 +1408,15 @@ function NotesAtlasGrid({ notes, onOpenNote, onCreate, projects }) {
 
 /* ─── NotesSidebar ──────────────────────────── */
 function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects }) {
-  const { tags: globalTags } = useApp();
+  const { tags: globalTags, updateNote } = useApp();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("updated");
+  const [hoveredId, setHoveredId] = useState(null);
+
+  const togglePin = (n) => updateNote(n.id, { pinned: !n.pinned });
+  const toggleArchive = (n) => updateNote(n.id, { archived: !n.archived });
 
   const s = search.toLowerCase();
   let filtered = notes.filter(n => !search || n.title.toLowerCase().includes(s) || n.content.toLowerCase().includes(s));
@@ -1426,6 +1431,10 @@ function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects }) {
     else if (filter === "project") filtered = filtered.filter(n => !!n.primaryProjectId || n.extraProjectIds?.length > 0);
     else if (filter === "task")    filtered = filtered.filter(n => !!n.primaryTaskId    || n.extraTaskIds?.length > 0);
     else if (filter === "free")    filtered = filtered.filter(n => !n.primaryProjectId && !n.primaryTaskId && !n.extraProjectIds?.length && !n.extraTaskIds?.length);
+  }
+
+  if (statusFilter !== "all" && filter !== "archive") {
+    filtered = filtered.filter(n => (n.status || "draft") === statusFilter);
   }
 
   const sorted = [...filtered].sort((a,b) => {
@@ -1451,7 +1460,8 @@ function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects }) {
   const filterTabs = [
     { k:"all",       l:"Vše",       count:activeCount },
     { k:"pinned",    l:"Připnuté"                     },
-    { k:"active",    l:"Aktivní"                      },
+    { k:"project",   l:"U projektu"                   },
+    { k:"free",      l:"Volné"                        },
     { k:"templates", l:"Šablony"                      },
     { k:"archive",   l:"Archiv",    count:archiveCount, muted:true },
   ];
@@ -1509,7 +1519,15 @@ function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects }) {
             </button>
           );
         })}
-        <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{ marginLeft:"auto", padding:"3px 6px", borderRadius:6, border:"1px solid var(--border-soft)", background:"var(--bg-2)", color:"var(--text-2)", fontSize:11, outline:"none", flexShrink:0 }} aria-label="Seřazení poznámek">
+        <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} style={{ marginLeft:"auto", padding:"3px 6px", borderRadius:6, border:`1px solid ${statusFilter!=="all" ? "color-mix(in srgb, var(--accent) 40%, transparent)" : "var(--border-soft)"}`, background:"var(--bg-2)", color:statusFilter!=="all" ? "var(--accent)" : "var(--text-2)", fontSize:11, outline:"none", flexShrink:0 }} aria-label="Filtr podle stavu">
+          <option value="all">Stav: vše</option>
+          <option value="inbox">Inbox</option>
+          <option value="idea">Nápad</option>
+          <option value="draft">Koncept</option>
+          <option value="active">Aktivní</option>
+          <option value="done">Hotovo</option>
+        </select>
+        <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{ padding:"3px 6px", borderRadius:6, border:"1px solid var(--border-soft)", background:"var(--bg-2)", color:"var(--text-2)", fontSize:11, outline:"none", flexShrink:0 }} aria-label="Seřazení poznámek">
           <option value="updated">Upravené</option>
           <option value="created">Vytvořené</option>
           <option value="title">A–Z</option>
@@ -1546,28 +1564,46 @@ function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects }) {
               const rawPreview = (n.content || "").replace(/<[^>]+>/g," ").replace(/#{1,3} /g,"").replace(/\*\*/g,"").replace(/\*/g,"").trim();
               const preview   = rawPreview.length > 100 ? rawPreview.slice(0, 100) + "…" : rawPreview;
 
+              const status = NOTE_STATUSES[n.status] ?? NOTE_STATUSES.draft;
+              const showActs = hoveredId === n.id || isActive;
               return (
-                <button key={n.id} onClick={()=>onSelect(n.id)} style={{
+                <div key={n.id} role="button" tabIndex={0}
+                  onClick={()=>onSelect(n.id)}
+                  onKeyDown={e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); onSelect(n.id); } }}
+                  onMouseEnter={e=>{ setHoveredId(n.id); if(!isActive) e.currentTarget.style.background="rgba(255,255,255,.04)"; }}
+                  onMouseLeave={e=>{ setHoveredId(id=>id===n.id?null:id); if(!isActive) e.currentTarget.style.background="transparent"; }}
+                  style={{
                   display:"block", width:"100%", textAlign:"left",
                   padding:"11px 10px 11px 14px", borderRadius:13, marginBottom:6,
                   background:isActive ? "var(--accent-soft)" : "transparent",
                   border:`1px solid ${isActive ? "color-mix(in srgb, var(--accent) 38%, transparent)" : "transparent"}`,
                   cursor:"pointer", position:"relative", overflow:"hidden",
                   transition:"background .15s", opacity:n.archived ? 0.6 : 1,
-                }}
-                  onMouseEnter={e=>{ if(!isActive) e.currentTarget.style.background="rgba(255,255,255,.04)"; }}
-                  onMouseLeave={e=>{ if(!isActive) e.currentTarget.style.background="transparent"; }}
-                >
+                }}>
                   <div style={{ position:"absolute", left:0, top:11, bottom:11, width:3, borderRadius:4, background:accentCol, opacity:.95 }} />
                   <div style={{ display:"flex", justifyContent:"space-between", gap:8, alignItems:"flex-start", marginBottom:4 }}>
                     <div style={{ display:"flex", alignItems:"center", gap:5, minWidth:0 }}>
+                      <span title={status.label} style={{ width:7, height:7, borderRadius:"50%", background:status.color, flexShrink:0 }} />
                       {n.icon && <span style={{ fontSize:13, flexShrink:0 }}>{n.icon}</span>}
                       {n.pinned && <PinIcon size={10} filled color="#f59e0b" />}
                       <span style={{ fontSize:13, fontWeight:800, color:isActive?"var(--accent)":t.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
                         {n.title || <em style={{ fontWeight:400, color:t.text3 }}>Bez názvu</em>}
                       </span>
                     </div>
-                    <span style={{ fontSize:11, color:t.text3, flexShrink:0, whiteSpace:"nowrap" }}>{relTime(n.updatedAt)}</span>
+                    <div style={{ display:"flex", alignItems:"center", gap:2, flexShrink:0 }}>
+                      {showActs ? (
+                        <>
+                          <button onClick={e=>{ e.stopPropagation(); togglePin(n); }} title={n.pinned?"Odepnout":"Připnout"} aria-label="Připnout poznámku" style={{ display:"flex", padding:3, borderRadius:6, border:"none", background:"transparent", color:n.pinned?"#f59e0b":t.text3, cursor:"pointer" }}>
+                            <PinIcon size={12} filled={n.pinned} color="currentColor" />
+                          </button>
+                          <button onClick={e=>{ e.stopPropagation(); toggleArchive(n); }} title={n.archived?"Obnovit z archivu":"Archivovat"} aria-label="Archivovat poznámku" style={{ display:"flex", padding:3, borderRadius:6, border:"none", background:"transparent", color:t.text3, cursor:"pointer" }}>
+                            <Icon name="archive" size={12} color="currentColor" strokeWidth={2} />
+                          </button>
+                        </>
+                      ) : (
+                        <span style={{ fontSize:11, color:t.text3, whiteSpace:"nowrap" }}>{relTime(n.updatedAt)}</span>
+                      )}
+                    </div>
                   </div>
                   {preview && (
                     <div style={{ fontSize:12, color:t.text3, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden", lineHeight:1.45, marginBottom:n.tags?.length ? 6 : 0 }}>
@@ -1587,7 +1623,7 @@ function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects }) {
                       {n.tags.length>3 && <span style={{ fontSize:10, color:t.text3 }}>+{n.tags.length-3}</span>}
                     </div>
                   )}
-                </button>
+                </div>
               );
             })}
           </div>
