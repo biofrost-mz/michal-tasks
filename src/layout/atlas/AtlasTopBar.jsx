@@ -17,7 +17,7 @@ const PAGE_LABELS = {
 };
 
 export default function AtlasTopBar() {
-  const { page, projects, selProject, setCmdOpen, setPage, setTaskDetail, addTask } = useApp();
+  const { page, projects, selProject, setCmdOpen, setPage } = useApp();
 
   const crumbs = useMemo(() => {
     if (page === "project-detail") {
@@ -33,6 +33,16 @@ export default function AtlasTopBar() {
       { label: PAGE_LABELS[page] || "Přehled", pageId: null }
     ];
   }, [page, projects, selProject]);
+
+  const openNewTaskModal = () => {
+    const dispatchOpen = () => window.dispatchEvent(new CustomEvent("openQuickAddModal"));
+    if (page === "dashboard" || page === "tasks") {
+      dispatchOpen();
+      return;
+    }
+    setPage("dashboard");
+    window.setTimeout(dispatchOpen, 180);
+  };
 
   return (
     <div className="tb">
@@ -70,7 +80,7 @@ export default function AtlasTopBar() {
       </div>
 
       <div className="tb-acts" style={{ flex: 1, justifyContent: "flex-end" }}>
-        <button className="tb-btn primary" onClick={() => { const t = addTask({ title: "" }); setTaskDetail(t.id); }}>
+        <button className="tb-btn primary" onClick={openNewTaskModal}>
           <Icon name="plus" size={13} color="currentColor" strokeWidth={2} />
           Nový úkol
         </button>

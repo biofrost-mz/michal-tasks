@@ -7,7 +7,7 @@ import { STATUSES, PRIORITIES } from '../constants.js'
 import { supabase } from '../supabase.js'
 
 export default function QuickAdd({ defaultProjectId = null }) {
-  const { t, dk, tasks, addTask, projects, tags, addProject, addTag, setTaskDetail, isMobile } = useApp();
+  const { t, dk, addTask, projects, tags, addProject, addTag, setTaskDetail, isMobile } = useApp();
   const toast = useToast();
 
   const [val, setVal] = useState("");
@@ -225,6 +225,14 @@ export default function QuickAdd({ defaultProjectId = null }) {
     const mm = String(d.getMonth() + 1).padStart(2, "0");
     const dd = String(d.getDate()).padStart(2, "0");
     setDueDate(`${yyyy}-${mm}-${dd}`);
+  };
+
+  const openNativeDatePicker = (event) => {
+    try {
+      event.currentTarget.showPicker?.();
+    } catch {
+      // Some browsers only allow the native picker from direct pointer input.
+    }
   };
 
   // Quick project creator inside modal
@@ -856,8 +864,8 @@ export default function QuickAdd({ defaultProjectId = null }) {
                     type="date"
                     value={dueDate}
                     onChange={(e) => setDueDate(e.target.value)}
-                    onClick={(e) => { try { e.target.showPicker(); } catch(err) {} }}
-                    onFocus={(e) => { try { e.target.showPicker(); } catch(err) {} }}
+                    onClick={openNativeDatePicker}
+                    onFocus={openNativeDatePicker}
                     style={{
                       padding: "6px 12px",
                       borderRadius: 8,

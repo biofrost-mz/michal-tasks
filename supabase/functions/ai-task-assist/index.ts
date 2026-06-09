@@ -197,16 +197,16 @@ Vrať POUZE JSON objekt s následující strukturou (nic jiného, žádné markd
     const apiKey = Deno.env.get("GOOGLE_GENERATIVE_AI_API_KEY");
     if (apiKey) {
       try {
-        console.log(`ai-task-assist: Pokouším se volat Google Gemini API (gemini-2.5-flash) pro akci "${action}"...`);
+        console.log(`ai-task-assist: Pokouším se volat Google Gemini API (gemini-3.5-flash) pro akci "${action}"...`);
         const isJsonAction = ["subtasks", "tags", "priority", "note_extract_tasks", "draft_task"].includes(action);
         
         const geminiResp = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              model: "gemini-2.5-flash",
+              model: "gemini-3.5-flash",
               contents: [{ role: "user", parts: [{ text: prompt }] }],
               systemInstruction: {
                 parts: [{ text: SYSTEM }]
