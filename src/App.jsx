@@ -154,7 +154,7 @@ function PageLoader() {
 }
 
 function AppShell() {
-  const { dk, setDk, isMobile, page, setPage, taskDetail, cmdOpen, setCmdOpen } = useApp();
+  const { dk, setDk, isMobile, page, setPage, taskDetail, cmdOpen, setCmdOpen, isSystemAdmin } = useApp();
   const [collapsed, setCollapsed] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const gPressedRef = useRef(false);
@@ -163,6 +163,12 @@ function AppShell() {
   useEffect(() => {
     applyDocumentMetadata(page);
   }, [page]);
+
+  useEffect(() => {
+    if (page === "admin" && !isSystemAdmin) {
+      setPage("dashboard");
+    }
+  }, [page, isSystemAdmin, setPage]);
 
   // Global keyboard shortcuts
   useEffect(() => {
@@ -299,7 +305,7 @@ function AppShell() {
                 {page === "workspace-settings" && <PageErrorBoundary label="Nastavení">       <WorkspaceSettingsPage initialTab="workspace" /> </PageErrorBoundary>}
                 {page === "user-profile"       && <PageErrorBoundary label="Nastavení">       <WorkspaceSettingsPage initialTab="account" />   </PageErrorBoundary>}
                 {page === "quick-todos"        && <PageErrorBoundary label="Rychlý seznam">   <QuickTodosPage />        </PageErrorBoundary>}
-                {page === "admin"              && <PageErrorBoundary label="Administrace">    <AdminPage />             </PageErrorBoundary>}
+                {page === "admin" && isSystemAdmin && <PageErrorBoundary label="Administrace">    <AdminPage />             </PageErrorBoundary>}
               </Suspense>
             </PageTransition>
           </main>

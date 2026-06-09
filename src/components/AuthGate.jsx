@@ -121,6 +121,35 @@ const FEATURES = [
   { icon: "sun",          label: "Denní plán od AI",      desc: "Každé ráno připravený plán na den"       },
 ];
 
+const RESEND_COOLDOWN_SECONDS = 45;
+
+function normalizeEmail(value) {
+  return value.trim().toLowerCase();
+}
+
+function authRedirectUrl(params = {}) {
+  const url = new URL(window.location.origin);
+  Object.entries(params).forEach(([key, value]) => {
+    if (value) url.searchParams.set(key, value);
+  });
+  const invite = new URLSearchParams(window.location.search).get("invite");
+  if (invite && !url.searchParams.has("invite")) url.searchParams.set("invite", invite);
+  return url.toString();
+}
+
+function passwordChecklist(password) {
+  const value = password || "";
+  return [
+    { label: "alespoň 10 znaků", ok: value.length >= 10 },
+    { label: "malé i velké písmeno", ok: /[a-z]/.test(value) && /[A-Z]/.test(value) },
+    { label: "číslo nebo symbol", ok: /[\d\W_]/.test(value) },
+  ];
+}
+
+function isPasswordStrongEnough(password) {
+  return passwordChecklist(password).every((item) => item.ok);
+}
+
 export default function AuthGate({ children }) {
   const { isMobile } = useApp();
   const toast = useToast();
@@ -130,11 +159,13 @@ export default function AuthGate({ children }) {
   const [signMode, setSignMode] = useState("signin");   // "signin" | "signup"
   const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [showPw,   setShowPw]   = useState(false);
   const [sending,  setSending]  = useState(false);
-  const [sent,     setSent]     = useState(false);
+  const [sent,     setSent]     = useState(null);
+  const [resendIn, setResendIn] = useState(0);
   const [isResetting, setIsResetting] = useState(() => {
     if (typeof window === "undefined") return false;
     const params = new URLSearchParams(window.location.search);
@@ -175,22 +206,57 @@ export default function AuthGate({ children }) {
     return () => sub?.subscription?.unsubscribe?.();
   }, []);
 
-  const sendMagicLink = async () => {
-    const e = email.trim();
+  useEffect(() => {
+    if (resendIn <= 0) return undefined;
+    const id = window.setInterval(() => {
+      setResendIn((value) => Math.max(0, value - 1));
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [resendIn]);
+
+  const sendMagicLink = async (targetEmail = email) => {
+    const e = normalizeEmail(targetEmail);
     if (!e) return;
     setSending(true);
     const { error } = await supabase.auth.signInWithOtp({
       email: e,
-      options: { emailRedirectTo: window.location.origin },
+      options: { emailRedirectTo: authRedirectUrl() },
     });
     setSending(false);
     if (error) { toast(error.message || "Chyba", "error"); return; }
-    setSent(true);
+    setEmail(e);
+    setSent({ type: "magic", email: e });
+    setResendIn(RESEND_COOLDOWN_SECONDS);
+  };
+
+  const resendSignupConfirmation = async () => {
+    if (!sent?.email || resendIn > 0) return;
+    setSending(true);
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email: sent.email,
+      options: { emailRedirectTo: authRedirectUrl() },
+    });
+    setSending(false);
+    if (error) { toast(error.message || "E-mail se nepodařilo odeslat", "error"); return; }
+    setResendIn(RESEND_COOLDOWN_SECONDS);
+    toast("Potvrzovací e-mail byl znovu odeslán", "success");
   };
 
   const handlePassword = async () => {
-    const e = email.trim();
+    const e = normalizeEmail(email);
     if (!e || !password) return;
+    if (signMode === "signup") {
+      if (!fullName.trim()) return;
+      if (!isPasswordStrongEnough(password)) {
+        toast("Zvol silnější heslo podle pravidel níže.", "error");
+        return;
+      }
+      if (password !== passwordConfirm) {
+        toast("Hesla se neshodují.", "error");
+        return;
+      }
+    }
     setSending(true);
     let error;
     if (signMode === "signup") {
@@ -198,12 +264,17 @@ export default function AuthGate({ children }) {
         email: e,
         password,
         options: {
+          emailRedirectTo: authRedirectUrl(),
           data: {
             display_name: fullName.trim() || undefined
           }
         }
       }));
-      if (!error) toast("Účet vytvořen! Zkontroluj email pro potvrzení.", "success");
+      if (!error) {
+        setEmail(e);
+        setSent({ type: "signup", email: e });
+        setResendIn(RESEND_COOLDOWN_SECONDS);
+      }
     } else {
       ({ error } = await supabase.auth.signInWithPassword({ email: e, password }));
     }
@@ -212,20 +283,24 @@ export default function AuthGate({ children }) {
   };
 
   const handleForgotPassword = async () => {
-    const e = email.trim();
+    const e = normalizeEmail(email);
     if (!e) { toast("Zadej nejdřív email", "error"); return; }
     setSending(true);
     const { error } = await supabase.auth.resetPasswordForEmail(e, {
-      redirectTo: `${window.location.origin}?reset=1`,
+      redirectTo: authRedirectUrl({ reset: "1" }),
     });
     setSending(false);
-    if (error) { toast(error.message || "Chyba", "error"); return; }
-    toast("Odkaz pro reset hesla odeslán", "success");
+    if (error) { toast("Pokud je e-mail registrovaný, pošleme na něj odkaz pro reset hesla.", "success"); return; }
+    toast("Pokud je e-mail registrovaný, pošleme na něj odkaz pro reset hesla.", "success");
   };
 
   const handleUpdatePassword = async (e) => {
     e.preventDefault();
     if (!newPassword) return;
+    if (!isPasswordStrongEnough(newPassword)) {
+      toast("Nové heslo musí splnit bezpečnostní pravidla níže.", "error");
+      return;
+    }
     setSending(true);
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     setSending(false);
@@ -280,6 +355,17 @@ export default function AuthGate({ children }) {
     transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease, filter 0.2s ease",
     boxShadow: "0 10px 20px rgba(251, 191, 36, 0.15)",
   };
+
+  const signupPasswordRules = passwordChecklist(password);
+  const resetPasswordRules = passwordChecklist(newPassword);
+  const signupReady = Boolean(
+    email.trim() &&
+    password &&
+    fullName.trim() &&
+    password === passwordConfirm &&
+    isPasswordStrongEnough(password)
+  );
+  const resetReady = Boolean(newPassword && isPasswordStrongEnough(newPassword));
 
   return (
     <div style={{
@@ -502,12 +588,21 @@ export default function AuthGate({ children }) {
                   </div>
                 </div>
 
+                <div style={{ display: "grid", gap: 6, marginTop: "-10px" }}>
+                  {resetPasswordRules.map((item) => (
+                    <div key={item.label} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, color: item.ok ? "#86efac" : "#9ca3af" }}>
+                      <span>{item.ok ? "✓" : "•"}</span>
+                      <span>{item.label}</span>
+                    </div>
+                  ))}
+                </div>
+
                 <button
                   type="submit"
-                  disabled={!newPassword || sending}
-                  style={{ ...btnPrimaryStyle, opacity: !newPassword || sending ? 0.6 : 1 }}
+                  disabled={!resetReady || sending}
+                  style={{ ...btnPrimaryStyle, opacity: !resetReady || sending ? 0.6 : 1 }}
                   onMouseEnter={e => {
-                    if (newPassword && !sending) {
+                    if (resetReady && !sending) {
                       e.currentTarget.style.transform = "translateY(-1px)";
                       e.currentTarget.style.boxShadow = "0 10px 20px rgba(251, 191, 36, 0.3)";
                     }
@@ -557,7 +652,7 @@ export default function AuthGate({ children }) {
                   <button
                     key={m}
                     type="button"
-                    onClick={() => { setAuthMode(m); setSent(false); }}
+                    onClick={() => { setAuthMode(m); setSent(null); }}
                     style={{
                       flex: 1,
                       padding: "9px 0",
@@ -590,8 +685,60 @@ export default function AuthGate({ children }) {
               </div>
 
               {/* Form rendering */}
-              {authMode === "magic" ? (
-                sent ? (
+              {sent?.type === "signup" ? (
+                <div style={{
+                  textAlign: "center",
+                  padding: "24px 16px",
+                  background: "rgba(255, 255, 255, 0.03)",
+                  border: "1px solid rgba(255, 255, 255, 0.08)",
+                  borderRadius: "16px",
+                }}>
+                  <div style={{ fontSize: "40px", marginBottom: "12px" }}>📬</div>
+                  <h3 style={{ fontSize: "17px", fontWeight: "700", color: "#ffffff", margin: "0 0 6px" }}>Potvrďte svůj e-mail</h3>
+                  <p style={{ fontSize: "13px", color: "#9ca3af", lineHeight: "1.6", margin: "0 0 18px" }}>
+                    Poslali jsme potvrzovací odkaz na<br />
+                    <strong style={{ color: "#fbbf24" }}>{sent.email}</strong><br />
+                    Po potvrzení se můžete přihlásit a Zentero vám připraví osobní workspace.
+                  </p>
+                  <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+                    <button
+                      type="button"
+                      disabled={resendIn > 0 || sending}
+                      onClick={resendSignupConfirmation}
+                      style={{
+                        background: "rgba(255, 255, 255, 0.05)",
+                        border: "1px solid rgba(255, 255, 255, 0.1)",
+                        color: "#ffffff",
+                        padding: "8px 14px",
+                        borderRadius: "10px",
+                        fontSize: "12.5px",
+                        fontWeight: "600",
+                        cursor: resendIn > 0 || sending ? "not-allowed" : "pointer",
+                        opacity: resendIn > 0 || sending ? 0.55 : 1,
+                      }}
+                    >
+                      {resendIn > 0 ? `Poslat znovu za ${resendIn}s` : "Poslat znovu"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setSent(null); setSignMode("signup"); setPassword(""); setPasswordConfirm(""); }}
+                      style={{
+                        background: "none",
+                        border: "1px solid rgba(255, 255, 255, 0.1)",
+                        color: "#9ca3af",
+                        padding: "8px 14px",
+                        borderRadius: "10px",
+                        fontSize: "12.5px",
+                        fontWeight: "600",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Změnit e-mail
+                    </button>
+                  </div>
+                </div>
+              ) : authMode === "magic" ? (
+                sent?.type === "magic" ? (
                   /* Sent Confirmation Screen */
                   <div style={{
                     textAlign: "center",
@@ -604,12 +751,31 @@ export default function AuthGate({ children }) {
                     <h3 style={{ fontSize: "17px", fontWeight: "700", color: "#ffffff", margin: "0 0 6px" }}>Odkaz odeslán!</h3>
                     <p style={{ fontSize: "13px", color: "#9ca3af", lineHeight: "1.6", margin: "0 0 20px" }}>
                       Zkontrolujte schránku e-mailu<br />
-                      <strong style={{ color: "#fbbf24" }}>{email}</strong><br />
-                      a kliknutím na odkaz se ihned přihlaste.
+                      <strong style={{ color: "#fbbf24" }}>{sent.email}</strong><br />
+                      a kliknutím na odkaz se ihned přihlaste. Odkaz otevřete ideálně ve stejném prohlížeči.
                     </p>
+                    <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
                     <button
                       type="button"
-                      onClick={() => { setSent(false); setEmail(""); }}
+                      disabled={resendIn > 0 || sending}
+                      onClick={() => sendMagicLink(sent.email)}
+                      style={{
+                        background: "rgba(255, 255, 255, 0.05)",
+                        border: "1px solid rgba(255, 255, 255, 0.1)",
+                        color: "#ffffff",
+                        padding: "8px 14px",
+                        borderRadius: "10px",
+                        fontSize: "12.5px",
+                        fontWeight: "600",
+                        cursor: resendIn > 0 || sending ? "not-allowed" : "pointer",
+                        opacity: resendIn > 0 || sending ? 0.55 : 1,
+                      }}
+                    >
+                      {resendIn > 0 ? `Poslat znovu za ${resendIn}s` : "Poslat znovu"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setSent(null); setEmail(""); }}
                       style={{
                         background: "rgba(255, 255, 255, 0.05)",
                         border: "1px solid rgba(255, 255, 255, 0.1)",
@@ -626,6 +792,7 @@ export default function AuthGate({ children }) {
                     >
                       ← Zpět
                     </button>
+                    </div>
                   </div>
                 ) : (
                   /* Magic Link Form */
@@ -679,7 +846,7 @@ export default function AuthGate({ children }) {
                       <button
                         key={m}
                         type="button"
-                        onClick={() => setSignMode(m)}
+                        onClick={() => { setSignMode(m); setSent(null); setPasswordConfirm(""); }}
                         style={{
                           background: "none",
                           border: "none",
@@ -799,12 +966,50 @@ export default function AuthGate({ children }) {
                     </div>
                   </div>
 
+                  {signMode === "signup" && (
+                    <>
+                      <div>
+                        <label style={{ display: "block", fontSize: "11px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.08em", color: "#9ca3af", marginBottom: "8px" }}>
+                          Potvrzení hesla
+                        </label>
+                        <input
+                          type={showPw ? "text" : "password"}
+                          placeholder="••••••••"
+                          value={passwordConfirm}
+                          onChange={e => setPasswordConfirm(e.target.value)}
+                          required
+                          style={inputFieldStyle}
+                          onFocus={e => {
+                            e.target.style.borderColor = "#fbbf24";
+                            e.target.style.background = "rgba(255, 255, 255, 0.08)";
+                          }}
+                          onBlur={e => {
+                            e.target.style.borderColor = "rgba(255, 255, 255, 0.1)";
+                            e.target.style.background = "rgba(255, 255, 255, 0.05)";
+                          }}
+                        />
+                        {passwordConfirm && password !== passwordConfirm && (
+                          <div style={{ marginTop: 6, color: "#fca5a5", fontSize: 12 }}>Hesla se zatím neshodují.</div>
+                        )}
+                      </div>
+
+                      <div style={{ display: "grid", gap: 6, marginTop: "-10px" }}>
+                        {signupPasswordRules.map((item) => (
+                          <div key={item.label} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, color: item.ok ? "#86efac" : "#9ca3af" }}>
+                            <span>{item.ok ? "✓" : "•"}</span>
+                            <span>{item.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+
                   <button
                     type="submit"
-                    disabled={!email.trim() || !password || (signMode === "signup" && !fullName.trim()) || sending}
-                    style={{ ...btnPrimaryStyle, opacity: !email.trim() || !password || (signMode === "signup" && !fullName.trim()) || sending ? 0.6 : 1 }}
+                    disabled={signMode === "signup" ? !signupReady || sending : !email.trim() || !password || sending}
+                    style={{ ...btnPrimaryStyle, opacity: (signMode === "signup" ? !signupReady : !email.trim() || !password) || sending ? 0.6 : 1 }}
                     onMouseEnter={e => {
-                      if (email.trim() && password && (signMode !== "signup" || fullName.trim()) && !sending) {
+                      if ((signMode === "signup" ? signupReady : email.trim() && password) && !sending) {
                         e.currentTarget.style.transform = "translateY(-1px)";
                         e.currentTarget.style.boxShadow = "0 10px 20px rgba(251, 191, 36, 0.3)";
                       }

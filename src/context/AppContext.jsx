@@ -218,6 +218,16 @@ async function dbFetchAll(userId, workspaceId) {
   };
 }
 
+function isSystemAdminEmail(email) {
+  const raw = import.meta.env.VITE_SYSTEM_ADMIN_EMAILS || "";
+  if (!email || !raw.trim()) return false;
+  const allowed = raw
+    .split(",")
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean);
+  return allowed.includes(email.toLowerCase());
+}
+
 /* ─────────────────────────────────────────────
    AppProvider
 ───────────────────────────────────────────── */
@@ -225,6 +235,8 @@ export function AppProvider({ children }) {
   const toast = useToast();
   const [session, setSession] = useState(null);
   const userId = session?.user?.id ?? null;
+  const userEmail = session?.user?.email ?? null;
+  const isSystemAdmin = isSystemAdminEmail(userEmail);
   const [uiSettings, setUiSettings] = useState(DEFAULT_UI_SETTINGS);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [dk, setDkRaw] = useState(true);
@@ -1262,6 +1274,10 @@ export function AppProvider({ children }) {
   }, [userId]);
 
   const generateInviteLink = useCallback(async (role = "member") => {
+    const activeRole = workspaceMembers.find((m) => m.userId === userId)?.role ?? "viewer";
+    if (role === "admin" && activeRole !== "owner") {
+      throw new Error("Admin pozvánky může vytvářet jen owner workspace.");
+    }
     const token = uuid4().replace(/-/g, "");
     const { error } = await supabase.from("workspace_invites").insert({
       workspace_id: activeWorkspaceId,
@@ -1271,9 +1287,19 @@ export function AppProvider({ children }) {
     });
     if (error) throw error;
     return `${window.location.origin}?invite=${token}`;
-  }, [activeWorkspaceId, userId]);
+  }, [activeWorkspaceId, userId, workspaceMembers]);
 
   const acceptInvite = useCallback(async (token) => {
+    const { data: acceptedWsId, error: rpcError } = await supabase.rpc("accept_workspace_invite", {
+      invite_token: token,
+    });
+    if (!rpcError && acceptedWsId) return acceptedWsId;
+    const rpcMissing = rpcError?.code === "42883" || rpcError?.code === "PGRST202" || /could not find.*accept_workspace_invite/i.test(rpcError?.message || "");
+    if (rpcError && !rpcMissing) {
+      throw new Error(rpcError.message || "Pozvánka není platná nebo vypršela");
+    }
+
+    // Backward-compatible fallback until the accept_workspace_invite RPC is deployed.
     const { data: invite, error } = await supabase
       .from("workspace_invites")
       .select("*")
@@ -1404,7 +1430,8 @@ export function AppProvider({ children }) {
     fetchWorkspaceInvites,
     revokeInvite,
     userId,
-    userEmail: session?.user?.email ?? null,
+    userEmail,
+    isSystemAdmin,
     logout: async () => {
       try {
         await supabase.auth.signOut();

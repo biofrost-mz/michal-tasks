@@ -14,8 +14,9 @@ export default defineConfig({
       srcDir: 'src',
       filename: 'sw.js',
       injectManifest: {
-        // Keep the app shell fresh without forcing every lazy page chunk into the SW precache.
-        globPatterns: ['index.html', '**/*.{css,svg,json,ico,png,woff2}'],
+        // Keep each deployed app shell paired with the hashed JS/CSS assets it references.
+        // Without JS precaching, a cached index.html can point to a chunk already removed by hosting.
+        globPatterns: ['index.html', '**/*.{js,css,svg,json,ico,png,woff2}'],
       },
     }),
   ],

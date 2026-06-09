@@ -12,7 +12,7 @@ export default function WorkspaceSettingsPage({ initialTab = "workspace" }) {
     renameWorkspace, updateMemberRole, removeMember, leaveWorkspace,
     generateInviteLink, fetchWorkspaceInvites, revokeInvite, setPage, isMobile,
     userEmail, logout, updateProfileDisplayName, dk, setDk,
-    uiSettings, updateUiSettings, accentThemes } = useApp();
+    uiSettings, updateUiSettings, accentThemes, isSystemAdmin } = useApp();
   const toast = useToast();
   const confirm = useConfirm();
   const push = usePushNotifications();
@@ -187,7 +187,6 @@ export default function WorkspaceSettingsPage({ initialTab = "workspace" }) {
     marginBottom: 10,
   };
   const mutedText = { fontSize: 13, color: "var(--text-3)", lineHeight: 1.55 };
-  const isSystemAdmin = me?.role === "owner" || me?.role === "admin" || userEmail?.includes("zich");
   const segmentedButton = (active) => ({
     padding: "8px 11px",
     borderRadius: 9,

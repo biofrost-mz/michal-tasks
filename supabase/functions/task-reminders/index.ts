@@ -102,17 +102,17 @@ async function sendReminderEmail(to: string, tasks: Record<string, string>[], pr
 
   const html = `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:#f5f0e5;margin:0;padding:0;color:#111827">
+<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:#09090b;margin:0;padding:0;color:#111827">
 <div style="display:none;max-height:0;overflow:hidden;color:transparent">${escHtml(taskLabel)} čeká na kontrolu.</div>
 <div style="padding:28px 14px">
   <div style="max-width:700px;margin:0 auto">
-    <div style="border-radius:28px;overflow:hidden;box-shadow:0 24px 70px rgba(113,63,18,.16)">
-      <div style="background:radial-gradient(circle at 18% 0%,rgba(255,255,255,.28),transparent 28%),radial-gradient(circle at 92% 12%,rgba(255,255,255,.18),transparent 24%),linear-gradient(135deg,#7c4a03 0%,#b7791f 48%,#f2b84b 100%);padding:30px 30px 28px;color:#ffffff">
+    <div style="border-radius:28px;overflow:hidden;box-shadow:0 28px 80px rgba(0,0,0,.42)">
+      <div style="background:radial-gradient(circle at 18% 0%,rgba(251,191,36,.34),transparent 30%),radial-gradient(circle at 92% 12%,rgba(168,85,247,.22),transparent 26%),linear-gradient(135deg,#111111 0%,#2a1c05 48%,#b7791f 100%);padding:30px 30px 28px;color:#ffffff">
         <table role="presentation" style="width:100%;border-collapse:collapse;margin:0 0 25px">
           <tr>
             <td style="vertical-align:middle">
-              <img src="${logoUrl}" width="36" height="36" alt="Zontero" style="display:inline-block;width:36px;height:36px;border-radius:14px;vertical-align:middle;margin-right:10px;background:rgba(17,24,39,.28);border:1px solid rgba(255,255,255,.22)">
-              <span style="vertical-align:middle;font-size:14px;font-weight:850;letter-spacing:-.01em">Zontero</span>
+              <img src="${logoUrl}" width="36" height="36" alt="Zentero" style="display:inline-block;width:36px;height:36px;border-radius:14px;vertical-align:middle;margin-right:10px;background:rgba(17,24,39,.28);border:1px solid rgba(255,255,255,.22)">
+              <span style="vertical-align:middle;font-size:14px;font-weight:850;letter-spacing:-.01em">Zentero</span>
             </td>
             <td style="text-align:right;vertical-align:middle">
               <span style="display:inline-block;padding:8px 12px;border-radius:999px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.24);color:rgba(255,255,255,.92);font-size:12px;line-height:1;font-weight:750;white-space:nowrap">${dateLabel}</span>
@@ -144,9 +144,9 @@ async function sendReminderEmail(to: string, tasks: Record<string, string>[], pr
       <div style="background:#ffffff;border:1px solid #e8dcc5;border-top:0;border-radius:0 0 28px 28px;overflow:hidden">
         <div style="height:5px;background:linear-gradient(90deg,#f59e0b,#f2b84b,#22c55e)"></div>
         <div style="padding:20px 24px 22px;color:#667085;font-size:12px;line-height:1.55">
-          <img src="${logoUrl}" width="30" height="30" alt="Zontero" style="display:inline-block;width:30px;height:30px;border-radius:11px;vertical-align:middle;margin-right:9px;background:#111827">
-          <strong style="vertical-align:middle;color:#1f2937;font-size:13px">Zontero</strong>
-          <div style="margin-top:10px">Automatická připomínka z aplikace Zontero. <a href="${appUrl}" style="color:#8a5a08;text-decoration:none">${appHost}</a></div>
+          <img src="${logoUrl}" width="30" height="30" alt="Zentero" style="display:inline-block;width:30px;height:30px;border-radius:11px;vertical-align:middle;margin-right:9px;background:#111827">
+          <strong style="vertical-align:middle;color:#1f2937;font-size:13px">Zentero</strong>
+          <div style="margin-top:10px">Automatická připomínka z aplikace Zentero. <a href="${appUrl}" style="color:#8a5a08;text-decoration:none">${appHost}</a></div>
         </div>
       </div>
     </div>
@@ -161,9 +161,9 @@ async function sendReminderEmail(to: string, tasks: Record<string, string>[], pr
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: "Zontero <notifikace@tasks.zichmichal.cz>",
+      from: "Zentero <notifikace@tasks.zichmichal.cz>",
       to,
-      subject: `🔔 Připomínka: ${tasks.length === 1 ? tasks[0].title : `${tasks.length} úkolů`} · Michal Tasks`,
+      subject: `Připomínka: ${tasks.length === 1 ? tasks[0].title : `${tasks.length} úkolů`} · Zentero`,
       html,
       text,
     }),
