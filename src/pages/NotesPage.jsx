@@ -388,9 +388,8 @@ function initEditorContent(content) {
 function PinIcon({ size = 14, filled = false, color = "currentColor" }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? color : "none"} stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-      <path d="M12 17v5" />
-      <path d="M9 10.5H5l1.5-2V4h11v4.5L16 10.5h-4z" />
-      <path d="M9 10.5v3a3 3 0 006 0v-3" />
+      <line x1="12" y1="17" x2="12" y2="22" />
+      <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z" />
     </svg>
   );
 }
@@ -529,10 +528,13 @@ function noteTemplateLabel(note) {
 }
 
 function notePriority(note) {
+  if (note.priority) return note.priority; // ručně nastavená priorita má přednost
   if (note.tags?.some(tag => tag.toLowerCase().includes("urgent") || tag.toLowerCase().includes("high"))) return "high";
   if (note.status === "idea" || note.status === "inbox") return "low";
   return "medium";
 }
+
+const PRIORITY_COLORS = { low: "#22c55e", medium: "#f59e0b", high: "#ef4444" };
 
 function linkedItemsForNote(note, projects, tasks) {
   const items = [];
@@ -571,6 +573,7 @@ function NoteEditor({ note, onSave, t, dk, isMobile, showProps, onToggleProps, o
   const [aiAction, setAiAction] = useState(null);
   const [aiLoading, setAiLoading] = useState(null);
   const [aiResult, setAiResult] = useState(null);
+  const [statusMenu, setStatusMenu] = useState(false);
 
   const serializeEditor = useCallback(() => {
     const html = editor.blocksToHTMLLossy(editor.document);
@@ -807,8 +810,25 @@ function NoteEditor({ note, onSave, t, dk, isMobile, showProps, onToggleProps, o
                 Úkol: {linkedTask.title || "Bez názvu"}
               </span>
             )}
-            <span style={{ background:statusInfo.bg, color:statusInfo.color, border:`1px solid ${statusInfo.color}40`, padding:"3px 9px", borderRadius:999, fontWeight:700, fontSize:12 }}>
-              {statusInfo.label}
+            <span style={{ position:"relative", display:"inline-flex" }}>
+              <button onClick={() => setStatusMenu(v => !v)} title="Změnit stav" style={{ display:"inline-flex", alignItems:"center", gap:5, background:statusInfo.bg, color:statusInfo.color, border:`1px solid ${statusInfo.color}40`, padding:"3px 9px", borderRadius:999, fontWeight:700, fontSize:12, cursor:"pointer" }}>
+                <span style={{ width:6, height:6, borderRadius:"50%", background:statusInfo.color }} />
+                {statusInfo.label}
+                <span style={{ opacity:.7, fontSize:9 }}>▾</span>
+              </button>
+              {statusMenu && (
+                <>
+                  <div onClick={() => setStatusMenu(false)} style={{ position:"fixed", inset:0, zIndex:40 }} />
+                  <div style={{ position:"absolute", top:"calc(100% + 5px)", left:0, zIndex:41, background:t.bg2, border:`1px solid ${t.border}`, borderRadius:10, boxShadow:"0 12px 30px rgba(0,0,0,.3)", padding:5, minWidth:150 }}>
+                    {Object.entries(NOTE_STATUSES).map(([k, v]) => (
+                      <button key={k} onClick={() => { onSave({ status:k }); setStatusMenu(false); }} style={{ width:"100%", display:"flex", alignItems:"center", gap:8, padding:"7px 9px", borderRadius:7, border:"none", background:note.status===k ? "var(--accent-soft)" : "transparent", color:note.status===k ? "var(--accent)" : t.text2, fontSize:12.5, fontWeight:note.status===k?700:500, cursor:"pointer", textAlign:"left" }}>
+                        <span style={{ width:8, height:8, borderRadius:"50%", background:v.color, flexShrink:0 }} />
+                        {v.label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </span>
               {note.tags?.length > 0 && note.tags.slice(0, 4).map(tag => {
               const col = getTagColor(tag, globalTags) || t.text3;
@@ -871,6 +891,7 @@ function NotePropertiesPanel({ note, onClose, t, isMobile, onExportMD, projects,
   const [showAllProjects, setShowAllProjects] = useState(true);
   const [showAllTasks,    setShowAllTasks]    = useState(false);
   const [taskSearch,      setTaskSearch]      = useState("");
+  const [iconPicker,      setIconPicker]      = useState(false);
 
   const linkedItems   = linkedItemsForNote(note, projects, tasks);
   const priorityKey   = notePriority(note);
@@ -1034,18 +1055,41 @@ function NotePropertiesPanel({ note, onClose, t, isMobile, onExportMD, projects,
         <div>
           {sh("Nastavení poznámky")}
           <div style={{ display:"grid", gap:7 }}>
-            <button onClick={() => {
-              const em = prompt("Emoji nebo ikona:", note.icon || "📝");
-              if (em !== null) updateNote(note.id, { icon: em.trim().slice(0,2) || null });
-            }} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:8, padding:"8px 10px", borderRadius:9, border:"1px solid var(--border-soft)", background:"var(--bg)", color:t.text2, fontSize:12.5, cursor:"pointer" }}>
-              <span>Ikona: {note.icon || "📝"}</span>
-              <span style={{ color:t.text3 }}>změnit</span>
-            </button>
-            <div style={{ padding:"8px 10px", borderRadius:9, border:"1px solid var(--border-soft)", background:"var(--bg)", color:t.text2, fontSize:12.5 }}>Šablona: {templateLabel}</div>
-            <div style={{ padding:"8px 10px", borderRadius:9, border:"1px solid var(--border-soft)", background:"var(--bg)", color:t.text2, fontSize:12.5 }}>Viditelnost: Soukromé</div>
-            <div style={{ padding:"8px 10px", borderRadius:9, border:"1px solid var(--border-soft)", background:"var(--bg)", color:t.text2, fontSize:12.5 }}>Priorita: {NOTE_PRIORITIES[priorityKey]}</div>
-            <button onClick={()=>updateNote(note.id,{archived:!note.archived})} style={{ textAlign:"left", padding:"8px 10px", borderRadius:9, border:"1px solid var(--border-soft)", background:"var(--bg)", color:t.text2, fontSize:12.5, cursor:"pointer" }}>
-              Archivace: {note.archived ? "zapnuto" : "vypnuto"}
+            {/* Ikona — picker místo prompt() */}
+            <div style={{ position:"relative" }}>
+              <button onClick={() => setIconPicker(v => !v)} style={{ width:"100%", display:"flex", alignItems:"center", justifyContent:"space-between", gap:8, padding:"8px 10px", borderRadius:9, border:`1px solid ${iconPicker ? "color-mix(in srgb, var(--accent) 40%, transparent)" : "var(--border-soft)"}`, background:"var(--bg)", color:t.text2, fontSize:12.5, cursor:"pointer" }}>
+                <span style={{ display:"flex", alignItems:"center", gap:8 }}><span style={{ fontSize:16 }}>{note.icon || "📝"}</span> Ikona</span>
+                <span style={{ color:t.text3 }}>{iconPicker ? "▲" : "▼"}</span>
+              </button>
+              {iconPicker && (
+                <div style={{ marginTop:6, padding:"8px", border:"1px solid var(--border-soft)", borderRadius:10, background:"var(--bg)", display:"flex", flexWrap:"wrap", gap:4 }}>
+                  {["📝","📌","💡","✅","🔥","⭐","📅","🎯","🐞","📊","📣","🧠","🔖","📁","💬","⚙️","🚀","❗","🧩","🗂️"].map(em => (
+                    <button key={em} onClick={() => { updateNote(note.id, { icon: em }); setIconPicker(false); }} style={{ width:32, height:32, borderRadius:8, border:`1px solid ${note.icon===em ? "color-mix(in srgb, var(--accent) 45%, transparent)" : "transparent"}`, background:note.icon===em ? "var(--accent-soft)" : "transparent", fontSize:17, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>{em}</button>
+                  ))}
+                  <button onClick={() => { updateNote(note.id, { icon: null }); setIconPicker(false); }} style={{ marginLeft:"auto", padding:"0 10px", height:32, borderRadius:8, border:"1px solid var(--border-soft)", background:"transparent", color:t.text3, fontSize:11.5, cursor:"pointer" }}>Bez ikony</button>
+                </div>
+              )}
+            </div>
+
+            {/* Priorita — editovatelná */}
+            <div style={{ padding:"8px 10px", borderRadius:9, border:"1px solid var(--border-soft)", background:"var(--bg)" }}>
+              <div style={{ fontSize:12.5, color:t.text2, marginBottom:7 }}>Priorita</div>
+              <div style={{ display:"flex", gap:5 }}>
+                {["low","medium","high"].map(p => {
+                  const isActive = priorityKey === p;
+                  const col = PRIORITY_COLORS[p];
+                  return (
+                    <button key={p} onClick={() => updateNote(note.id, { priority: p })} style={{ flex:1, padding:"5px 0", borderRadius:8, fontSize:11.5, fontWeight:700, cursor:"pointer", border:`1px solid ${isActive ? col+"66" : "var(--border-soft)"}`, background:isActive ? col+"1c" : "transparent", color:isActive ? col : t.text3 }}>
+                      {NOTE_PRIORITIES[p]}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div style={{ padding:"8px 10px", borderRadius:9, border:"1px solid var(--border-soft)", background:"var(--bg)", color:t.text3, fontSize:12.5, display:"flex", justifyContent:"space-between" }}><span>Šablona</span><span style={{ color:t.text2 }}>{templateLabel}</span></div>
+            <button onClick={()=>updateNote(note.id,{archived:!note.archived})} style={{ textAlign:"left", display:"flex", justifyContent:"space-between", padding:"8px 10px", borderRadius:9, border:"1px solid var(--border-soft)", background:"var(--bg)", color:t.text2, fontSize:12.5, cursor:"pointer" }}>
+              <span>Archivace</span><span style={{ color:note.archived ? t.accent : t.text3 }}>{note.archived ? "zapnuto" : "vypnuto"}</span>
             </button>
           </div>
         </div>
@@ -1419,7 +1463,15 @@ function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects }) {
   const toggleArchive = (n) => updateNote(n.id, { archived: !n.archived });
 
   const s = search.toLowerCase();
-  let filtered = notes.filter(n => !search || n.title.toLowerCase().includes(s) || n.content.toLowerCase().includes(s));
+  // Hledání kryje název, obsah, štítky i názvy navázaných projektů (jak slibuje placeholder).
+  const matchesSearch = (n) => {
+    if (!s) return true;
+    if (n.title.toLowerCase().includes(s) || n.content.toLowerCase().includes(s)) return true;
+    if ((n.tags || []).some(tag => tag.toLowerCase().includes(s))) return true;
+    const projIds = [n.primaryProjectId, ...(n.extraProjectIds || [])].filter(Boolean);
+    return projIds.some(pid => projects.find(p => p.id === pid)?.name?.toLowerCase().includes(s));
+  };
+  let filtered = notes.filter(matchesSearch);
 
   if (filter === "archive") {
     filtered = filtered.filter(n => n.archived);
@@ -1447,12 +1499,22 @@ function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects }) {
   const yesterdayStart = new Date(todayStart.getTime() - 86400000);
   const weekStart      = new Date(todayStart.getTime() - 6*86400000);
 
-  const groups = (sortBy==="updated" && filter!=="archive") ? [
-    { label:"Dnes",        items:sorted.filter(n=>n.updatedAt>=todayStart.getTime()) },
-    { label:"Včera",       items:sorted.filter(n=>n.updatedAt>=yesterdayStart.getTime()&&n.updatedAt<todayStart.getTime()) },
-    { label:"Tento týden", items:sorted.filter(n=>n.updatedAt>=weekStart.getTime()&&n.updatedAt<yesterdayStart.getTime()) },
-    { label:"Starší",      items:sorted.filter(n=>n.updatedAt<weekStart.getTime()) },
-  ].filter(g=>g.items.length>0) : [{ label:null, items:sorted }];
+  // Připnuté drž vždy nahoře (kromě filtrů Připnuté / Archiv, kde by se duplikovaly).
+  const pinSection  = filter !== "pinned" && filter !== "archive";
+  const pinnedItems = pinSection ? sorted.filter(n => n.pinned)  : [];
+  const restItems   = pinSection ? sorted.filter(n => !n.pinned) : sorted;
+
+  const dateGroups = (sortBy==="updated" && filter!=="archive") ? [
+    { label:"Dnes",        items:restItems.filter(n=>n.updatedAt>=todayStart.getTime()) },
+    { label:"Včera",       items:restItems.filter(n=>n.updatedAt>=yesterdayStart.getTime()&&n.updatedAt<todayStart.getTime()) },
+    { label:"Tento týden", items:restItems.filter(n=>n.updatedAt>=weekStart.getTime()&&n.updatedAt<yesterdayStart.getTime()) },
+    { label:"Starší",      items:restItems.filter(n=>n.updatedAt<weekStart.getTime()) },
+  ] : [{ label:null, items:restItems }];
+
+  const groups = [
+    ...(pinnedItems.length ? [{ label:"Připnuté", pinned:true, items:pinnedItems }] : []),
+    ...dateGroups,
+  ].filter(g => g.items.length > 0);
 
   const activeCount  = notes.filter(n=>!n.archived).length;
   const archiveCount = notes.filter(n=>n.archived).length;
@@ -1615,9 +1677,9 @@ function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects }) {
                       {n.tags.slice(0,3).map(tag => {
                         const col = getTagColor(tag, globalTags) || "#aeb9d2";
                         return (
-                          <span key={tag} style={{ fontSize:10.5, padding:"2px 6px", borderRadius:999, background:`${col}15`, color:col, border:`1px solid ${col}25`, whiteSpace:"nowrap" }}>
+                          <button key={tag} onClick={e=>{ e.stopPropagation(); setSearch(tag); }} title={`Filtrovat: ${tag}`} style={{ fontSize:10.5, padding:"2px 6px", borderRadius:999, background:`${col}15`, color:col, border:`1px solid ${col}25`, whiteSpace:"nowrap", cursor:"pointer" }}>
                             {tag}
-                          </span>
+                          </button>
                         );
                       })}
                       {n.tags.length>3 && <span style={{ fontSize:10, color:t.text3 }}>+{n.tags.length-3}</span>}
@@ -1631,12 +1693,9 @@ function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects }) {
       </div>
 
       <div style={{ padding:"7px 14px", borderTop:`1px solid ${t.border}`, fontSize:11.5, color:t.text3, flexShrink:0 }}>
-        <div style={{ display:"flex", gap:8 }}>
-          <button onClick={onCreate} style={{ flex:1, height:38, borderRadius:11, background:"linear-gradient(135deg, var(--accent), var(--accent-2))", color:"var(--bg)", fontWeight:900, fontSize:13 }}>+ Nová poznámka</button>
-          <button aria-label="Nastavení poznámek" style={{ width:38, height:38, borderRadius:11, border:"1px solid var(--border-soft)", color:t.text3 }}>
-            <Icon name="settings" size={14} color="currentColor" strokeWidth={2} />
-          </button>
-        </div>
+        <button onClick={onCreate} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%", height:38, borderRadius:11, border:"none", background:"linear-gradient(135deg, var(--accent), var(--accent-2))", color:"var(--bg)", fontWeight:900, fontSize:13, cursor:"pointer" }}>
+          <Icon name="plus" size={14} color="currentColor" strokeWidth={2.6} /> Nová poznámka
+        </button>
       </div>
     </div>
   );
