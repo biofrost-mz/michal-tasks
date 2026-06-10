@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { useApp } from '../context/AppContext.jsx'
 import { supabase } from '../supabase.js'
 import { renderMarkdown, sanitizeHtml } from '../utils.js'
+import { getAiErrorMessage } from '../utils/aiErrors.js'
 import Icon from './Icon.jsx'
 
 /* ─────────────────────────────────────────────
@@ -28,6 +29,16 @@ function savePlanToCache(userId, workspaceId, plan, generatedAt) {
   } catch { /* ignore storage errors */ }
 }
 
+function getDailyPlanError(error, data = {}) {
+  const info = getAiErrorMessage(error, data);
+  return {
+    ...info,
+    message: info.type === "model_overloaded"
+      ? "AI model je momentálně přetížený. Zkus plán vygenerovat znovu za chvíli. Pokud máš cache, zůstane zobrazený poslední vygenerovaný plán."
+      : info.message,
+  };
+}
+
 /* ─────────────────────────────────────────────
    Skeleton loader — pulsující řádky
 ───────────────────────────────────────────── */
@@ -46,7 +57,7 @@ function PlanSkeleton({ t }) {
       <style>{`@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}`}</style>
       <div style={{ padding: "4px 0" }}>
         {line("70%", 16)}
-        {line("90%")}
+        {line("90%")} 
         {line("60%")}
         {line("85%", 16)}
         {line("75%")}
@@ -88,33 +99,27 @@ export default function AIDailyPlan() {
       const { data, error: fnErr } = await supabase.functions.invoke("ai-daily-plan", {
         body: { workspaceId: activeWorkspaceId },
       });
+
       if (fnErr) {
-        const msg = fnErr.message || "";
-        if (msg.includes("Rate limit") || fnErr.status === 429) {
-          setError("Příliš mnoho generování — zkus to za hodinu.");
-        } else if (msg.includes("non-2xx") || fnErr.status === 401) {
-          setError("AI služba je momentálně nedostupná (problém s přihlášením nebo vypršela relace). Zkus se odhlásit a znovu přihlásit.");
-        } else {
-          setError("Nepodařilo se vygenerovat plán: " + msg);
-        }
+        setError(getDailyPlanError(fnErr, data));
         return;
       }
+
       if (data?.error) {
-        const dErr = data.error;
-        if (dErr.includes("Rate limit")) {
-          setError("Příliš mnoho generování — zkus to za hodinu.");
-        } else if (dErr.includes("non-2xx") || dErr.includes("Unauthorized") || dErr.includes("Invalid token")) {
-          setError("AI služba je momentálně nedostupná (vypršela tvá přihlašovací relace). Otevři si nastavení a zkus se odhlásit a znovu přihlásit.");
-        } else {
-          setError(`Chyba: ${dErr}`);
-        }
+        setError(getDailyPlanError(new Error(data.error), data));
         return;
       }
+
+      if (!data?.plan) {
+        setError(getDailyPlanError(new Error("AI služba nevrátila denní plán."), data));
+        return;
+      }
+
       setPlan(data.plan);
       setGeneratedAt(data.generatedAt);
       savePlanToCache(userId, activeWorkspaceId, data.plan, data.generatedAt);
     } catch (e) {
-      setError("Nepodařilo se vygenerovat plán");
+      setError(getDailyPlanError(e));
     } finally {
       setLoading(false);
     }
@@ -198,18 +203,21 @@ export default function AIDailyPlan() {
           {error && !loading && (
             <div style={{
               padding: "12px 14px", borderRadius: 8,
-              background: "#ef444410", border: "1px solid #ef444430",
+              background: error.severity === "warning" ? "#f59e0b12" : "#ef444410",
+              border: error.severity === "warning" ? "1px solid #f59e0b40" : "1px solid #ef444430",
               marginBottom: 14,
             }}>
-              <div style={{ fontSize: 13, color: "#ef4444", fontWeight: 600, marginBottom: 4 }}>
-                Chyba
+              <div style={{ fontSize: 13, color: error.severity === "warning" ? "#f59e0b" : "#ef4444", fontWeight: 700, marginBottom: 4 }}>
+                {error.title || "Chyba AI"}
               </div>
-              <div style={{ fontSize: 12, color: t.text2 }}>{error}</div>
-              {error.includes("ANTHROPIC_API_KEY") && (
-                <div style={{ fontSize: 12, color: t.text3, marginTop: 8, lineHeight: 1.6 }}>
-                  Přidej <code style={{ background: t.input, padding: "1px 5px", borderRadius: 4 }}>ANTHROPIC_API_KEY</code> do{" "}
-                  Supabase → Project Settings → Edge Functions → Secrets.
-                </div>
+              <div style={{ fontSize: 12, color: t.text2, lineHeight: 1.5 }}>{error.message}</div>
+              {error.raw && (
+                <details style={{ marginTop: 8, color: t.text3, fontSize: 11.5 }}>
+                  <summary style={{ cursor: "pointer" }}>Technický detail</summary>
+                  <pre style={{ whiteSpace: "pre-wrap", wordBreak: "break-word", marginTop: 6, fontFamily: "var(--mono)", fontSize: 11 }}>
+                    {error.raw}
+                  </pre>
+                </details>
               )}
             </div>
           )}
@@ -230,7 +238,7 @@ export default function AIDailyPlan() {
             <div style={{ textAlign: "center", padding: "10px 0 4px" }}>
               <div style={{ fontSize: 13, color: t.text3, marginBottom: 14 }}>
                 {activeTasks.length > 0
-                  ? `Mám ${activeTasks.length} aktivních úkolů. Claude je prohlédne a navrhne, na co se soustředit.`
+                  ? `Mám ${activeTasks.length} aktivních úkolů. AI je projde a navrhne, na co se soustředit.`
                   : "Nemáš žádné aktivní úkoly — nejdřív je přidej."}
               </div>
               <button
