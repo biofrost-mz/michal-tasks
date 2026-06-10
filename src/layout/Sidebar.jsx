@@ -5,8 +5,8 @@ import { useToast } from '../components/Toast.jsx'
 import Icon from '../components/Icon.jsx'
 import MZLogo from '../components/MZLogo.jsx'
 import { projectColor } from '../utils.js'
-import { APP_RELEASE_DATE, APP_VERSION } from '../appMeta.js'
-import { formatDate, formatDateKey } from '../locale.js'
+import { APP_VERSION } from '../appMeta.js'
+import { formatDateKey } from '../locale.js'
 import {
   DndContext,
   closestCenter,
@@ -26,7 +26,7 @@ import { CSS } from '@dnd-kit/utilities'
    Workspace Switcher
 ───────────────────────────────────────────── */
 export function WorkspaceSwitcher() {
-  const { t, workspaces, activeWorkspaceId, switchWorkspace, createWorkspace, generateInviteLink, workspaceRole, isMobile, setPage } = useApp();
+  const { t, workspaces, activeWorkspaceId, switchWorkspace, createWorkspace, generateInviteLink, workspaceRole, setPage } = useApp();
   const toast = useToast();
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
