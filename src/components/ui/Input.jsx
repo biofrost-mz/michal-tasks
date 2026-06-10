@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React from "react";
 import { useApp } from "../../context/AppContext.jsx";
 import Icon from "../Icon.jsx";
 
@@ -82,21 +82,21 @@ export default function Input({
         onBlur={onBlur}
         placeholder={placeholder}
         disabled={disabled}
-        readOnly={readOnly}
         autoFocus={autoFocus}
+        readOnly={readOnly}
         style={{
           flex: 1,
+          minWidth: 0,
           border: "none",
-          background: "transparent",
           outline: "none",
+          background: "transparent",
           color: t.text,
           fontSize: fs,
           fontFamily: "var(--font-ui)",
-          minWidth: 0,
           ...inputStyle,
         }}
       />
-      {suffix && <div style={{ flexShrink: 0 }}>{suffix}</div>}
+      {suffix}
     </div>
   );
 }
