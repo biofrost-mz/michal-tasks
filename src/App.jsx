@@ -154,7 +154,7 @@ function PageLoader() {
 }
 
 function AppShell() {
-  const { dk, setDk, isMobile, page, setPage, taskDetail, cmdOpen, setCmdOpen, isSystemAdmin } = useApp();
+  const { dk, setDk, isMobile, page, setPage, taskDetail, cmdOpen, setCmdOpen, isSystemAdmin, loaded, tasks, setTaskDetail } = useApp();
   const [collapsed, setCollapsed] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const gPressedRef = useRef(false);
@@ -163,6 +163,19 @@ function AppShell() {
   useEffect(() => {
     applyDocumentMetadata(page);
   }, [page]);
+
+  // Deep-link z e-mailu: ?task=<id> otevře detail úkolu (po načtení dat)
+  useEffect(() => {
+    if (!loaded) return;
+    const params = new URLSearchParams(window.location.search);
+    const taskId = params.get("task");
+    if (!taskId) return;
+    if (tasks.some((t) => t.id === taskId)) setTaskDetail(taskId);
+    params.delete("task");
+    const q = params.toString();
+    window.history.replaceState({}, "", window.location.pathname + (q ? `?${q}` : ""));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded]);
 
   useEffect(() => {
     if (page === "admin" && !isSystemAdmin) {
