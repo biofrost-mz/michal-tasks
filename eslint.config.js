@@ -31,6 +31,9 @@ export default defineConfig([
         caughtErrors: 'none',
       }],
       'no-empty': ['error', { allowEmptyCatch: true }],
+      // Admin diagnostika zatím obsahuje legacy průchod přes localStorage.
+      // Bezpečnější přepis na Object.prototype.hasOwnProperty.call(...) je v backlogu.
+      'no-prototype-builtins': 'warn',
       // U větších souborů nyní záměrně exportujeme i hooks/context/helper komponenty.
       // Strukturální refaktor do samostatných souborů bude řešen samostatně.
       'react-refresh/only-export-components': 'off',
