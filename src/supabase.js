@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { saveAiHistoryEntry, summarizeAiResult } from "./services/aiHistoryService.js";
+import { startAiProjectSaveReport } from "./services/aiProjectSaveReportService.js";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -34,6 +35,12 @@ function shouldTrackFunction(functionName) {
   return typeof functionName === "string" && functionName.startsWith("ai-");
 }
 
+function maybeStartProjectSaveReport(functionName, response) {
+  if (functionName !== "ai-project-planner") return;
+  if (response.error || response.data?.error || !response.data?.result) return;
+  startAiProjectSaveReport(response.data.result, response.data.meta || null);
+}
+
 export const supabase = createClient(SUPABASE_URL || "", SUPABASE_ANON_KEY || "");
 
 const originalInvoke = supabase.functions.invoke.bind(supabase.functions);
@@ -57,6 +64,7 @@ supabase.functions.invoke = async (functionName, options = {}) => {
         inputPreview: options?.body?.text || options?.body?.userPrompt || options?.body?.task?.title || options?.body?.note?.title || "",
       },
     });
+    maybeStartProjectSaveReport(functionName, response);
   }
 
   return response;
