@@ -1,4 +1,15 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  heroBlock,
+  section,
+  ctaCard,
+  contentRow,
+  footer,
+  emailShell,
+  type Chip,
+  type ChipTone,
+  type TaskRow,
+} from "../_shared/email.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -7,7 +18,6 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 const APP_URL = Deno.env.get("APP_URL") ?? "https://tasks.zichmichal.cz";
-const LOGO_PATH = "/icon.svg";
 
 const PRIORITY_LABELS: Record<string, string> = {
   critical: "Kritická",
@@ -15,22 +25,6 @@ const PRIORITY_LABELS: Record<string, string> = {
   medium: "Střední",
   low: "Nízká",
 };
-
-function escHtml(s: string): string {
-  return String(s ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-function priorityColor(priority?: string): string {
-  if (priority === "critical") return "#dc2626";
-  if (priority === "high") return "#ea580c";
-  if (priority === "low") return "#16a34a";
-  return "#d97706";
-}
 
 function formatDateTime(value?: string): string {
   if (!value) return "Bez termínu";
@@ -50,39 +44,34 @@ function formatDate(value?: string): string {
   });
 }
 
-function taskCard(task: Record<string, string>, projectName: string): string {
-  const priority = task.priority ? PRIORITY_LABELS[task.priority] ?? task.priority : "Normální";
-  const priorityTone = priorityColor(task.priority);
-  return `
-    <div style="background:#ffffff;border:1px solid #e8dcc5;border-left:4px solid #f59e0b;border-radius:18px;padding:16px 18px;margin:0 0 10px;box-shadow:0 12px 30px rgba(113,63,18,.07)">
-      <div style="font-size:15px;line-height:1.4;font-weight:850;color:#111827;letter-spacing:-.015em">${escHtml(task.title || "Bez názvu")}</div>
-      ${task.description ? `<div style="margin-top:6px;font-size:13px;line-height:1.5;color:#667085">${escHtml(task.description)}</div>` : ""}
-      <div style="margin-top:12px">
-        <span style="display:inline-block;margin:0 6px 6px 0;padding:5px 9px;border-radius:999px;background:#f8fafc;border:1px solid #e5eaf3;color:#475467;font-size:12px;font-weight:720">${escHtml(projectName || "Bez projektu")}</span>
-        <span style="display:inline-block;margin:0 6px 6px 0;padding:5px 9px;border-radius:999px;background:#fffaeb;border:1px solid #fedf89;color:#b54708;font-size:12px;font-weight:800">${escHtml(formatDate(task.due_date))}</span>
-        <span style="display:inline-block;margin:0 0 6px 0;padding:5px 9px;border-radius:999px;background:${priorityTone}12;border:1px solid ${priorityTone}30;color:${priorityTone};font-size:11px;font-weight:800">${escHtml(priority)}</span>
-      </div>
-    </div>`;
+function prioChip(priority?: string): Chip | null {
+  if (!priority) return null;
+  const label = PRIORITY_LABELS[priority] ?? priority;
+  const tone: ChipTone = priority === "critical" || priority === "high" ? "red" : priority === "low" ? "green" : "amber";
+  return { text: label, tone };
 }
 
-function reminderHeroCard(taskLabel: string, remindAt?: string): string {
-  return `
-    <div style="margin-top:24px;min-height:92px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.26);border-radius:20px;padding:15px 16px 14px;box-shadow:inset 0 1px 0 rgba(255,255,255,.18)">
-      <div style="font-size:11px;line-height:1.2;font-weight:850;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.88)">
-        <span style="display:inline-block;width:8px;height:8px;border-radius:999px;background:#f59e0b;box-shadow:0 0 0 4px rgba(255,255,255,.16);vertical-align:1px;margin-right:7px"></span>Připomínka úkolu
-      </div>
-      <div style="display:block;margin-top:12px;color:#ffffff;font-size:40px;line-height:.9;font-weight:900;letter-spacing:-.07em">${escHtml(taskLabel.startsWith("1 ") ? "1" : taskLabel.replace(/\D+/g, "") || "1")}</div>
-      <div style="display:block;margin-top:8px;color:rgba(255,255,255,.82);font-size:12px;font-weight:720">nastaveno na ${formatDateTime(remindAt)}</div>
-    </div>`;
+function toRow(t: Record<string, string>, projectMap: Record<string, string>): TaskRow {
+  const chips: Chip[] = [{ text: projectMap[t.project_id] ?? "Bez projektu", tone: "neutral" }];
+  if (t.due_date) chips.push({ text: `Termín: ${formatDate(t.due_date)}`, tone: "amber" });
+  const p = prioChip(t.priority);
+  if (p) chips.push(p);
+  return {
+    title: t.title || "Bez názvu",
+    url: `${APP_URL}/?task=${t.id}`,
+    desc: t.description || undefined,
+    chips,
+    accent: "#f59e0b",
+  };
 }
 
 async function sendReminderEmail(to: string, tasks: Record<string, string>[], projectMap: Record<string, string>) {
   const now = new Date();
   const dateLabel = now.toLocaleString("cs-CZ", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
 
-  const taskCards = tasks.map((t) => taskCard(t, projectMap[t.project_id] ?? "Bez projektu")).join("");
   const taskLabel = tasks.length === 1 ? "1 připomínaný úkol" : `${tasks.length} připomínaných úkolů`;
-  const heroTitle = tasks.length === 1 ? "Připomínka úkolu" : "Připomínka úkolů";
+  const single = tasks.length === 1;
+
   const text = [
     `Připomínka úkolů - ${dateLabel}`,
     "",
@@ -96,63 +85,35 @@ async function sendReminderEmail(to: string, tasks: Record<string, string>[], pr
     "",
     `Otevřít aplikaci: ${APP_URL}`,
   ].join("\n");
-  const appUrl = escHtml(APP_URL);
-  const appHost = escHtml(APP_URL.replace(/^https?:\/\//, ""));
-  const logoUrl = escHtml(new URL(LOGO_PATH, APP_URL).toString());
 
-  const html = `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:#09090b;margin:0;padding:0;color:#111827">
-<div style="display:none;max-height:0;overflow:hidden;color:transparent">${escHtml(taskLabel)} čeká na kontrolu.</div>
-<div style="padding:28px 14px">
-  <div style="max-width:700px;margin:0 auto">
-    <div style="border-radius:28px;overflow:hidden;box-shadow:0 28px 80px rgba(0,0,0,.42)">
-      <div style="background:radial-gradient(circle at 18% 0%,rgba(251,191,36,.34),transparent 30%),radial-gradient(circle at 92% 12%,rgba(168,85,247,.22),transparent 26%),linear-gradient(135deg,#111111 0%,#2a1c05 48%,#b7791f 100%);padding:30px 30px 28px;color:#ffffff">
-        <table role="presentation" style="width:100%;border-collapse:collapse;margin:0 0 25px">
-          <tr>
-            <td style="vertical-align:middle">
-              <img src="${logoUrl}" width="36" height="36" alt="Zentero" style="display:inline-block;width:36px;height:36px;border-radius:14px;vertical-align:middle;margin-right:10px;background:rgba(17,24,39,.28);border:1px solid rgba(255,255,255,.22)">
-              <span style="vertical-align:middle;font-size:14px;font-weight:850;letter-spacing:-.01em">Zentero</span>
-            </td>
-            <td style="text-align:right;vertical-align:middle">
-              <span style="display:inline-block;padding:8px 12px;border-radius:999px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.24);color:rgba(255,255,255,.92);font-size:12px;line-height:1;font-weight:750;white-space:nowrap">${dateLabel}</span>
-            </td>
-          </tr>
-        </table>
-        <div style="max-width:560px;font-size:30px;line-height:1.12;letter-spacing:-.045em;font-weight:900">${heroTitle}</div>
-        <div style="max-width:555px;margin-top:11px;color:rgba(255,255,255,.86);font-size:15px;line-height:1.58">Tohle je připomínka, kterou sis nastavil u konkrétního úkolu.</div>
+  const body =
+    heroBlock({
+      dateLabel,
+      title: single ? "Připomínka úkolu" : "Připomínka úkolů",
+      subtitle: "Tuhle připomínku sis nastavil u konkrétního úkolu.",
+      extraLine: `Nastaveno na ${formatDateTime(tasks[0]?.remind_at)}`,
+    }) +
+    contentRow(
+      section({
+        label: single ? "Připomínaný úkol" : "Připomínané úkoly",
+        dotColor: "#f59e0b",
+        countPill: { text: String(tasks.length), tone: "amber" },
+        tasks: tasks.map((t) => toRow(t, projectMap)),
+      }) +
+        ctaCard({
+          title: "Otevřít připomínaný úkol",
+          text: "Zkontroluj detail, posuň termín, nebo úkol rovnou dokonči.",
+          buttonText: "Otevřít úkol",
+          url: single ? `${APP_URL}/?task=${tasks[0].id}` : APP_URL,
+        }),
+    ) +
+    footer({
+      note: "Automatická připomínka ze Zentero — chodí podle času, který sis nastavil u úkolu. Upravíš ji v",
+      settingsUrl: APP_URL,
+      host: APP_URL.replace(/^https?:\/\//, ""),
+    });
 
-        ${reminderHeroCard(taskLabel, tasks[0]?.remind_at)}
-      </div>
-
-      <div style="background:#ffffff;border-left:1px solid #e8dcc5;border-right:1px solid #e8dcc5;padding:24px">
-        <div style="margin:0 0 11px;font-size:12px;font-weight:850;color:#b54708;text-transform:uppercase;letter-spacing:.08em">
-          <span style="display:inline-block;width:10px;height:10px;border-radius:999px;background:#f59e0b;box-shadow:0 0 0 4px rgba(245,158,11,.14);vertical-align:-1px;margin-right:8px"></span>${escHtml(tasks.length === 1 ? "Připomínaný úkol" : "Připomínané úkoly")}
-          <span style="color:#98a2b3">/ ${tasks.length}</span>
-        </div>
-        ${taskCards}
-
-        <div style="margin-top:24px;border-radius:22px;background:linear-gradient(135deg,#fffbeb,#fff7d6);border:1px solid #f2d69b;padding:19px">
-          <div style="font-size:16px;line-height:1.35;font-weight:860;letter-spacing:-.02em;color:#111827">Otevřít připomínaný úkol</div>
-          <div style="margin-top:5px;color:#667085;font-size:13px;line-height:1.5">Zkontroluj detail, změň termín nebo úkol rovnou dokonči.</div>
-          <div style="margin-top:15px">
-            <a href="${appUrl}" style="display:inline-block;background:linear-gradient(135deg,#8a5a08,#f2b84b);color:#ffffff;text-decoration:none;border-radius:15px;padding:13px 17px;font-size:14px;line-height:1;font-weight:850;box-shadow:0 13px 28px rgba(180,120,28,.25)">Otevřít úkoly</a>
-          </div>
-        </div>
-      </div>
-
-      <div style="background:#ffffff;border:1px solid #e8dcc5;border-top:0;border-radius:0 0 28px 28px;overflow:hidden">
-        <div style="height:5px;background:linear-gradient(90deg,#f59e0b,#f2b84b,#22c55e)"></div>
-        <div style="padding:20px 24px 22px;color:#667085;font-size:12px;line-height:1.55">
-          <img src="${logoUrl}" width="30" height="30" alt="Zentero" style="display:inline-block;width:30px;height:30px;border-radius:11px;vertical-align:middle;margin-right:9px;background:#111827">
-          <strong style="vertical-align:middle;color:#1f2937;font-size:13px">Zentero</strong>
-          <div style="margin-top:10px">Automatická připomínka z aplikace Zentero. <a href="${appUrl}" style="color:#8a5a08;text-decoration:none">${appHost}</a></div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-</body></html>`;
+  const html = emailShell({ preheader: `${taskLabel} čeká na kontrolu.`, title: "Připomínka úkolu — Zentero", body });
 
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -163,7 +124,7 @@ async function sendReminderEmail(to: string, tasks: Record<string, string>[], pr
     body: JSON.stringify({
       from: "Zentero <notifikace@tasks.zichmichal.cz>",
       to,
-      subject: `Připomínka: ${tasks.length === 1 ? tasks[0].title : `${tasks.length} úkolů`} · Zentero`,
+      subject: `Připomínka: ${single ? tasks[0].title : `${tasks.length} úkolů`} · Zentero`,
       html,
       text,
     }),
@@ -254,6 +215,6 @@ Deno.serve(async (req) => {
 
   return new Response(
     JSON.stringify({ sent_emails: sent, reminded_tasks: taskIdsToReset.length }),
-    { headers: { "Content-Type": "application/json" } }
+    { headers: { "Content-Type": "application/json" } },
   );
 });
