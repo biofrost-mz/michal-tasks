@@ -1,6 +1,6 @@
 import { supabase } from "../supabase.js";
 
-const RETRY_DELAYS = [160, 320, 640, 1000, 1400];
+const RETRY_DELAYS = [200, 500, 1000, 1800, 3000, 5000];
 
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -11,17 +11,22 @@ function shouldRetrySave(error) {
   return error.code === "23503";
 }
 
+function summarizeSupabaseError(error) {
+  if (!error) return "Neznámá chyba";
+  return [error.code, error.message, error.details, error.hint].filter(Boolean).join(" · ");
+}
+
 async function runWithRetry(operation, label) {
   let lastError = null;
   for (let attempt = 0; attempt <= RETRY_DELAYS.length; attempt += 1) {
     const { error } = await operation();
-    if (!error) return { ok: true, error: null };
+    if (!error) return { ok: true, error: null, attempts: attempt + 1 };
     lastError = error;
     if (!shouldRetrySave(error) || attempt === RETRY_DELAYS.length) break;
     await delay(RETRY_DELAYS[attempt]);
   }
-  console.warn(`${label} failed:`, lastError);
-  return { ok: false, error: lastError };
+  console.warn(`${label} failed:`, summarizeSupabaseError(lastError), lastError);
+  return { ok: false, error: lastError, attempts: RETRY_DELAYS.length + 1 };
 }
 
 export function normalizeTask(t, tagIds = []) {
@@ -90,7 +95,39 @@ export async function insertTask(tsk, userId, workspaceId) {
   };
 
   const result = await runWithRetry(() => supabase.from("tasks").insert(payload), "insertTask");
-  if (!result.ok) throw result.error;
+  if (result.ok) return { ok: true, projectLinked: true };
+
+  // AI generátor projektů vytváří nový projekt a hned za ním více úkolů.
+  // Pokud ještě není projekt zapsaný/viditelný pro FK vazbu, nechceme ztratit celý úkol.
+  // Proto při FK chybě uložíme úkol do Inboxu a následně ještě zkusíme projektovou vazbu doplnit.
+  if (payload.project_id && shouldRetrySave(result.error)) {
+    const fallbackPayload = { ...payload, project_id: null };
+    const fallbackResult = await runWithRetry(
+      () => supabase.from("tasks").insert(fallbackPayload),
+      "insertTask:fallbackInbox"
+    );
+
+    if (!fallbackResult.ok) throw fallbackResult.error;
+
+    const relinkResult = await runWithRetry(
+      () => supabase.from("tasks").update({ project_id: payload.project_id }).eq("id", payload.id),
+      "insertTask:relinkProject"
+    );
+
+    if (!relinkResult.ok) {
+      console.warn(
+        "Task was saved without project relation after project FK race:",
+        payload.id,
+        payload.project_id,
+        summarizeSupabaseError(relinkResult.error)
+      );
+      return { ok: true, projectLinked: false, warning: relinkResult.error };
+    }
+
+    return { ok: true, projectLinked: true, recovered: true };
+  }
+
+  throw result.error;
 }
 
 export async function updateTaskDB(id, payload) {
@@ -108,6 +145,9 @@ export async function insertTaskTags(taskId, tagIds, userId) {
   if (!tagIds.length) return true;
   const rows = [...new Set(tagIds)].map((tagId) => ({ owner: userId, task_id: taskId, tag_id: tagId }));
   const result = await runWithRetry(() => supabase.from("task_tags").insert(rows), "insertTaskTags");
+  if (!result.ok) {
+    console.warn("Task saved, but tag relation was skipped:", taskId, tagIds, summarizeSupabaseError(result.error));
+  }
   return result.ok;
 }
 
