@@ -7,7 +7,7 @@ const STATUS_META = {
   ok: { label: "OK", color: "var(--green)", soft: "var(--green-soft)" },
   warning: { label: "Pozor", color: "var(--orange)", soft: "var(--orange-soft)" },
   error: { label: "Chyba", color: "var(--red)", soft: "var(--red-soft)" },
-  idle: { label: "Netestováno", color: "var(--text-3)", soft: "var(--bg-2)" },
+  idle: { label: "Test", color: "var(--text-3)", soft: "var(--bg-2)" },
 };
 
 function formatDateTime(value) {
@@ -45,37 +45,33 @@ async function withTimeout(promise, timeoutMs, label) {
 function HealthRow({ title, value, status = "idle", detail }) {
   const meta = STATUS_META[status] || STATUS_META.idle;
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "minmax(120px, 1fr) auto",
-        gap: 12,
-        alignItems: "center",
-        padding: "10px 12px",
-        borderRadius: 12,
-        border: "1px solid var(--border-soft)",
-        background: "var(--bg-2)",
-      }}
-    >
+    <div style={{
+      display: "grid",
+      gridTemplateColumns: "minmax(120px, 1fr) auto",
+      gap: 12,
+      alignItems: "center",
+      padding: "10px 12px",
+      borderRadius: 12,
+      border: "1px solid var(--border-soft)",
+      background: "var(--bg-2)",
+    }}>
       <div style={{ minWidth: 0 }}>
         <div style={{ color: "var(--text)", fontSize: 13, fontWeight: 800 }}>{title}</div>
         {detail && <div style={{ color: "var(--text-3)", fontSize: 11.5, marginTop: 3, lineHeight: 1.35 }}>{detail}</div>}
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <span style={{ color: "var(--text-2)", fontSize: 12, fontFamily: "var(--mono)", fontWeight: 750 }}>{value}</span>
-        <span
-          style={{
-            padding: "4px 8px",
-            borderRadius: 999,
-            color: meta.color,
-            background: meta.soft,
-            border: "1px solid var(--border-soft)",
-            fontSize: 10.5,
-            fontFamily: "var(--mono)",
-            fontWeight: 850,
-            textTransform: "uppercase",
-          }}
-        >
+        <span style={{
+          padding: "4px 8px",
+          borderRadius: 999,
+          color: meta.color,
+          background: meta.soft,
+          border: "1px solid var(--border-soft)",
+          fontSize: 10.5,
+          fontFamily: "var(--mono)",
+          fontWeight: 850,
+          textTransform: "uppercase",
+        }}>
           {meta.label}
         </span>
       </div>
@@ -105,9 +101,7 @@ export default function SystemHealthPanel() {
 
     try {
       const registrations = await navigator.serviceWorker.getRegistrations();
-      if (!registrations.length) {
-        return { status: "warning", value: "Neaktivní", detail: "Service Worker není registrovaný." };
-      }
+      if (!registrations.length) return { status: "warning", value: "Neaktivní", detail: "Service Worker není registrovaný." };
       return { status: "ok", value: `${registrations.length} registrací`, detail: "PWA Service Worker je aktivní." };
     } catch (error) {
       return { status: "error", value: "Chyba", detail: error.message };
@@ -117,11 +111,12 @@ export default function SystemHealthPanel() {
   const checkDb = useCallback(async () => {
     const start = performance.now();
     try {
-      await withTimeout(
+      const { error } = await withTimeout(
         supabase.from("projects").select("id", { count: "exact", head: true }),
         6000,
         "Supabase DB"
       );
+      if (error) throw error;
       const latency = Math.round(performance.now() - start);
       return {
         status: latency < 350 ? "ok" : "warning",
@@ -252,60 +247,49 @@ export default function SystemHealthPanel() {
   const overallMeta = STATUS_META[overallStatus];
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        right: 20,
-        bottom: 128,
-        zIndex: 9996,
-        width: open ? "min(720px, calc(100vw - 32px))" : "auto",
-        maxHeight: "min(740px, calc(100vh - 120px))",
-        fontFamily: "var(--font-ui)",
-      }}
-    >
+    <div style={{
+      position: "fixed",
+      right: 20,
+      top: 86,
+      zIndex: 10050,
+      width: open ? "min(720px, calc(100vw - 32px))" : "auto",
+      maxHeight: "min(740px, calc(100vh - 120px))",
+      fontFamily: "var(--font-ui)",
+    }}>
       {!open ? (
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            padding: "10px 14px",
-            borderRadius: 999,
-            border: "1px solid var(--border-soft)",
-            background: "color-mix(in srgb, var(--surface) 94%, transparent)",
-            color: "var(--text)",
-            boxShadow: "0 18px 48px rgba(0,0,0,.26)",
-            backdropFilter: "blur(16px)",
-            WebkitBackdropFilter: "blur(16px)",
-          }}
-          title="Systémový health check"
-        >
-          <span
-            style={{
-              width: 10,
-              height: 10,
-              borderRadius: "50%",
-              background: overallMeta.color,
-              boxShadow: `0 0 12px ${overallMeta.color}`,
-            }}
-          />
+        <button type="button" onClick={() => setOpen(true)} style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          padding: "10px 14px",
+          borderRadius: 999,
+          border: "1px solid var(--border-soft)",
+          background: "color-mix(in srgb, var(--surface) 96%, transparent)",
+          color: "var(--text)",
+          boxShadow: "0 18px 48px rgba(0,0,0,.26)",
+          backdropFilter: "blur(16px)",
+          WebkitBackdropFilter: "blur(16px)",
+        }} title="Systémový health check">
+          <span style={{
+            width: 10,
+            height: 10,
+            borderRadius: "50%",
+            background: overallMeta.color,
+            boxShadow: `0 0 12px ${overallMeta.color}`,
+          }} />
           <span style={{ fontSize: 13, fontWeight: 850 }}>Health check</span>
           <span style={{ color: overallMeta.color, fontFamily: "var(--mono)", fontSize: 11.5, fontWeight: 850 }}>{overallMeta.label}</span>
         </button>
       ) : (
-        <div
-          style={{
-            borderRadius: 18,
-            border: "1px solid var(--border-soft)",
-            background: "color-mix(in srgb, var(--surface) 96%, transparent)",
-            boxShadow: "0 22px 70px rgba(0,0,0,.34)",
-            backdropFilter: "blur(18px)",
-            WebkitBackdropFilter: "blur(18px)",
-            overflow: "hidden",
-          }}
-        >
+        <div style={{
+          borderRadius: 18,
+          border: "1px solid var(--border-soft)",
+          background: "color-mix(in srgb, var(--surface) 98%, transparent)",
+          boxShadow: "0 22px 70px rgba(0,0,0,.34)",
+          backdropFilter: "blur(18px)",
+          WebkitBackdropFilter: "blur(18px)",
+          overflow: "hidden",
+        }}>
           <div style={{ padding: "16px 18px", borderBottom: "1px solid var(--border-soft)", display: "flex", justifyContent: "space-between", gap: 16 }}>
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
@@ -319,12 +303,7 @@ export default function SystemHealthPanel() {
                 Rychlý přehled dostupnosti Supabase, PWA, lokálních a produkčních chyb. AI test se spouští ručně.
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              style={{ border: 0, background: "transparent", color: "var(--text-3)", fontSize: 22, lineHeight: 1 }}
-              aria-label="Zavřít health check"
-            >
+            <button type="button" onClick={() => setOpen(false)} style={{ border: 0, background: "transparent", color: "var(--text-3)", fontSize: 22, lineHeight: 1 }} aria-label="Zavřít health check">
               ×
             </button>
           </div>
@@ -343,43 +322,13 @@ export default function SystemHealthPanel() {
             </div>
           </div>
 
-          <div style={{ padding: 14, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 10 }}>
-            <HealthRow
-              title="Supabase DB"
-              value={health.db.latency !== null ? `${health.db.latency} ms` : "—"}
-              status={health.db.status}
-              detail={health.db.detail}
-            />
-            <HealthRow
-              title="AI Edge Function"
-              value={health.ai.latency !== null ? `${health.ai.latency} ms` : "ruční test"}
-              status={health.ai.status}
-              detail={health.ai.detail}
-            />
-            <HealthRow
-              title="Produkční chyby 24 h"
-              value={String(health.remoteErrors24h.value)}
-              status={health.remoteErrors24h.status}
-              detail={health.remoteErrors24h.detail}
-            />
-            <HealthRow
-              title="Produkční chyby 7 dní"
-              value={String(health.remoteErrors7d.value)}
-              status={health.remoteErrors7d.status}
-              detail={health.remoteErrors7d.detail}
-            />
-            <HealthRow
-              title="Lokální chyby"
-              value={String(health.localErrors.value)}
-              status={health.localErrors.status}
-              detail={health.localErrors.detail}
-            />
-            <HealthRow
-              title="PWA Service Worker"
-              value={health.pwa.value}
-              status={health.pwa.status}
-              detail={health.pwa.detail}
-            />
+          <div style={{ padding: 14, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 10, maxHeight: "calc(100vh - 260px)", overflowY: "auto" }}>
+            <HealthRow title="Supabase DB" value={health.db.latency !== null ? `${health.db.latency} ms` : "—"} status={health.db.status} detail={health.db.detail} />
+            <HealthRow title="AI Edge Function" value={health.ai.latency !== null ? `${health.ai.latency} ms` : "ruční test"} status={health.ai.status} detail={health.ai.detail} />
+            <HealthRow title="Produkční chyby 24 h" value={String(health.remoteErrors24h.value)} status={health.remoteErrors24h.status} detail={health.remoteErrors24h.detail} />
+            <HealthRow title="Produkční chyby 7 dní" value={String(health.remoteErrors7d.value)} status={health.remoteErrors7d.status} detail={health.remoteErrors7d.detail} />
+            <HealthRow title="Lokální chyby" value={String(health.localErrors.value)} status={health.localErrors.status} detail={health.localErrors.detail} />
+            <HealthRow title="PWA Service Worker" value={health.pwa.value} status={health.pwa.status} detail={health.pwa.detail} />
           </div>
         </div>
       )}
