@@ -1,5 +1,3 @@
-import { supabase } from "../supabase.js";
-
 export const AI_CONSOLE_ACTIONS = [
   {
     id: "draft_task",
@@ -66,6 +64,11 @@ function parseResult(result) {
   }
 }
 
+async function getSupabaseClient() {
+  const module = await import("../supabase.js");
+  return module.supabase;
+}
+
 export function getAiConsoleAction(actionId) {
   return AI_CONSOLE_ACTIONS.find((item) => item.id === actionId) || AI_CONSOLE_ACTIONS[0];
 }
@@ -121,6 +124,7 @@ export async function runAiConsoleAction(actionId, input, context = {}) {
   const action = getAiConsoleAction(actionId);
   const body = buildAiConsoleBody(action.id, input, context);
   const startedAt = performance.now();
+  const supabase = await getSupabaseClient();
   const { data, error } = await supabase.functions.invoke(action.functionName, { body });
   const durationMs = Math.round(performance.now() - startedAt);
 
@@ -137,9 +141,11 @@ export async function runAiConsoleAction(actionId, input, context = {}) {
 }
 
 export async function invokeAiTaskAssist(body) {
+  const supabase = await getSupabaseClient();
   return supabase.functions.invoke("ai-task-assist", { body });
 }
 
 export async function invokeAiProjectPlanner(body) {
+  const supabase = await getSupabaseClient();
   return supabase.functions.invoke("ai-project-planner", { body });
 }
