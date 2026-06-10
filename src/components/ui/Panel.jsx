@@ -1,56 +1,36 @@
 import React from "react";
-import { useApp } from "../../context/AppContext.jsx";
 
 /**
  * Panel — design-token-aware card/panel primitive
  *
  * @param {React.ReactNode} children
- * @param {object} style — extra container styles
- * @param {string|number} padding — inner padding (default "16px")
- * @param {string} title — optional header title
- * @param {React.ReactNode} headerRight — optional right slot in header
+ * @param {object}  style       — container override
+ * @param {string|number} padding — inner padding (default "var(--space-4)")
+ * @param {string}  title
+ * @param {React.ReactNode} headerRight
+ * @param {string}  className
  */
 export default function Panel({
   children,
   style,
-  padding = "16px",
+  padding = "var(--space-4)",
   title,
   headerRight,
-  t: tProp,
+  className = "",
+  // t prop přijat ale ignorován
+  t: _t,
 }) {
-  const ctx = useApp();
-  const t = tProp || ctx?.t;
-  if (!t) return null;
+  const pad = typeof padding === "number" ? `${padding}px` : padding;
 
   return (
-    <div
-      style={{
-        background: t.bg2,
-        border: `1px solid ${t.border}`,
-        borderRadius: 12,
-        overflow: "hidden",
-        ...style,
-      }}
-    >
+    <div className={`panel ${className}`.trim()} style={style}>
       {(title || headerRight) && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: typeof padding === "number" ? `${padding}px` : padding,
-            borderBottom: `1px solid ${t.border}`,
-          }}
-        >
-          {title && (
-            <div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>{title}</div>
-          )}
+        <div className="panel__header" style={{ padding: pad }}>
+          {title && <div className="panel__title">{title}</div>}
           {headerRight && <div>{headerRight}</div>}
         </div>
       )}
-      <div style={{ padding: typeof padding === "number" ? `${padding}px` : padding }}>
-        {children}
-      </div>
+      <div style={{ padding: pad }}>{children}</div>
     </div>
   );
 }

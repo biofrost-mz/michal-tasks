@@ -1,0 +1,162 @@
+/* ─────────────────────────────────────────────────────────────
+   UI Primitives — Button, Input, Panel
+   Používá tokeny z tokens.css (--space-*, --text-*, --radius-*, atd.)
+   ───────────────────────────────────────────────────────────── */
+
+/* ── Spin keyframe (pro Button loading stav) ──────────────────── */
+@keyframes ui-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   BUTTON
+   ══════════════════════════════════════════════════════════════ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: var(--radius-md);
+  font-weight: var(--weight-semibold);
+  font-family: var(--font-sans);
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    background var(--dur-fast) var(--ease),
+    box-shadow  var(--dur-fast) var(--ease),
+    opacity     var(--dur-fast) var(--ease);
+}
+
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* Velikosti */
+.btn--sm  { height: 36px; min-height: 36px; padding: 0 var(--space-3); font-size: var(--text-xs);  }
+.btn--md  { height: 40px; min-height: 40px; padding: 0 var(--space-4); font-size: var(--text-sm);  }
+.btn--lg  { height: 44px; min-height: 44px; padding: 0 var(--space-5); font-size: var(--text-base); }
+
+/* Varianty */
+.btn--primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: var(--bg);
+  border: none;
+}
+.btn--primary:hover:not(:disabled):not([aria-disabled="true"]) {
+  background: linear-gradient(135deg, var(--accent-2), var(--accent));
+  box-shadow: 0 2px 8px var(--accent-glow);
+}
+
+.btn--secondary {
+  background: transparent;
+  color: var(--text-1);
+  border: 1px solid var(--border);
+}
+.btn--secondary:hover:not(:disabled):not([aria-disabled="true"]) {
+  background: var(--input);
+}
+
+.btn--ghost {
+  background: transparent;
+  color: var(--text-2);
+  border: none;
+}
+.btn--ghost:hover:not(:disabled):not([aria-disabled="true"]) {
+  background: var(--input);
+  color: var(--text-1);
+}
+
+.btn--danger {
+  background: rgba(239, 68, 68, 0.08);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.19);
+}
+.btn--danger:hover:not(:disabled):not([aria-disabled="true"]) {
+  background: rgba(239, 68, 68, 0.15);
+}
+
+/* Loading spinner */
+.btn__spinner {
+  display: inline-flex;
+  animation: ui-spin 1s linear infinite;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   INPUT
+   ══════════════════════════════════════════════════════════════ */
+.input-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  transition:
+    border-color var(--dur-fast) var(--ease),
+    box-shadow   var(--dur-fast) var(--ease);
+}
+
+.input-wrap:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.input-wrap--disabled {
+  opacity: 0.6;
+}
+
+/* Velikosti */
+.input-wrap--sm { height: 36px; min-height: 36px; padding: 0 10px; }
+.input-wrap--md { height: 40px; min-height: 40px; padding: 0 var(--space-3); }
+.input-wrap--lg { height: 44px; min-height: 44px; padding: 0 var(--space-3); }
+
+.input-wrap__icon {
+  flex-shrink: 0;
+  color: var(--text-3);
+}
+
+.input-wrap__field {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  color: var(--text-1);
+  min-width: 0;
+  font-family: var(--font-sans);
+}
+.input-wrap__field::placeholder { color: var(--text-3); }
+
+.input-wrap--sm .input-wrap__field  { font-size: var(--text-sm);  }
+.input-wrap--md .input-wrap__field  { font-size: var(--text-base); }
+.input-wrap--lg .input-wrap__field  { font-size: var(--text-md);  }
+
+.input-wrap__suffix {
+  flex-shrink: 0;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PANEL
+   ══════════════════════════════════════════════════════════════ */
+.panel {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+}
+
+.panel__title {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--text-1);
+}
