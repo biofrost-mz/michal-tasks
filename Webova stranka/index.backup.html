@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="cs" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zentero — promyšlený plánovač úkolů a projektů s AI</title>
+<meta name="description" content="Zentero je rychlý, čistý plánovač úkolů a projektů s AI asistencí — přehled, úkoly, projekty, kanban, plán, poznámky, tagy a streak na jednom místě.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b0d13; --bg2:#10131b; --card:#141822; --cardH:#191e2a;
+    --accent:#f0a847; --accentH:#e2933a; --accentBg:rgba(240,168,71,.14);
+    --text:#eef1f6; --text2:#aab1c2; --text3:#6f7790;
+    --border:#222837; --shadow:0 18px 50px -16px rgba(0,0,0,.5);
+    --blue:#5b9dff; --green:#5fd4a0; --amber:#f0a847; --purple:#b387f5; --red:#ef6f6f; --teal:#52c8d6; --pink:#f08fc0;
+  }
+  [data-theme="light"]{
+    --bg:#f4f5f9; --bg2:#ffffff; --card:#ffffff; --cardH:#f3f5fa;
+    --accentBg:rgba(197,138,54,.12);
+    --text:#1b2030; --text2:#5b6378; --text3:#99a1b5;
+    --border:#e4e8f1; --shadow:0 18px 50px -20px rgba(40,48,80,.18);
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg); color:var(--text); font-family:'Figtree',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    -webkit-font-smoothing:antialiased; line-height:1.6; transition:background .2s, color .2s;
+  }
+  h1,h2,h3,h4{font-family:'Outfit',sans-serif; letter-spacing:-.02em; font-weight:700}
+  .mono{font-family:'JetBrains Mono',monospace}
+  a{color:inherit; text-decoration:none}
+  img,svg{display:block; max-width:100%}
+  ::-webkit-scrollbar{width:9px; height:9px}
+  ::-webkit-scrollbar-thumb{background:var(--border); border-radius:8px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::selection{background:var(--accentBg)}
+  .wrap{max-width:1140px; margin:0 auto; padding:0 28px}
+  section{padding:92px 0}
+  .eyebrow{display:inline-flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--accent); background:var(--accentBg); padding:7px 14px; border-radius:99px; margin-bottom:18px}
+  .lead{color:var(--text2); font-size:16.5px; max-width:620px}
+  .btn{display:inline-flex; align-items:center; gap:9px; border-radius:12px; padding:13px 24px; font-size:14.5px; font-weight:600; cursor:pointer; transition:.15s; border:1px solid transparent; font-family:inherit}
+  .btn-primary{background:var(--accent); color:#1a130a; box-shadow:0 10px 28px -10px rgba(240,168,71,.55)}
+  .btn-primary:hover{background:var(--accentH); transform:translateY(-1px)}
+  .btn-ghost{background:var(--card); border-color:var(--border); color:var(--text)}
+  .btn-ghost:hover{border-color:var(--accent); color:var(--accent)}
+  .btn-lg{padding:15px 28px; font-size:15.5px; border-radius:13px}
+  .btn .svgicon{width:16px; height:16px}
+
+  /* nav */
+  header{position:sticky; top:0; z-index:30; background:color-mix(in srgb, var(--bg) 86%, transparent); backdrop-filter:blur(12px); border-bottom:1px solid var(--border)}
+  .nav{display:flex; align-items:center; justify-content:space-between; padding:15px 28px; max-width:1140px; margin:0 auto; gap:18px}
+  .brand{display:flex; align-items:center; gap:10px; font-weight:800; font-size:18px; font-family:'Outfit',sans-serif}
+  .brand .mark{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--purple)); display:flex;align-items:center;justify-content:center;color:#1a130a;font-weight:800}
+  .nav-links{display:flex; align-items:center; gap:26px; font-size:14px; font-weight:500; color:var(--text2)}
+  .nav-links a:hover{color:var(--accent)}
+  .nav-right{display:flex; align-items:center; gap:14px}
+  .nav-cta{display:flex; gap:10px}
+  @media (max-width:920px){ .nav-links{display:none} }
+  @media (max-width:620px){ .nav-cta .btn-ghost{display:none} }
+
+  /* theme toggle */
+  .theme-toggle{display:flex; align-items:center; gap:2px; background:var(--card); border:1px solid var(--border); border-radius:99px; padding:3px}
+  .theme-toggle button{display:flex; align-items:center; justify-content:center; width:32px; height:30px; border:none; background:transparent; color:var(--text3); border-radius:99px; transition:.15s}
+  .theme-toggle button.on{background:var(--accentBg); color:var(--accent)}
+  .theme-toggle .svgicon{width:15px;height:15px}
+
+  /* hero */
+  .hero{padding:78px 0 50px; position:relative; overflow:hidden}
+  .hero::before{content:''; position:absolute; top:-220px; right:-160px; width:580px; height:580px; border-radius:50%; background:radial-gradient(circle, var(--accentBg), transparent 70%); z-index:0}
+  .hero::after{content:''; position:absolute; bottom:-260px; left:-220px; width:540px; height:540px; border-radius:50%; background:radial-gradient(circle, rgba(179,135,245,.12), transparent 70%); z-index:0}
+  .hero-inner{position:relative; z-index:1; text-align:center; display:flex; flex-direction:column; align-items:center}
+  .hero h1{font-size:clamp(34px,5.6vw,58px); line-height:1.12; max-width:860px; margin:0 auto 20px}
+  .hero h1 span{background:linear-gradient(120deg,var(--accent),var(--purple)); -webkit-background-clip:text; background-clip:text; color:transparent}
+  .hero .lead{margin:0 auto 34px; text-align:center; font-size:17.5px}
+  .hero-ctas{display:flex; gap:14px; flex-wrap:wrap; justify-content:center; margin-bottom:54px}
+  .hero-shot{border-radius:18px; border:1px solid var(--border); box-shadow:var(--shadow); overflow:hidden; max-width:1000px; width:100%; background:var(--card)}
+  .hero-shot .bar{display:flex; align-items:center; gap:8px; padding:13px 18px; border-bottom:1px solid var(--border)}
+  .hero-shot .bar i{width:11px;height:11px;border-radius:50%; display:inline-block}
+  .hero-shot .bar span{margin-left:10px; font-size:11.5px; color:var(--text3); font-family:'JetBrains Mono',monospace}
+
+  /* mock dashboard preview — built with the app's real visual language (svg icons, status pills) */
+  .mockboard{display:grid; grid-template-columns:178px 1fr; min-height:392px}
+  .m-side{background:var(--bg2); border-right:1px solid var(--border); padding:18px 13px; display:flex; flex-direction:column; gap:5px}
+  .m-side .item{display:flex; align-items:center; gap:9px; font-size:12px; font-weight:500; color:var(--text2); padding:8px 9px; border-radius:9px}
+  .m-side .item .svgicon{width:15px;height:15px}
+  .m-side .item.on{background:var(--accentBg); color:var(--accent); font-weight:700}
+  .m-main{padding:22px 26px; text-align:left}
+  .m-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:16px}
+  .m-stat{background:var(--bg2); border:1px solid var(--border); border-radius:12px; padding:13px 14px}
+  .m-stat b{font-size:21px; font-family:'Outfit',sans-serif; display:block}
+  .m-stat span{font-size:10.5px; color:var(--text3)}
+  .m-row{display:flex; align-items:center; gap:10px; padding:9px 4px; font-size:12.5px; font-weight:500; border-bottom:1px solid var(--border)}
+  .m-row:last-child{border-bottom:none}
+  .m-row .dot{width:8px;height:8px;border-radius:3px; flex-shrink:0}
+  .m-row .t{flex:1; color:var(--text)}
+  .m-row .b{font-size:9.5px; font-weight:700; padding:3px 8px; border-radius:6px; white-space:nowrap}
+  .m-panel{background:var(--bg2); border:1px solid var(--border); border-radius:12px; padding:6px 14px; margin-bottom:14px}
+  .m-cols{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+  .m-mini-head{display:flex; align-items:center; justify-content:space-between; font-size:11px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.05em; margin-bottom:10px}
+  .m-streak{display:flex; align-items:center; gap:14px}
+  .m-streak .ring{width:58px;height:58px;border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; background:conic-gradient(var(--accent) 0 62%, var(--border) 62% 100%)}
+  .m-streak .ring i{width:44px;height:44px;border-radius:50%; background:var(--bg2); display:flex; align-items:center; justify-content:center; font-family:'Outfit',sans-serif; font-weight:800; font-size:15px}
+  .m-streak p{font-size:11.5px; color:var(--text3)}
+  .m-streak b{color:var(--text); font-family:'Outfit',sans-serif; display:block; font-size:13px; margin-bottom:2px}
+
+  /* trust strip */
+  .trust{display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:10px 30px; padding:32px 0 0; opacity:.75; font-size:12.5px; color:var(--text3); text-align:center}
+  .trust b{color:var(--text2); font-weight:600}
+
+  /* problem -> solution */
+  .split{display:grid; grid-template-columns:1fr 1fr; gap:56px; align-items:center}
+  @media (max-width:860px){.split{grid-template-columns:1fr; gap:30px}}
+  .check-list{list-style:none; display:flex; flex-direction:column; gap:15px; margin-top:22px}
+  .check-list li{display:flex; gap:13px; font-size:14.5px; color:var(--text)}
+  .check-list .ic{width:28px;height:28px; border-radius:9px; flex-shrink:0; display:flex; align-items:center; justify-content:center; color:#fff}
+  .check-list .ic .svgicon{width:14px;height:14px}
+  .ic.bad{background:var(--text3)}
+  .ic.good{background:var(--green); color:#0c2018}
+  .check-list small{color:var(--text2); font-size:13.5px; font-weight:400; display:block; margin-top:2px}
+  h2{font-size:clamp(26px,3.6vw,36px); margin-bottom:14px}
+  .section-head{max-width:660px; margin:0 auto 52px; text-align:center}
+  .section-head h2{margin-bottom:12px}
+  .section-head .lead{margin:0 auto}
+
+  /* features */
+  .feat-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:18px}
+  @media (max-width:900px){.feat-grid{grid-template-columns:repeat(2,1fr)}}
+  @media (max-width:600px){.feat-grid{grid-template-columns:1fr}}
+  .feat{background:var(--card); border:1px solid var(--border); border-radius:16px; padding:24px; box-shadow:var(--shadow); transition:.15s}
+  .feat:hover{transform:translateY(-3px); border-color:var(--accent)}
+  .feat .ic{width:44px;height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; margin-bottom:16px; color:#fff}
+  .feat .ic .svgicon{width:20px;height:20px}
+  .feat h4{font-size:16px; margin-bottom:8px; display:flex; align-items:center; gap:8px}
+  .feat h4 .tag-new{font-size:9.5px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:var(--accent); background:var(--accentBg); padding:3px 7px; border-radius:6px}
+  .feat p{font-size:13.5px; color:var(--text2); line-height:1.65}
+
+  /* showcase tabs */
+  .showcase{display:grid; grid-template-columns:280px 1fr; gap:0; border:1px solid var(--border); border-radius:18px; overflow:hidden; background:var(--card); box-shadow:var(--shadow)}
+  @media (max-width:860px){.showcase{grid-template-columns:1fr}}
+  .sc-tabs{background:var(--bg2); border-right:1px solid var(--border); padding:18px}
+  @media (max-width:860px){.sc-tabs{border-right:none; border-bottom:1px solid var(--border); display:flex; gap:8px; overflow-x:auto}}
+  .sc-tab{display:flex; align-items:flex-start; gap:12px; width:100%; text-align:left; padding:13px 14px; border-radius:12px; border:none; background:transparent; color:var(--text2); font-family:inherit; cursor:pointer; margin-bottom:4px}
+  @media (max-width:860px){.sc-tab{flex-shrink:0; width:auto; min-width:200px}}
+  .sc-tab .ic{width:34px;height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0; background:var(--cardH); color:var(--text3)}
+  .sc-tab .ic .svgicon{width:16px;height:16px}
+  .sc-tab b{display:block; font-size:13.5px; color:var(--text); margin-bottom:2px}
+  .sc-tab span{font-size:12px; color:var(--text3); display:block; line-height:1.5}
+  .sc-tab.on{background:var(--accentBg)}
+  .sc-tab.on .ic{background:var(--accent); color:#1a130a}
+  .sc-tab.on b{color:var(--accent)}
+  .sc-panes{position:relative; padding:30px 32px; min-height:380px}
+  .sc-pane{display:none}
+  .sc-pane.on{display:block}
+  .sc-pane h3{font-size:19px; margin-bottom:8px}
+  .sc-pane p{font-size:14px; color:var(--text2); max-width:560px; margin-bottom:18px}
+  .sc-list{list-style:none; display:flex; flex-direction:column; gap:9px}
+  .sc-list li{display:flex; align-items:flex-start; gap:10px; font-size:13.5px; color:var(--text2)}
+  .sc-list li .svgicon{width:15px;height:15px; color:var(--accent); flex-shrink:0; margin-top:2px}
+  .sc-list li b{color:var(--text); font-weight:600}
+
+  /* manual cta */
+  .manual-band{display:grid; grid-template-columns:1fr auto; align-items:center; gap:30px; background:var(--card); border:1px solid var(--border); border-radius:20px; padding:34px 38px; box-shadow:var(--shadow)}
+  @media (max-width:700px){.manual-band{grid-template-columns:1fr; text-align:center}}
+  .manual-band h3{font-size:21px; margin-bottom:8px; display:flex; align-items:center; gap:10px}
+  @media (max-width:700px){.manual-band h3{justify-content:center}}
+  .manual-band h3 .ic{width:40px;height:40px;border-radius:11px;background:var(--accentBg); color:var(--accent); display:flex;align-items:center;justify-content:center}
+  .manual-band h3 .ic .svgicon{width:19px;height:19px}
+  .manual-band p{color:var(--text2); font-size:14px; max-width:480px}
+
+  /* demo cta block */
+  .demo-block{background:linear-gradient(135deg,var(--bg2),var(--cardH)); border:1px solid var(--border); border-radius:24px; padding:54px 50px; display:grid; grid-template-columns:1.1fr 1fr; gap:40px; align-items:center; overflow:hidden; position:relative}
+  @media (max-width:860px){.demo-block{grid-template-columns:1fr; padding:38px 26px}}
+  .demo-block::before{content:''; position:absolute; top:-140px; right:-100px; width:340px; height:340px; border-radius:50%; background:radial-gradient(circle,var(--accentBg),transparent 70%)}
+  .demo-block p{color:var(--text2); font-size:15px; max-width:480px; margin:14px 0 26px}
+  .demo-card{background:var(--card); border:1px solid var(--border); border-radius:16px; padding:22px}
+  .demo-card .row{display:flex; align-items:center; gap:11px; padding:9px 0; border-bottom:1px solid var(--border); font-size:13px; color:var(--text2)}
+  .demo-card .row:last-child{border-bottom:none}
+  .demo-card .row b{color:var(--text); font-weight:500}
+  .demo-card .dot{width:9px;height:9px;border-radius:3px; flex-shrink:0}
+  .demo-card .pct{margin-left:auto; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text3)}
+
+  /* tech / transparency */
+  .tech-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:16px; text-align:center}
+  @media (max-width:760px){.tech-grid{grid-template-columns:repeat(2,1fr)}}
+  .tech-item{background:var(--card); border:1px solid var(--border); border-radius:14px; padding:24px 16px}
+  .tech-item .ic{width:42px;height:42px;border-radius:12px; background:var(--accentBg); color:var(--accent); display:flex;align-items:center;justify-content:center; margin:0 auto 12px}
+  .tech-item .ic .svgicon{width:19px;height:19px}
+  .tech-item b{display:block; font-size:14px; margin-bottom:4px}
+  .tech-item span{font-size:12px; color:var(--text3)}
+
+  /* timeline / roadmap */
+  .roadmap{display:flex; flex-direction:column; gap:0; max-width:700px; margin:0 auto}
+  .rm-item{display:grid; grid-template-columns:120px 1fr; gap:22px; padding:18px 0; border-bottom:1px solid var(--border)}
+  .rm-item:last-child{border-bottom:none}
+  .rm-item .when{font-size:12.5px; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:.05em}
+  .rm-item h4{font-size:15px; margin-bottom:5px}
+  .rm-item p{font-size:13px; color:var(--text2)}
+  .rm-status{display:inline-block; font-size:10.5px; font-weight:700; padding:3px 9px; border-radius:6px; margin-top:7px}
+
+  /* final cta */
+  .cta-final{text-align:center; max-width:640px; margin:0 auto}
+  .cta-final h2{margin-bottom:14px}
+
+  footer{border-top:1px solid var(--border); padding:40px 0; margin-top:20px}
+  .foot-row{display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:18px; font-size:13px; color:var(--text3)}
+  .foot-links{display:flex; gap:22px; flex-wrap:wrap}
+  .foot-links a:hover{color:var(--accent)}
+
+  .svgicon{display:inline-block; vertical-align:middle; flex-shrink:0}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="nav">
+    <a href="#top" class="brand"><span class="mark">Z</span> Zentero</a>
+    <nav class="nav-links">
+      <a href="#problem">Proč Zentero</a>
+      <a href="#features">Funkce</a>
+      <a href="#showcase">Jak appka vypadá</a>
+      <a href="manual.html">Manuál</a>
+      <a href="#tech">Technologie</a>
+      <a href="#roadmap">Co se chystá</a>
+    </nav>
+    <div class="nav-right">
+      <div class="theme-toggle" id="themeToggle">
+        <button class="on" data-theme-btn="dark" title="Tmavý režim"><span class="ic" data-icon="moon"></span></button>
+        <button data-theme-btn="light" title="Světlý režim"><span class="ic" data-icon="sun"></span></button>
+      </div>
+      <div class="nav-cta">
+        <a class="btn btn-ghost" href="demo.html">Vyzkoušet demo</a>
+        <a class="btn btn-primary" href="https://tasks.zichmichal.cz" target="_blank" rel="noopener">Otevřít appku <span class="ic" data-icon="external"></span></a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div id="top"></div>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="wrap hero-inner">
+    <span class="eyebrow"><span class="ic" data-icon="sparkles"></span> Nově pod značkou Zentero</span>
+    <h1>Plánovač úkolů a projektů, který <span>myslí s vámi</span></h1>
+    <p class="lead">Zentero spojuje denní přehled, úkoly, projekty, kanban, časový plán, poznámky a tagy do jednoho rychlého rozhraní — a s AI asistencí vám pomáhá rozhodnout, na čem dnes opravdu záleží.</p>
+    <div class="hero-ctas">
+      <a class="btn btn-primary btn-lg" href="demo.html"><span class="ic" data-icon="zap"></span> Prohlédnout interaktivní demo</a>
+      <a class="btn btn-ghost btn-lg" href="https://tasks.zichmichal.cz" target="_blank" rel="noopener"><span class="ic" data-icon="external"></span> Otevřít ostrou appku</a>
+    </div>
+
+    <div class="hero-shot">
+      <div class="bar"><i style="background:var(--red)"></i><i style="background:var(--amber)"></i><i style="background:var(--green)"></i><span class="mono">zentero.cz/prehled</span></div>
+      <div class="mockboard">
+        <div class="m-side">
+          <div class="item on"><span class="ic" data-icon="home"></span> Přehled</div>
+          <div class="item"><span class="ic" data-icon="zap"></span> Rychlý seznam</div>
+          <div class="item"><span class="ic" data-icon="check_square"></span> Úkoly</div>
+          <div class="item"><span class="ic" data-icon="folder"></span> Projekty</div>
+          <div class="item"><span class="ic" data-icon="calendar"></span> Plán</div>
+          <div class="item"><span class="ic" data-icon="file_text"></span> Poznámky</div>
+          <div class="item"><span class="ic" data-icon="tag"></span> Tagy</div>
+        </div>
+        <div class="m-main">
+          <div class="m-grid">
+            <div class="m-stat"><b>12</b><span>Aktivní úkoly</span></div>
+            <div class="m-stat"><b>34</b><span>Dokončeno</span></div>
+            <div class="m-stat"><b>6</b><span>Projekty</span></div>
+            <div class="m-stat" style="color:var(--accent)"><b>4</b><span>TOP úkoly dne</span></div>
+          </div>
+          <div class="m-panel">
+            <div class="m-row"><span class="dot" style="background:var(--blue)"></span><span class="t">Migrovat doménu na zentero.cz</span><span class="b" style="background:rgba(91,157,255,.15);color:var(--blue)">Rozpracováno</span></div>
+            <div class="m-row"><span class="dot" style="background:var(--green)"></span><span class="t">Navrhnout nové logo a paletu</span><span class="b" style="background:rgba(95,212,160,.15);color:var(--green)">Hotovo</span></div>
+            <div class="m-row"><span class="dot" style="background:var(--amber)"></span><span class="t">Připravit launch e-mailovou sekvenci</span><span class="b" style="background:var(--accentBg);color:var(--accent)">Čekám</span></div>
+            <div class="m-row"><span class="dot" style="background:var(--purple)"></span><span class="t">Implementovat „Focus úkol dne“ (AI)</span><span class="b" style="background:rgba(179,135,245,.15);color:var(--purple)"><span class="ic" data-icon="star" style="display:inline-flex"></span> TOP</span></div>
+          </div>
+          <div class="m-cols">
+            <div>
+              <div class="m-mini-head">Streak aktivity</div>
+              <div class="m-streak">
+                <div class="ring"><i>12</i></div>
+                <p><b>12 dní v řadě</b>Nejdelší série: 21 dní · tento týden 5/7</p>
+              </div>
+            </div>
+            <div>
+              <div class="m-mini-head">Postup projektů</div>
+              <div style="display:flex; flex-direction:column; gap:8px">
+                <div style="display:flex; align-items:center; gap:8px; font-size:11.5px; color:var(--text2)"><span class="dot" style="width:7px;height:7px;border-radius:2px;background:var(--blue)"></span> Projekty OC <b style="margin-left:auto; color:var(--text); font-weight:700">62 %</b></div>
+                <div style="display:flex; align-items:center; gap:8px; font-size:11.5px; color:var(--text2)"><span class="dot" style="width:7px;height:7px;border-radius:2px;background:var(--purple)"></span> AI Avenier <b style="margin-left:auto; color:var(--text); font-weight:700">55 %</b></div>
+                <div style="display:flex; align-items:center; gap:8px; font-size:11.5px; color:var(--text2)"><span class="dot" style="width:7px;height:7px;border-radius:2px;background:var(--teal)"></span> SEO audit <b style="margin-left:auto; color:var(--text); font-weight:700">90 %</b></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="trust">Postaveno na <b>React 19</b> · <b>Vite</b> · <b>Supabase</b> (PostgreSQL, Auth, Realtime) · AI plánování přes <b>Gemini</b> · vlastní SVG ikony, žádné emoji</div>
+  </div>
+</section>
+
+<!-- PROBLEM -> SOLUTION -->
+<section id="problem">
+  <div class="wrap split">
+    <div>
+      <span class="eyebrow">Proč Zentero vzniklo</span>
+      <h2>Klasické to-do appky vám řeknou, co máte udělat. Ne, na čem záleží.</h2>
+      <p class="lead">Většina nástrojů na úkoly je buď příliš jednoduchá pro reálné projekty, nebo příliš komplikovaná pro běžný den. Zentero hledá střed — dost struktury na projekty, dost rychlosti na denní provoz.</p>
+    </div>
+    <div>
+      <ul class="check-list">
+        <li><span class="ic bad"><span class="ic" data-icon="x"></span></span><div><b>Roztříštěné nástroje</b><small>Úkoly v jedné appce, projekty v druhé, poznámky v třetí — kontext se ztrácí.</small></div></li>
+        <li><span class="ic good"><span class="ic" data-icon="check_circle"></span></span><div><b>Vše na jednom místě v Zentero</b><small>Přehled, úkoly, projekty, kanban, plán, poznámky a tagy propojené v jednom rozhraní.</small></div></li>
+        <li><span class="ic bad"><span class="ic" data-icon="x"></span></span><div><b>Žádný nadhled nad prioritami</b><small>Dlouhý seznam úkolů, ale žádná pomoc s tím, co řešit jako první.</small></div></li>
+        <li><span class="ic good"><span class="ic" data-icon="check_circle"></span></span><div><b>AI, která navrhne, kde začít</b><small>AI asistent navrhne denní plán, vyzdvihne TOP úkoly a doporučí, co odložit.</small></div></li>
+        <li><span class="ic bad"><span class="ic" data-icon="x"></span></span><div><b>Pomalá, přetížená rozhraní plná emoji</b><small>Kliky navíc, pomalé načítání, vizuální šum.</small></div></li>
+        <li><span class="ic good"><span class="ic" data-icon="check_circle"></span></span><div><b>Rychlé, čisté, s vlastní sadou ikon</b><small>Příkazová paleta (⌘K), klávesové zkratky, jednotný SVG vizuální jazyk a přepínání tmavého/světlého režimu.</small></div></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features" style="background:var(--bg2); border-top:1px solid var(--border); border-bottom:1px solid var(--border)">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Co Zentero umí</span>
+      <h2>Vše, co potřebujete na řízení práce — bez zbytečností</h2>
+      <p class="lead">Dvanáct propojených pohledů na vaši práci, od ranního přehledu po dlouhodobý plán a osobní statistiky.</p>
+    </div>
+    <div class="feat-grid">
+      <div class="feat">
+        <div class="ic" style="background:var(--accent); color:#1a130a"><span class="ic" data-icon="home"></span></div>
+        <h4>Přehled dne</h4>
+        <p>Ranní souhrn aktivních úkolů, TOP priorit, postupu projektů, streaku aktivity a posledních poznámek — vše na první pohled, rozdělené podle stavu (po termínu, rozpracováno, čekám, to-do).</p>
+      </div>
+      <div class="feat">
+        <div class="ic" style="background:var(--blue)"><span class="ic" data-icon="check_square"></span></div>
+        <h4>Úkoly s kontextem</h4>
+        <p>Tabulkový i kartový pohled, stavy, priority, termíny, podúkoly a propojení s projekty, tagy a poznámkami — vše na jeden klik z detailního panelu úkolu.</p>
+      </div>
+      <div class="feat">
+        <div class="ic" style="background:var(--purple)"><span class="ic" data-icon="layers"></span></div>
+        <h4>Projekty a Kanban</h4>
+        <p>Každý projekt má vlastní kanban board, vlastní poznámky, postup v procentech a přehled nadcházejících termínů přímo na detailu projektu.</p>
+      </div>
+      <div class="feat">
+        <div class="ic" style="background:var(--green)"><span class="ic" data-icon="calendar"></span></div>
+        <h4>Časový plán</h4>
+        <p>Týdenní a dlouhodobý pohled na to, co se děje napříč projekty — rozvržení úkolů podle termínů, abyste viděli nápor i volné dny dopředu.</p>
+      </div>
+      <div class="feat">
+        <div class="ic" style="background:var(--amber)"><span class="ic" data-icon="file_text"></span></div>
+        <h4>Poznámky se šablonami</h4>
+        <p>Markdown editor s 11 šablonami — zápis ze schůzky, brief, retrospektiva, decision log a další — plus poznámky navázané na konkrétní projekty.</p>
+      </div>
+      <div class="feat">
+        <div class="ic" style="background:var(--pink)"><span class="ic" data-icon="sparkles"></span></div>
+        <h4>AI asistence <span class="tag-new">Ve vývoji</span></h4>
+        <p>Návrh denního plánu, generování projektů z briefu a doporučení, na čem pracovat dál — AI se dívá na vaše termíny a priority a pomáhá se rozhodnout.</p>
+      </div>
+      <div class="feat">
+        <div class="ic" style="background:var(--teal)"><span class="ic" data-icon="tag"></span></div>
+        <h4>Tagy napříč workspacem</h4>
+        <p>Vlastní štítky pro rychlé filtrování a organizaci úkolů podle kontextu, ne jen podle projektu — ideální pro opakující se typy práce.</p>
+      </div>
+      <div class="feat">
+        <div class="ic" style="background:var(--text3)"><span class="ic" data-icon="zap"></span></div>
+        <h4>Příkazová paleta a zkratky</h4>
+        <p>Okamžité hledání a akce z klávesnice (⌘K) — nový úkol, přechod na projekt, otevření poznámky — bez sahání po myši.</p>
+      </div>
+      <div class="feat">
+        <div class="ic" style="background:var(--red)"><span class="ic" data-icon="bell"></span></div>
+        <h4>Notifikace a připomínky</h4>
+        <p>Panel oznámení s návrhy AI, upozorněními na termíny, sériemi a komentáři — plus e-mailové souhrny, ať vám nic neproklouzne mezi prsty.</p>
+      </div>
+      <div class="feat">
+        <div class="ic" style="background:var(--accent2,#e2933a)"><span class="ic" data-icon="flame"></span></div>
+        <h4>Streak a aktivita</h4>
+        <p>Heatmapa denní aktivity a počítadlo série — sledujte, jak dlouho se vám daří udržet pravidelnost, podobně jako v Duolingu nebo na GitHubu.</p>
+      </div>
+      <div class="feat">
+        <div class="ic" style="background:var(--blue)"><span class="ic" data-icon="user"></span></div>
+        <h4>Profil a statistiky</h4>
+        <p>Osobní přehled výkonu — dokončené úkoly, aktivní projekty, délka série a další metriky vašeho pracovního rytmu na jednom místě.</p>
+      </div>
+      <div class="feat">
+        <div class="ic" style="background:var(--purple)"><span class="ic" data-icon="moon"></span></div>
+        <h4>Tmavý a světlý režim</h4>
+        <p>Přepínání motivu jedním klikem, jednotná sada vlastních SVG ikon (žádné emoji) a detailně doladěné rozhraní v obou variantách.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SHOWCASE -->
+<section id="showcase">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Nahlédněte dovnitř</span>
+      <h2>Jak appka vypadá v jednotlivých pohledech</h2>
+      <p class="lead">Vyberte si pohled a přečtěte si, co v něm najdete — nebo si rovnou proklikejte plně interaktivní demo.</p>
+    </div>
+    <div class="showcase" id="showcase-app">
+      <div class="sc-tabs" id="scTabs">
+        <button class="sc-tab on" data-pane="prehled">
+          <span class="ic" data-icon="home"></span>
+          <span><b>Přehled</b><span>Denní souhrn, AI návrhy a streak</span></span>
+        </button>
+        <button class="sc-tab" data-pane="ukoly">
+          <span class="ic" data-icon="check_square"></span>
+          <span><b>Úkoly</b><span>Tabulka, karty, filtry a detail úkolu</span></span>
+        </button>
+        <button class="sc-tab" data-pane="projekty">
+          <span class="ic" data-icon="layers"></span>
+          <span><b>Projekty a Kanban</b><span>Boardy, postup, poznámky k projektu</span></span>
+        </button>
+        <button class="sc-tab" data-pane="plan">
+          <span class="ic" data-icon="calendar"></span>
+          <span><b>Plán</b><span>Časová osa napříč projekty</span></span>
+        </button>
+        <button class="sc-tab" data-pane="poznamky">
+          <span class="ic" data-icon="file_text"></span>
+          <span><b>Poznámky a tagy</b><span>Markdown, šablony, štítky</span></span>
+        </button>
+      </div>
+      <div class="sc-panes">
+        <div class="sc-pane on" data-pane="prehled">
+          <h3>Přehled — váš den na jednom panelu</h3>
+          <p>Hned po přihlášení vidíte, co je důležité. Statistiky aktivních a dokončených úkolů, AI návrhy na to, čím začít, a tři sloupce s prací rozdělenou podle stavu.</p>
+          <ul class="sc-list">
+            <li><span class="ic" data-icon="check_circle"></span> Úkoly seskupené do <b>Po termínu / Rozpracováno / Čekám / To-do</b> s rychlým přepínáním stavu přímo z karty.</li>
+            <li><span class="ic" data-icon="check_circle"></span> Donut graf <b>„Stav úkolů“</b> a postup jednotlivých projektů na jeden pohled.</li>
+            <li><span class="ic" data-icon="check_circle"></span> <b>Streak panel</b> s heatmapou aktivity, aktuální i nejdelší sérií dní.</li>
+            <li><span class="ic" data-icon="check_circle"></span> Mini kalendář a poslední poznámky přímo v bočním panelu.</li>
+          </ul>
+        </div>
+        <div class="sc-pane" data-pane="ukoly">
+          <h3>Úkoly — kontext, ne jen seznam</h3>
+          <p>Každý úkol nese nejen termín a prioritu, ale i projekt, tagy, poznámky a podúkoly. Detailní panel se otevírá z jakéhokoli pohledu jedním klikem.</p>
+          <ul class="sc-list">
+            <li><span class="ic" data-icon="check_circle"></span> Přepínání mezi <b>tabulkovým a kartovým</b> zobrazením, řazení a filtrování podle stavu, priority i projektu.</li>
+            <li><span class="ic" data-icon="check_circle"></span> Inline přepínače stavu (<span class="mono" style="font-size:12px">TODO · DOING · WAIT · DONE</span>) bez nutnosti otevírat detail.</li>
+            <li><span class="ic" data-icon="check_circle"></span> <b>Podúkoly s ukazatelem postupu</b> a AI panel s doporučeními k danému úkolu.</li>
+            <li><span class="ic" data-icon="check_circle"></span> Označení <b>TOP úkolů dne</b> hvězdičkou pro rychlou orientaci v prioritách.</li>
+          </ul>
+        </div>
+        <div class="sc-pane" data-pane="projekty">
+          <h3>Projekty a Kanban — práce ve velkém</h3>
+          <p>Projekty mají vlastní detail s kanban boardem, procentem postupu a přehledem nadcházejících termínů — ideální pro souhrnné řízení větších iniciativ.</p>
+          <ul class="sc-list">
+            <li><span class="ic" data-icon="check_circle"></span> Mřížka projektů s barevným rozlišením, počtem úkolů a stavem (aktivní, dokončeno, urgentní).</li>
+            <li><span class="ic" data-icon="check_circle"></span> Plně přetahovatelný <b>kanban board</b> se sloupci podle stavu úkolu.</li>
+            <li><span class="ic" data-icon="check_circle"></span> Vlastní <b>poznámky a postup v procentech</b> přímo na detailu projektu.</li>
+            <li><span class="ic" data-icon="check_circle"></span> Boční panel s rychlým přehledem aktivních projektů a jejich barev.</li>
+          </ul>
+        </div>
+        <div class="sc-pane" data-pane="plan">
+          <h3>Plán — čas napříč projekty</h3>
+          <p>Týdenní a dlouhodobý pohled na to, kdy co vychází — abyste viděli nápor i volné dny dřív, než nastanou.</p>
+          <ul class="sc-list">
+            <li><span class="ic" data-icon="check_circle"></span> Mřížkový pohled na nadcházející dny s úkoly rozřazenými podle termínu a projektu.</li>
+            <li><span class="ic" data-icon="check_circle"></span> Barevné odlišení projektů pro rychlou orientaci v hustotě práce.</li>
+            <li><span class="ic" data-icon="check_circle"></span> Propojení s detailem úkolu — klik na položku otevře plný kontext.</li>
+          </ul>
+        </div>
+        <div class="sc-pane" data-pane="poznamky">
+          <h3>Poznámky a tagy — vše propojené</h3>
+          <p>Markdown editor s knihovnou šablon a univerzální systém štítků, který funguje napříč úkoly, projekty i poznámkami.</p>
+          <ul class="sc-list">
+            <li><span class="ic" data-icon="check_circle"></span> <b>11 šablon</b> — zápis ze schůzky, brief, retrospektiva, decision log a další.</li>
+            <li><span class="ic" data-icon="check_circle"></span> Poznámky navázané na konkrétní projekt nebo volně stojící v knihovně.</li>
+            <li><span class="ic" data-icon="check_circle"></span> <b>Tagy</b> jako průřezový filtr nezávislý na projektové struktuře.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MANUAL CTA -->
+<section style="padding-top:0">
+  <div class="wrap">
+    <div class="manual-band">
+      <div>
+        <h3><span class="ic"><span class="ic" data-icon="file_text"></span></span> Potřebujete provést appkou krok za krokem?</h3>
+        <p>Sepsali jsme podrobný manuál — od prvního přihlášení po klávesové zkratky, AI asistenci a nastavení vzhledu. Najdete v něm vysvětlení každého pohledu appky i tipy, jak ji využít naplno.</p>
+      </div>
+      <a class="btn btn-primary btn-lg" href="manual.html"><span class="ic" data-icon="file_text"></span> Otevřít manuál appky</a>
+    </div>
+  </div>
+</section>
+
+<!-- DEMO -->
+<section id="demo">
+  <div class="wrap">
+    <div class="demo-block">
+      <div>
+        <span class="eyebrow">Bez registrace</span>
+        <h2>Vyzkoušejte Zentero hned — žádný účet, žádné čekání</h2>
+        <p>Připravili jsme interaktivní prototyp s reálně vypadajícími daty — přehled, projekty, úkoly, kanban board, časový plán i poznámky. Proklikejte si appku přesně tak, jak by vypadala ve vašem dni.</p>
+        <a class="btn btn-primary btn-lg" href="demo.html"><span class="ic" data-icon="zap"></span> Spustit interaktivní demo</a>
+      </div>
+      <div class="demo-card">
+        <div class="row"><span class="dot" style="background:var(--accent)"></span> <b>Zentero — rebrand &amp; launch</b><span class="pct">62 %</span></div>
+        <div class="row"><span class="dot" style="background:var(--blue)"></span> <b>Mobilní redesign</b><span class="pct">38 %</span></div>
+        <div class="row"><span class="dot" style="background:var(--purple)"></span> <b>AI denní plánovač</b><span class="pct">81 %</span></div>
+        <div class="row"><span class="dot" style="background:var(--green)"></span> <b>Q3 marketingová kampaň</b><span class="pct">12 %</span></div>
+        <div class="row"><span class="dot" style="background:var(--red)"></span> <b>Refaktor AppContext</b><span class="pct">24 %</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TECH / TRANSPARENCY -->
+<section id="tech" style="background:var(--bg2); border-top:1px solid var(--border); border-bottom:1px solid var(--border)">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Otevřeně o technologii</span>
+      <h2>Postaveno na moderním, transparentním základu</h2>
+      <p class="lead">Zentero je osobní projekt ve vývoji — stavěný na ověřených technologiích a vyvíjený na veřejnosti.</p>
+    </div>
+    <div class="tech-grid">
+      <div class="tech-item"><div class="ic"><span class="ic" data-icon="zap"></span></div><b>React 19 + Vite</b><span>Rychlé, moderní rozhraní</span></div>
+      <div class="tech-item"><div class="ic"><span class="ic" data-icon="archive"></span></div><b>Supabase</b><span>PostgreSQL, Auth, Realtime</span></div>
+      <div class="tech-item"><div class="ic"><span class="ic" data-icon="sparkles"></span></div><b>AI plánování</b><span>Generování projektů a denních plánů</span></div>
+      <div class="tech-item"><div class="ic"><span class="ic" data-icon="bell"></span></div><b>E-mailové souhrny</b><span>Denní a týdenní přehledy</span></div>
+    </div>
+    <p style="text-align:center; margin-top:26px; font-size:13px; color:var(--text3)">
+      Zajímá vás vývoj appky? Kód je k nahlédnutí na
+      <a href="https://github.com/biofrost-mz/michal-tasks" target="_blank" rel="noopener" style="color:var(--accent); font-weight:600">GitHubu →</a>
+    </p>
+  </div>
+</section>
+
+<!-- ROADMAP -->
+<section id="roadmap">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Co se chystá</span>
+      <h2>Zentero se rychle vyvíjí</h2>
+      <p class="lead">Appka je živý projekt — tady je výhled na nejbližší kroky.</p>
+    </div>
+    <div class="roadmap">
+      <div class="rm-item">
+        <div><div class="when">Červen 2026</div></div>
+        <div>
+          <h4>Rebrand na Zentero a vlastní doména</h4>
+          <p>Appka se přesouvá z tasks.zichmichal.cz na zentero.cz pod novou značkou.</p>
+          <span class="rm-status" style="background:rgba(91,157,255,.15);color:var(--blue)">Probíhá</span>
+        </div>
+      </div>
+      <div class="rm-item">
+        <div><div class="when">Q3 2026</div></div>
+        <div>
+          <h4>AI denní plánovač</h4>
+          <p>AI asistent navrhne denní plán, upozorní na přetížené dny a doporučí, co odložit.</p>
+          <span class="rm-status" style="background:rgba(179,135,245,.15);color:var(--purple)">Ve vývoji</span>
+        </div>
+      </div>
+      <div class="rm-item">
+        <div><div class="when">Q3 2026</div></div>
+        <div>
+          <h4>Mobilní redesign</h4>
+          <p>Spodní navigace, vysouvací panely zespodu a větší dotykové cíle pro pohodlné ovládání na mobilu.</p>
+          <span class="rm-status" style="background:var(--accentBg);color:var(--accent)">Plánováno</span>
+        </div>
+      </div>
+      <div class="rm-item">
+        <div><div class="when">Později</div></div>
+        <div>
+          <h4>Sdílené workspacy a týmová spolupráce</h4>
+          <p>Možnost sdílet projekty a plánovat společně s dalšími lidmi.</p>
+          <span class="rm-status" style="background:var(--cardH);color:var(--text3)">Nápad</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<section style="background:var(--bg2); border-top:1px solid var(--border)">
+  <div class="wrap cta-final">
+    <span class="eyebrow">Vyzkoušejte Zentero</span>
+    <h2>Připraveni vidět appku v akci?</h2>
+    <p class="lead" style="margin:0 auto 28px">Proklikejte si interaktivní demo s ukázkovými daty, projděte si manuál appky, nebo rovnou otevřete ostrou verzi.</p>
+    <div class="hero-ctas" style="margin-bottom:0">
+      <a class="btn btn-primary btn-lg" href="demo.html"><span class="ic" data-icon="zap"></span> Spustit demo</a>
+      <a class="btn btn-ghost btn-lg" href="manual.html"><span class="ic" data-icon="file_text"></span> Otevřít manuál</a>
+      <a class="btn btn-ghost btn-lg" href="https://tasks.zichmichal.cz" target="_blank" rel="noopener"><span class="ic" data-icon="external"></span> Otevřít appku</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot-row">
+    <div style="display:flex;align-items:center;gap:9px"><span class="brand"><span class="mark" style="width:28px;height:28px;font-size:13px;border-radius:8px">Z</span> Zentero</span><span>· osobní projekt Michala Zicha</span></div>
+    <div class="foot-links">
+      <a href="https://github.com/biofrost-mz/michal-tasks" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://tasks.zichmichal.cz" target="_blank" rel="noopener">Appka (tasks.zichmichal.cz)</a>
+      <a href="demo.html">Interaktivní demo</a>
+      <a href="manual.html">Manuál appky</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+// ---- SVG icon system (no emojis) ----
+const ICONS = {
+  home:'<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h5v-6h4v6h5V9.5"/>',
+  zap:'<path d="M13 2 4 14h6l-1 8 9-12h-6z"/>',
+  folder:'<path d="M3 6.5a1.5 1.5 0 0 1 1.5-1.5h4l2 2.5h8a1.5 1.5 0 0 1 1.5 1.5v9A1.5 1.5 0 0 1 18.5 19.5h-14A1.5 1.5 0 0 1 3 18z"/>',
+  check_square:'<rect x="3.5" y="3.5" width="17" height="17" rx="2.5"/><path d="m8 12 2.5 2.5L16 9"/>',
+  calendar:'<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M8 3v4M16 3v4M3.5 10h17"/>',
+  tag:'<path d="M11.5 3.5h6.5a1.5 1.5 0 0 1 1.5 1.5v6.5a1.5 1.5 0 0 1-.44 1.06l-8 8a1.5 1.5 0 0 1-2.12 0l-6.5-6.5a1.5 1.5 0 0 1 0-2.12l8-8A1.5 1.5 0 0 1 11.5 3.5Z"/><circle cx="15.5" cy="8.5" r="1.4"/>',
+  file_text:'<path d="M7 3.5h7l4 4v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1v-16a1 1 0 0 1 1-1Z"/><path d="M14 3.5V8h4M9 12.5h6M9 15.5h6M9 9.5h2"/>',
+  sparkles:'<path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/><circle cx="12" cy="12" r="3"/>',
+  bell:'<path d="M7 9a5 5 0 0 1 10 0c0 5 2 6 2 6H5s2-1 2-6Z"/><path d="M10.5 19a1.6 1.6 0 0 0 3 0"/>',
+  x:'<path d="M6 6l12 12M18 6 6 18"/>',
+  check_circle:'<circle cx="12" cy="12" r="8.2"/><path d="m8.2 12.3 2.6 2.6 5-5.4"/>',
+  star:'<path d="m12 4 2.5 5.4 5.9.7-4.3 4.1 1.1 5.8L12 17l-5.2 3 1.1-5.8L3.6 10.1l5.9-.7z"/>',
+  layers:'<path d="m12 3 8.5 4.5L12 12 3.5 7.5z"/><path d="m3.5 12 8.5 4.5L20.5 12M3.5 16.5 12 21l8.5-4.5"/>',
+  user:'<circle cx="12" cy="8.5" r="3.6"/><path d="M5 20a7 7 0 0 1 14 0"/>',
+  external:'<path d="M9.5 6H6a1.5 1.5 0 0 0-1.5 1.5v10A1.5 1.5 0 0 0 6 19h10a1.5 1.5 0 0 0 1.5-1.5V14M14 5h5v5M19 5l-8.5 8.5"/>',
+  sun:'<circle cx="12" cy="12" r="4.2"/><path d="M12 3v2.2M12 18.8V21M5 5l1.6 1.6M17.4 17.4 19 19M3 12h2.2M18.8 12H21M5 19l1.6-1.6M17.4 6.6 19 5"/>',
+  moon:'<path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10Z"/>',
+  flame:'<path d="M12 2.5s-5.5 5-5.5 10a5.5 5.5 0 0 0 11 0c0-1.6-.7-2.7-1.4-3.7.2 1.4-.5 2.4-1.3 2.7.6-2.4-.6-5-2.8-9z"/>',
+  archive:'<rect x="3.5" y="4.5" width="17" height="4.5" rx="1.4"/><path d="M5 9v9.5a1.4 1.4 0 0 0 1.4 1.4h11.2A1.4 1.4 0 0 0 19 18.5V9"/><path d="M10 13h4"/>',
+};
+function svgIcon(name){
+  const body = ICONS[name];
+  if(!body) return '';
+  return `<svg class="svgicon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
+}
+function paintIcons(root){
+  (root||document).querySelectorAll('[data-icon]').forEach(el=>{
+    if(el.dataset.iconDone) return;
+    const name = el.getAttribute('data-icon');
+    const html = svgIcon(name);
+    if(html){ el.innerHTML = html; el.dataset.iconDone = '1'; }
+  });
+}
+paintIcons();
+
+// ---- Theme toggle (persists via localStorage) ----
+const root = document.documentElement;
+let saved = null;
+try{ saved = localStorage.getItem('zentero-theme'); }catch(e){}
+if(saved){ root.setAttribute('data-theme', saved); }
+function syncThemeButtons(){
+  const cur = root.getAttribute('data-theme') || 'dark';
+  document.querySelectorAll('#themeToggle [data-theme-btn]').forEach(b=>{
+    b.classList.toggle('on', b.dataset.themeBtn === cur);
+  });
+}
+syncThemeButtons();
+document.querySelectorAll('#themeToggle [data-theme-btn]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const mode = btn.dataset.themeBtn;
+    root.setAttribute('data-theme', mode);
+    try{ localStorage.setItem('zentero-theme', mode); }catch(e){}
+    syncThemeButtons();
+  });
+});
+
+// ---- Showcase tabs ----
+const scTabs = document.getElementById('scTabs');
+if(scTabs){
+  scTabs.querySelectorAll('.sc-tab').forEach(tab=>{
+    tab.addEventListener('click', ()=>{
+      scTabs.querySelectorAll('.sc-tab').forEach(t=>t.classList.remove('on'));
+      tab.classList.add('on');
+      const key = tab.dataset.pane;
+      document.querySelectorAll('.sc-pane').forEach(p=>p.classList.toggle('on', p.dataset.pane===key));
+    });
+  });
+}
+</script>
+
+</body>
+</html>

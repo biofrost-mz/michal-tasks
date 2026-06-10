@@ -10,6 +10,7 @@ import React, {
 import { supabase } from "../supabase.js";
 import theme from "../theme.js";
 import { uuid4, parseYMD, useDebouncedEffect, setGlobalProjects } from "../utils.js";
+import { runOptimisticMutation } from "../utils/optimistic.js";
 import * as taskService from "../services/taskService.js";
 import * as noteService from "../services/noteService.js";
 import * as projectService from "../services/projectService.js";
@@ -534,16 +535,17 @@ export function AppProvider({ children }) {
       updatedAt: Date.now(),
       color: color,
     };
-    setProjects((prev) => [...prev, proj]);
-    (async () => {
-      if (!userId) return;
-      try {
-        await projectService.insertProject({ ...proj, description: fullDesc }, userId, activeWorkspaceId);
-      } catch {
-        setProjects((prev) => prev.filter((x) => x.id !== proj.id));
-        reportError("Projekt se nepodařilo uložit");
-      }
-    })();
+    if (!userId) {
+      setProjects((prev) => [...prev, proj]);
+      return proj;
+    }
+    runOptimisticMutation({
+      apply: () => setProjects((prev) => [...prev, proj]),
+      persist: () => projectService.insertProject({ ...proj, description: fullDesc }, userId, activeWorkspaceId),
+      rollback: () => setProjects((prev) => prev.filter((x) => x.id !== proj.id)),
+      onError: reportError,
+      errorMessage: "Projekt se nepodařilo uložit",
+    });
     return proj;
   }, [userId, activeWorkspaceId, reportError]);
 
@@ -555,19 +557,19 @@ export function AppProvider({ children }) {
     const fullDesc = nextColor ? `${nextDesc} [color:${nextColor}]`.trim() : nextDesc;
 
     setProjects((p) => p.map((x) => (x.id === id ? { ...x, ...u, updatedAt: Date.now() } : x)));
-    (async () => {
-      const payload = {};
-      if (u.name !== undefined) payload.name = u.name;
-      if (u.description !== undefined || u.color !== undefined) payload.description = fullDesc;
-      if (u.status !== undefined) payload.status = u.status;
-      if (!Object.keys(payload).length) return;
-      try {
-        await projectService.updateProjectDB(id, payload);
-      } catch {
-        if (prevProject) setProjects((p) => p.map((x) => x.id === id ? prevProject : x));
-        reportError("Projekt se nepodařilo aktualizovat");
-      }
-    })();
+
+    const payload = {};
+    if (u.name !== undefined) payload.name = u.name;
+    if (u.description !== undefined || u.color !== undefined) payload.description = fullDesc;
+    if (u.status !== undefined) payload.status = u.status;
+    if (!Object.keys(payload).length) return;
+
+    runOptimisticMutation({
+      persist: () => projectService.updateProjectDB(id, payload),
+      rollback: () => { if (prevProject) setProjects((p) => p.map((x) => x.id === id ? prevProject : x)); },
+      onError: reportError,
+      errorMessage: "Projekt se nepodařilo aktualizovat",
+    });
   }, [projects, reportError]);
 
   const deleteProject = useCallback(
@@ -576,18 +578,20 @@ export function AppProvider({ children }) {
       if (!target) return;
       const updated = { ...target, status: "deleted", updatedAt: Date.now() };
 
-      setProjects((p) => p.filter((x) => x.id !== id));
-      setDeletedProjects((prev) => [...prev, updated]);
-
-      (async () => {
-        try {
-          await projectService.updateProjectDB(id, { status: "deleted", updated_at: new Date().toISOString() });
-        } catch {
+      runOptimisticMutation({
+        apply: () => {
+          setProjects((p) => p.filter((x) => x.id !== id));
+          setDeletedProjects((prev) => [...prev, updated]);
+        },
+        persist: () =>
+          projectService.updateProjectDB(id, { status: "deleted", updated_at: new Date().toISOString() }),
+        rollback: () => {
           setProjects((p) => [...p, target]);
           setDeletedProjects((prev) => prev.filter((x) => x.id !== id));
-          reportError("Projekt se nepodařilo přesunout do koše");
-        }
-      })();
+        },
+        onError: reportError,
+        errorMessage: "Projekt se nepodařilo přesunout do koše",
+      });
       if (selProject === id) {
         setPage("projects");
         setSelProject(null);
@@ -648,20 +652,23 @@ export function AppProvider({ children }) {
       remindAt: task?.remindAt ?? null,
       assigneeUserId: task?.assigneeUserId ?? null,
     };
-    setTasks((p) => [...p, tsk]);
     if (tsk.title) toast("Úkol vytvořen", "success");
-    (async () => {
-      if (!userId) return;
-      try {
+    if (!userId) {
+      setTasks((p) => [...p, tsk]);
+      return tsk;
+    }
+    runOptimisticMutation({
+      apply: () => setTasks((p) => [...p, tsk]),
+      persist: async () => {
         await taskService.insertTask(tsk, userId, activeWorkspaceId);
         if (tsk.tagIds?.length) {
           await taskService.insertTaskTags(tsk.id, tsk.tagIds, userId);
         }
-      } catch {
-        setTasks((p) => p.filter((t) => t.id !== tsk.id));
-        reportError("Úkol se nepodařilo uložit");
-      }
-    })();
+      },
+      rollback: () => setTasks((p) => p.filter((t) => t.id !== tsk.id)),
+      onError: reportError,
+      errorMessage: "Úkol se nepodařilo uložit",
+    });
     return tsk;
   }, [userId, activeWorkspaceId, reportError, toast]);
 
@@ -731,13 +738,15 @@ export function AppProvider({ children }) {
           payload.completed_at = nextTask.status === "done" ? new Date().toISOString() : null;
         }
         if (Object.keys(payload).length) {
-          try {
-            await taskService.updateTaskDB(id, payload);
-          } catch {
-            setTasks((p) => p.map((x) => x.id === id ? prevTask : x));
-            reportError("Úkol se nepodařilo aktualizovat");
-            return;
-          }
+          // Optimistický update už proběhl výše (setTasks(nextTask)); tady jen
+          // perzistujeme a při chybě vrátíme zpět + přerušíme (recurrence/tag-sync se nespustí).
+          const res = await runOptimisticMutation({
+            persist: () => taskService.updateTaskDB(id, payload),
+            rollback: () => setTasks((p) => p.map((x) => x.id === id ? prevTask : x)),
+            onError: reportError,
+            errorMessage: "Úkol se nepodařilo aktualizovat",
+          });
+          if (!res.ok) return;
         }
 
         const VALID_RECURRENCE = ["daily", "weekly", "monthly"];
@@ -785,27 +794,27 @@ export function AppProvider({ children }) {
               assigneeUserId: nextTask.assigneeUserId ?? null,
               remindAt: null,
             };
-            setTasks((p) => [...p, newTask]);
-            (async () => {
-              try {
+            runOptimisticMutation({
+              apply: () => setTasks((p) => [...p, newTask]),
+              persist: async () => {
                 await taskService.insertTask(newTask, userId, activeWorkspaceId);
                 if (newTask.tagIds?.length) {
                   await taskService.insertTaskTags(newTask.id, newTask.tagIds, userId);
                 }
-              } catch {
-                setTasks((p) => p.filter((t) => t.id !== newTask.id));
-              }
-            })();
+              },
+              rollback: () => setTasks((p) => p.filter((t) => t.id !== newTask.id)),
+              // bez onError — selhání rekurentní kopie je tiché jako v původním kódu
+            });
           }
         }
 
         if (u.tagIds !== undefined) {
-          try {
-            await taskService.syncTaskTags(id, prevTask?.tagIds || [], nextTask.tagIds || [], userId);
-          } catch {
-            // Tag sync failure is non-critical, don't rollback the whole task update
-            reportError("Tagy se nepodařilo synchronizovat");
-          }
+          // Tag sync je nekritický — žádný rollback celého updatu, jen hlášení.
+          await runOptimisticMutation({
+            persist: () => taskService.syncTaskTags(id, prevTask?.tagIds || [], nextTask.tagIds || [], userId),
+            onError: reportError,
+            errorMessage: "Tagy se nepodařilo synchronizovat",
+          });
         }
       })();
     },
@@ -818,20 +827,23 @@ export function AppProvider({ children }) {
       if (!target) return;
       const updated = { ...target, status: "deleted", updatedAt: Date.now() };
 
-      setTasks((p) => p.filter((x) => x.id !== id));
-      setDeletedTasks((prev) => [...prev, updated]);
       if (taskDetail === id) setTaskDetail(null);
       toast("Úkol byl přesunut do koše", "success");
 
-      (async () => {
-        try {
-          await taskService.updateTaskDB(id, { status: "deleted", updated_at: new Date().toISOString() });
-        } catch {
+      runOptimisticMutation({
+        apply: () => {
+          setTasks((p) => p.filter((x) => x.id !== id));
+          setDeletedTasks((prev) => [...prev, updated]);
+        },
+        persist: () =>
+          taskService.updateTaskDB(id, { status: "deleted", updated_at: new Date().toISOString() }),
+        rollback: () => {
           setTasks((p) => [...p, target]);
           setDeletedTasks((prev) => prev.filter((x) => x.id !== id));
-          reportError("Úkol se nepodařilo přesunout do koše");
-        }
-      })();
+        },
+        onError: reportError,
+        errorMessage: "Úkol se nepodařilo přesunout do koše",
+      });
     },
     [taskDetail, reportError, toast]
   );
@@ -839,50 +851,50 @@ export function AppProvider({ children }) {
   // CRUD — Tags
   const addTag = useCallback((tag) => {
     const tg = { id: uuid4(), name: (tag?.name || "").trim() || "tag", color: tag?.color || "#6366f1" };
-    setTags((p) => [...p, tg]);
-    (async () => {
-      if (!userId) return;
-      try {
-        await tagService.insertTag(tg, userId, activeWorkspaceId);
-      } catch {
-        setTags((p) => p.filter((x) => x.id !== tg.id));
-        reportError("Tag se nepodařilo uložit");
-      }
-    })();
+    if (!userId) {
+      setTags((p) => [...p, tg]);
+      return tg;
+    }
+    runOptimisticMutation({
+      apply: () => setTags((p) => [...p, tg]),
+      persist: () => tagService.insertTag(tg, userId, activeWorkspaceId),
+      rollback: () => setTags((p) => p.filter((x) => x.id !== tg.id)),
+      onError: reportError,
+      errorMessage: "Tag se nepodařilo uložit",
+    });
     return tg;
   }, [userId, activeWorkspaceId, reportError]);
 
   const updateTag = useCallback((id, u) => {
     const prevTag = tags.find((x) => x.id === id) ?? null;
     setTags((p) => p.map((x) => (x.id === id ? { ...x, ...u } : x)));
-    (async () => {
-      const payload = {};
-      if (u.name !== undefined) payload.name = u.name;
-      if (u.color !== undefined) payload.color = u.color;
-      if (!Object.keys(payload).length) return;
-      try {
-        await tagService.updateTagDB(id, payload);
-      } catch {
-        if (prevTag) setTags((p) => p.map((x) => x.id === id ? prevTag : x));
-        reportError("Tag se nepodařilo aktualizovat");
-      }
-    })();
+
+    const payload = {};
+    if (u.name !== undefined) payload.name = u.name;
+    if (u.color !== undefined) payload.color = u.color;
+    if (!Object.keys(payload).length) return;
+
+    runOptimisticMutation({
+      persist: () => tagService.updateTagDB(id, payload),
+      rollback: () => { if (prevTag) setTags((p) => p.map((x) => x.id === id ? prevTag : x)); },
+      onError: reportError,
+      errorMessage: "Tag se nepodařilo aktualizovat",
+    });
   }, [tags, reportError]);
 
   const deleteTag = useCallback((id) => {
     const prevTags = tags;
     const prevTasks = tasks;
-    setTags((p) => p.filter((x) => x.id !== id));
-    setTasks((p) => p.map((x) => ({ ...x, tagIds: (x.tagIds || []).filter((tid) => tid !== id) })));
-    (async () => {
-      try {
-        await tagService.deleteTagDB(id);
-      } catch {
-        setTags(prevTags);
-        setTasks(prevTasks);
-        reportError("Tag se nepodařilo smazat");
-      }
-    })();
+    runOptimisticMutation({
+      apply: () => {
+        setTags((p) => p.filter((x) => x.id !== id));
+        setTasks((p) => p.map((x) => ({ ...x, tagIds: (x.tagIds || []).filter((tid) => tid !== id) })));
+      },
+      persist: () => tagService.deleteTagDB(id),
+      rollback: () => { setTags(prevTags); setTasks(prevTasks); },
+      onError: reportError,
+      errorMessage: "Tag se nepodařilo smazat",
+    });
   }, [tags, tasks, reportError]);
 
   // CRUD — Notes
@@ -903,16 +915,17 @@ export function AppProvider({ children }) {
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
-    setNotes((prev) => [note, ...prev]);
-    (async () => {
-      if (!userId) return;
-      try {
-        await noteService.insertNote(note, userId, activeWorkspaceId);
-      } catch {
-        setNotes((prev) => prev.filter((n) => n.id !== note.id));
-        reportError("Poznámka se nepodařilo uložit");
-      }
-    })();
+    if (!userId) {
+      setNotes((prev) => [note, ...prev]);
+      return note;
+    }
+    runOptimisticMutation({
+      apply: () => setNotes((prev) => [note, ...prev]),
+      persist: () => noteService.insertNote(note, userId, activeWorkspaceId),
+      rollback: () => setNotes((prev) => prev.filter((n) => n.id !== note.id)),
+      onError: reportError,
+      errorMessage: "Poznámka se nepodařilo uložit",
+    });
     return note;
   }, [userId, activeWorkspaceId, reportError]);
 
@@ -921,26 +934,25 @@ export function AppProvider({ children }) {
     setNotes((prev) =>
       prev.map((n) => (n.id !== id ? n : { ...n, ...u, updatedAt: Date.now() }))
     );
-    (async () => {
-      const payload = { updated_at: new Date().toISOString() };
-      if (u.title !== undefined) payload.title = u.title;
-      if (u.content !== undefined) payload.content = u.content;
-      if (u.primaryProjectId !== undefined) payload.primary_project_id = u.primaryProjectId;
-      if (u.primaryTaskId !== undefined) payload.primary_task_id = u.primaryTaskId;
-      if (u.extraProjectIds !== undefined) payload.extra_project_ids = u.extraProjectIds?.length ? u.extraProjectIds : null;
-      if (u.extraTaskIds !== undefined) payload.extra_task_ids = u.extraTaskIds?.length ? u.extraTaskIds : null;
-      if (u.pinned !== undefined) payload.pinned = u.pinned;
-      if (u.status !== undefined) payload.status = u.status;
-      if (u.icon !== undefined) payload.icon = u.icon || null;
-      if (u.archived !== undefined) payload.archived = u.archived;
-      if (u.tags !== undefined) payload.tags = u.tags?.length ? u.tags : null;
-      try {
-        await noteService.updateNoteDB(id, payload);
-      } catch {
-        if (prevNote) setNotes((prev) => prev.map((n) => n.id === id ? prevNote : n));
-        reportError("Poznámka se nepodařilo aktualizovat");
-      }
-    })();
+    const payload = { updated_at: new Date().toISOString() };
+    if (u.title !== undefined) payload.title = u.title;
+    if (u.content !== undefined) payload.content = u.content;
+    if (u.primaryProjectId !== undefined) payload.primary_project_id = u.primaryProjectId;
+    if (u.primaryTaskId !== undefined) payload.primary_task_id = u.primaryTaskId;
+    if (u.extraProjectIds !== undefined) payload.extra_project_ids = u.extraProjectIds?.length ? u.extraProjectIds : null;
+    if (u.extraTaskIds !== undefined) payload.extra_task_ids = u.extraTaskIds?.length ? u.extraTaskIds : null;
+    if (u.pinned !== undefined) payload.pinned = u.pinned;
+    if (u.status !== undefined) payload.status = u.status;
+    if (u.icon !== undefined) payload.icon = u.icon || null;
+    if (u.archived !== undefined) payload.archived = u.archived;
+    if (u.tags !== undefined) payload.tags = u.tags?.length ? u.tags : null;
+
+    runOptimisticMutation({
+      persist: () => noteService.updateNoteDB(id, payload),
+      rollback: () => { if (prevNote) setNotes((prev) => prev.map((n) => n.id === id ? prevNote : n)); },
+      onError: reportError,
+      errorMessage: "Poznámka se nepodařilo aktualizovat",
+    });
   }, [notes, reportError]);
 
   const deleteNote = useCallback((id) => {
@@ -948,18 +960,20 @@ export function AppProvider({ children }) {
     if (!target) return;
     const updated = { ...target, status: "deleted", updatedAt: Date.now() };
 
-    setNotes((prev) => prev.filter((n) => n.id !== id));
-    setDeletedNotes((prev) => [...prev, updated]);
-
-    (async () => {
-      try {
-        await noteService.updateNoteDB(id, { status: "deleted", updated_at: new Date().toISOString() });
-      } catch {
+    runOptimisticMutation({
+      apply: () => {
+        setNotes((prev) => prev.filter((n) => n.id !== id));
+        setDeletedNotes((prev) => [...prev, updated]);
+      },
+      persist: () =>
+        noteService.updateNoteDB(id, { status: "deleted", updated_at: new Date().toISOString() }),
+      rollback: () => {
         setNotes((prev) => [...prev, target]);
         setDeletedNotes((prev) => prev.filter((x) => x.id !== id));
-        reportError("Poznámka se nepodařilo přesunout do koše");
-      }
-    })();
+      },
+      onError: reportError,
+      errorMessage: "Poznámka se nepodařilo přesunout do koše",
+    });
   }, [notes, reportError]);
 
   const restoreProject = useCallback((id) => {
@@ -967,18 +981,20 @@ export function AppProvider({ children }) {
     if (!target) return;
     const restored = { ...target, status: "active", updatedAt: Date.now() };
 
-    setDeletedProjects((prev) => prev.filter((x) => x.id !== id));
-    setProjects((prev) => [...prev, restored]);
-
-    (async () => {
-      try {
-        await projectService.updateProjectDB(id, { status: "active", updated_at: new Date().toISOString() });
-      } catch {
+    runOptimisticMutation({
+      apply: () => {
+        setDeletedProjects((prev) => prev.filter((x) => x.id !== id));
+        setProjects((prev) => [...prev, restored]);
+      },
+      persist: () =>
+        projectService.updateProjectDB(id, { status: "active", updated_at: new Date().toISOString() }),
+      rollback: () => {
         setDeletedProjects((prev) => [...prev, target]);
         setProjects((prev) => prev.filter((x) => x.id !== id));
-        reportError("Projekt se nepodařilo obnovit");
-      }
-    })();
+      },
+      onError: reportError,
+      errorMessage: "Projekt se nepodařilo obnovit",
+    });
   }, [deletedProjects, reportError]);
 
   const restoreTask = useCallback((id) => {
@@ -986,18 +1002,20 @@ export function AppProvider({ children }) {
     if (!target) return;
     const restored = { ...target, status: "todo", updatedAt: Date.now() };
 
-    setDeletedTasks((prev) => prev.filter((x) => x.id !== id));
-    setTasks((prev) => [...prev, restored]);
-
-    (async () => {
-      try {
-        await taskService.updateTaskDB(id, { status: "todo", updated_at: new Date().toISOString() });
-      } catch {
+    runOptimisticMutation({
+      apply: () => {
+        setDeletedTasks((prev) => prev.filter((x) => x.id !== id));
+        setTasks((prev) => [...prev, restored]);
+      },
+      persist: () =>
+        taskService.updateTaskDB(id, { status: "todo", updated_at: new Date().toISOString() }),
+      rollback: () => {
         setDeletedTasks((prev) => [...prev, target]);
         setTasks((prev) => prev.filter((x) => x.id !== id));
-        reportError("Úkol se nepodařilo obnovit");
-      }
-    })();
+      },
+      onError: reportError,
+      errorMessage: "Úkol se nepodařilo obnovit",
+    });
   }, [deletedTasks, reportError]);
 
   const restoreNote = useCallback((id) => {
@@ -1005,60 +1023,53 @@ export function AppProvider({ children }) {
     if (!target) return;
     const restored = { ...target, status: "draft", updatedAt: Date.now() };
 
-    setDeletedNotes((prev) => prev.filter((x) => x.id !== id));
-    setNotes((prev) => [restored, ...prev]);
-
-    (async () => {
-      try {
-        await noteService.updateNoteDB(id, { status: "draft", updated_at: new Date().toISOString() });
-      } catch {
+    runOptimisticMutation({
+      apply: () => {
+        setDeletedNotes((prev) => prev.filter((x) => x.id !== id));
+        setNotes((prev) => [restored, ...prev]);
+      },
+      persist: () =>
+        noteService.updateNoteDB(id, { status: "draft", updated_at: new Date().toISOString() }),
+      rollback: () => {
         setDeletedNotes((prev) => [...prev, target]);
         setNotes((prev) => prev.filter((x) => x.id !== id));
-        reportError("Poznámka se nepodařilo obnovit");
-      }
-    })();
+      },
+      onError: reportError,
+      errorMessage: "Poznámka se nepodařilo obnovit",
+    });
   }, [deletedNotes, reportError]);
 
   const hardDeleteProject = useCallback((id) => {
     const target = deletedProjects.find((x) => x.id === id);
-    setDeletedProjects((prev) => prev.filter((x) => x.id !== id));
-
-    (async () => {
-      try {
-        await projectService.deleteProjectDB(id);
-      } catch {
-        if (target) setDeletedProjects((prev) => [...prev, target]);
-        reportError("Projekt se nepodařilo permanentně smazat");
-      }
-    })();
+    runOptimisticMutation({
+      apply: () => setDeletedProjects((prev) => prev.filter((x) => x.id !== id)),
+      persist: () => projectService.deleteProjectDB(id),
+      rollback: () => { if (target) setDeletedProjects((prev) => [...prev, target]); },
+      onError: reportError,
+      errorMessage: "Projekt se nepodařilo permanentně smazat",
+    });
   }, [deletedProjects, reportError]);
 
   const hardDeleteTask = useCallback((id) => {
     const target = deletedTasks.find((x) => x.id === id);
-    setDeletedTasks((prev) => prev.filter((x) => x.id !== id));
-
-    (async () => {
-      try {
-        await taskService.deleteTaskDB(id);
-      } catch {
-        if (target) setDeletedTasks((prev) => [...prev, target]);
-        reportError("Úkol se nepodařilo permanentně smazat");
-      }
-    })();
+    runOptimisticMutation({
+      apply: () => setDeletedTasks((prev) => prev.filter((x) => x.id !== id)),
+      persist: () => taskService.deleteTaskDB(id),
+      rollback: () => { if (target) setDeletedTasks((prev) => [...prev, target]); },
+      onError: reportError,
+      errorMessage: "Úkol se nepodařilo permanentně smazat",
+    });
   }, [deletedTasks, reportError]);
 
   const hardDeleteNote = useCallback((id) => {
     const target = deletedNotes.find((x) => x.id === id);
-    setDeletedNotes((prev) => prev.filter((x) => x.id !== id));
-
-    (async () => {
-      try {
-        await noteService.deleteNoteDB(id);
-      } catch {
-        if (target) setDeletedNotes((prev) => [...prev, target]);
-        reportError("Poznámka se nepodařilo permanentně smazat");
-      }
-    })();
+    runOptimisticMutation({
+      apply: () => setDeletedNotes((prev) => prev.filter((x) => x.id !== id)),
+      persist: () => noteService.deleteNoteDB(id),
+      rollback: () => { if (target) setDeletedNotes((prev) => [...prev, target]); },
+      onError: reportError,
+      errorMessage: "Poznámka se nepodařilo permanentně smazat",
+    });
   }, [deletedNotes, reportError]);
 
   const uploadAttachment = useCallback(async (file, { taskId = null, projectId = null, noteId = null } = {}) => {
@@ -1098,90 +1109,83 @@ export function AppProvider({ children }) {
       tags: extras.tags ?? null,
       description: extras.description ?? null,
     };
-    setQuickTodos((prev) => [qt, ...prev]);
     toast("Položka byla přidána", "success");
-    (async () => {
-      if (!userId) return;
-      try {
-        await quickTodoService.insertQuickTodo(qt, userId, activeWorkspaceId);
-      } catch {
-        setQuickTodos((prev) => prev.filter((q) => q.id !== qt.id));
-        reportError("Rychlý úkol se nepodařilo uložit");
-      }
-    })();
+    if (!userId) {
+      setQuickTodos((prev) => [qt, ...prev]);
+      return qt;
+    }
+    runOptimisticMutation({
+      apply: () => setQuickTodos((prev) => [qt, ...prev]),
+      persist: () => quickTodoService.insertQuickTodo(qt, userId, activeWorkspaceId),
+      rollback: () => setQuickTodos((prev) => prev.filter((q) => q.id !== qt.id)),
+      onError: reportError,
+      errorMessage: "Rychlý úkol se nepodařilo uložit",
+    });
     return qt;
   }, [userId, activeWorkspaceId, reportError, toast]);
 
   const archiveQuickTodo = useCallback((id, options = {}) => {
     const prevTodos = quickTodos;
-    setQuickTodos((prev) => prev.map((q) => q.id === id ? { ...q, done: true } : q));
     if (!options.silent) toast("Položka byla dokončena", "success");
-    (async () => {
-      try {
-        await quickTodoService.updateQuickTodoDB(id, { done: true });
-      } catch {
-        setQuickTodos(prevTodos);
-        reportError("Rychlý úkol se nepodařilo archivovat");
-      }
-    })();
+    runOptimisticMutation({
+      apply: () => setQuickTodos((prev) => prev.map((q) => q.id === id ? { ...q, done: true } : q)),
+      persist: () => quickTodoService.updateQuickTodoDB(id, { done: true }),
+      rollback: () => setQuickTodos(prevTodos),
+      onError: reportError,
+      errorMessage: "Rychlý úkol se nepodařilo archivovat",
+    });
   }, [quickTodos, reportError, toast]);
 
   const restoreQuickTodo = useCallback((id) => {
     const prevTodos = quickTodos;
-    setQuickTodos((prev) => prev.map((q) => q.id === id ? { ...q, done: false } : q));
     toast("Položka byla obnovena", "success");
-    (async () => {
-      try {
-        await quickTodoService.updateQuickTodoDB(id, { done: false });
-      } catch {
-        setQuickTodos(prevTodos);
-        reportError("Rychlý úkol se nepodařilo obnovit");
-      }
-    })();
+    runOptimisticMutation({
+      apply: () => setQuickTodos((prev) => prev.map((q) => q.id === id ? { ...q, done: false } : q)),
+      persist: () => quickTodoService.updateQuickTodoDB(id, { done: false }),
+      rollback: () => setQuickTodos(prevTodos),
+      onError: reportError,
+      errorMessage: "Rychlý úkol se nepodařilo obnovit",
+    });
   }, [quickTodos, reportError, toast]);
 
   const deleteQuickTodo = useCallback((id) => {
     const prevTodo = quickTodos.find((q) => q.id === id) ?? null;
-    setQuickTodos((prev) => prev.filter((q) => q.id !== id));
     toast("Položka byla smazána", "success");
-    (async () => {
-      try {
-        await quickTodoService.deleteQuickTodoDB(id);
-      } catch {
-        if (prevTodo) setQuickTodos((prev) => [...prev, prevTodo]);
-        reportError("Rychlý úkol se nepodařilo smazat");
-      }
-    })();
+    runOptimisticMutation({
+      apply: () => setQuickTodos((prev) => prev.filter((q) => q.id !== id)),
+      persist: () => quickTodoService.deleteQuickTodoDB(id),
+      rollback: () => { if (prevTodo) setQuickTodos((prev) => [...prev, prevTodo]); },
+      onError: reportError,
+      errorMessage: "Rychlý úkol se nepodařilo smazat",
+    });
   }, [quickTodos, reportError, toast]);
 
   const updateQuickTodo = useCallback((id, payload) => {
     const prevTodos = quickTodos;
-    setQuickTodos((prev) => prev.map((q) => q.id === id ? { ...q, ...payload } : q));
     toast("Změny uloženy", "success");
-    (async () => {
-      try {
-        await quickTodoService.updateQuickTodoDB(id, payload);
-      } catch {
-        setQuickTodos(prevTodos);
-        reportError("Rychlý úkol se nepodařilo aktualizovat");
-      }
-    })();
+    runOptimisticMutation({
+      apply: () => setQuickTodos((prev) => prev.map((q) => q.id === id ? { ...q, ...payload } : q)),
+      persist: () => quickTodoService.updateQuickTodoDB(id, payload),
+      rollback: () => setQuickTodos(prevTodos),
+      onError: reportError,
+      errorMessage: "Rychlý úkol se nepodařilo aktualizovat",
+    });
   }, [quickTodos, reportError, toast]);
 
   const clearArchivedQuickTodos = useCallback(() => {
     const ids = quickTodos.filter((q) => q.done).map((q) => q.id);
     if (!ids.length) return;
     const prevTodos = quickTodos;
-    setQuickTodos((prev) => prev.filter((q) => !q.done));
-    (async () => {
-      try {
+    runOptimisticMutation({
+      apply: () => setQuickTodos((prev) => prev.filter((q) => !q.done)),
+      persist: async () => {
         const { error } = await supabase.from("quick_todos").delete().in("id", ids);
         if (error) throw error;
-      } catch {
-        setQuickTodos(prevTodos);
-        reportError("Archivované úkoly se nepodařilo smazat");
-      }
-    })();
+      },
+      rollback: () => setQuickTodos(prevTodos),
+      onError: reportError,
+      errorMessage: "Archivované úkoly se nepodařilo smazat",
+    });
   }, [quickTodos, reportError]);
 
   const switchWorkspace = useCallback(async (wsId) => {
@@ -1473,6 +1477,11 @@ export function AppProvider({ children }) {
     // Error queue
     errorQueue,
     clearErrors,
+    // Koš — AdminPage čte `trash` + `permanentlyDelete*`; mapujeme na interní deleted*/hardDelete*
+    trash: { tasks: deletedTasks, projects: deletedProjects, notes: deletedNotes },
+    permanentlyDeleteTask: hardDeleteTask,
+    permanentlyDeleteProject: hardDeleteProject,
+    permanentlyDeleteNote: hardDeleteNote,
   };
 
   return (
