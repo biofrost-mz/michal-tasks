@@ -308,16 +308,6 @@ export default function AtlasSidebar({ collapsed, setCollapsed }) {
             <div className="sb-foot-sub">v2 · {dk ? "tmavý" : "světlý"}</div>
           </div>
         </button>
-        {!collapsed && (
-          <div
-            className={`sb-foot-toggle ${dk ? "active" : ""}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              setDk(!dk);
-            }}
-            title={dk ? "Přepnout na světlý režim" : "Přepnout na tmavý režim"}
-          />
-        )}
 
         {userOpen && !collapsed ? (
           <div style={{ position: "absolute", bottom: "calc(100% + 6px)", left: 6, right: 6, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r)", padding: 6, zIndex: 30 }}>

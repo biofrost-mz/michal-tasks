@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, {useMemo, useState} from "react";
 import { useApp } from "../../context/AppContext.jsx";
 import Icon from "../../components/Icon.jsx";
 import NotificationBell from "../../components/NotificationBell.jsx";
@@ -17,7 +17,9 @@ const PAGE_LABELS = {
 };
 
 export default function AtlasTopBar() {
-  const { page, projects, selProject, setCmdOpen, setPage } = useApp();
+  const { page, projects, selProject, setCmdOpen, setPage, dk, setDk, displayName} = useApp();
+  const initials = ((displayName || "??").slice(0, 2)).toUpperCase();
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   const crumbs = useMemo(() => {
     if (page === "project-detail") {
@@ -85,6 +87,40 @@ export default function AtlasTopBar() {
           Nový úkol
         </button>
         <NotificationBell variant="atlas" />
+          {/* Theme toggle */}
+          <button
+            className="tb-bell"
+            onClick={() => setDk(!dk)}
+            title={dk ? "Přepnout na světlý režim" : "Přepnout na tmavý režim"}
+          >
+            <Icon name={dk ? "sun" : "moon"} size={15} color="currentColor" strokeWidth={1.75} />
+          </button>
+          {/* Klávesové zkratky */}
+          <button
+            className="tb-bell"
+            onClick={() => window.dispatchEvent(new CustomEvent("openShortcuts"))}
+            title="Klávesové zkratky (?)"
+          >
+            <span style={{ fontSize: 14, fontWeight: 700, fontFamily: "var(--mono)" }}>?</span>
+          </button>
+          {/* User chip */}
+          <div style={{ position: "relative" }}>
+            <button
+              className="tb-user"
+              onClick={() => setUserMenuOpen(v => !v)}
+              title={displayName}
+            >
+              <div className="tb-user-av">{initials}</div>
+              <span className="tb-user-name">{displayName}</span>
+            </button>
+            {userMenuOpen && (
+              <div className="tb-user-menu" onClick={() => setUserMenuOpen(false)}>
+                <button onClick={() => { setPage("user-profile"); setUserMenuOpen(false); }}>
+                  Nastavení účtu
+                </button>
+              </div>
+            )}
+          </div>
       </div>
     </div>
   );

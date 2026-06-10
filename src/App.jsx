@@ -160,6 +160,13 @@ function AppShell() {
   const { dk, setDk, isMobile, page, setPage, taskDetail, cmdOpen, setCmdOpen, isSystemAdmin, loaded, tasks, setTaskDetail } = useApp();
   const [collapsed, setCollapsed] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+
+  // Otevřít klávesové zkratky přes window event (z TopBaru)
+  React.useEffect(() => {
+    const handler = () => setShortcutsOpen(true);
+    window.addEventListener("openShortcuts", handler);
+    return () => window.removeEventListener("openShortcuts", handler);
+  }, []);
   const gPressedRef = useRef(false);
   const gTimerRef = useRef(null);
 
@@ -359,48 +366,7 @@ function AppShell() {
           )}
 
           {/* Floating help trigger for keyboard shortcuts */}
-          {!isMobile && (
-            <button
-              onClick={() => setShortcutsOpen(true)}
-              style={{
-                position: "fixed",
-                bottom: "24px",
-                right: "24px",
-                width: "38px",
-                height: "38px",
-                borderRadius: "50%",
-                background: "var(--surface)",
-                border: "1px solid var(--border-soft)",
-                boxShadow: "0 6px 20px rgba(0,0,0,0.18)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "var(--text-2)",
-                cursor: "pointer",
-                zIndex: 9999,
-                transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
-                backdropFilter: "blur(12px)",
-                WebkitBackdropFilter: "blur(12px)",
-              }}
-              className="shortcut-trigger"
-              title="Klávesové zkratky (?)"
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "scale(1.1) translateY(-2px)";
-                e.currentTarget.style.color = "var(--accent)";
-                e.currentTarget.style.borderColor = "var(--accent)";
-                e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.25)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "scale(1) translateY(0)";
-                e.currentTarget.style.color = "var(--text-2)";
-                e.currentTarget.style.borderColor = "var(--border-soft)";
-                e.currentTarget.style.boxShadow = "0 6px 20px rgba(0,0,0,0.18)";
-              }}
-            >
-              <span style={{ fontSize: "16px", fontWeight: "700", fontFamily: "var(--font-ui)" }}>?</span>
-            </button>
-          )}
-        </div>
+                  </div>
         {isMobile && <MobileFAB />}
         {isMobile && <MobileNav toggleDk={() => setDk(!dk)} />}
       </div>

@@ -1038,6 +1038,7 @@ export default function DashboardPage() {
                 padding: "8px 12px",
                 background: "rgba(255, 255, 255, 0.03)",
                 backdropFilter: "blur(8px)",
+    minHeight: 56,
                 borderRadius: 8,
                 border: "1px solid rgba(255, 255, 255, 0.08)",
                 fontSize: 12,

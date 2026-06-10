@@ -947,7 +947,7 @@ function NotePropertiesPanel({ note, onClose, t, isMobile, onExportMD, projects,
 
   const panelStyle = isMobile
     ? { position:"fixed", left:0, right:0, bottom:0, top:"12vh", zIndex:300, background:t.bg2, overflowY:"auto", borderTop:`1px solid ${t.border}`, borderRadius:"18px 18px 0 0", boxShadow:"0 -24px 70px rgba(0,0,0,.45)" }
-    : { width:310, minWidth:310, borderLeft:`1px solid ${t.border}`, background:t.bg2, overflowY:"auto", flexShrink:0 };
+    : { position:"fixed", right:0, top:44, bottom:0, width:310, zIndex:100, borderLeft:`1px solid ${t.border}`, background:t.bg2, overflowY:"auto", boxShadow:"-4px 0 24px rgba(0,0,0,.18)" };
 
   const filteredTasks = tasks.filter(tk =>
     !taskSearch || (tk.title || "").toLowerCase().includes(taskSearch.toLowerCase())
@@ -1537,8 +1537,7 @@ function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects, view = "e
               <Icon name="file-text" size={16} color={t.accent} strokeWidth={2} />
             <div style={{ minWidth:0 }}>
               <span style={{ display:"block", fontSize:15, fontWeight:850, fontFamily:"var(--font-ui)", letterSpacing:"-.3px" }}>Poznámky</span>
-              <span style={{ display:"block", color:t.text3, fontSize:11.5, marginTop:1 }}>Workspace pro obsah, nápady a rozhodnutí</span>
-            </div>
+</div>
             <span style={{ fontSize:11, color:t.text3, background:"rgba(255,255,255,.07)", padding:"1px 7px", borderRadius:99, fontWeight:700 }}>{activeCount}</span>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:8 }}>
@@ -1559,7 +1558,7 @@ function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects, view = "e
           </div>
         </div>
         <div style={{ position:"relative" }}>
-          <Icon name="search" size={13} color={t.text3} strokeWidth={2} style={{ position:"absolute", left:9, top:"50%", transform:"translateY(-50%)", pointerEvents:"none" }} />
+          <span style={{ position:"absolute", left:9, top:"50%", transform:"translateY(-50%)", pointerEvents:"none", display:"flex" }}><Icon name="search" size={13} color={t.text3} strokeWidth={2} /></span>
           <input
             value={search} onChange={e=>setSearch(e.target.value)}
             placeholder="Hledat poznámku, štítek, projekt…"
