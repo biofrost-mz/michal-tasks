@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { APP_RELEASE_DATE, APP_VERSION } from "../../appMeta.js";
 import { supabase } from "../../supabase.js";
 import { getErrorLogs } from "../../utils/errorLogger.js";
 import { useToast } from "../Toast.jsx";
@@ -40,6 +41,20 @@ async function withTimeout(promise, timeoutMs, label) {
   } finally {
     window.clearTimeout(timeoutId);
   }
+}
+
+async function clearCacheStorage() {
+  if (!("caches" in window)) return 0;
+  const keys = await window.caches.keys();
+  await Promise.all(keys.map((key) => window.caches.delete(key)));
+  return keys.length;
+}
+
+async function unregisterServiceWorkers() {
+  if (!("serviceWorker" in navigator)) return 0;
+  const registrations = await navigator.serviceWorker.getRegistrations();
+  await Promise.all(registrations.map((registration) => registration.unregister()));
+  return registrations.length;
 }
 
 function HealthRow({ title, value, status = "idle", detail }) {
@@ -84,11 +99,13 @@ export default function SystemHealthPanel() {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [testingAi, setTestingAi] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const [lastCheckedAt, setLastCheckedAt] = useState(null);
   const [health, setHealth] = useState({
     db: { status: "idle", latency: null, detail: "Databáze zatím nebyla otestována." },
     ai: { status: "idle", latency: null, detail: "AI test se spouští ručně, aby zbytečně nečerpal limit modelů." },
     pwa: { status: "idle", value: "—", detail: "Service Worker zatím nebyl zkontrolován." },
+    appVersion: { status: "ok", value: APP_VERSION, detail: `Release ${APP_RELEASE_DATE}. Build režim: ${import.meta.env.MODE}.` },
     remoteErrors24h: { status: "idle", value: 0, detail: "Produkční chyby za posledních 24 hodin." },
     remoteErrors7d: { status: "idle", value: 0, detail: "Produkční chyby za posledních 7 dní." },
     localErrors: { status: "idle", value: 0, detail: "Lokální chyby zachycené v tomto prohlížeči." },
@@ -102,7 +119,12 @@ export default function SystemHealthPanel() {
     try {
       const registrations = await navigator.serviceWorker.getRegistrations();
       if (!registrations.length) return { status: "warning", value: "Neaktivní", detail: "Service Worker není registrovaný." };
-      return { status: "ok", value: `${registrations.length} registrací`, detail: "PWA Service Worker je aktivní." };
+      const waiting = registrations.some((registration) => registration.waiting);
+      return {
+        status: waiting ? "warning" : "ok",
+        value: `${registrations.length} registrací`,
+        detail: waiting ? "Service Worker čeká na aktivaci nové verze." : "PWA Service Worker je aktivní.",
+      };
     } catch (error) {
       return { status: "error", value: "Chyba", detail: error.message };
     }
@@ -172,6 +194,7 @@ export default function SystemHealthPanel() {
         db: dbResult,
         pwa: pwaResult,
         ...remoteCounts,
+        appVersion: { status: "ok", value: APP_VERSION, detail: `Release ${APP_RELEASE_DATE}. Build režim: ${import.meta.env.MODE}.` },
         localErrors: {
           status: localErrors === 0 ? "ok" : localErrors <= 5 ? "warning" : "error",
           value: localErrors,
@@ -211,14 +234,19 @@ export default function SystemHealthPanel() {
       if (!data?.result) throw new Error("AI služba nevrátila výsledek.");
 
       const latency = Math.round(performance.now() - start);
+      const meta = data?.meta;
+      const sourceLabel = meta?.source
+        ? ` Zdroj: ${meta.source}${meta.model ? ` (${meta.model})` : ""}.`
+        : "";
+
       setHealth((current) => ({
         ...current,
         ai: {
           status: latency < 8000 ? "ok" : "warning",
           latency,
           detail: latency < 8000
-            ? "AI Edge Function odpověděla. Výsledek může v nouzi pocházet z lokálního fallbacku."
-            : "AI odpověděla, ale pomaleji. Může jít o přetížení modelu.",
+            ? `AI Edge Function odpověděla.${sourceLabel || " Výsledek může v nouzi pocházet z lokálního fallbacku."}`
+            : `AI odpověděla, ale pomaleji. Může jít o přetížení modelu.${sourceLabel}`,
         },
       }));
       toast("AI test proběhl úspěšně", "success");
@@ -230,6 +258,33 @@ export default function SystemHealthPanel() {
       toast("AI test selhal: " + error.message, "error");
     } finally {
       setTestingAi(false);
+    }
+  };
+
+  const resetCacheAndReload = async ({ safeMode = false } = {}) => {
+    const label = safeMode ? "Nouzový reload" : "Vyčištění cache";
+    const confirmed = window.confirm(
+      safeMode
+        ? "Spustit nouzový reload? Odregistruje Service Worker, vymaže Cache Storage a načte aktuální verzi. Úkolů ani dat v Supabase se to nedotkne."
+        : "Vyčistit PWA cache a načíst aktuální verzi aplikace? Úkolů ani dat v Supabase se to nedotkne."
+    );
+    if (!confirmed) return;
+
+    setResetting(true);
+    try {
+      const [cacheCount, swCount] = await Promise.all([
+        clearCacheStorage(),
+        unregisterServiceWorkers(),
+      ]);
+      toast(`${label}: odstraněno ${cacheCount} cache a ${swCount} service worker registrací. Načítám novou verzi…`, "success");
+      window.setTimeout(() => {
+        window.location.reload();
+      }, safeMode ? 350 : 650);
+    } catch (error) {
+      console.warn("Cache reset failed:", error);
+      toast(`${label} selhal: ${error.message}`, "error");
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -252,8 +307,8 @@ export default function SystemHealthPanel() {
       right: 20,
       top: 86,
       zIndex: 10050,
-      width: open ? "min(720px, calc(100vw - 32px))" : "auto",
-      maxHeight: "min(740px, calc(100vh - 120px))",
+      width: open ? "min(760px, calc(100vw - 32px))" : "auto",
+      maxHeight: "min(760px, calc(100vh - 120px))",
       fontFamily: "var(--font-ui)",
     }}>
       {!open ? (
@@ -308,21 +363,28 @@ export default function SystemHealthPanel() {
             </button>
           </div>
 
-          <div style={{ padding: "12px 18px", borderBottom: "1px solid var(--border-soft)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+          <div style={{ padding: "12px 18px", borderBottom: "1px solid var(--border-soft)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             <div style={{ color: "var(--text-3)", fontSize: 11.5, fontFamily: "var(--mono)" }}>
               {lastCheckedAt ? `Poslední kontrola: ${formatDateTime(lastCheckedAt)}` : "Kontrola zatím neproběhla"}
             </div>
-            <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
               <button type="button" onClick={() => runHealthCheck()} disabled={loading} style={smallButtonStyle}>
                 {loading ? "Kontroluji…" : "Obnovit"}
               </button>
               <button type="button" onClick={testAi} disabled={testingAi} style={{ ...smallButtonStyle, color: "var(--accent)", background: "var(--accent-soft)" }}>
                 {testingAi ? "Testuji AI…" : "Testovat AI"}
               </button>
+              <button type="button" onClick={() => resetCacheAndReload()} disabled={resetting} style={smallButtonStyle}>
+                {resetting ? "Čistím…" : "Vyčistit cache"}
+              </button>
+              <button type="button" onClick={() => resetCacheAndReload({ safeMode: true })} disabled={resetting} style={{ ...smallButtonStyle, color: "var(--orange)", background: "var(--orange-soft)" }}>
+                Safe reload
+              </button>
             </div>
           </div>
 
           <div style={{ padding: 14, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 10, maxHeight: "calc(100vh - 260px)", overflowY: "auto" }}>
+            <HealthRow title="Verze aplikace" value={health.appVersion.value} status={health.appVersion.status} detail={health.appVersion.detail} />
             <HealthRow title="Supabase DB" value={health.db.latency !== null ? `${health.db.latency} ms` : "—"} status={health.db.status} detail={health.db.detail} />
             <HealthRow title="AI Edge Function" value={health.ai.latency !== null ? `${health.ai.latency} ms` : "ruční test"} status={health.ai.status} detail={health.ai.detail} />
             <HealthRow title="Produkční chyby 24 h" value={String(health.remoteErrors24h.value)} status={health.remoteErrors24h.status} detail={health.remoteErrors24h.detail} />
