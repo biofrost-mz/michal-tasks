@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { AI_CONSOLE_ACTIONS, runAiConsoleAction } from "../../services/aiService.js";
+import { clearAiHistory, getAiHistory } from "../../services/aiHistoryService.js";
 import { getAiErrorMessage } from "../../utils/aiErrors.js";
 import { useApp } from "../../context/AppContext.jsx";
 import { useToast } from "../Toast.jsx";
@@ -16,8 +17,23 @@ function stringify(value) {
   }
 }
 
-function StatusPill({ meta, error }) {
-  if (error) return <span style={pillStyle("var(--red)", "var(--red-soft)")}>error</span>;
+function formatDateTime(value) {
+  if (!value) return "—";
+  try {
+    return new Date(value).toLocaleString("cs-CZ", {
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return String(value);
+  }
+}
+
+function StatusPill({ meta, error, status }) {
+  if (error || status === "error") return <span style={pillStyle("var(--red)", "var(--red-soft)")}>error</span>;
+  if (status === "warning") return <span style={pillStyle("var(--orange)", "var(--orange-soft)")}>warning</span>;
   if (!meta) return <span style={pillStyle("var(--text-3)", "var(--bg-2)")}>bez meta</span>;
   const color = meta.source === "primary" ? "var(--green)" : meta.source === "secondary" ? "var(--orange)" : "var(--red)";
   const bg = meta.source === "primary" ? "var(--green-soft)" : meta.source === "secondary" ? "var(--orange-soft)" : "var(--red-soft)";
@@ -47,6 +63,13 @@ export default function AiTestConsolePanel({ embedded = false }) {
   const [input, setInput] = useState(DEFAULT_INPUT);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
+  const [history, setHistory] = useState(() => getAiHistory());
+
+  useEffect(() => {
+    const refresh = () => setHistory(getAiHistory());
+    window.addEventListener("zentero:ai_history_updated", refresh);
+    return () => window.removeEventListener("zentero:ai_history_updated", refresh);
+  }, []);
 
   const selectedAction = useMemo(
     () => AI_CONSOLE_ACTIONS.find((action) => action.id === actionId) || AI_CONSOLE_ACTIONS[0],
@@ -80,6 +103,12 @@ export default function AiTestConsolePanel({ embedded = false }) {
     }
   };
 
+  const handleClearHistory = () => {
+    clearAiHistory();
+    setHistory([]);
+    toast("AI historie byla vymazána", "success");
+  };
+
   const panelContent = (
     <div style={{
       borderRadius: embedded ? "var(--r-lg)" : 18,
@@ -98,7 +127,7 @@ export default function AiTestConsolePanel({ embedded = false }) {
             {result && <StatusPill meta={result.meta} error={result.error || result.data?.error} />}
           </div>
           <p style={{ margin: "5px 0 0", color: "var(--text-3)", fontSize: 12.5 }}>
-            Otestuj Edge Function, raw odpověď, parsovaný výsledek a meta.source bez vytváření reálných dat.
+            Otestuj Edge Function, raw odpověď, parsovaný výsledek, meta.source a historii posledních AI volání.
           </p>
         </div>
         {!embedded && (
@@ -156,6 +185,38 @@ export default function AiTestConsolePanel({ embedded = false }) {
             <ResultBlock title="Raw response" value={result.data} />
           </div>
         )}
+
+        <div style={{ border: "1px solid var(--border-soft)", borderRadius: 12, background: "var(--bg-2)", overflow: "hidden" }}>
+          <div style={{ padding: "10px 12px", borderBottom: "1px solid var(--border-soft)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <div>
+              <div style={{ color: "var(--text)", fontSize: 13, fontWeight: 850 }}>Historie AI volání</div>
+              <div style={{ color: "var(--text-3)", fontSize: 11.5, marginTop: 2 }}>Posledních {history.length} lokálních záznamů v tomto prohlížeči.</div>
+            </div>
+            <button type="button" onClick={handleClearHistory} disabled={!history.length} style={smallButtonStyle}>Vymazat</button>
+          </div>
+          {!history.length ? (
+            <div style={{ padding: 22, color: "var(--text-3)", fontSize: 12.5, textAlign: "center" }}>Historie je zatím prázdná.</div>
+          ) : (
+            <div style={{ display: "grid", gap: 8, padding: 10, maxHeight: 320, overflowY: "auto" }}>
+              {history.slice(0, 20).map((item) => (
+                <div key={item.id} style={{ padding: "9px 10px", borderRadius: 10, border: "1px solid var(--border-soft)", background: "var(--surface)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ color: "var(--text)", fontSize: 12.5, fontWeight: 850, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.metadata?.label || item.action}</div>
+                      <div style={{ color: "var(--text-3)", fontSize: 11.5, marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.summary || item.error || "—"}</div>
+                    </div>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                      <StatusPill meta={{ source: item.source }} status={item.status} error={item.status === "error"} />
+                      {item.model && <span style={pillStyle("var(--accent)", "var(--accent-soft)")}>{item.model}</span>}
+                      <span style={pillStyle("var(--text-2)", "var(--bg-2)")}>{item.durationMs ?? "—"} ms</span>
+                    </div>
+                  </div>
+                  <div style={{ color: "var(--text-4)", fontFamily: "var(--mono)", fontSize: 10.5, marginTop: 7 }}>{formatDateTime(item.createdAt)} · {item.functionName || "—"}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
