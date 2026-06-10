@@ -1,4 +1,4 @@
-import React, {useMemo, useState} from "react";
+import React, {useMemo} from "react";
 import { useApp } from "../../context/AppContext.jsx";
 import Icon from "../../components/Icon.jsx";
 import NotificationBell from "../../components/NotificationBell.jsx";
@@ -88,6 +88,15 @@ export default function AtlasTopBar() {
           Nový úkol
         </button>
         <NotificationBell variant="atlas" />
+          {/* Sun/moon theme toggle */}
+          <button
+            className="tb-bell"
+            onClick={() => setDk(!dk)}
+            title={dk ? "Přepnout na světlý režim" : "Přepnout na tmavý režim"}
+            aria-label={dk ? "Světlý režim" : "Tmavý režim"}
+          >
+            <Icon name={dk ? "sun" : "moon"} size={16} color="currentColor" strokeWidth={1.75} />
+          </button>
           {/* User chip — přímá navigace na Nastavení */}
           <button
             className="tb-user"

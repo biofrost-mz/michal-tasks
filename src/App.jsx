@@ -316,6 +316,18 @@ function AppShell() {
       <OfflineBanner />
       <AppErrorReporter />
       <AppUpdatePrompt />
+      {/* Floating shortcuts button — vpravo dole */}
+      <button
+        className="shortcuts-fab"
+        onClick={() => window.dispatchEvent(new CustomEvent("openShortcuts"))}
+        title="Klávesové zkratky"
+        aria-label="Klávesové zkratky"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="2" y="5" width="20" height="14" rx="2"/>
+          <path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M8 13h.01M12 13h.01M16 13h.01M6 17h4M14 17h4"/>
+        </svg>
+      </button>
       {page === "admin" && isSystemAdmin && (
         <>
           <ErrorBoundary inline label="Health check">

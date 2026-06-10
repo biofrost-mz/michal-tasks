@@ -175,7 +175,6 @@ export default function AtlasSidebar({ collapsed, setCollapsed }) {
   const confirm = useConfirm();
 
   const [wsOpen, setWsOpen] = useState(false);
-  const [userOpen, setUserOpen] = useState(false);
 
   const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId);
   const me = workspaceMembers.find((m) => m.userId === userId);
@@ -206,11 +205,6 @@ export default function AtlasSidebar({ collapsed, setCollapsed }) {
     } catch (e) {
       toast(e.message || "Nepodařilo se vytvořit workspace", "error");
     }
-  };
-
-  const handleLogout = async () => {
-    if (!(await confirm("Odhlásit se?"))) return;
-    await logout();
   };
 
   const isProjectsActive = page === "projects" || page === "project-detail";
@@ -297,28 +291,6 @@ export default function AtlasSidebar({ collapsed, setCollapsed }) {
             </div>
           );
         })}
-      </div>
-
-      <div className="sb-foot">
-        {/* Apple-style dark/light toggle */}
-        <button
-          className={`sb-dk-toggle${dk ? " active" : ""}`}
-          onClick={() => setDk(!dk)}
-          title={dk ? "Přepnout na světlý režim" : "Přepnout na tmavý režim"}
-          aria-label={dk ? "Přepnout na světlý režim" : "Přepnout na tmavý režim"}
-        />
-        {/* Klávesové zkratky */}
-        <button
-          className="sb-shortcuts-btn"
-          onClick={() => window.dispatchEvent(new CustomEvent("openShortcuts"))}
-          title="Klávesové zkratky"
-          aria-label="Klávesové zkratky"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="2" y="5" width="20" height="14" rx="2"/>
-            <path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M8 13h.01M12 13h.01M16 13h.01M6 17h4M14 17h4"/>
-          </svg>
-        </button>
       </div>
     </aside>
   );

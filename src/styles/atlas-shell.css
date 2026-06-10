@@ -3216,3 +3216,31 @@ body, p, li, td, th {
   background: var(--input);
   color: var(--text-1);
 }
+
+/* ── Floating shortcuts button (FAB) — vpravo dole ─────────── */
+.shortcuts-fab {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 50;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, .15);
+  transition:
+    background var(--dur-fast) var(--ease),
+    color     var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease);
+}
+.shortcuts-fab:hover {
+  background: var(--input);
+  color: var(--text-1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .22);
+}
