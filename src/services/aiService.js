@@ -1,3 +1,5 @@
+import { saveAiHistoryEntry, summarizeAiResult } from "./aiHistoryService.js";
+
 export const AI_CONSOLE_ACTIONS = [
   {
     id: "draft_task",
@@ -127,25 +129,64 @@ export async function runAiConsoleAction(actionId, input, context = {}) {
   const supabase = await getSupabaseClient();
   const { data, error } = await supabase.functions.invoke(action.functionName, { body });
   const durationMs = Math.round(performance.now() - startedAt);
+  const parsedResult = parseResult(data?.result);
 
-  return {
+  const output = {
     action,
     body,
     data,
     error,
     durationMs,
     meta: data?.meta || null,
-    parsedResult: parseResult(data?.result),
+    parsedResult,
     rawResult: data?.result ?? null,
   };
+
+  saveAiHistoryEntry({
+    action: action.id,
+    functionName: action.functionName,
+    status: error || data?.error ? "error" : data?.warning ? "warning" : "success",
+    durationMs,
+    meta: data?.meta || null,
+    summary: summarizeAiResult(parsedResult),
+    error: error?.message || data?.error || data?.warning || null,
+    metadata: {
+      label: action.label,
+      inputPreview: input?.slice(0, 160) || "",
+    },
+  });
+
+  return output;
 }
 
 export async function invokeAiTaskAssist(body) {
   const supabase = await getSupabaseClient();
-  return supabase.functions.invoke("ai-task-assist", { body });
+  const startedAt = performance.now();
+  const response = await supabase.functions.invoke("ai-task-assist", { body });
+  saveAiHistoryEntry({
+    action: body?.action || "ai-task-assist",
+    functionName: "ai-task-assist",
+    status: response.error || response.data?.error ? "error" : "success",
+    durationMs: Math.round(performance.now() - startedAt),
+    meta: response.data?.meta || null,
+    summary: summarizeAiResult(parseResult(response.data?.result)),
+    error: response.error?.message || response.data?.error || null,
+  });
+  return response;
 }
 
 export async function invokeAiProjectPlanner(body) {
   const supabase = await getSupabaseClient();
-  return supabase.functions.invoke("ai-project-planner", { body });
+  const startedAt = performance.now();
+  const response = await supabase.functions.invoke("ai-project-planner", { body });
+  saveAiHistoryEntry({
+    action: "project_planner",
+    functionName: "ai-project-planner",
+    status: response.error || response.data?.error ? "error" : response.data?.warning ? "warning" : "success",
+    durationMs: Math.round(performance.now() - startedAt),
+    meta: response.data?.meta || null,
+    summary: summarizeAiResult(response.data?.result),
+    error: response.error?.message || response.data?.error || response.data?.warning || null,
+  });
+  return response;
 }
