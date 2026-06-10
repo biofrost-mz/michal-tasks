@@ -11,6 +11,7 @@ import AtlasTopBar from "./layout/atlas/AtlasTopBar.jsx";
 import TaskDrawer from "./components/TaskDrawer.jsx";
 import CommandPalette from "./components/CommandPalette.jsx";
 import ShortcutHelper from "./components/ShortcutHelper.jsx";
+import RemoteErrorLogsPanel from "./components/admin/RemoteErrorLogsPanel.jsx";
 import { applyDocumentMetadata } from "./appMeta.js";
 import "./styles/atlas-shell.css";
 
@@ -268,6 +269,11 @@ function AppShell() {
       <OfflineBanner />
       <AppErrorReporter />
       <AppUpdatePrompt />
+      {page === "admin" && isSystemAdmin && (
+        <ErrorBoundary inline label="Produkční chyby">
+          <RemoteErrorLogsPanel />
+        </ErrorBoundary>
+      )}
       <div className={!isMobile ? `app ${collapsed ? "collapsed" : ""}` : undefined} style={isMobile ? { display: "flex", width: "100%", height: "100dvh", minHeight: "100svh", overflow: "hidden" } : undefined}>
         {!isMobile && <AtlasSidebar collapsed={collapsed} setCollapsed={setCollapsed} />}
         <div className={!isMobile ? "main" : undefined} style={isMobile ? { flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden" } : undefined}>
