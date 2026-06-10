@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useRef } from "react";
+import React, { useCallback, useMemo, useState, useEffect, useRef } from "react";
 import { useApp } from "../context/AppContext.jsx";
 import Icon from "../components/Icon.jsx";
 import AIDailyPlan from "../components/AIDailyPlan.jsx";
@@ -6,7 +6,7 @@ import QuickAdd from "../components/QuickAdd.jsx";
 import { formatDate, formatDateKey } from "../locale.js";
 import { parseYMD, projectColor, startOfToday, triggerConfettiBurst } from "../utils.js";
 import { getNamedayInfo } from "../data/czechNamedays.js";
-import { getSunTimes, getGreeting, getDayPhaseIcon } from "../data/sunCalc.js";
+import { getSunTimes, getGreeting } from "../data/sunCalc.js";
 import { fetchWeather } from "../data/weather.js";
 import { useCountUp } from "../hooks/useCountUp.js";
 import {
@@ -72,10 +72,9 @@ function Headline({ userName, overdueCount, activeCount, totalCount, doneWeek, d
   const cw = getWeekNumber(now);
 
   // Dynamic data
-  const { name: namedayName, isHoliday } = getNamedayInfo(now);
+  const { name: namedayName } = getNamedayInfo(now);
   const sunTimes = getSunTimes(now);
   const greeting = getGreeting();
-  const dayPhase = getDayPhaseIcon(now);
 
   // Weather — podle polohy uživatele (s opt-in geolokací), fallback Brno.
   // Open-Meteo funguje i bez API klíče, takže počasí naběhne vždy.
@@ -366,7 +365,6 @@ export default function DashboardPage() {
     projects,
     notes,
     tags,
-    addTask,
     updateTask,
     setTaskDetail,
     openProject,
@@ -388,7 +386,6 @@ export default function DashboardPage() {
   }, [workspaceMembers, userId]);
 
   const [filter, setFilter] = useState("all");
-  const [quickText, setQuickText] = useState("");
   const [showDailyPlan, setShowDailyPlan] = useState(false);
   const [expandedSections, setExpandedSections] = useState({});
   const [hoveredDay, setHoveredDay] = useState(null);
@@ -415,19 +412,20 @@ export default function DashboardPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const [metricsNow] = useState(() => Date.now());
   const today = startOfToday();
-  const weekAgo = useMemo(() => Date.now() - 7 * 86400000, []);
+  const weekAgo = metricsNow - 7 * 86400000;
 
   const projectsById = useMemo(() => new Map(projects.map((p) => [p.id, p])), [projects]);
   const tagsById = useMemo(() => new Map(tags.map((tg) => [tg.id, tg])), [tags]);
 
   const mappedTasks = useMemo(() => tasks.map((t) => mapTaskForAtlas(t, projectsById, tagsById, today)), [tasks, projectsById, tagsById, today]);
 
-  const matchesSearch = (task) => {
+  const matchesSearch = useCallback((task) => {
     if (!search) return true;
     const s = search.toLowerCase();
     return task.title.toLowerCase().includes(s) || task.desc.toLowerCase().includes(s);
-  };
+  }, [search]);
 
   const activeTasks = mappedTasks.filter((t) => t.status !== "done");
   const overdue = activeTasks.filter((t) => t.overdue && matchesSearch(t));
@@ -444,13 +442,13 @@ export default function DashboardPage() {
   // Average weekly done over last 4 weeks (excluding current)
   const doneWeekAvg = useMemo(() => {
     const weeks = [1, 2, 3, 4].map((w) => {
-      const from = Date.now() - (w + 1) * 7 * 86400000;
-      const to = Date.now() - w * 7 * 86400000;
+      const from = metricsNow - (w + 1) * 7 * 86400000;
+      const to = metricsNow - w * 7 * 86400000;
       return tasks.filter((t) => t.status === "done" && t.updatedAt > from && t.updatedAt <= to).length;
     });
     const sum = weeks.reduce((a, b) => a + b, 0);
     return sum / weeks.length;
-  }, [tasks]);
+  }, [tasks, metricsNow]);
 
   // Tasks added today
   const todayStart = today.getTime();
@@ -462,7 +460,7 @@ export default function DashboardPage() {
       .filter(matchesSearch)
       .sort((a, b) => scoreTask(b) - scoreTask(a))
       .slice(0, 4),
-    [activeTasks, search]
+    [activeTasks, matchesSearch]
   );
 
   const counts = {
@@ -523,7 +521,7 @@ export default function DashboardPage() {
     }
 
     return list;
-  }, [activeTasks, filter, sortBy, search, tasks]);
+  }, [activeTasks, filter, sortBy, matchesSearch, tasks]);
 
   const groupedByProject = useMemo(() => {
     const groups = {};
@@ -649,7 +647,7 @@ export default function DashboardPage() {
     return (
       <section className="sec" key={key}>
         <div className="sec-head">
-          <span className={`sec-marker ${marker}`} />
+          <span className={`sec-marker ${marker}`} style={customColor ? { background: customColor } : undefined} />
           <span className={`sec-title ${alert ? "alert" : ""}`}>{title}</span>
           <span className="sec-count">{displayItems.length}</span>
           <span className="sec-sep" />
@@ -670,14 +668,6 @@ export default function DashboardPage() {
         </div>
       </section>
     );
-  };
-
-  const onQuickAdd = (e) => {
-    if (e.key !== "Enter") return;
-    const title = quickText.trim();
-    if (!title) return;
-    addTask({ title });
-    setQuickText("");
   };
 
   const recentNotes = [...notes].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)).slice(0, 4);

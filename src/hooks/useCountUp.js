@@ -5,14 +5,24 @@ export function useCountUp(target, duration = 600, enabled = true) {
   const rafId = useRef(null);
   // Ref so the animation frame closure always reads the latest displayed value
   const valueRef = useRef(value);
-  valueRef.current = value;
 
   useEffect(() => {
-    if (!enabled) { setValue(target); return; }
+    valueRef.current = value;
+  }, [value]);
+
+  useEffect(() => {
+    if (!enabled) {
+      rafId.current = requestAnimationFrame(() => setValue(target));
+      return () => {
+        if (rafId.current) cancelAnimationFrame(rafId.current);
+      };
+    }
 
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      setValue(target);
-      return;
+      rafId.current = requestAnimationFrame(() => setValue(target));
+      return () => {
+        if (rafId.current) cancelAnimationFrame(rafId.current);
+      };
     }
 
     const startValue = valueRef.current;
@@ -34,7 +44,7 @@ export function useCountUp(target, duration = 600, enabled = true) {
       alive = false;
       if (rafId.current) cancelAnimationFrame(rafId.current);
     };
-  }, [target, enabled]);
+  }, [target, duration, enabled]);
 
   return value;
 }

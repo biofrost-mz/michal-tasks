@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useApp } from "../context/AppContext.jsx";
 import { parseYMD, projectColor, startOfToday } from "../utils.js";
 import { formatDate, formatDateKey } from "../locale.js";
@@ -31,7 +31,7 @@ function taskDue(task) {
   return `${d.getDate()}.${d.getMonth() + 1}.`;
 }
 
-function QuickAddPopover({ project, defaultDate, onAdd, onClose }) {
+function QuickAddPopover({ defaultDate, onAdd, onClose }) {
   const [title, setTitle] = useState("");
   const [dueDate, setDueDate] = useState(defaultDate);
   const [priority, setPriority] = useState("");
@@ -851,7 +851,18 @@ export default function TimelinePage() {
 
   const handleSetDaysCount = (val) => {
     setDaysCount(val);
+    setSelectedDayKey(null);
     localStorage.setItem("mt3:timeline_days", val);
+  };
+
+  const shiftRange = (delta) => {
+    setSelectedDayKey(null);
+    setOffsetDays((v) => v + delta);
+  };
+
+  const resetRange = () => {
+    setSelectedDayKey(null);
+    setOffsetDays(0);
   };
 
   const today = startOfToday();
@@ -922,8 +933,6 @@ export default function TimelinePage() {
     [scheduled, todayKey],
   );
 
-  useEffect(() => { setSelectedDayKey(null); }, [daysCount, offsetDays]);
-
   const handleAdd = (projectId, payload) => {
     addTask({
       title: payload.title,
@@ -975,9 +984,9 @@ export default function TimelinePage() {
             </div>
           </div>
           <div style={{ display: "flex", gap: 5, alignSelf: "flex-start", paddingTop: 4 }}>
-            <button className="btn" style={{ padding: "6px 10px", fontSize: 13 }} onClick={() => setOffsetDays((v) => v - daysCount)}>←</button>
-            <button className="btn primary" style={{ padding: "6px 10px", fontSize: 13 }} onClick={() => setOffsetDays(0)}>dnes</button>
-            <button className="btn" style={{ padding: "6px 10px", fontSize: 13 }} onClick={() => setOffsetDays((v) => v + daysCount)}>→</button>
+            <button className="btn" style={{ padding: "6px 10px", fontSize: 13 }} onClick={() => shiftRange(-daysCount)}>←</button>
+            <button className="btn primary" style={{ padding: "6px 10px", fontSize: 13 }} onClick={resetRange}>dnes</button>
+            <button className="btn" style={{ padding: "6px 10px", fontSize: 13 }} onClick={() => shiftRange(daysCount)}>→</button>
           </div>
         </div>
 
@@ -1109,9 +1118,9 @@ export default function TimelinePage() {
             <button className={`sc-btn ${daysCount === 30 ? "active" : ""}`} onClick={() => handleSetDaysCount(30)}>30 dní</button>
           </div>
           <div className="row" style={{ gap: 6 }}>
-            <button className="btn" onClick={() => setOffsetDays((v) => v - daysCount)}>← zpět</button>
-            <button className="btn primary" onClick={() => setOffsetDays(0)}>dnes</button>
-            <button className="btn" onClick={() => setOffsetDays((v) => v + daysCount)}>vpřed →</button>
+            <button className="btn" onClick={() => shiftRange(-daysCount)}>← zpět</button>
+            <button className="btn primary" onClick={resetRange}>dnes</button>
+            <button className="btn" onClick={() => shiftRange(daysCount)}>vpřed →</button>
           </div>
         </div>
       </div>
@@ -1155,7 +1164,6 @@ export default function TimelinePage() {
 
                 {addingFor === row.id ? (
                   <QuickAddPopover
-                    project={row}
                     defaultDate={todayKey}
                     onClose={() => setAddingFor(null)}
                     onAdd={(payload) => handleAdd(row.projectId, payload)}

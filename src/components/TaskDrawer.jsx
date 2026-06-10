@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useApp } from '../context/AppContext.jsx'
 import { useToast } from './Toast.jsx'
 import { useConfirm } from './Confirm.jsx'
@@ -11,11 +11,17 @@ import { formatDate, formatDateTime } from '../locale.js'
 import { projectColor, triggerConfettiBurst } from '../utils.js'
 import { PrioChip } from './atlas/AtlasTaskCard.jsx'
 
+function toLocalDateTimeValue(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+}
+
 /* ─────────────────────────────────────────────
    AssigneeSelector — unchanged production component
 ───────────────────────────────────────────── */
 function AssigneeSelector({ currentAssigneeId, onChange }) {
-  const { t, workspaceMembers } = useApp();
+  const { workspaceMembers } = useApp();
   const [open, setOpen] = useState(false);
 
   const currentMember = workspaceMembers.find((m) => m.userId === currentAssigneeId);
@@ -244,7 +250,7 @@ function SubtaskRow({ subtask, editingId, editText, setEditText, onToggle, onRem
    TaskDrawer — Atlas .overlay + .detail design
 ───────────────────────────────────────────── */
 export default function TaskDrawer() {
-  const { t, tasks, projects, tags, addTag, updateTask, deleteTask, addProject, taskDetail, setTaskDetail, isMobile, workspaceMembers } = useApp();
+  const { tasks, projects, tags, addTag, updateTask, deleteTask, addProject, taskDetail, setTaskDetail, isMobile } = useApp();
   const toast = useToast();
   const confirm = useConfirm();
 
@@ -269,33 +275,15 @@ export default function TaskDrawer() {
 
   const task = tasks.find((x) => x.id === taskDetail) ?? null;
 
-  const quickTags = useMemo(() => {
-    const counts = {};
-    tasks.forEach((t) => {
-      (t.tagIds || []).forEach((tid) => {
-        counts[tid] = (counts[tid] || 0) + 1;
-      });
-    });
-    return tags
-      .map((tg) => ({ ...tg, count: counts[tg.id] || 0 }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 6);
-  }, [tags, tasks]);
-
-  const toLocalDT = (iso) => {
-    if (!iso) return "";
-    const d = new Date(iso);
-    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-  };
-
   useEffect(() => {
     if (!task) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTitle(task.title);
     setDesc(task.description || "");
     setShowNewProject(false);
     setNpName("");
-    setRemindAtDraft(toLocalDT(task?.remindAt));
-  }, [task?.id, task?.title, task?.description, task?.remindAt]);
+    setRemindAtDraft(toLocalDateTimeValue(task?.remindAt));
+  }, [task]);
 
   const onDragStart = useCallback((e) => {
     if (!isMobile) return;

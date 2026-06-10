@@ -329,7 +329,6 @@ function MiniCalendar({ t, tasks, setPage }) {
   const now   = new Date();
   const todayY = now.getFullYear();
   const todayM = now.getMonth();
-  const todayD = now.getDate();
   const todayStr = formatDateKey(now);
 
   const [vy, setVy] = useState(todayY);

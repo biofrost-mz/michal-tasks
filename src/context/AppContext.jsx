@@ -236,6 +236,7 @@ export function AppProvider({ children }) {
   const [session, setSession] = useState(null);
   const userId = session?.user?.id ?? null;
   const userEmail = session?.user?.email ?? null;
+  const userDisplayName = session?.user?.user_metadata?.display_name ?? null;
   const [isSystemAdmin, setIsSystemAdmin] = useState(false);
   const [uiSettings, setUiSettings] = useState(DEFAULT_UI_SETTINGS);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
@@ -356,18 +357,6 @@ export function AppProvider({ children }) {
     })();
   }, []);
 
-  // Sync theme class to document.documentElement
-  // ─────────────────────────────────────────────────────────────
-  // PATCH — AppContext.jsx
-  //
-  // 1) Přidej import tokens.css do src/main.jsx (za './index.css'):
-  //
-  //    import './styles/tokens.css'
-  //
-  // 2) V AppContext.jsx rozšiř useEffect "Sync theme class" (řádky 360–377)
-  //    o nastavení color tokenů. Nahraď celý useEffect tímto:
-  // ─────────────────────────────────────────────────────────────
-
   // Sync theme class + CSS tokens to document.documentElement
   useEffect(() => {
     const root = document.documentElement;
@@ -399,13 +388,6 @@ export function AppProvider({ children }) {
     root.dataset.motion = uiSettings.reducedMotion ? "reduced" : "full";
   }, [dk, uiSettings.accent, uiSettings.density, uiSettings.reducedMotion]);
 
-  // ─────────────────────────────────────────────────────────────
-  // HOTOVO — theme.js zůstává beze změny, t objekt funguje dál.
-  // Nové komponenty mohou používat var(--text-1), var(--space-4)
-  // atd. přímo z CSS bez propů.
-  // ─────────────────────────────────────────────────────────────
-
-
   useEffect(() => {
     if (uiSettings.themeMode !== "system" || typeof window === "undefined") return undefined;
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
@@ -419,21 +401,28 @@ export function AppProvider({ children }) {
   useEffect(() => {
     if (!userId) { setLoaded(true); return; }
 
+    let cancelled = false;
+    const timeout = setTimeout(() => {
+      if (!cancelled) setLoadError("Načítání trvá déle než obvykle. Data se stále načítají.");
+    }, 10_000);
+
     (async () => {
-      const timeout = setTimeout(() => setLoaded(true), 10_000);
       try {
         setLoaded(false);
-        const displayNameFromMeta = session?.user?.user_metadata?.display_name || null;
+        setLoadError(null);
         await supabase.from("user_profiles").upsert(
           {
             id: userId,
-            email: session?.user?.email ?? null,
-            ...(displayNameFromMeta ? { display_name: displayNameFromMeta } : {})
+            email: userEmail,
+            ...(userDisplayName ? { display_name: userDisplayName } : {})
           },
           { onConflict: "id", ignoreDuplicates: false }
         );
+        if (cancelled) return;
         const personalWsId = await workspaceService.ensurePersonalWorkspace(userId);
+        if (cancelled) return;
         const wsList = await workspaceService.fetchWorkspaces(userId);
+        if (cancelled) return;
         setWorkspaces(wsList);
         const savedWsId = localStorage.getItem("lastWorkspaceId");
         const wsId = savedWsId && wsList.find((w) => w.id === savedWsId) ? savedWsId : personalWsId;
@@ -443,6 +432,8 @@ export function AppProvider({ children }) {
         setWorkspaceMembers(normalized);
         await workspaceService.seedIfEmpty(userId, wsId);
         const data = await dbFetchAll(userId, wsId);
+        if (cancelled) return;
+        setLoadError(null);
         const loadedProjects = data.projects || [];
         const loadedTasks = data.tasks || [];
         const loadedNotes = data.notes || [];
@@ -461,33 +452,20 @@ export function AppProvider({ children }) {
         setAttachments(data.attachments ?? []);
         setQuickTodos(data.quickTodos ?? []);
       } catch (e) {
+        if (cancelled) return;
         console.error("load error:", e);
         setLoadError(e?.message || "Nepodařilo se načíst data");
       } finally {
         clearTimeout(timeout);
-        setLoaded(true);
+        if (!cancelled) setLoaded(true);
       }
     })();
-  }, [userId]);
 
-  // Handle invite token from URL on login
-  useEffect(() => {
-    if (!userId || !loaded) return;
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get("invite");
-    if (!token) return;
-    (async () => {
-      try {
-        const wsId = await acceptInvite(token);
-        const wsList = await workspaceService.fetchWorkspaces(userId);
-        setWorkspaces(wsList);
-        await switchWorkspace(wsId);
-        window.history.replaceState({}, "", window.location.pathname);
-      } catch (e) {
-        console.error("invite accept error:", e);
-      }
-    })();
-  }, [userId, loaded]);
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+    };
+  }, [userId, userEmail, userDisplayName]);
 
   // Realtime tasks sync
   useEffect(() => {
@@ -1343,29 +1321,30 @@ export function AppProvider({ children }) {
     });
     if (!rpcError && acceptedWsId) return acceptedWsId;
     const rpcMissing = rpcError?.code === "42883" || rpcError?.code === "PGRST202" || /could not find.*accept_workspace_invite/i.test(rpcError?.message || "");
-    if (rpcError && !rpcMissing) {
-      throw new Error(rpcError.message || "Pozvánka není platná nebo vypršela");
+    if (rpcMissing) {
+      throw new Error("Přijímání pozvánek vyžaduje nasazenou RPC funkci accept_workspace_invite.");
     }
+    throw new Error(rpcError?.message || "Pozvánka není platná nebo vypršela");
+  }, []);
 
-    // Backward-compatible fallback until the accept_workspace_invite RPC is deployed.
-    const { data: invite, error } = await supabase
-      .from("workspace_invites")
-      .select("*")
-      .eq("token", token)
-      .is("accepted_at", null)
-      .is("revoked_at", null)
-      .gt("expires_at", new Date().toISOString())
-      .single();
-    if (error || !invite) throw new Error("Pozvánka není platná nebo vypršela");
-    const { error: memErr } = await supabase.from("workspace_members").insert({
-      workspace_id: invite.workspace_id,
-      user_id: userId,
-      role: invite.role,
-    });
-    if (memErr && memErr.code !== "23505") throw memErr;
-    await supabase.from("workspace_invites").update({ accepted_at: new Date().toISOString() }).eq("id", invite.id);
-    return invite.workspace_id;
-  }, [userId]);
+  // Handle invite token from URL on login
+  useEffect(() => {
+    if (!userId || !loaded) return;
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("invite");
+    if (!token) return;
+    (async () => {
+      try {
+        const wsId = await acceptInvite(token);
+        const wsList = await workspaceService.fetchWorkspaces(userId);
+        setWorkspaces(wsList);
+        await switchWorkspace(wsId);
+        window.history.replaceState({}, "", window.location.pathname);
+      } catch (e) {
+        console.error("invite accept error:", e);
+      }
+    })();
+  }, [userId, loaded, acceptInvite, switchWorkspace]);
 
   const openNote = useCallback((id) => {
     setPage("notes");

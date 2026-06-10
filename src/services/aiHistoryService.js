@@ -1,5 +1,6 @@
 const AI_HISTORY_KEY = "zentero:ai_history";
 const MAX_HISTORY = 80;
+const STORE_INPUT_PREVIEW = import.meta.env.VITE_AI_HISTORY_INPUT_PREVIEW === "true";
 
 function safeJsonParse(value, fallback) {
   try {
@@ -11,6 +12,24 @@ function safeJsonParse(value, fallback) {
 
 function nowIso() {
   return new Date().toISOString();
+}
+
+export function sanitizeAiHistoryMetadata(metadata = {}) {
+  const inputPreview = typeof metadata.inputPreview === "string" ? metadata.inputPreview : "";
+  const sanitized = { ...metadata };
+
+  if ("inputPreview" in sanitized) {
+    delete sanitized.inputPreview;
+  }
+
+  if (inputPreview) {
+    sanitized.inputLength = inputPreview.length;
+    if (STORE_INPUT_PREVIEW) {
+      sanitized.inputPreview = inputPreview.slice(0, 160);
+    }
+  }
+
+  return sanitized;
 }
 
 export function getAiHistory() {
@@ -33,7 +52,7 @@ export function saveAiHistoryEntry(entry) {
     fallback: Boolean(entry.fallback || entry.meta?.fallback),
     summary: entry.summary || "",
     error: entry.error ? String(entry.error).slice(0, 800) : null,
-    metadata: entry.metadata || {},
+    metadata: sanitizeAiHistoryMetadata(entry.metadata || {}),
   };
   const next = [normalized, ...getAiHistory()].slice(0, MAX_HISTORY);
   localStorage.setItem(AI_HISTORY_KEY, JSON.stringify(next));

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useApp } from "../context/AppContext.jsx";
 import { useToast } from "../components/Toast.jsx";
 import Icon from "../components/Icon.jsx";
@@ -155,7 +155,7 @@ export default function AdminPage() {
       .catch((error) => setSwStatus(`Chyba detekce: ${error.message}`));
   }, []);
 
-  const measureLatency = async () => {
+  const measureLatency = useCallback(async () => {
     setPinging(true);
     const start = performance.now();
     try {
@@ -168,11 +168,11 @@ export default function AdminPage() {
     } finally {
       setPinging(false);
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     measureLatency();
-  }, []);
+  }, [measureLatency]);
 
   const taskMetrics = useMemo(() => {
     const active = tasks.filter((task) => task.status !== "done");

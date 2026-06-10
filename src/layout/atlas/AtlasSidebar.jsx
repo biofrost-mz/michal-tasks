@@ -169,7 +169,6 @@ export default function AtlasSidebar({ collapsed, setCollapsed }) {
     logout,
     setSelProject,
     dk,
-    setDk,
   } = useApp();
 
   const toast = useToast();

@@ -32,10 +32,7 @@ jobs:
         run: npm ci
 
       - name: Run lint
-        run: |
-          npm run lint || {
-            echo "::warning::ESLint reported issues in legacy code. CI continues and the production build remains the blocking check."
-          }
+        run: npm run lint
 
       - name: Run tests
         run: npm run test

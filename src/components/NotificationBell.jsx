@@ -5,6 +5,57 @@ import { startOfToday } from '../utils.js'
 import { PRIORITIES } from '../constants.js'
 import { formatDateKey } from '../locale.js'
 
+function ReminderSection({ label, color, items, icon, theme, projects, onOpenTask }) {
+  if (!items.length) return null;
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".06em", color, marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}>
+        <Icon name={icon} size={10} color={color} strokeWidth={2.5} />
+        {label}
+        <span style={{ fontWeight: 500, color: theme.text3, background: theme.input, borderRadius: 6, padding: "0px 5px", fontSize: 12 }}>{items.length}</span>
+      </div>
+      {items.map((task) => {
+        const proj = projects.find((p) => p.id === task.projectId);
+        const pr = task.priority ? PRIORITIES[task.priority] : null;
+        return (
+          <div
+            key={task.id}
+            onClick={() => onOpenTask(task.id)}
+            style={{
+              display: "flex", alignItems: "flex-start", gap: 8,
+              padding: "7px 10px", borderRadius: 8, cursor: "pointer",
+              border: "1px solid transparent",
+              transition: "background .1s",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = theme.card; e.currentTarget.style.borderColor = theme.border; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "transparent"; }}
+          >
+            <div style={{ width: 6, height: 6, borderRadius: "50%", background: color, flexShrink: 0, marginTop: 5 }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 500, color: theme.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {task.title || "Bez názvu"}
+              </div>
+              <div style={{ display: "flex", gap: 5, marginTop: 2, alignItems: "center" }}>
+                {proj && (
+                  <span style={{ fontSize: 12, color: theme.text3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {proj.name}
+                  </span>
+                )}
+                {pr && (
+                  <span style={{ fontSize: 12, fontWeight: 600, color: pr.color, background: pr.bg, padding: "0px 5px", borderRadius: 3, flexShrink: 0 }}>
+                    {pr.label}
+                  </span>
+                )}
+              </div>
+            </div>
+            <Icon name="chevron-right" size={12} color={theme.text3} strokeWidth={2} style={{ flexShrink: 0, marginTop: 3 }} />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function NotificationBell({ compact = false, variant = null }) {
   const { t, tasks, projects, setTaskDetail } = useApp();
   const [open, setOpen] = useState(false);
@@ -41,55 +92,9 @@ export default function NotificationBell({ compact = false, variant = null }) {
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
-  const Section = ({ label, color, items, icon }) => {
-    if (!items.length) return null;
-    return (
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".06em", color, marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}>
-          <Icon name={icon} size={10} color={color} strokeWidth={2.5} />
-          {label}
-          <span style={{ fontWeight: 500, color: t.text3, background: t.input, borderRadius: 6, padding: "0px 5px", fontSize: 12 }}>{items.length}</span>
-        </div>
-        {items.map((task) => {
-          const proj = projects.find((p) => p.id === task.projectId);
-          const pr = task.priority ? PRIORITIES[task.priority] : null;
-          return (
-            <div
-              key={task.id}
-              onClick={() => { setTaskDetail(task.id); setOpen(false); }}
-              style={{
-                display: "flex", alignItems: "flex-start", gap: 8,
-                padding: "7px 10px", borderRadius: 8, cursor: "pointer",
-                border: `1px solid transparent`,
-                transition: "background .1s",
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = t.card; e.currentTarget.style.borderColor = t.border; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "transparent"; }}
-            >
-              <div style={{ width: 6, height: 6, borderRadius: "50%", background: color, flexShrink: 0, marginTop: 5 }} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 500, color: t.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {task.title || "Bez názvu"}
-                </div>
-                <div style={{ display: "flex", gap: 5, marginTop: 2, alignItems: "center" }}>
-                  {proj && (
-                    <span style={{ fontSize: 12, color: t.text3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {proj.name}
-                    </span>
-                  )}
-                  {pr && (
-                    <span style={{ fontSize: 12, fontWeight: 600, color: pr.color, background: pr.bg, padding: "0px 5px", borderRadius: 3, flexShrink: 0 }}>
-                      {pr.label}
-                    </span>
-                  )}
-                </div>
-              </div>
-              <Icon name="chevron-right" size={12} color={t.text3} strokeWidth={2} style={{ flexShrink: 0, marginTop: 3 }} />
-            </div>
-          );
-        })}
-      </div>
-    );
+  const openTask = (taskId) => {
+    setTaskDetail(taskId);
+    setOpen(false);
   };
 
   const isEmpty = overdue.length === 0 && dueToday.length === 0 && dueTomorrow.length === 0 && dueWeek.length === 0;
@@ -147,10 +152,10 @@ export default function NotificationBell({ compact = false, variant = null }) {
                 </div>
               ) : (
                 <>
-                  <Section label="Prošlé termíny" color="#ef4444" items={overdue} icon="alert-circle" />
-                  <Section label="Dnes" color="#f59e0b" items={dueToday} icon="clock" />
-                  <Section label="Zítra" color="#3b82f6" items={dueTomorrow} icon="calendar" />
-                  <Section label="Tento týden" color="var(--text-3)" items={dueWeek} icon="calendar" />
+                  <ReminderSection label="Prošlé termíny" color="#ef4444" items={overdue} icon="alert-circle" theme={t} projects={projects} onOpenTask={openTask} />
+                  <ReminderSection label="Dnes" color="#f59e0b" items={dueToday} icon="clock" theme={t} projects={projects} onOpenTask={openTask} />
+                  <ReminderSection label="Zítra" color="#3b82f6" items={dueTomorrow} icon="calendar" theme={t} projects={projects} onOpenTask={openTask} />
+                  <ReminderSection label="Tento týden" color="var(--text-3)" items={dueWeek} icon="calendar" theme={t} projects={projects} onOpenTask={openTask} />
                 </>
               )}
             </div>
@@ -248,9 +253,9 @@ export default function NotificationBell({ compact = false, variant = null }) {
               </div>
             ) : (
               <>
-                <Section label="Prošlé termíny" color="#ef4444" items={overdue} icon="alert-circle" />
-                <Section label="Dnes" color="#f59e0b" items={dueToday} icon="clock" />
-                <Section label="Zítra" color="#3b82f6" items={dueTomorrow} icon="calendar" />
+                <ReminderSection label="Prošlé termíny" color="#ef4444" items={overdue} icon="alert-circle" theme={t} projects={projects} onOpenTask={openTask} />
+                <ReminderSection label="Dnes" color="#f59e0b" items={dueToday} icon="clock" theme={t} projects={projects} onOpenTask={openTask} />
+                <ReminderSection label="Zítra" color="#3b82f6" items={dueTomorrow} icon="calendar" theme={t} projects={projects} onOpenTask={openTask} />
               </>
             )}
           </div>

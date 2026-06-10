@@ -124,7 +124,6 @@ export function ProjectDetailPage() {
     reorderTasks,
     updateProject,
     deleteProject,
-    setTaskDetail,
     addNote,
     openNote,
   } = useApp();
@@ -516,20 +515,15 @@ export default function ProjectsPage() {
   const newInputRef = useRef(null);
 
   const [pGroupBy, setPGroupBy] = useState("none"); // "none", "status"
-  const [pSortBy, setPSortBy] = useState("newest"); // "newest", "progress", "alphabetical", "tasksCount"
+  const [pSortBy] = useState("newest"); // "newest", "progress", "alphabetical", "tasksCount"
   const [pGroupOpen, setPGroupByOpen] = useState(false);
-  const [pSortOpen, setPSortByOpen] = useState(false);
 
   const pGroupRef = useRef(null);
-  const pSortRef = useRef(null);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (pGroupRef.current && !pGroupRef.current.contains(e.target)) {
         setPGroupByOpen(false);
-      }
-      if (pSortRef.current && !pSortRef.current.contains(e.target)) {
-        setPSortByOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -599,7 +593,7 @@ export default function ProjectsPage() {
       }
     });
 
-    return Object.entries(groups).filter(([k, g]) => g.items.length > 0);
+    return Object.entries(groups).filter(([, g]) => g.items.length > 0);
   }, [sortedProjects, pGroupBy]);
 
   const counts = {
