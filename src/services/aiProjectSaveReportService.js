@@ -156,11 +156,13 @@ export function buildAiProjectSaveReportSummary(report) {
   const plannedTasks = report?.plannedTasks || 0;
   const savedTags = report?.tagAssignmentsSaved || 0;
   const expectedTags = report?.tagAssignmentsExpected || 0;
+  const linkedTasks = report?.projectLinked || 0;
   const model = report?.meta?.model || "lokální fallback";
   const source = report?.meta?.source || "—";
-  const status = createdTasks === plannedTasks && (expectedTags === 0 || savedTags >= Math.min(expectedTags, savedTags)) && !report?.projectUnlinked
-    ? "success"
-    : "warning";
+  const allTasksCreated = createdTasks === plannedTasks;
+  const allProjectLinked = linkedTasks === createdTasks && !report?.projectUnlinked;
+  const allTagsSaved = expectedTags === 0 || savedTags >= expectedTags;
+  const status = allTasksCreated && allProjectLinked && allTagsSaved ? "success" : "warning";
 
   return {
     status,
@@ -168,11 +170,20 @@ export function buildAiProjectSaveReportSummary(report) {
     lines: [
       `Úkoly: ${createdTasks}/${plannedTasks}`,
       `Tagy: ${savedTags}/${expectedTags}`,
-      `Projektová vazba: ${report?.projectLinked || 0}/${createdTasks}`,
+      `Projektová vazba: ${linkedTasks}/${createdTasks}`,
       `Model: ${model}`,
       `Zdroj: ${source}`,
     ],
   };
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 function showReportNotification(report) {
@@ -200,13 +211,13 @@ function showReportNotification(report) {
   wrap.innerHTML = `
     <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:10px">
       <div>
-        <div style="font-size:15px;font-weight:900">${summary.title}</div>
-        <div style="font-size:12px;color:var(--text-3);margin-top:3px">${report.projectName || "AI projekt"}</div>
+        <div style="font-size:15px;font-weight:900">${escapeHtml(summary.title)}</div>
+        <div style="font-size:12px;color:var(--text-3);margin-top:3px">${escapeHtml(report.projectName || "AI projekt")}</div>
       </div>
       <button type="button" aria-label="Zavřít" style="border:0;background:transparent;color:var(--text-3);font-size:20px;line-height:1;cursor:pointer">×</button>
     </div>
     <div style="display:grid;gap:6px">
-      ${summary.lines.map((line) => `<div style="display:flex;justify-content:space-between;gap:10px;font-size:12.5px;color:var(--text-2)"><span>${line}</span></div>`).join("")}
+      ${summary.lines.map((line) => `<div style="font-size:12.5px;color:var(--text-2)">${escapeHtml(line)}</div>`).join("")}
     </div>
   `;
 
