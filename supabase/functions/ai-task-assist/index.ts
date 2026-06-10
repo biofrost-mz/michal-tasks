@@ -6,10 +6,7 @@ const CORS = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const SYSTEM = `Jsi elitní AI asistent pro osobní produktivitu, kognitivní organizaci a agilní řízení úkolů.
-Tvým posláním je pomáhat uživateli s precizní formulací, hlubokou analýzou, prioritizací a shrnováním úkolů či poznámek.
-Komunikuj výhradně v bezchybné, profesionální a kultivované češtině. Postupuj metodicky a analyticky.
-Pokud je vyžadován strukturovaný formát (JSON, Markdown), dbej na absolutní přesnost a čistotu syntaxe.`;
+const SYSTEM = "Jsi asistent produktivity. Odpovídáš vždy v češtině, stručně a prakticky.";
 
 // Simple rate limit: max N AI calls per user per window.
 const RATE_LIMIT_MAX = 30;
@@ -72,163 +69,89 @@ serve(async (req) => {
       );
     }
 
-       if (action === "subtasks") {
-      prompt = `Jsi elitní technický projektový koordinátor. Rozlož následující úkol na sekvenci 3 až 6 vysoce konkrétních, logicky na sebe navazujících podúkolů (subtasks), které v součtu garantují stoprocentní a bezchybnou realizaci celého úkolu.
+    let aiPrompt = "";
 
-Úkol: "${task.title}"
-${task.description ? `Popis úkolu: ${task.description}` : "K úkolu není k dispozici žádný další popis."}
+    if (action === "subtasks") {
+      aiPrompt = `Úkol: "${task.title}"${task.description ? `\nPopis: ${task.description}` : ""}
 
-Pravidla pro tvorbu podúkolů:
-1. **Chronologický postup (životní cyklus):** První podúkoly se musí týkat přípravy (sběr podkladů, rešerše), prostřední samotné implementace/realizace a poslední kontroly kvality, testování či předání.
-2. **Akční názvy začínající silným českým slovesem v infinitivu:** Každý podúkol must začínat jasně definovanou aktivitou (např. "Analyzovat...", "Naformátovat...", "Zkonstruovat...", "Otestovat...", "Připravit...", "Sepsat...").
-3. **PŘÍSNÝ ZÁKAZ slabých a nekonkrétních sloves:** Nikdy nepoužívej "udělat", "vyřešit", "nastavit", "pořešit", "jít na", "pracovat na".
-4. **Rozsah:** Každý podúkol smí mít maximálně 80 znaků a musí být naprosto srozumitelný sám o sobě.
-5. **Formát výstupu:** Vrať VÝHRADNĚ validní JSON pole řetězců (array of strings), bez jakéhokoliv doplňujícího textu, vysvětlení nebo Markdown uvozovek (\`\`\`json).
-
-Příklad správného výstupu:
-["Analyzovat stávající databázové schéma a najít slabá místa", "Navrhnout optimalizované indexy pro nejčastější dotazy", "Otestovat rychlost dotazů na testovacích datech", "Nasadit optimalizační skript na produkční prostředí"]`;
+Navrhni 3–6 konkrétních, akčních podúkolů (subtasks) v češtině. Podúkoly musí pokrývat kompletní dokončení úkolu a být chronologicky seřazeny (od přípravy podkladů po finální odevzdání/kontrolu). Každý podúkol začni silným slovesem a omez na max 80 znaků.
+Vrať POUZE JSON pole stringů, žádný jiný text ani markdown.
+Příklad: ["Sběr potřebných podkladů", "Realizace první verze návrhu", "Interní revize a úprava chyb", "Odeslání hotového díla ke schválení"]`;
 
     } else if (action === "tags") {
       const existing = availableTags?.length
-        ? `Dostupné štítky v systému: ${availableTags.map(t => `"${t}"`).join(", ")}`
-        : "V systému zatím nejsou definovány žádné štítky.";
-      prompt = `Jsi taxonomický AI specialista pro kategorizaci úkolů. Navrhni 1 až 3 nejvhodnější, vysoce relevantní štítky (tagy) pro následující úkol.
-
-Úkol: "${task.title}"
-${task.description ? `Popis úkolu: ${task.description}` : "K úkolu není k dispozici žádný další popis."}
-
+        ? `Existující tagy v aplikaci: ${availableTags.join(", ")}`
+        : "Zatím žádné tagy v aplikaci.";
+      aiPrompt = `Úkol: "${task.title}"${task.description ? `\nPopis: ${task.description}` : ""}
 ${existing}
 
-Pravidla pro výběr a tvorbu štítků:
-1. **Striktní preference stávajících štítků:** Pokud se stávající štítky jakkoliv tematicky hodí k podstatě úkolu, vyber je přednostně.
-2. **Standardy pro NOVÉ štítky:** Pokud je nutné vytvořit nový štítek (protože žádný ze stávajících vůbec nesouvisí), musí splňovat tato přísná technická kritéria:
-   - Pouze malá písmena latinské abecedy (a-z).
-   - **BEZ DIAKRITIKY** (např. "vyvoj" místo "vývoj", "marketing" místo "propagační", "analyza" místo "analýza").
-   - Jednoslovný název, bez mezer, podtržítek či pomlček.
-   - Vyhni se příliš obecným štítkům jako "ukol" nebo "prace". Štítek musí jasně reprezentovat doménu (např. "vyvoj", "design", "finance", "copy", "studium", "osobni", "organisace", "domov").
-3. **Formát výstupu:** Vrať VÝHRADNĚ validní JSON pole řetězců (array of strings), bez jakéhokoliv doprovodného komentáře nebo Markdown uvozovek.
-
-Příklad správného výstupu:
-["vyvoj", "design"]`;
+Navrhni 1–3 nejrelevantnější štítky (tags) v češtině pro tento úkol. Striktně preferuj stávající tagy, pokud tematicky odpovídají. Nové tagy navrhuj pouze v případě, že žádný z existujících neodpovídá (používej malá písmena, jednoslovné, bez mezer).
+Vrať POUZE JSON pole stringů.
+Příklad: ["design", "marketing", "vyvoj"]`;
 
     } else if (action === "description") {
-      prompt = `Jsi seniorní Business Analyst a technický spisovatel. Vytvoř pro následující úkol prémiový, vysoce strukturovaný a plně srozumitelný popis (description) ve formátu Markdown v bezchybné češtině.
+      aiPrompt = `Název úkolu: "${task.title}"
 
-Název úkolu: "${task.title}"
-${task.description ? `Dosavadní hrubé poznámky/popis: ${task.description}` : "K úkolu nebyly zadány žádné doplňující podrobnosti."}
-
-Popis musí mít přesně tuto luxusní strukturu a formátování:
+Napiš pro tento úkol profesionální, strukturovaný a přehledný popis ve formátu Markdown v češtině. Popis strukturuj takto:
 
 ## 🎯 Cíl (Objective)
-*Napiš 1 až 2 věty formulující strategický význam úkolu, čeho přesně má být dosaženo a jaký přínos (hodnotu) to přinese po dokončení.*
+(Stručné a jasné vyjádření, čeho má být tímto úkolem dosaženo a jaký je očekávaný výsledek.)
 
-## 🔑 Definice hotova (Definition of Done)
-*Uveď 2 až 4 naprosto konkrétní, měřitelná a jednoznačně ověřitelná akceptační kritéria, která musí být stoprocentně splněna, aby mohl být úkol prohlášen za dokončený. Použij odrážky.*
-- **Kritérium 1:** [Konkrétní technický či obsahový stav]
-- **Kritérium 2:** [Standard kvality nebo způsob ověření]
+## 🔑 Klíčové parametry (Key Results)
+- **Kritérium 1**: Co přesně musí být splněno, aby byl úkol považován za úspěšný.
+- **Kritérium 2**: Konkrétní kvalita nebo vlastnost výstupu.
 
-## 📋 Předpoklady (Prerequisites)
-*Uveď 1 až 2 body popisující, co je nezbytně nutné mít připraveno (přihlašovací údaje, podklady, hotové předchozí úkoly), aby bylo vůbec možné na tomto úkolu začít pracovat. Pokud nejsou žádné předpoklady potřeba, napiš "Nejsou vyžadovány žádné specifické předpoklady."*
+## 👣 První akční krok (Next Step)
+- [ ] Co je potřeba udělat jako úplně první krok k nastartování práce.
 
-## 👣 První akční krok (Immediate Next Step)
-- [ ] *Zde navrhni jeden, naprosto konkrétní, přímočarý a mikro-akční první krok začínající silným slovesem, kterým může uživatel okamžitě odbourat prokrastinaci a začít pracovat.*
-
-Důležité instrukce:
-- Nepoužívej žádný doplňující text, úvodní pozdravy nebo závěrečná shrnutí.
-- Začni přímo prvním nadpisem ## 🎯 Cíl (Objective).
-- Nepoužívej na začátku ani na konci bloku zpětné uvozovky pro kód (\`\`\`).`;
+Vrať POUZE vygenerovaný formátovaný text popisu, bez jakýchkoli dalších úvodních či závěrečných keců a bez zpětných uvozovek.`;
 
     } else if (action === "priority") {
-      const today = new Date().toISOString().slice(0, 10);
-      prompt = `Jsi elitní Agile Scrum Master a expert na osobní efektivitu. Zhodnoť prioritu následujícího úkolu pomocí mentálního modelu Eisenhowerovy matice a RICE prioritizační metody.
+      aiPrompt = `Úkol: "${task.title}"${task.description ? `\nPopis: ${task.description}` : ""}${task.dueDate ? `\nTermín: ${task.dueDate}` : ""}
 
-Úkol: "${task.title}"
-${task.description ? `Popis úkolu: ${task.description}` : "K úkolu není k dispozici žádný další popis."}
-${task.dueDate ? `Termín splnění (due date): ${task.dueDate}` : "Úkol nemá stanovený termín splnění."}
-Dnešní datum pro kontext naléhavosti: ${today}
-
-Pravidla prioritizace:
-1. **"high" (Vysoká):** Úkol je kritický pro pokračování projektu (blokující úkol), má blížící se nebo zmeškaný termín splnění, nebo představuje extrémní byznysovou či osobní hodnotu.
-2. **"medium" (Střední):** Standardní realizace, úkol je důležitý, ale nemá bezprostředně kritický termín a jeho odložení o několik dní nezpůsobí vážné problémy.
-3. **"low" (Nízká):** Drobnosti, refaktoringy, kosmetické úpravy, učení se doplňkových věcí, nebo úkoly bez termínu s nízkým dopadem na celkový výsledek.
-
-Formát výstupu: Vrať VÝHRADNĚ platný JSON objekt s klíči "priority" a "reason" (důvod v češtině, maximálně 1 kognitivně brilantní věta vysvětlující logické opodstatnění této priority). Žádné Markdown uvozovky ani vysvětlující texty okolo.
-
-Příklad výstupu:
-{
-  "priority": "high",
-  "reason": "Vzhledem k blížícímu se termínu odevzdání a faktu, že tento úkol blokuje další fázi vývoje, je nezbytné jej prioritizovat s nejvyšší urgencí."
-}`;
+Zhodnoť závažnost a naléhavost tohoto úkolu z hlediska prioritizace (low = nízká, medium = střední, high = vysoká). Projdi termín dokončení, název i popis a proveď hlubší úvahu nad důležitostí.
+Vrať POUZE JSON objekt s klíči "priority" a "reason" v češtině (reason musí být max 1 výstižná věta):
+{"priority":"low"|"medium"|"high","reason":"zdůvodnění priority na základě termínu nebo složitosti úkolu"}`;
 
     } else if (action === "note_summary") {
-      prompt = `Jsi elitní Chief of Staff a odborník na syntézu informací. Zanalyzuj obsah následující poznámky a vytvoř z ní vysoce profesionální, reprezentativní a precizní manažerské shrnutí (executive summary) v češtině.
+      aiPrompt = `Zanalyzuj a shrň tuto poznámku. Napiš vysoce profesionální, reprezentativní a výstižné shrnutí v češtině (2–3 věty).
+Shrnutí napiš jako souvislý text, který popíše hlavní myšlenku, kontext a klíčové závěry poznámky. Vrať POUZE text shrnutí.
 
-Název poznámky: "${note.title || "Bez názvu"}"
-Obsah poznámky:
-${(note.content || "").slice(0, 4000)}
-
-Požadavky na shrnutí:
-1. **Délka a forma:** Přesně 2 až 4 stylisticky vytříbené věty v podobě souvislého, plynulého textu.
-2. **Obsah:** Musí jasně formulovat hlavní cíl/myšlenku, širší kontext a klíčové závěry či rozhodnutí obsažená v poznámce.
-3. **Tón:** Formální, objektivní, exekutivní a bezvýhradně profesionální.
-4. **Omezení:** Vrať POUZE naformátovaný text samotného shrnutí. Nepřidávej žádné nadpisy, úvodní fráze (např. "Zde je shrnutí..."), zpětné uvozovky ani závěrečné komentáře.`;
+Název poznámky: ${note.title || "Bez názvu"}
+Obsah:
+${(note.content || "").slice(0, 4000)}`;
 
     } else if (action === "note_continue") {
-      prompt = `Jsi spoluautor a myšlenkový partner uživatele. Tvým úkolem je s nejvyšší možnou mírou kontinuity pokračovat v psaní rozpracované poznámky v češtině.
+      aiPrompt = `Pokračuj přirozeně a s vysokou odborností v psaní této poznámky v češtině. Navázej na poslední myšlenku a přidej 1–2 logicky propracované odstavce ve stejném stylu, formátování a tónu.
+Vrať POUZE nový navazující text ve formátu Markdown (neopakuj stávající text poznámky a nepiš žádné komentáře).
 
-Název poznámky: "${note.title || "Bez názvu"}"
-Dosavadní závěr poznámky (posledních 2000 znaků pro kontext):
-${(note.content || "").slice(-2000)}
-
-Pokyny pro generování pokračování:
-1. **Hluboká analýza stylu:** Pečlivě zanalyzuj tón hlasu (tone of voice), slovní zásobu, úroveň odbornosti, délku vět a formátování (Markdown, odrážky, nadpisy) dosavadního textu. Pokračování musí působit, jako by ho psal tentýž autor v jednom zátahu.
-2. **Obsahový přínos:** Navázej na poslední vyjádřenou myšlenku. Přidej přesně 1 až 2 logicky propracované odstavce, které téma prohloubí, přinesou věcné argumenty, konkrétní příklady nebo praktické vyústění.
-3. **Formátování:** Pokud autor používá specifické formátování (např. odrážky nebo zvýrazňování), pokračuj v tom.
-4. **Omezení:** Vrať POUZE nový navazující text (nepřidávej žádný úvod, neopakuj stávající text poznámky a nepiš žádné meta-komentáře).`;
+Název poznámky: ${note.title || "Bez názvu"}
+Obsah:
+${(note.content || "").slice(-2000)}`;
 
     } else if (action === "note_summary_bullet") {
-      prompt = `Jsi špičkový analytik. Převeď obsah následující poznámky do strukturovaného, vizuálně dokonale přehledného a srozumitelného přehledu klíčových bodů (bullet-points) v češtině.
+      aiPrompt = `Převeď obsah této poznámky do přehledných, stručných a strukturovaných odrážek (bullet-points) v češtině. Odrážky musí vystihovat nejdůležitější fakta, rozhodnutí nebo úkoly z poznámky. Použij standardní odrážky (pomlčky nebo tečky) a tučné písmo pro zvýraznění klíčových pojmů. Vrať POUZE naformátovaný text s odrážkami, bez jakýchkoli komentářů.
 
-Název poznámky: "${note.title || "Bez názvu"}"
-Obsah poznámky:
-${(note.content || "").slice(0, 4000)}
-
-Pravidla pro strukturování odrážek:
-1. **Tematické seskupení:** Rozděl klíčové body do 2 až 3 logických kategorií (např. **💡 Hlavní myšlenky & Rozhodnutí**, **📌 Klíčová fakta & Kontext**, **⚡ Akční kroky**).
-2. **Styl odrážek:** Každý bod must začínat standardní odrážkou (-), mít maximálně 2 věty, být úderný a začínat tučným zvýrazněním klíčového pojmu (např. "- **Finální deadline:** Termín spuštění byl stanoven na...").
-3. **Přísná selekce:** Ignoruj omáčku a balast. Vypiš pouze esenciální informace s vysokou informační hodnotou.
-4. **Omezení:** Vrať POUZE naformátovaný Markdown text s odrážkami. Nepřidávej žádné úvodní řeči ani závěrečné poznámky.`;
+Název poznámky: ${note.title || "Bez názvu"}
+Obsah:
+${(note.content || "").slice(0, 4000)}`;
 
     } else if (action === "note_fix_tone") {
-      prompt = `Jsi elitní korektor, šéfredaktor a mistr české stylistiky. Tvým úkolem je vzít text poznámky a převést jej do naprosto bezchybné, stylisticky vytříbené, čtivé a reprezentativní formy v češtině.
+      aiPrompt = `Oprav v této poznámce veškeré gramatické, pravopisné, typografické a stylistické chyby. Přepiš text do vysoce kultivované, čtivé, spisovné a profesionální češtiny (uprav slovní zásobu a strukturu vět k lepšímu), aniž bys změnil původní věcný význam a myšlenky. Ponech strukturu Markdown (nadpisy, odrážky), pokud je v poznámce přítomna.
+Vrať POUZE kompletní upravený a opravený text poznámky, bez jakýchkoli vysvětlivek, uvozovek, poznámek pod čarou nebo komentářů okolo.
 
-Název poznámky: "${note.title || "Bez názvu"}"
-Původní text poznámky:
-${(note.content || "").slice(0, 4000)}
-
-Korektorské a stylistické pokyny:
-1. **Gramatika a pravopis:** Odstraň veškeré pravopisné chyby, překlepy, nesprávné shody přísudku s podmětem a špatnou interpunkci.
-2. **Pokročilá typografie:** Oprav uvozovky na české (style „ “), nahraď spojovníky (-) patřičnými pomlčkami (–) s mezerami tam, kde jde o pomlčku ve větě, a doplň nezlomitelné mezery za jednopísmenné předložky (v, k, s, o, u, z).
-3. **Stylistický upgrade:** Zvyš úroveň slovní zásoby. Odstraň hovorové výrazy, slovní vatu, zbytečné opakování slov a těžkopádné formulace. Věty přeformuluj tak, aby text plynul hladce a zněl elegantně a profesionálně, ale **STRIKTNĚ PONECH původní věcný význam a myšlenky autora**.
-4. **Zachování struktury:** Kompletně zachovej veškeré Markdown prvky (nadpisy, odrážky, tučné písmo, tabulky, kód).
-5. **Omezení:** Vrať POUZE kompletní upravený a opravený text poznámky. Nepřidávej žádné vysvětlivky, přehledy provedených oprav, uvozující texty ani komentáře.`;
+Název poznámky: ${note.title || "Bez názvu"}
+Obsah:
+${(note.content || "").slice(0, 4000)}`;
 
     } else if (action === "note_extract_tasks") {
-      prompt = `Jsi agilní produktový analytik. Prohledej obsah následující poznámky a extrahuj z ní veškeré explicitní i implicitní akční úkoly, závazky, sliby nebo další kroky (follow-ups), které z textu vyplývají.
+      aiPrompt = `Zanalyzuj obsah této poznámky a vytáhni z ní všechny konkrétní akční kroky, úkoly nebo sliby k vyřízení. Každý úkol formuluj v češtině jako akční větu začínající slovesem (max 80 znaků).
+Vrať POUZE JSON pole stringů, žádný jiný text. Pokud v poznámce nejsou žádné akční úkoly, vrať prázdné pole [].
+Příklad: ["Zavolat klientovi ohledně zpětné vazby k návrhu", "Připravit finální prezentaci do páteční porady"]
 
-Název poznámky: "${note.title || "Bez názvu"}"
-Obsah poznámky:
-${(note.content || "").slice(0, 4000)}
-
-Pokyny pro formulaci úkolů:
-1. **Akčnost a struktura:** Každý extrahovaný úkol must začínat silným, konkrétním českým slovesem v infinitivu (např. "Odeslat...", "Prověřit...", "Zavolat...", "Zpracovat...").
-2. **Zákaz slabých sloves:** Vyhni se obecným slovům jako "vyřešit", "udělat", "zajistit". Úkol must jasně popisovat fyzickou či mentální aktivitu.
-3. **Délka:** Maximálně 80 znaků na úkol. Úkol must být věcný a srozumitelný sám o sobě.
-4. **Žádné úkoly:** Pokud v textu nejsou vůbec žádné akční úkoly, vrať prázdné pole [].
-5. **Formát výstupu:** Vrať VÝHRADNĚ validní JSON pole řetězců (array of strings), bez jakéhokoliv doprovodného textu nebo Markdown uvozovek.
-
-Příklad správného výstupu:
-["Zavolat klientovi ohledně schválení rozpočtu", "Přeformátovat tabulku s daty do CSV", "Odeslat zápis z meetingu všem účastníkům"]`;
+Název poznámky: ${note.title || "Bez názvu"}
+Obsah:
+${(note.content || "").slice(0, 4000)}`;
 
     } else if (action === "draft_task") {
       const text = body?.text || "";
@@ -237,27 +160,23 @@ Příklad správného výstupu:
       const projNames = body?.availableProjects || [];
       const tagNames = body?.availableTags || [];
 
-      const projectList = projNames.length ? `Seznam dostupných projektů: ${projNames.map(p => `"${p}"`).join(", ")}` : "Nejsou k dispozici žádné projekty.";
-      const tagList = tagNames.length ? `Seznam dostupných štítků (tagů): ${tagNames.map(t => `"${t}"`).join(", ")}` : "Nejsou k dispozici žádné štítky.";
+      const projectList = projNames.length ? `Dostupné projekty: ${projNames.join(", ")}` : "Žádné projekty.";
+      const tagList = tagNames.length ? `Dostupné tagy: ${tagNames.join(", ")}` : "Žádné tagy.";
 
-      prompt = `Jsi pokročilý kognitivní parser přirozeného jazyka a AI projektový asistent. Zanalyzuj následující textový vstup od uživatele (může se jednad o rychlou textovou poznámku nebo přepis hlasového diktátu) a extrahuj z něj strukturovaný návrh úkolu v češtině.
-
+      aiPrompt = `Zanalyzuj následující text a vytvoř z něj strukturovaný návrh úkolu.
 Text od uživatele: "${text}"
-Dnešní datum (pro výpočet relativních termínů): ${todayDate}
 
-Pokyny pro zpracování jednotlivých parametrů:
-1. **title (Název úkolu):** Výstižný, úderný a akční název úkolu v češtině, který začíná silným slovesem v infinitivu (např. "Připravit...", "Zkontrolovat...", "Vyčistit..."). Max 80 znaků.
-2. **description (Popis úkolu):** Popis úkolu v češtině.
-   - Pokud je délka (length) nastavena na "short" (krátká), vytvoř výstižný popis o délce přesně 1 až 2 věty.
-   - Pokud je délka nastavena na "long" (dlouhá), vytvoř detailní, strukturovaný a profesionální popis ve formátu Markdown s jasně oddělenými sekcemi (🎯 Cíl, 🔑 Kritéria úspěchu, 👣 První krok).
-3. **suggestedProject (Doporučený projekt):** Porovnej uživatelský text se seznamem dostupných projektů. Pokud text explicitně nebo silně implicitně odkazuje na některý z nich, uveď jeho PŘESNÝ název ze seznamu. Pokud žádný neodpovídá, vrať "".
+Parametry výstupu:
+1. title: Krátký, výstižný a akční název úkolu v češtině (začínající slovesem).
+2. description: Popis úkolu v češtině. Pokud je délka nastavení (length) "${len}" rovna "short", vygeneruj stručný popis (1-2 věty). Pokud je rovna "long", vygeneruj detailnější, strukturovaný popis s odrážkami (Markdown).
+3. suggestedProject: Pokud text zmiňuje nebo odpovídá některému z dostupných projektů, vyber jeho přesné jméno ze seznamu. Pokud žádný neodpovídá, vrať prázdný řetězec "".
    ${projectList}
-4. **suggestedTags (Doporučené štítky):** Vyber nejrelevantnější štítky ze seznamu dostupných štítků, které odpovídají obsahu textu. Pokud žádný neodpovídá, vrať prázdné pole [].
+4. suggestedTags: Vyber nejrelevantnější tagy ze seznamu dostupných tagů, které odpovídají obsahu textu. Pokud žádný neodpovídá, vrať prázdné pole [].
    ${tagList}
-5. **priority (Priorita):** Vyhodnoť prioritu ("high" | "medium" | "low"). Pokud uživatel zmiňuje spěch, asapu, hoření termínu nebo vysokou důležitost, nastav "high". Pokud jde o běžnou věc, nastav "medium". Pokud jde o drobnou, nezávaznou aktivitu, nastav "low".
-6. **dueDate (Termín splnění):** Pokud uživatel v textu zmiňuje termín (např. "do zítra", "v pondělí", "příští úterý", "do konce příštího týdne", "za 3 dny"), proveď matematicky přesný výpočet na základě dnešního data (${todayDate}) a převeď jej na formát YYYY-MM-DD. Pokud termín není zmíněn, vrať "".
+5. priority: Vyhodnoť prioritu ("high" | "medium" | "low"). Pokud je v textu zmíněna naléhavost nebo spěch, nastav "high" nebo "medium", jinak "low" nebo "medium".
+6. dueDate: Pokud je v textu explicitně nebo implicitně zmíněn termín splnění (např. "do zítra", "v pondělí", "příští týden", "do konce června"), převeď ho na konkrétní datum ve formátu YYYY-MM-DD. Dnešní datum je: ${todayDate}. Pokud termín není zmíněn, vrať prázdný řetězec "".
 
-Vrať VÝHRADNĚ platný JSON objekt s následující strukturou (bez jakýchkoliv doplňících komentářů nebo Markdown značek):
+Vrať POUZE JSON objekt s následující strukturou (nic jiného, žádné markdown značky jako \`\`\`json):
 {
   "title": "Název úkolu",
   "description": "Stručný nebo detailní popis",
@@ -288,7 +207,7 @@ Vrať VÝHRADNĚ platný JSON objekt s následující strukturou (bez jakýchkol
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               model: "gemini-3.5-flash",
-              contents: [{ role: "user", parts: [{ text: prompt }] }],
+              contents: [{ role: "user", parts: [{ text: aiPrompt }] }],
               systemInstruction: {
                 parts: [{ text: SYSTEM }]
               },
@@ -350,7 +269,7 @@ Vrať VÝHRADNĚ platný JSON objekt s následující strukturou (bez jakýchkol
             model: "claude-3-5-haiku-20241022",
             max_tokens: 600,
             system: SYSTEM,
-            messages: [{ role: "user", content: prompt }],
+            messages: [{ role: "user", content: aiPrompt }],
           }),
         });
 
