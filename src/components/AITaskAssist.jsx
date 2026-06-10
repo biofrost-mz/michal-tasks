@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext.jsx'
 import { useToast } from './Toast.jsx'
 import Icon from './Icon.jsx'
 import { supabase } from '../supabase.js'
+import { getAiErrorMessage, parseAiJsonResult } from '../utils/aiErrors.js'
 
 const ACTIONS = [
   { id: "optimize",    icon: "zap",          label: "Optimalizovat", desc: "Optimalizuj název, projekt, tagy a podúkoly najednou" },
@@ -14,6 +15,14 @@ const ACTIONS = [
 
 const PRIORITY_LABELS = { low: "Nízká", medium: "Střední", high: "Vysoká" };
 const PRIORITY_COLORS = { low: "#22c55e", medium: "#f59e0b", high: "#ef4444" };
+const JSON_ACTIONS = new Set(["subtasks", "tags", "priority"]);
+
+function showAiError(toast, error, data, context = "AI akce") {
+  const info = getAiErrorMessage(error, data);
+  toast(`${info.title}: ${info.message}`, info.severity === "warning" ? "warning" : "error");
+  console.warn(`${context} failed:`, info.raw);
+  return info;
+}
 
 export default function AITaskAssist({ task, onTitleChange }) {
   const { t, tags, projects, updateTask, activeWorkspaceId, addTag } = useApp();
@@ -22,6 +31,7 @@ export default function AITaskAssist({ task, onTitleChange }) {
   const [loading, setLoading] = useState(null);
   const [result, setResult] = useState(null);
   const [activeAction, setActiveAction] = useState(null);
+  const [notice, setNotice] = useState(null);
 
   const availableTags = tags.map((tg) => tg.name);
   const availableProjects = projects.map((p) => p.name);
@@ -29,7 +39,9 @@ export default function AITaskAssist({ task, onTitleChange }) {
   const run = async (action) => {
     setLoading(action);
     setResult(null);
+    setNotice(null);
     setActiveAction(action);
+
     try {
       if (action === "optimize") {
         const { data, error } = await supabase.functions.invoke("gemini-task-optimize", {
@@ -40,23 +52,16 @@ export default function AITaskAssist({ task, onTitleChange }) {
             availableTags,
           },
         });
+
         if (error || !data?.result) {
-          const msg = data?.error || error?.message || String(error);
-          if (msg.includes("non-2xx") || msg.includes("Unauthorized") || error?.status === 401) {
-            toast("Chyba přihlášení k AI službám. Odhlaste se a znovu přihlaste.", "error");
-          } else if (msg.includes("Rate limit") || msg.includes("429")) {
-            toast("Příliš mnoho AI dotazů — zkus to za hodinu.", "error");
-          } else if (msg.includes("Server configuration")) {
-            toast("Chyba konfigurace serveru — kontaktuj správce.", "error");
-          } else if (msg.includes("AI služby") || msg.includes("502")) {
-            toast("AI služba nedostupná — zkus to za chvíli.", "error");
-          } else {
-            toast(`Optimalizace selhala: ${msg || "neznámá chyba"}`, "error");
-          }
+          const info = showAiError(toast, error || new Error(data?.error || "Optimalizace nevrátila výsledek."), data, "gemini-task-optimize");
+          setNotice(info);
           setActiveAction(null);
           return;
         }
+
         setResult(data.result);
+        setNotice({ type: "success", severity: "info", title: "AI návrh připraven", message: "Zkontroluj návrh a potvrď použití." });
       } else {
         const { data, error } = await supabase.functions.invoke("ai-task-assist", {
           body: {
@@ -71,38 +76,46 @@ export default function AITaskAssist({ task, onTitleChange }) {
             workspaceId: activeWorkspaceId,
           },
         });
+
         if (error) {
-          const msg = data?.error || error.message || String(error);
-          if (msg.includes("non-2xx") || msg.includes("Unauthorized") || error.status === 401) {
-            toast("Chyba přihlášení k AI službám. Odhlaste se a znovu přihlaste.", "error");
-          } else if (error.status === 429 || msg.includes("Rate limit")) {
-            toast("Příliš mnoho AI dotazů — zkus to za hodinu.", "error");
-          } else {
-            toast(`Chyba AI: ${msg || "neznámá chyba"}`, "error");
-          }
+          const info = showAiError(toast, error, data, "ai-task-assist");
+          setNotice(info);
+          setActiveAction(null);
+          return;
+        }
+
+        if (data?.error) {
+          const info = showAiError(toast, new Error(data.error), data, "ai-task-assist");
+          setNotice(info);
           setActiveAction(null);
           return;
         }
 
         const raw = data?.result ?? "";
-        if (action === "subtasks" || action === "tags" || action === "priority") {
+        if (!raw) {
+          const info = showAiError(toast, new Error("AI služba nevrátila žádný výsledek."), data, "ai-task-assist");
+          setNotice(info);
+          setActiveAction(null);
+          return;
+        }
+
+        if (JSON_ACTIONS.has(action)) {
           try {
-            const cleaned = raw.replace(/^```[a-z]*\n?/i, "").replace(/```$/, "").trim();
-            setResult(JSON.parse(cleaned));
-          } catch {
+            setResult(parseAiJsonResult(raw));
+          } catch (parseError) {
+            const info = showAiError(toast, parseError, { error: parseError.message }, "ai-task-assist parse");
+            setNotice({ ...info, raw: parseError.raw || raw });
             setResult(raw);
           }
         } else {
           setResult(raw);
         }
+
+        setNotice({ type: "success", severity: "info", title: "AI návrh připraven", message: "Zkontroluj návrh a potvrď použití." });
       }
     } catch (e) {
-      const msg = e?.message || String(e);
-      if (msg.includes("non-2xx")) {
-        toast("Chyba přihlášení k AI službám. Odhlaste se a znovu přihlaste.", "error");
-      } else {
-        toast("Chyba AI — zkus to znovu", "error");
-      }
+      const info = showAiError(toast, e, {}, "AI task assist unexpected");
+      setNotice(info);
       setResult(null);
       setActiveAction(null);
     } finally {
@@ -203,13 +216,17 @@ export default function AITaskAssist({ task, onTitleChange }) {
     } else if (activeAction === "priority" && result?.priority) {
       updateTask(task.id, { priority: result.priority });
       toast(`Priorita nastavena: ${PRIORITY_LABELS[result.priority]}`, "success");
+    } else {
+      toast("Návrh AI se nepodařilo použít — formát neodpovídá očekávané akci.", "warning");
+      return;
     }
 
     setResult(null);
+    setNotice(null);
     setActiveAction(null);
   };
 
-  const dismiss = () => { setResult(null); setActiveAction(null); };
+  const dismiss = () => { setResult(null); setNotice(null); setActiveAction(null); };
 
   return (
     <div style={{ marginBottom: 16 }}>
@@ -232,7 +249,7 @@ export default function AITaskAssist({ task, onTitleChange }) {
 
       {open && (
         <div className="fi" style={{ marginTop: 8 }}>
-          <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: result ? 10 : 0 }}>
+          <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: result || notice ? 10 : 0 }}>
             {ACTIONS.map((a) => (
               <button
                 key={a.id}
@@ -258,6 +275,8 @@ export default function AITaskAssist({ task, onTitleChange }) {
               </button>
             ))}
           </div>
+
+          {notice && <AiNotice notice={notice} t={t} />}
 
           {result !== null && (
             <div className="fi" style={{
@@ -290,6 +309,29 @@ export default function AITaskAssist({ task, onTitleChange }) {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function AiNotice({ notice, t }) {
+  const isError = notice.severity === "error";
+  const isWarning = notice.severity === "warning";
+  const color = isError ? "var(--red)" : isWarning ? "var(--orange)" : "var(--accent)";
+  const bg = isError ? "var(--red-soft)" : isWarning ? "var(--orange-soft)" : "var(--accent-soft)";
+
+  return (
+    <div style={{
+      padding: "9px 11px",
+      borderRadius: 9,
+      border: `1px solid ${color}33`,
+      background: bg,
+      color: t.text2,
+      marginBottom: 10,
+      fontSize: 12,
+      lineHeight: 1.45,
+    }}>
+      <strong style={{ color }}>{notice.title}</strong>
+      <span> — {notice.message}</span>
     </div>
   );
 }

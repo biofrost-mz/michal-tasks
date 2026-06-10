@@ -1,1679 +1,437 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useApp } from "../context/AppContext.jsx";
-import Icon from "../components/Icon.jsx";
 import { useToast } from "../components/Toast.jsx";
+import Icon from "../components/Icon.jsx";
+import AiTestConsolePanel from "../components/admin/AiTestConsolePanel.jsx";
+import RemoteErrorLogsPanel from "../components/admin/RemoteErrorLogsPanel.jsx";
+import { APP_RELEASE_DATE, APP_VERSION } from "../appMeta.js";
+import { getErrorLogs, clearErrorLogs } from "../utils/errorLogger.js";
 import { supabase } from "../supabase.js";
-import {
-  getErrorLogs,
-  clearErrorLogs,
-  simulateError,
-  simulatePromiseRejection,
-} from "../utils/errorLogger.js";
+
+const TAB_DEFS = [
+  { id: "overview", label: "Přehled & Statistiky", icon: "bar-chart-3" },
+  { id: "diagnostics", label: "Diagnostika systému", icon: "activity" },
+  { id: "ai", label: "AI konzole", icon: "sparkles" },
+  { id: "logs", label: "Logy & Bug report", icon: "file-warning" },
+  { id: "users", label: "Uživatelé", icon: "users" },
+  { id: "storage", label: "Úložiště", icon: "database" },
+  { id: "trash", label: "Koš", icon: "trash-2" },
+];
+
+function formatBytes(bytes) {
+  if (!bytes || bytes < 0) return "0 B";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function formatDate(value) {
+  if (!value) return "—";
+  try {
+    return new Date(value).toLocaleString("cs-CZ", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  } catch {
+    return String(value);
+  }
+}
+
+async function clearCachesAndReload() {
+  if ("caches" in window) {
+    const keys = await window.caches.keys();
+    await Promise.all(keys.map((key) => window.caches.delete(key)));
+  }
+  if ("serviceWorker" in navigator) {
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(registrations.map((registration) => registration.unregister()));
+  }
+  window.location.reload();
+}
+
+function Card({ title, subtitle, icon, children, action }) {
+  return (
+    <div style={{ background: "var(--surface)", border: "1px solid var(--border-soft)", borderRadius: "var(--r-lg)", padding: 22 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start", marginBottom: children ? 16 : 0 }}>
+        <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+          {icon && <Icon name={icon} size={18} color="var(--accent)" />}
+          <div>
+            <h3 style={{ margin: 0, color: "var(--text)", fontSize: 16, fontWeight: 800 }}>{title}</h3>
+            {subtitle && <p style={{ margin: "5px 0 0", color: "var(--text-3)", fontSize: 12.5, lineHeight: 1.45 }}>{subtitle}</p>}
+          </div>
+        </div>
+        {action}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function MetricCard({ label, value, hint, icon, color = "var(--accent)" }) {
+  return (
+    <Card title={label} icon={icon}>
+      <div style={{ fontSize: 30, fontWeight: 850, fontFamily: "var(--mono)", color, lineHeight: 1 }}>{value}</div>
+      {hint && <div style={{ color: "var(--text-3)", fontSize: 12.5, marginTop: 8 }}>{hint}</div>}
+    </Card>
+  );
+}
+
+function SmallButton({ children, onClick, tone = "default", disabled = false }) {
+  const color = tone === "danger" ? "var(--red)" : tone === "accent" ? "var(--accent)" : "var(--text-2)";
+  const background = tone === "danger" ? "var(--red-soft)" : tone === "accent" ? "var(--accent-soft)" : "var(--bg-2)";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      style={{ padding: "7px 10px", borderRadius: 9, border: "1px solid var(--border-soft)", background, color, fontSize: 12, fontWeight: 750, opacity: disabled ? 0.55 : 1 }}
+    >
+      {children}
+    </button>
+  );
+}
 
 export default function AdminPage() {
   const {
-    projects = [],
-    tasks = [],
-    notes = [],
-    tags = [],
-    attachments = [],
-    quickTodos = [],
-    workspaceMembers = [],
+    tasks,
+    projects,
+    tags,
+    notes,
+    quickTodos,
+    trash,
+    workspaceMembers,
     activeWorkspaceId,
-    userEmail,
+    isSystemAdmin,
     addTask,
-    deletedProjects = [],
-    deletedTasks = [],
-    deletedNotes = [],
-    restoreProject,
     restoreTask,
+    restoreProject,
     restoreNote,
-    hardDeleteProject,
-    hardDeleteTask,
-    hardDeleteNote,
+    permanentlyDeleteTask,
+    permanentlyDeleteProject,
+    permanentlyDeleteNote,
   } = useApp();
-
   const toast = useToast();
-
   const [activeTab, setActiveTab] = useState("overview");
-
-  // Síťový stav v reálném čase
-  const [isOnline, setIsOnline] = useState(
-    () => typeof window !== "undefined" ? navigator.onLine : true
-  );
+  const [errorLogs, setErrorLogs] = useState([]);
+  const [dbLatency, setDbLatency] = useState(null);
+  const [pinging, setPinging] = useState(false);
+  const [swStatus, setSwStatus] = useState("Kontroluji…");
+  const [storageSize, setStorageSize] = useState(0);
+  const [bugTitle, setBugTitle] = useState("");
+  const [bugArea, setBugArea] = useState("Dashboard");
+  const [bugSeverity, setBugSeverity] = useState("Střední");
+  const [bugDescription, setBugDescription] = useState("");
 
   useEffect(() => {
-    const goOnline = () => setIsOnline(true);
-    const goOffline = () => setIsOnline(false);
-    window.addEventListener("online", goOnline);
-    window.addEventListener("offline", goOffline);
-    return () => {
-      window.removeEventListener("online", goOnline);
-      window.removeEventListener("offline", goOffline);
-    };
+    const loadLogs = () => setErrorLogs(getErrorLogs());
+    loadLogs();
+    window.addEventListener("mt3:error_logged", loadLogs);
+    return () => window.removeEventListener("mt3:error_logged", loadLogs);
   }, []);
 
-  // Měření latence k databázi (Supabase Ping)
-  const [dbLatency, setDbLatency] = useState(null);
-  const [pingStatus, setPingStatus] = useState("idle"); // idle, pinging, error
-  const [autoPing, setAutoPing] = useState(true);
-
-  const measureLatency = async () => {
-    if (!isOnline) {
-      setDbLatency(null);
-      setPingStatus("idle");
-      return;
-    }
-    setPingStatus("pinging");
-    const start = performance.now();
-    try {
-      // Provedeme minimální dotaz na tabulku projektů pro změření latence spojení
-      await supabase.from("projects").select("id", { count: "exact", head: true });
-      const duration = Math.round(performance.now() - start);
-      setDbLatency(duration);
-      setPingStatus("idle");
-    } catch (e) {
-      console.warn("DB Ping failed:", e);
-      setPingStatus("error");
-    }
-  };
+  useEffect(() => {
+    const calculate = () => {
+      try {
+        let bytes = 0;
+        for (const key in localStorage) {
+          if (Object.prototype.hasOwnProperty.call(localStorage, key)) {
+            bytes += (key.length + String(localStorage[key]).length) * 2;
+          }
+        }
+        setStorageSize(bytes);
+      } catch (error) {
+        console.warn("LocalStorage size calculation failed:", error);
+      }
+    };
+    calculate();
+    const timer = window.setInterval(calculate, 5000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
-    measureLatency();
-  }, [isOnline]);
-
-  useEffect(() => {
-    if (!autoPing) return;
-    const timer = setInterval(measureLatency, 10000);
-    return () => clearInterval(timer);
-  }, [autoPing, isOnline]);
-
-  // Stav Service Workera
-  const [swStatus, setSwStatus] = useState("Zjišťuji…");
-  useEffect(() => {
-    if (typeof window === "undefined") return;
     if (!("serviceWorker" in navigator)) {
       setSwStatus("Nepodporováno");
       return;
     }
     navigator.serviceWorker.getRegistrations()
-      .then((regs) => {
-        if (regs && regs.length > 0) {
-          setSwStatus(`Aktivní (${regs.length} registrací)`);
-        } else {
-          setSwStatus("Neregistrován / offline");
-        }
-      })
-      .catch((err) => {
-        setSwStatus("Chyba detekce: " + err.message);
-      });
+      .then((registrations) => setSwStatus(registrations.length ? `Aktivní (${registrations.length} registrací)` : "Neregistrován"))
+      .catch((error) => setSwStatus(`Chyba detekce: ${error.message}`));
   }, []);
 
-  // Výpočet obsazení LocalStorage
-  const [localStorageSize, setLocalStorageSize] = useState(0);
-  const calculateLocalStorageUsage = () => {
-    if (typeof window === "undefined") return;
-    let bytes = 0;
+  const measureLatency = async () => {
+    setPinging(true);
+    const start = performance.now();
     try {
-      for (let key in localStorage) {
-        if (localStorage.hasOwnProperty(key)) {
-          bytes += (key.length + localStorage[key].length) * 2; // UTF-16 char je 2 bajty
-        }
-      }
-      setLocalStorageSize(bytes);
-    } catch (e) {
-      console.warn("Nepodařilo se spočítat LocalStorage:", e);
+      const { error } = await supabase.from("tasks").select("id", { count: "exact", head: true }).limit(1);
+      if (error) throw error;
+      setDbLatency(Math.round(performance.now() - start));
+      toast("Databázové spojení OK", "success");
+    } catch (error) {
+      toast(`Chyba spojení: ${error.message}`, "error");
+    } finally {
+      setPinging(false);
     }
   };
 
   useEffect(() => {
-    calculateLocalStorageUsage();
+    measureLatency();
   }, []);
 
-  // Chybové logy v reálném čase z errorLoggeru
-  const [errorLogs, setErrorLogs] = useState(() => getErrorLogs());
-  const [expandedErrorId, setExpandedErrorId] = useState(null);
-
-  useEffect(() => {
-    const handleNewError = () => {
-      setErrorLogs(getErrorLogs());
-      calculateLocalStorageUsage(); // aktualizace po uložení chyby
-    };
-    window.addEventListener("mt3:error_logged", handleNewError);
-    return () => window.removeEventListener("mt3:error_logged", handleNewError);
-  }, []);
-
-  const handleClearLogs = () => {
-    clearErrorLogs();
-    toast("Konzole chyb byla vymazána", "success");
-  };
-
-  const handleExportLogs = () => {
-    if (errorLogs.length === 0) {
-      toast("Žádné chybové záznamy k exportu", "warning");
-      return;
-    }
-    try {
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(errorLogs, null, 2));
-      const downloadAnchor = document.createElement("a");
-      downloadAnchor.setAttribute("href", dataStr);
-      downloadAnchor.setAttribute("download", `mt3_system_errors_${new Date().toISOString().split("T")[0]}.json`);
-      document.body.appendChild(downloadAnchor);
-      downloadAnchor.click();
-      downloadAnchor.remove();
-      toast("Logy úspěšně staženy", "success");
-    } catch (e) {
-      toast("Chyba při exportu: " + e.message, "error");
-    }
-  };
-
-  // Výpočet metrik úkolů a příloh
   const taskMetrics = useMemo(() => {
-    const total = tasks.length;
-    const todo = tasks.filter((t) => t.status === "todo").length;
-    const doing = tasks.filter((t) => t.status === "doing").length;
-    const waiting = tasks.filter((t) => t.status === "waiting").length;
-    const done = tasks.filter((t) => t.status === "done").length;
-    
-    const todayStr = new Date().toISOString().split("T")[0];
-    const overdue = tasks.filter(
-      (t) => t.status !== "done" && t.dueDate && t.dueDate < todayStr
-    ).length;
-
-    const highPriority = tasks.filter((t) => t.priority === "high" && t.status !== "done").length;
-
-    return { total, todo, doing, waiting, done, overdue, highPriority };
+    const active = tasks.filter((task) => task.status !== "done");
+    const done = tasks.filter((task) => task.status === "done");
+    const overdue = active.filter((task) => task.dueDate && new Date(task.dueDate) < new Date()).length;
+    const highPriority = active.filter((task) => task.priority === "high").length;
+    return { total: tasks.length, active: active.length, done: done.length, overdue, highPriority };
   }, [tasks]);
 
+  const projectMetrics = useMemo(() => {
+    const active = projects.filter((project) => project.status !== "archived");
+    return { total: projects.length, active: active.length, archived: projects.length - active.length };
+  }, [projects]);
+
+  const noteSize = useMemo(() => notes.reduce((sum, note) => sum + (note.content?.length || 0), 0), [notes]);
   const attachmentMetrics = useMemo(() => {
-    const totalCount = attachments.length;
-    const totalBytes = attachments.reduce((sum, a) => sum + (a.size || 0), 0);
-    
-    // Formátování velikosti
-    let formattedSize = "0 B";
-    if (totalBytes > 0) {
-      const k = 1024;
-      const sizes = ["B", "KB", "MB", "GB"];
-      const i = Math.floor(Math.log(totalBytes) / Math.log(k));
-      formattedSize = parseFloat((totalBytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
-    }
+    const attachments = notes.flatMap((note) => note.attachments || []);
+    const totalSize = attachments.reduce((sum, attachment) => sum + (attachment.size || 0), 0);
+    return { count: attachments.length, size: totalSize };
+  }, [notes]);
+  const quickTodoMetrics = useMemo(() => ({
+    total: quickTodos.length,
+    open: quickTodos.filter((item) => !item.done).length,
+    done: quickTodos.filter((item) => item.done).length,
+  }), [quickTodos]);
+  const trashMetrics = useMemo(() => ({
+    tasks: trash?.tasks?.length || 0,
+    projects: trash?.projects?.length || 0,
+    notes: trash?.notes?.length || 0,
+  }), [trash]);
+  const trashTotal = trashMetrics.tasks + trashMetrics.projects + trashMetrics.notes;
 
-    return { count: totalCount, sizeFormatted: formattedSize };
-  }, [attachments]);
+  const exportDiagnostics = () => {
+    const data = { exportedAt: new Date().toISOString(), workspaceId: activeWorkspaceId, appVersion: APP_VERSION, dbLatency, swStatus, storageSize, metrics: { taskMetrics, projectMetrics, notes: notes.length, noteSize, quickTodoMetrics, attachmentMetrics, trashMetrics }, errorLogs };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `zentero-admin-diagnostics-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast("Diagnostika exportována", "success");
+  };
 
-  const quickTodoMetrics = useMemo(() => {
-    const total = quickTodos.length;
-    const open = quickTodos.filter((q) => !q.done).length;
-    const done = quickTodos.filter((q) => q.done).length;
-    return { total, open, done };
-  }, [quickTodos]);
+  const clearLocalLogs = () => {
+    clearErrorLogs();
+    setErrorLogs([]);
+    toast("Lokální chybové logy vymazány", "success");
+  };
 
-  // Formulář hlášení chyb (Bug Report)
-  const [bugForm, setBugForm] = useState({
-    title: "",
-    area: "Dashboard",
-    severity: "Střední",
-    description: "",
-  });
-  const [submittingBug, setSubmittingBug] = useState(false);
+  const simulateError = () => {
+    const errorLog = { id: Date.now(), type: "simulated", message: "Testovací chyba vyvolaná z administrace", stack: "AdminPage.simulateError → test", timestamp: new Date().toISOString(), url: window.location.href };
+    const updated = [errorLog, ...getErrorLogs()].slice(0, 50);
+    localStorage.setItem("mt3:system_errors", JSON.stringify(updated));
+    window.dispatchEvent(new CustomEvent("mt3:error_logged", { detail: errorLog }));
+    toast("Testovací chyba zaznamenána", "warning");
+  };
 
-  const handleBugSubmit = async (e) => {
-    e.preventDefault();
-    if (!bugForm.title.trim() || !bugForm.description.trim()) {
-      toast("Prosím vyplňte název a popis chyby", "warning");
+  const submitBugReport = () => {
+    const title = bugTitle.trim();
+    if (!title) {
+      toast("Doplň název chyby", "warning");
       return;
     }
-
-    setSubmittingBug(true);
-
-    try {
-      // Sestavení podrobné systémové diagnostiky
-      const debugInfo = `
-=== SYSTÉMOVÁ DIAGNOSTIKA ===
-Čas hlášení: ${new Date().toLocaleString("cs-CZ")}
-Stav připojení: ${isOnline ? "ONLINE" : "OFFLINE"}
-Service Worker: ${swStatus}
-LocalStorage využití: ${(localStorageSize / 1024).toFixed(1)} KB
-Database Latency: ${dbLatency !== null ? dbLatency + " ms" : "Neznámo"}
-Prohlížeč (User Agent): ${navigator.userAgent}
-Aktivní Workspace: ${activeWorkspaceId || "Neznámo"}
-Reportér: ${userEmail || "Neznámý uživatel"}
-
-Poslední 3 chyby v logu:
-${
-  errorLogs.slice(0, 3).map(
-    (err, i) => `${i + 1}. [${err.timestamp}] ${err.type}: ${err.message} v ${err.filename}:${err.lineno}`
-  ).join("\n") || "Žádné zaznamenané chyby."
-}
-      `.trim();
-
-      const taskTitle = `[BUG REPORT] ${bugForm.title.trim()}`;
-      const taskDesc = `
-Oblast: ${bugForm.area}
-Závažnost: ${bugForm.severity}
-
-=== POPIS CHYBY ===
-${bugForm.description.trim()}
-
-${debugInfo}
-      `.trim();
-
-      // Výběr prioritního příznaku pro nově tvořený úkol
-      let taskPriority = null;
-      if (bugForm.severity === "Vysoká (Kritická)") {
-        taskPriority = "high";
-      } else if (bugForm.severity === "Střední") {
-        taskPriority = "medium";
-      } else {
-        taskPriority = "low";
-      }
-
-      // Vytvoření úkolu v systému
-      await addTask({
-        title: taskTitle,
-        description: taskDesc,
-        priority: taskPriority,
-        status: "todo",
-      });
-
-      toast("Bug report úspěšně odeslán jako úkol!", "success");
-      setBugForm({
-        title: "",
-        area: "Dashboard",
-        severity: "Střední",
-        description: "",
-      });
-    } catch (err) {
-      toast("Selhalo odeslání hlášení: " + err.message, "error");
-    } finally {
-      setSubmittingBug(false);
-    }
+    const description = [
+      `Oblast: ${bugArea}`,
+      `Závažnost: ${bugSeverity}`,
+      `Verze aplikace: ${APP_VERSION}`,
+      `Workspace: ${activeWorkspaceId || "—"}`,
+      `Browser: ${navigator.userAgent}`,
+      "",
+      bugDescription.trim() || "Bez detailního popisu.",
+    ].join("\n");
+    addTask({ title: `[Bug] ${title}`, description, priority: bugSeverity === "Vysoká" ? "high" : bugSeverity === "Nízká" ? "low" : "medium", subtasks: [] });
+    setBugTitle("");
+    setBugDescription("");
+    toast("Bug report byl založen jako úkol", "success");
   };
 
-  // --- GLOBÁLNÍ SPRÁVA UŽIVATELŮ ---
-  const [globalProfiles, setGlobalProfiles] = useState([]);
-  const [loadingProfiles, setLoadingProfiles] = useState(false);
-
-  useEffect(() => {
-    async function loadGlobalProfiles() {
-      setLoadingProfiles(true);
-      try {
-        const [profilesRes, membersRes] = await Promise.all([
-          supabase.from("user_profiles").select("*"),
-          supabase.from("workspace_members").select("*")
-        ]);
-        
-        if (profilesRes.error) throw profilesRes.error;
-        if (membersRes.error) throw membersRes.error;
-
-        const loadedProfiles = profilesRes.data || [];
-        const loadedMembers = membersRes.data || [];
-
-        const combined = loadedProfiles.map((p) => {
-          let memberRecord = loadedMembers.find(
-            (m) => m.user_id === p.id && m.workspace_id === activeWorkspaceId
-          );
-          if (!memberRecord) {
-            memberRecord = loadedMembers.find((m) => m.user_id === p.id);
-          }
-          return {
-            id: p.id,
-            displayName: p.display_name || "Bez jména",
-            email: p.email,
-            role: memberRecord ? memberRecord.role : "member",
-          };
-        });
-
-        setGlobalProfiles(combined);
-      } catch (err) {
-        console.error("Global profiles loading error:", err);
-        toast("Chyba při načítání uživatelských profilů: " + err.message, "error");
-      } finally {
-        setLoadingProfiles(false);
-      }
-    }
-
-    if (activeTab === "users") {
-      loadGlobalProfiles();
-    }
-  }, [activeTab, activeWorkspaceId]);
-
-  // --- SPRÁVA KOŠE ---
-  const combinedTrash = useMemo(() => {
-    const items = [];
-    deletedProjects.forEach((p) => {
-      items.push({ id: p.id, type: "project", title: p.name || "Bez názvu", updatedAt: p.updatedAt });
-    });
-    deletedTasks.forEach((t) => {
-      items.push({ id: t.id, type: "task", title: t.title || "Bez názvu", updatedAt: t.updatedAt });
-    });
-    deletedNotes.forEach((n) => {
-      items.push({ id: n.id, type: "note", title: n.title || "Bez názvu", updatedAt: n.updatedAt });
-    });
-    return items.sort((a, b) => b.updatedAt - a.updatedAt);
-  }, [deletedProjects, deletedTasks, deletedNotes]);
-
-  const handleRestore = (item) => {
-    try {
-      if (item.type === "project") {
-        restoreProject(item.id);
-      } else if (item.type === "task") {
-        restoreTask(item.id);
-      } else if (item.type === "note") {
-        restoreNote(item.id);
-      }
-      toast("Položka byla úspěšně obnovena", "success");
-    } catch (err) {
-      toast("Chyba při obnovení: " + err.message, "error");
-    }
-  };
-
-  const handleHardDelete = (item) => {
-    const confirm = window.confirm(
-      `Opravdu chcete tuto položku (${item.title}) smazat natrvalo? Tato akce je zcela nevratná.`
+  if (!isSystemAdmin) {
+    return (
+      <div style={{ padding: 40, textAlign: "center", color: "var(--text-3)" }}>
+        <Icon name="lock" size={48} color="var(--text-3)" />
+        <h2 style={{ marginTop: 16, color: "var(--text)" }}>Přístup odepřen</h2>
+        <p>Tato stránka je dostupná pouze systémovým administrátorům.</p>
+      </div>
     );
-    if (!confirm) return;
-
-    try {
-      if (item.type === "project") {
-        hardDeleteProject(item.id);
-      } else if (item.type === "task") {
-        hardDeleteTask(item.id);
-      } else if (item.type === "note") {
-        hardDeleteNote(item.id);
-      }
-      toast("Položka byla natrvalo smazána", "success");
-    } catch (err) {
-      toast("Chyba při mazání: " + err.message, "error");
-    }
-  };
+  }
 
   return (
-    <div style={{ padding: "24px", maxWidth: 1200, margin: "0 auto", animation: "fadeIn .25s ease-out" }}>
-      {/* Záhlaví */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
-        <div>
-          <h1 style={{ fontSize: "28px", fontWeight: 700, letterSpacing: "-0.02em", color: "var(--text)" }}>
-            Systém & Administrace
-          </h1>
-          <p style={{ color: "var(--text-3)", fontSize: "14px", marginTop: "4px" }}>
-            Technický dashboard, sledování stavu, správa výkonu a logování chyb v reálném čase.
-          </p>
+    <div style={{ padding: 32, maxWidth: 1400, margin: "0 auto" }}>
+      <div style={{ marginBottom: 26 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 24, marginBottom: 22 }}>
+          <div>
+            <h1 style={{ fontSize: 32, fontWeight: 800, color: "var(--text)", margin: "0 0 8px" }}>Systém & Administrace</h1>
+            <p style={{ color: "var(--text-3)", fontSize: 15, margin: 0 }}>Technický dashboard, monitoring, AI diagnostika a správa aplikace Zentero.</p>
+          </div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <SmallButton onClick={exportDiagnostics} tone="accent">Export diagnostiky</SmallButton>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "9px 12px", borderRadius: 12, border: "1px solid var(--border-soft)", background: "var(--surface)", color: "var(--text-2)", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 800 }}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--green)" }} /> ONLINE
+            </span>
+          </div>
         </div>
-
-        {/* Stav sítě */}
-        <div style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-          padding: "8px 12px",
-          borderRadius: "var(--r)",
-          background: "var(--surface)",
-          border: "1px solid var(--border-soft)"
-        }}>
-          <span style={{
-            width: "8px",
-            height: "8px",
-            borderRadius: "50%",
-            background: isOnline ? "var(--green)" : "var(--red)",
-            boxShadow: isOnline ? "0 0 8px var(--green-glow)" : "0 0 8px var(--red-glow)",
-            display: "inline-block",
-            animation: "pulse 2s infinite"
-          }} />
-          <span style={{ fontSize: "12.5px", fontWeight: 600, color: "var(--text-2)", fontFamily: "var(--mono)" }}>
-            {isOnline ? "ONLINE" : "OFFLINE"}
-          </span>
+        <div style={{ display: "flex", gap: 8, borderBottom: "1px solid var(--border-soft)", overflowX: "auto" }}>
+          {TAB_DEFS.map((tab) => {
+            const badge = tab.id === "logs" ? errorLogs.length : tab.id === "trash" ? trashTotal : 0;
+            return (
+              <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)} style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 14px", border: 0, background: "transparent", color: activeTab === tab.id ? "var(--accent)" : "var(--text-3)", borderBottom: activeTab === tab.id ? "2px solid var(--accent)" : "2px solid transparent", fontSize: 14, fontWeight: activeTab === tab.id ? 800 : 600, whiteSpace: "nowrap" }}>
+                <Icon name={tab.icon} size={15} color="currentColor" />
+                {tab.label}
+                {badge > 0 && <span style={{ minWidth: 20, height: 20, padding: "0 6px", borderRadius: 10, background: "var(--accent)", color: "var(--bg)", fontSize: 11, display: "grid", placeItems: "center" }}>{badge}</span>}
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* Navigace v tabech */}
-      <div style={{ display: "flex", borderBottom: "1px solid var(--border)", gap: "16px", marginBottom: "28px", overflowX: "auto" }}>
-        <button
-          onClick={() => setActiveTab("overview")}
-          style={{
-            padding: "12px 6px",
-            color: activeTab === "overview" ? "var(--accent)" : "var(--text-3)",
-            borderBottom: activeTab === "overview" ? "2px solid var(--accent)" : "2px solid transparent",
-            fontWeight: activeTab === "overview" ? 600 : 500,
-            fontSize: "14.5px",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            whiteSpace: "nowrap"
-          }}
-        >
-          <Icon name="home" size={16} color="currentColor" />
-          Přehled & Statistiky
-        </button>
-        <button
-          onClick={() => setActiveTab("diagnostics")}
-          style={{
-            padding: "12px 6px",
-            color: activeTab === "diagnostics" ? "var(--accent)" : "var(--text-3)",
-            borderBottom: activeTab === "diagnostics" ? "2px solid var(--accent)" : "2px solid transparent",
-            fontWeight: activeTab === "diagnostics" ? 600 : 500,
-            fontSize: "14.5px",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            whiteSpace: "nowrap"
-          }}
-        >
-          <Icon name="alert-circle" size={16} color="currentColor" />
-          Diagnostika Systému
-        </button>
-        <button
-          onClick={() => setActiveTab("logs")}
-          style={{
-            padding: "12px 6px",
-            color: activeTab === "logs" ? "var(--accent)" : "var(--text-3)",
-            borderBottom: activeTab === "logs" ? "2px solid var(--accent)" : "2px solid transparent",
-            fontWeight: activeTab === "logs" ? 600 : 500,
-            fontSize: "14.5px",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            whiteSpace: "nowrap"
-          }}
-        >
-          <Icon name="file-text" size={16} color="currentColor" />
-          Log Chyb & Bug Report
-          {errorLogs.length > 0 && (
-            <span style={{
-              background: "var(--red)",
-              color: "#fff",
-              fontSize: "11px",
-              fontWeight: 700,
-              borderRadius: "999px",
-              padding: "1px 6px",
-              marginLeft: "4px"
-            }}>
-              {errorLogs.length}
-            </span>
-          )}
-        </button>
-        <button
-          onClick={() => setActiveTab("users")}
-          style={{
-            padding: "12px 6px",
-            color: activeTab === "users" ? "var(--accent)" : "var(--text-3)",
-            borderBottom: activeTab === "users" ? "2px solid var(--accent)" : "2px solid transparent",
-            fontWeight: activeTab === "users" ? 600 : 500,
-            fontSize: "14.5px",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            whiteSpace: "nowrap"
-          }}
-        >
-          <Icon name="users" size={16} color="currentColor" />
-          Všechny účty
-        </button>
-        <button
-          onClick={() => setActiveTab("trash")}
-          style={{
-            padding: "12px 6px",
-            color: activeTab === "trash" ? "var(--accent)" : "var(--text-3)",
-            borderBottom: activeTab === "trash" ? "2px solid var(--accent)" : "2px solid transparent",
-            fontWeight: activeTab === "trash" ? 600 : 500,
-            fontSize: "14.5px",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            whiteSpace: "nowrap"
-          }}
-        >
-          <Icon name="trash" size={16} color="currentColor" />
-          Koš
-          {combinedTrash.length > 0 && (
-            <span style={{
-              background: "var(--accent)",
-              color: "var(--bg)",
-              fontSize: "11px",
-              fontWeight: 700,
-              borderRadius: "999px",
-              padding: "1px 6px",
-              marginLeft: "4px"
-            }}>
-              {combinedTrash.length}
-            </span>
-          )}
-        </button>
-      </div>
-
-      {/* OBSAH TABŮ */}
-      
-      {/* 1. TAB: PŘEHLED & STATISTIKY */}
       {activeTab === "overview" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
-          {/* Karty s metrikami */}
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-            gap: "16px"
-          }}>
-            {/* Projekty */}
-            <div style={{
-              background: "rgba(20, 24, 34, 0.6)",
-              backdropFilter: "blur(12px)",
-              border: "1px solid var(--border-soft)",
-              borderRadius: "var(--r-lg)",
-              padding: "20px"
-            }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
-                <span style={{ color: "var(--text-3)", fontSize: "13px", fontWeight: 500 }}>Projekty</span>
-                <div style={{ padding: "6px", borderRadius: "var(--r)", background: "var(--accent-soft)", color: "var(--accent)" }}>
-                  <Icon name="folder" size={18} color="currentColor" />
-                </div>
-              </div>
-              <div style={{ fontSize: "28px", fontWeight: 700, fontFamily: "var(--mono)", color: "var(--text)", lineHeight: 1.1 }}>
-                {projects.length}
-              </div>
-              <div style={{ display: "flex", gap: "10px", fontSize: "12px", color: "var(--text-3)", marginTop: "8px" }}>
-                <span>Celkem</span>
-                <span>·</span>
-                <span style={{ color: "var(--green)" }}>{projects.filter((p) => p.status === "active").length} aktivní</span>
-              </div>
-            </div>
-
-            {/* Úkoly */}
-            <div style={{
-              background: "rgba(20, 24, 34, 0.6)",
-              backdropFilter: "blur(12px)",
-              border: "1px solid var(--border-soft)",
-              borderRadius: "var(--r-lg)",
-              padding: "20px"
-            }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
-                <span style={{ color: "var(--text-3)", fontSize: "13px", fontWeight: 500 }}>Úkoly</span>
-                <div style={{ padding: "6px", borderRadius: "var(--r)", background: "rgba(59, 130, 246, 0.12)", color: "var(--blue)" }}>
-                  <Icon name="check-square" size={18} color="currentColor" />
-                </div>
-              </div>
-              <div style={{ fontSize: "28px", fontWeight: 700, fontFamily: "var(--mono)", color: "var(--text)", lineHeight: 1.1 }}>
-                {taskMetrics.total}
-              </div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 10px", fontSize: "12px", color: "var(--text-3)", marginTop: "8px" }}>
-                <span style={{ color: "var(--orange)" }}>{taskMetrics.todo} Todo</span>
-                <span>·</span>
-                <span style={{ color: "var(--blue)" }}>{taskMetrics.doing} Doing</span>
-                <span>·</span>
-                <span style={{ color: "var(--green)" }}>{taskMetrics.done} Hotovo</span>
-              </div>
-            </div>
-
-            {/* Poznámky */}
-            <div style={{
-              background: "rgba(20, 24, 34, 0.6)",
-              backdropFilter: "blur(12px)",
-              border: "1px solid var(--border-soft)",
-              borderRadius: "var(--r-lg)",
-              padding: "20px"
-            }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
-                <span style={{ color: "var(--text-3)", fontSize: "13px", fontWeight: 500 }}>Poznámky & Tagy</span>
-                <div style={{ padding: "6px", borderRadius: "var(--r)", background: "rgba(239, 68, 68, 0.1)", color: "var(--red)" }}>
-                  <Icon name="file-text" size={18} color="currentColor" />
-                </div>
-              </div>
-              <div style={{ fontSize: "28px", fontWeight: 700, fontFamily: "var(--mono)", color: "var(--text)", lineHeight: 1.1 }}>
-                {notes.length}
-              </div>
-              <div style={{ display: "flex", gap: "10px", fontSize: "12px", color: "var(--text-3)", marginTop: "8px" }}>
-                <span>Poznámek</span>
-                <span>·</span>
-                <span style={{ color: "var(--accent)" }}>{tags.length} tagů</span>
-              </div>
-            </div>
-
-            {/* Soubory & Přílohy */}
-            <div style={{
-              background: "rgba(20, 24, 34, 0.6)",
-              backdropFilter: "blur(12px)",
-              border: "1px solid var(--border-soft)",
-              borderRadius: "var(--r-lg)",
-              padding: "20px"
-            }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
-                <span style={{ color: "var(--text-3)", fontSize: "13px", fontWeight: 500 }}>Přílohy (Úložiště)</span>
-                <div style={{ padding: "6px", borderRadius: "var(--r)", background: "rgba(34, 197, 94, 0.1)", color: "var(--green)" }}>
-                  <Icon name="paperclip" size={18} color="currentColor" />
-                </div>
-              </div>
-              <div style={{ fontSize: "28px", fontWeight: 700, fontFamily: "var(--mono)", color: "var(--text)", lineHeight: 1.1 }}>
-                {attachmentMetrics.count}
-              </div>
-              <div style={{ display: "flex", gap: "10px", fontSize: "12px", color: "var(--text-3)", marginTop: "8px" }}>
-                <span>Souborů</span>
-                <span>·</span>
-                <span style={{ color: "var(--green)", fontWeight: 600 }}>{attachmentMetrics.sizeFormatted}</span>
-              </div>
-            </div>
+        <div style={{ display: "grid", gap: 20 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
+            <MetricCard label="Úkoly" value={taskMetrics.total} hint={`${taskMetrics.active} aktivních · ${taskMetrics.done} hotovo`} icon="check-square" />
+            <MetricCard label="Projekty" value={projectMetrics.total} hint={`${projectMetrics.active} aktivních · ${projectMetrics.archived} archiv`} icon="folder" color="var(--blue)" />
+            <MetricCard label="Poznámky" value={notes.length} hint={`${tags.length} tagů · ${formatBytes(noteSize * 2)} textu`} icon="file-text" color="#a855f7" />
+            <MetricCard label="Přílohy" value={attachmentMetrics.count} hint={formatBytes(attachmentMetrics.size)} icon="paperclip" color="var(--green)" />
           </div>
-
-          {/* Doplňující statistiky */}
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "1fr",
-            gap: "20px"
-          }}>
-            {/* Rozpad stavu úkolů a Rychlý seznam */}
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-              gap: "20px"
-            }}>
-              <div style={{
-                background: "var(--surface)",
-                border: "1px solid var(--border-soft)",
-                borderRadius: "var(--r-lg)",
-                padding: "24px"
-              }}>
-                <h3 style={{ fontSize: "16px", fontWeight: 600, color: "var(--text)", marginBottom: "16px" }}>Stav plnění úkolů</h3>
-                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                  <div>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", color: "var(--text-2)", marginBottom: "4px" }}>
-                      <span>Zpožděné úkoly (kritické)</span>
-                      <span style={{ fontFamily: "var(--mono)", color: "var(--red)" }}>{taskMetrics.overdue}</span>
-                    </div>
-                    <div style={{ height: "6px", background: "var(--bg-2)", borderRadius: "3px", overflow: "hidden" }}>
-                      <div style={{
-                        width: `${taskMetrics.total > 0 ? (taskMetrics.overdue / taskMetrics.total) * 100 : 0}%`,
-                        height: "100%",
-                        background: "var(--red)"
-                      }} />
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", color: "var(--text-2)", marginBottom: "4px" }}>
-                      <span>Úkoly s vysokou prioritou</span>
-                      <span style={{ fontFamily: "var(--mono)", color: "var(--orange)" }}>{taskMetrics.highPriority}</span>
-                    </div>
-                    <div style={{ height: "6px", background: "var(--bg-2)", borderRadius: "3px", overflow: "hidden" }}>
-                      <div style={{
-                        width: `${taskMetrics.total > 0 ? (taskMetrics.highPriority / taskMetrics.total) * 100 : 0}%`,
-                        height: "100%",
-                        background: "var(--orange)"
-                      }} />
-                    </div>
-                  </div>
-
-                  <div>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", color: "var(--text-2)", marginBottom: "4px" }}>
-                      <span>Dokončené úkoly</span>
-                      <span style={{ fontFamily: "var(--mono)", color: "var(--green)" }}>
-                        {taskMetrics.done} z {taskMetrics.total} ({taskMetrics.total > 0 ? Math.round((taskMetrics.done / taskMetrics.total) * 100) : 0}%)
-                      </span>
-                    </div>
-                    <div style={{ height: "6px", background: "var(--bg-2)", borderRadius: "3px", overflow: "hidden" }}>
-                      <div style={{
-                        width: `${taskMetrics.total > 0 ? (taskMetrics.done / taskMetrics.total) * 100 : 0}%`,
-                        height: "100%",
-                        background: "var(--green)"
-                      }} />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div style={{
-                background: "var(--surface)",
-                border: "1px solid var(--border-soft)",
-                borderRadius: "var(--r-lg)",
-                padding: "24px"
-              }}>
-                <h3 style={{ fontSize: "16px", fontWeight: 600, color: "var(--text)", marginBottom: "16px" }}>Rychlý seznam (Inbox)</h3>
-                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                  <div>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", color: "var(--text-2)", marginBottom: "4px" }}>
-                      <span>Celkem položek</span>
-                      <span style={{ fontFamily: "var(--mono)", color: "var(--text)" }}>{quickTodoMetrics.total}</span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", color: "var(--text-2)", marginBottom: "4px" }}>
-                      <span>Rozpracované rychlé položky</span>
-                      <span style={{ fontFamily: "var(--mono)", color: "var(--accent)" }}>{quickTodoMetrics.open}</span>
-                    </div>
-                    <div style={{ height: "6px", background: "var(--bg-2)", borderRadius: "3px", overflow: "hidden" }}>
-                      <div style={{
-                        width: `${quickTodoMetrics.total > 0 ? (quickTodoMetrics.open / quickTodoMetrics.total) * 100 : 0}%`,
-                        height: "100%",
-                        background: "var(--accent)"
-                      }} />
-                    </div>
-                  </div>
-
-                  <div>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", color: "var(--text-2)", marginBottom: "4px" }}>
-                      <span>Odbavené rychlé položky</span>
-                      <span style={{ fontFamily: "var(--mono)", color: "var(--text-3)" }}>{quickTodoMetrics.done}</span>
-                    </div>
-                    <div style={{ height: "6px", background: "var(--bg-2)", borderRadius: "3px", overflow: "hidden" }}>
-                      <div style={{
-                        width: `${quickTodoMetrics.total > 0 ? (quickTodoMetrics.done / quickTodoMetrics.total) * 100 : 0}%`,
-                        height: "100%",
-                        background: "var(--text-4)"
-                      }} />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Adresář členů workspace */}
-            <div style={{
-              background: "var(--surface)",
-              border: "1px solid var(--border-soft)",
-              borderRadius: "var(--r-lg)",
-              padding: "24px"
-            }}>
-              <h3 style={{ fontSize: "16px", fontWeight: 600, color: "var(--text)", marginBottom: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
-                <Icon name="users" size={18} color="var(--accent)" />
-                Uživatelé a členové workspace ({workspaceMembers.length})
-              </h3>
-              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                {workspaceMembers.map((m, idx) => {
-                  const roleColors = { owner: "var(--accent)", admin: "var(--blue)", member: "var(--green)", viewer: "var(--text-3)" };
-                  return (
-                    <div
-                      key={m.id || idx}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        padding: "10px 14px",
-                        background: "var(--bg-2)",
-                        border: "1px solid var(--border-soft)",
-                        borderRadius: "var(--r)",
-                      }}
-                    >
-                      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                        <div style={{
-                          width: "32px",
-                          height: "32px",
-                          borderRadius: "50%",
-                          background: (roleColors[m.role] || "var(--accent)") + "1a",
-                          border: `1px solid ${(roleColors[m.role] || "var(--accent)")}44`,
-                          color: roleColors[m.role] || "var(--accent)",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          fontWeight: 700,
-                          fontSize: "12px",
-                          fontFamily: "var(--mono)"
-                        }}>
-                          {(m.displayName || m.email || "U").slice(0, 2).toUpperCase()}
-                        </div>
-                        <div>
-                          <div style={{ fontSize: "13.5px", fontWeight: 600, color: "var(--text)" }}>
-                            {m.displayName || "Člen bez jména"}
-                          </div>
-                          <div style={{ fontSize: "12px", color: "var(--text-3)", fontFamily: "var(--mono)" }}>
-                            {m.email}
-                          </div>
-                        </div>
-                      </div>
-                      <span style={{
-                        fontSize: "10px",
-                        fontWeight: 700,
-                        textTransform: "uppercase",
-                        letterSpacing: "0.08em",
-                        color: roleColors[m.role] || "var(--text-3)",
-                        background: (roleColors[m.role] || "var(--text-3)") + "12",
-                        padding: "3px 8px",
-                        borderRadius: "99px",
-                        border: `1px solid ${(roleColors[m.role] || "var(--text-3)")}33`
-                      }}>
-                        {m.role || "member"}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16 }}>
+            <Card title="Stav plnění úkolů" icon="activity">
+              <Progress label="Zpožděné úkoly" value={taskMetrics.overdue} total={Math.max(taskMetrics.total, 1)} color="var(--red)" />
+              <Progress label="Vysoká priorita" value={taskMetrics.highPriority} total={Math.max(taskMetrics.total, 1)} color="var(--orange)" />
+              <Progress label="Dokončeno" value={taskMetrics.done} total={Math.max(taskMetrics.total, 1)} color="var(--green)" />
+            </Card>
+            <Card title="Rychlý seznam" icon="zap">
+              <Progress label="Otevřené položky" value={quickTodoMetrics.open} total={Math.max(quickTodoMetrics.total, 1)} color="var(--accent)" />
+              <Progress label="Odbavené položky" value={quickTodoMetrics.done} total={Math.max(quickTodoMetrics.total, 1)} color="var(--green)" />
+            </Card>
           </div>
         </div>
       )}
 
-      {/* 2. TAB: DIAGNOSTIKA SYSTÉMU */}
       {activeTab === "diagnostics" && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "20px" }}>
-          {/* Karta: Ping & DB Spojení */}
-          <div style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border-soft)",
-            borderRadius: "var(--r-lg)",
-            padding: "24px",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "space-between"
-          }}>
-            <div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-                <h3 style={{ fontSize: "16px", fontWeight: 600, color: "var(--text)" }}>Latence databáze Supabase</h3>
-                <button
-                  onClick={measureLatency}
-                  disabled={pingStatus === "pinging"}
-                  style={{
-                    padding: "6px 12px",
-                    background: "var(--bg-2)",
-                    border: "1px solid var(--border)",
-                    color: "var(--text-2)",
-                    borderRadius: "var(--r)",
-                    fontSize: "12px",
-                    fontWeight: 500,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px"
-                  }}
-                >
-                  <span style={{ animation: pingStatus === "pinging" ? "spin 1s linear infinite" : "none", display: "inline-block" }}>
-                    <Icon name="refresh-cw" size={11} color="currentColor" />
-                  </span>
-                  Testovat
-                </button>
-              </div>
-
-              <div style={{ display: "flex", alignItems: "baseline", gap: "8px", margin: "20px 0" }}>
-                <span style={{
-                  fontSize: "36px",
-                  fontWeight: 700,
-                  fontFamily: "var(--mono)",
-                  color: dbLatency === null ? "var(--text-3)" : dbLatency < 120 ? "var(--green)" : dbLatency < 300 ? "var(--orange)" : "var(--red)"
-                }}>
-                  {dbLatency !== null ? `${dbLatency}` : "---"}
-                </span>
-                <span style={{ fontSize: "14px", color: "var(--text-3)", fontWeight: 500 }}>ms</span>
-              </div>
-
-              <p style={{ fontSize: "13px", color: "var(--text-2)", lineHeight: 1.4 }}>
-                Měří se skutečná doba od odeslání asynchronního API požadavku do navrácení meta-odpovědi ze Supabase serveru.
-              </p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16 }}>
+          <Card title="Latence databáze Supabase" subtitle="Rychlý test dostupnosti databáze." icon="database" action={<SmallButton onClick={measureLatency} disabled={pinging}>{pinging ? "Měřím…" : "Testovat"}</SmallButton>}>
+            <div style={{ fontSize: 34, fontWeight: 850, fontFamily: "var(--mono)", color: dbLatency && dbLatency > 300 ? "var(--red)" : dbLatency && dbLatency > 120 ? "var(--orange)" : "var(--green)" }}>{dbLatency ?? "—"} <span style={{ fontSize: 13, color: "var(--text-3)" }}>ms</span></div>
+          </Card>
+          <Card title="PWA & prostředí" subtitle="Service Worker, verze aplikace a režim buildu." icon="smartphone">
+            <KeyValue label="Service Worker" value={swStatus} />
+            <KeyValue label="Verze" value={`${APP_VERSION} · ${APP_RELEASE_DATE}`} />
+            <KeyValue label="Build režim" value={import.meta.env.MODE} />
+          </Card>
+          <Card title="Cache & Safe reload" subtitle="Nouzové vyčištění PWA cache bez zásahu do dat v Supabase." icon="refresh-cw">
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <SmallButton onClick={() => clearCachesAndReload()}>Vyčistit cache</SmallButton>
+              <SmallButton onClick={() => clearCachesAndReload()} tone="accent">Safe reload</SmallButton>
             </div>
-
-            <div style={{
-              marginTop: "20px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              paddingTop: "14px",
-              borderTop: "1px solid var(--border-soft)"
-            }}>
-              <span style={{ fontSize: "13px", color: "var(--text-3)" }}>Automatický ping (každých 10 s)</span>
-              <button
-                onClick={() => setAutoPing(!autoPing)}
-                style={{
-                  width: "44px",
-                  height: "22px",
-                  borderRadius: "999px",
-                  background: autoPing ? "var(--accent-soft)" : "var(--bg-2)",
-                  border: "1px solid var(--border)",
-                  position: "relative",
-                  padding: 0
-                }}
-              >
-                <span style={{
-                  position: "absolute",
-                  top: "2px",
-                  left: autoPing ? "24px" : "2px",
-                  width: "16px",
-                  height: "16px",
-                  borderRadius: "50%",
-                  background: autoPing ? "var(--accent)" : "var(--text-3)",
-                  transition: "left .15s ease"
-                }} />
-              </button>
-            </div>
-          </div>
-
-          {/* Karta: LocalStorage Využití */}
-          <div style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border-soft)",
-            borderRadius: "var(--r-lg)",
-            padding: "24px",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "space-between"
-          }}>
-            <div>
-              <h3 style={{ fontSize: "16px", fontWeight: 600, color: "var(--text)", marginBottom: "16px" }}>
-                Obsazení LocalStorage
-              </h3>
-              
-              <div style={{ display: "flex", alignItems: "baseline", gap: "8px", margin: "20px 0" }}>
-                <span style={{ fontSize: "36px", fontWeight: 700, fontFamily: "var(--mono)", color: "var(--text)" }}>
-                  {(localStorageSize / 1024).toFixed(1)}
-                </span>
-                <span style={{ fontSize: "14px", color: "var(--text-3)", fontWeight: 500 }}>KB / 5120 KB</span>
-              </div>
-
-              {/* Progress bar využití */}
-              <div style={{ height: "8px", background: "var(--bg-2)", borderRadius: "4px", overflow: "hidden", marginBottom: "12px" }}>
-                <div style={{
-                  width: `${Math.min(100, (localStorageSize / (5120 * 1024)) * 100)}%`,
-                  height: "100%",
-                  background: "var(--accent)"
-                }} />
-              </div>
-
-              <p style={{ fontSize: "13px", color: "var(--text-2)", lineHeight: 1.4 }}>
-                Lokální paměť slouží k rychlému ukládání stavů, chache dat z AI asistentů, nastavení a offline záloh systému Zentero.
-              </p>
-            </div>
-
-            <div style={{
-              marginTop: "20px",
-              paddingTop: "14px",
-              borderTop: "1px solid var(--border-soft)",
-              display: "flex",
-              justifyContent: "space-between"
-            }}>
-              <span style={{ fontSize: "12.5px", color: "var(--text-3)" }}>Aktuální počet klíčů</span>
-              <span style={{ fontSize: "12.5px", color: "var(--text-2)", fontFamily: "var(--mono)", fontWeight: 600 }}>
-                {typeof window !== "undefined" ? Object.keys(localStorage).length : 0}
-              </span>
-            </div>
-          </div>
-
-          {/* Karta: Informace o PWA & Prohlížeči */}
-          <div style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border-soft)",
-            borderRadius: "var(--r-lg)",
-            padding: "24px",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "space-between"
-          }}>
-            <div>
-              <h3 style={{ fontSize: "16px", fontWeight: 600, color: "var(--text)", marginBottom: "16px" }}>
-                PWA & Prostředí prohlížeče
-              </h3>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "12px" }}>
-                <div>
-                  <span style={{ fontSize: "12px", color: "var(--text-3)", display: "block" }}>PWA Offline Service Worker</span>
-                  <span style={{ fontSize: "13.5px", color: "var(--text-2)", fontWeight: 600, fontFamily: "var(--mono)" }}>
-                    {swStatus}
-                  </span>
-                </div>
-                <div>
-                  <span style={{ fontSize: "12px", color: "var(--text-3)", display: "block" }}>Platforma</span>
-                  <span style={{ fontSize: "13.5px", color: "var(--text-2)", fontWeight: 600 }}>
-                    {typeof navigator !== "undefined" ? navigator.platform || "macOS" : "macOS"}
-                  </span>
-                </div>
-                <div>
-                  <span style={{ fontSize: "12px", color: "var(--text-3)", display: "block" }}>User Agent</span>
-                  <span style={{
-                    fontSize: "11px",
-                    color: "var(--text-3)",
-                    display: "block",
-                    fontFamily: "var(--mono)",
-                    background: "var(--bg-2)",
-                    padding: "6px 8px",
-                    borderRadius: "var(--r-sm)",
-                    marginTop: "4px",
-                    maxHeight: "52px",
-                    overflowY: "auto",
-                    lineHeight: 1.3
-                  }}>
-                    {typeof navigator !== "undefined" ? navigator.userAgent : "Neznámý"}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div style={{
-              marginTop: "20px",
-              paddingTop: "14px",
-              borderTop: "1px solid var(--border-soft)",
-              display: "flex",
-              gap: "10px"
-            }}>
-              {/* Tlačítka pro simulaci chyb - užitečné pro testování */}
-              <button
-                onClick={simulateError}
-                style={{
-                  flex: 1,
-                  padding: "8px 10px",
-                  background: "var(--red-soft)",
-                  border: "1px solid rgba(239, 68, 68, 0.2)",
-                  color: "var(--red)",
-                  borderRadius: "var(--r)",
-                  fontSize: "12px",
-                  fontWeight: 500,
-                  textAlign: "center"
-                }}
-              >
-                Simulovat chybu
-              </button>
-              <button
-                onClick={simulatePromiseRejection}
-                style={{
-                  flex: 1,
-                  padding: "8px 10px",
-                  background: "var(--orange-soft)",
-                  border: "1px solid rgba(251, 146, 60, 0.2)",
-                  color: "var(--orange)",
-                  borderRadius: "var(--r)",
-                  fontSize: "12px",
-                  fontWeight: 500,
-                  textAlign: "center"
-                }}
-              >
-                Simulovat Promise pád
-              </button>
-            </div>
-          </div>
+          </Card>
+          <Card title="LocalStorage" subtitle="Lokální cache, nastavení a diagnostické logy." icon="hard-drive">
+            <div style={{ fontSize: 30, fontWeight: 850, fontFamily: "var(--mono)", color: "var(--accent)" }}>{formatBytes(storageSize)}</div>
+          </Card>
         </div>
       )}
 
-      {/* 3. TAB: LOG CHYB & BUG REPORT */}
+      {activeTab === "ai" && <AiTestConsolePanel embedded />}
+
       {activeTab === "logs" && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
-          {/* Levá strana: Konzole zachycených chyb */}
-          <div style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border-soft)",
-            borderRadius: "var(--r-lg)",
-            padding: "24px",
-            display: "flex",
-            flexDirection: "column",
-            minHeight: "450px"
-          }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-              <h3 style={{ fontSize: "16px", fontWeight: 600, color: "var(--text)" }}>Konzole zachycených chyb</h3>
-              <div style={{ display: "flex", gap: "8px" }}>
-                <button
-                  onClick={handleExportLogs}
-                  style={{
-                    padding: "6px 10px",
-                    background: "var(--bg-2)",
-                    border: "1px solid var(--border)",
-                    borderRadius: "var(--r)",
-                    fontSize: "11.5px",
-                    color: "var(--text-2)",
-                    fontWeight: 500,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px"
-                  }}
-                >
-                  <Icon name="upload" size={12} color="currentColor" />
-                  Exportovat (.json)
-                </button>
-                <button
-                  onClick={handleClearLogs}
-                  style={{
-                    padding: "6px 10px",
-                    background: "var(--red-soft)",
-                    border: "1px solid rgba(239, 68, 68, 0.15)",
-                    borderRadius: "var(--r)",
-                    fontSize: "11.5px",
-                    color: "var(--red)",
-                    fontWeight: 500
-                  }}
-                >
-                  Vyčistit
-                </button>
-              </div>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.1fr) minmax(320px, .9fr)", gap: 18 }}>
+          <div style={{ display: "grid", gap: 18 }}>
+            <RemoteErrorLogsPanel embedded />
+            <Card title="Lokální chyby v prohlížeči" subtitle={`Zachyceno ${errorLogs.length} lokálních chyb v tomto zařízení.`} icon="alert-triangle" action={<div style={{ display: "flex", gap: 8 }}><SmallButton onClick={simulateError}>Simulovat</SmallButton><SmallButton onClick={clearLocalLogs} tone="danger" disabled={!errorLogs.length}>Vyčistit</SmallButton></div>}>
+              {!errorLogs.length ? <EmptyState title="Systém běží hladce" text="Nebyly zachyceny žádné lokální chyby." /> : (
+                <div style={{ display: "grid", gap: 8, maxHeight: 360, overflowY: "auto" }}>
+                  {errorLogs.map((log, index) => <div key={log.id || index} style={{ padding: 12, borderRadius: 12, border: "1px solid var(--border-soft)", background: "var(--bg-2)" }}><div style={{ color: "var(--text)", fontWeight: 800, fontSize: 13 }}>{log.message}</div><div style={{ color: "var(--text-3)", fontFamily: "var(--mono)", fontSize: 11.5, marginTop: 5 }}>{log.type || "client_error"} · {formatDate(log.timestamp)}</div></div>)}
+                </div>
+              )}
+            </Card>
+          </div>
+          <Card title="Nahlásit chybu / bug report" subtitle="Založí úkol v aktuálním workspace a přibalí systémové údaje." icon="bug">
+            <AdminField label="Název chyby"><input value={bugTitle} onChange={(e) => setBugTitle(e.target.value)} placeholder="Např. Pády při načítání AI asistenta…" style={fieldStyle} /></AdminField>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <AdminField label="Oblast"><select value={bugArea} onChange={(e) => setBugArea(e.target.value)} style={fieldStyle}>{["Dashboard", "Úkoly", "Projekty", "Poznámky", "AI", "Admin", "Mobil", "Jiné"].map((item) => <option key={item}>{item}</option>)}</select></AdminField>
+              <AdminField label="Závažnost"><select value={bugSeverity} onChange={(e) => setBugSeverity(e.target.value)} style={fieldStyle}>{["Nízká", "Střední", "Vysoká"].map((item) => <option key={item}>{item}</option>)}</select></AdminField>
             </div>
-
-            {errorLogs.length === 0 ? (
-              <div style={{
-                flex: 1,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "var(--text-3)",
-                padding: "40px"
-              }}>
-                <div style={{
-                  width: "48px",
-                  height: "48px",
-                  borderRadius: "50%",
-                  background: "var(--green-soft)",
-                  color: "var(--green)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginBottom: "16px"
-                }}>
-                  <Icon name="check" size={24} color="currentColor" strokeWidth={3} />
-                </div>
-                <span style={{ fontSize: "14.5px", fontWeight: 600, color: "var(--text-2)" }}>Systém běží hladce</span>
-                <span style={{ fontSize: "12.5px", color: "var(--text-3)", textAlign: "center", marginTop: "4px" }}>
-                  Nebyly zachyceny žádné nezpracované výjimky ani selhání sítě.
-                </span>
-              </div>
-            ) : (
-              <div style={{
-                flex: 1,
-                overflowY: "auto",
-                maxHeight: "500px",
-                display: "flex",
-                flexDirection: "column",
-                gap: "8px",
-                paddingRight: "4px"
-              }}>
-                {errorLogs.map((log) => {
-                  const isExpanded = expandedErrorId === log.id;
-                  const isPromise = log.type === "promise_rejection";
-                  return (
-                    <div
-                      key={log.id}
-                      onClick={() => setExpandedErrorId(isExpanded ? null : log.id)}
-                      style={{
-                        background: "var(--bg-2)",
-                        border: "1px solid var(--border-soft)",
-                        borderRadius: "var(--r)",
-                        padding: "10px 12px",
-                        cursor: "pointer",
-                        transition: "background .15s ease",
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = "var(--surface-h)"; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = "var(--bg-2)"; }}
-                    >
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "10px" }}>
-                        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                          <span style={{
-                            width: "6px",
-                            height: "6px",
-                            borderRadius: "50%",
-                            background: isPromise ? "var(--orange)" : "var(--red)",
-                            flexShrink: 0
-                          }} />
-                          <span style={{
-                            fontFamily: "var(--mono)",
-                            fontSize: "12.5px",
-                            color: "var(--text-2)",
-                            fontWeight: 600,
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap"
-                          }}>
-                            {log.message}
-                          </span>
-                        </div>
-                        <span style={{ fontFamily: "var(--mono)", fontSize: "10.5px", color: "var(--text-3)", flexShrink: 0 }}>
-                          {new Date(log.timestamp).toLocaleTimeString("cs-CZ")}
-                        </span>
-                      </div>
-                      
-                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11.5px", color: "var(--text-3)", marginTop: "6px", paddingLeft: "14px" }}>
-                        <span>Typ: {log.type}</span>
-                        <span>Soubor: {log.filename}{log.lineno > 0 ? `:${log.lineno}` : ""}</span>
-                      </div>
-
-                      {isExpanded && log.stack && (
-                        <pre style={{
-                          marginTop: "10px",
-                          padding: "10px",
-                          background: "var(--bg)",
-                          border: "1px solid var(--border-strong)",
-                          borderRadius: "var(--r-sm)",
-                          color: "var(--red)",
-                          fontFamily: "var(--mono)",
-                          fontSize: "11px",
-                          overflowX: "auto",
-                          whiteSpace: "pre-wrap",
-                          wordBreak: "break-all",
-                          lineHeight: 1.4,
-                          marginLeft: "14px"
-                        }}>
-                          {log.stack}
-                        </pre>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Pravá strana: Formulář hlášení chyb */}
-          <div style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border-soft)",
-            borderRadius: "var(--r-lg)",
-            padding: "24px"
-          }}>
-            <h3 style={{ fontSize: "16px", fontWeight: 600, color: "var(--text)", marginBottom: "6px" }}>
-              Nahlásit chybu / bug
-            </h3>
-            <p style={{ color: "var(--text-3)", fontSize: "13px", marginBottom: "20px" }}>
-              Nahlášením založíte úkol v aktuálním workspace, do kterého automaticky přibalíme systémové logy a diagnostiku.
-            </p>
-
-            <form onSubmit={handleBugSubmit} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-              <div>
-                <label style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: "6px" }}>
-                  Název chyby / Stručný souhrn
-                </label>
-                <input
-                  type="text"
-                  placeholder="Např. Pády při načítání AI asistentů..."
-                  value={bugForm.title}
-                  onChange={(e) => setBugForm({ ...bugForm, title: e.target.value })}
-                  style={{
-                    width: "100%",
-                    padding: "10px 12px",
-                    borderRadius: "var(--r)",
-                    background: "var(--bg-2)",
-                    border: "1px solid var(--border)",
-                    color: "var(--text)",
-                    fontSize: "14px"
-                  }}
-                  required
-                />
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                <div>
-                  <label style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: "6px" }}>
-                    Dotčená oblast
-                  </label>
-                  <select
-                    value={bugForm.area}
-                    onChange={(e) => setBugForm({ ...bugForm, area: e.target.value })}
-                    style={{
-                      width: "100%",
-                      padding: "10px 12px",
-                      borderRadius: "var(--r)",
-                      background: "var(--bg-2)",
-                      border: "1px solid var(--border)",
-                      color: "var(--text)",
-                      fontSize: "14px"
-                    }}
-                  >
-                    <option>Dashboard</option>
-                    <option>Projekty</option>
-                    <option>Úkoly</option>
-                    <option>Plán / Kalendář</option>
-                    <option>Poznámky</option>
-                    <option>Rychlé úkoly</option>
-                    <option>AI funkce</option>
-                    <option>Jiné</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: "6px" }}>
-                    Závažnost
-                  </label>
-                  <select
-                    value={bugForm.severity}
-                    onChange={(e) => setBugForm({ ...bugForm, severity: e.target.value })}
-                    style={{
-                      width: "100%",
-                      padding: "10px 12px",
-                      borderRadius: "var(--r)",
-                      background: "var(--bg-2)",
-                      border: "1px solid var(--border)",
-                      color: "var(--text)",
-                      fontSize: "14px"
-                    }}
-                  >
-                    <option>Nízká</option>
-                    <option>Střední</option>
-                    <option>Vysoká (Kritická)</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-2)", display: "block", marginBottom: "6px" }}>
-                  Podrobný popis / Jak chybu vyvolat
-                </label>
-                <textarea
-                  placeholder="Zde popište kroky, které vedou k chybě..."
-                  value={bugForm.description}
-                  onChange={(e) => setBugForm({ ...bugForm, description: e.target.value })}
-                  style={{
-                    width: "100%",
-                    minHeight: "120px",
-                    padding: "10px 12px",
-                    borderRadius: "var(--r)",
-                    background: "var(--bg-2)",
-                    border: "1px solid var(--border)",
-                    color: "var(--text)",
-                    fontSize: "14px",
-                    lineHeight: 1.5,
-                    resize: "vertical"
-                  }}
-                  required
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={submittingBug}
-                style={{
-                  width: "100%",
-                  padding: "12px",
-                  background: "var(--accent)",
-                  color: "var(--bg)",
-                  border: "none",
-                  borderRadius: "var(--r)",
-                  fontSize: "14px",
-                  fontWeight: 700,
-                  marginTop: "8px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "8px",
-                  transition: "opacity .15s ease"
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.opacity = 0.9; }}
-                onMouseLeave={(e) => { e.currentTarget.style.opacity = 1; }}
-              >
-                {submittingBug ? "Odesílám..." : "Odeslat Bug Report"}
-              </button>
-            </form>
-          </div>
+            <AdminField label="Popis / kroky k vyvolání"><textarea value={bugDescription} onChange={(e) => setBugDescription(e.target.value)} rows={7} placeholder="Popiš, co se stalo a jak chybu zopakovat…" style={{ ...fieldStyle, resize: "vertical", lineHeight: 1.5 }} /></AdminField>
+            <button type="button" onClick={submitBugReport} style={{ width: "100%", marginTop: 10, padding: "12px 14px", border: 0, borderRadius: 12, background: "var(--accent)", color: "var(--bg)", fontWeight: 850 }}>Odeslat Bug Report</button>
+          </Card>
         </div>
       )}
 
-      {/* 4. TAB: VŠECHNY ÚČTY */}
       {activeTab === "users" && (
-        <div style={{
-          background: "rgba(20, 24, 34, 0.6)",
-          backdropFilter: "blur(12px)",
-          border: "1px solid var(--border-soft)",
-          borderRadius: "var(--r-lg)",
-          padding: "24px",
-          animation: "fadeIn .2s ease-out"
-        }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-            <div>
-              <h3 style={{ fontSize: "18px", fontWeight: 700, color: "var(--text)" }}>
-                Globální adresář účtů
-              </h3>
-              <p style={{ color: "var(--text-3)", fontSize: "13px", marginTop: "4px" }}>
-                Přehled všech registrovaných uživatelských profilů a jejich přiřazených oprávnění v systému Zentero.
-              </p>
-            </div>
-            {loadingProfiles && (
-              <span style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--text-3)", fontSize: "13px" }}>
-                <span style={{ animation: "spin 1s linear infinite", display: "inline-block" }}>
-                  <Icon name="refresh-cw" size={13} color="currentColor" />
-                </span>
-                Aktualizuji...
-              </span>
-            )}
+        <Card title={`Uživatelé / členové workspace (${workspaceMembers.length})`} subtitle="Bezpečná náhrada původního globálního adresáře. Plný globální adresář doplníme po přidání admin API/RPC." icon="users">
+          <div style={{ display: "grid", gap: 10 }}>
+            {workspaceMembers.map((member, index) => <UserRow key={member.id || member.userId || index} member={member} />)}
+            {!workspaceMembers.length && <EmptyState title="Žádní členové" text="V aktuálním workspace nejsou načtení žádní členové." />}
           </div>
+        </Card>
+      )}
 
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: "0 8px" }}>
-              <thead>
-                <tr>
-                  <th style={{ textAlign: "left", padding: "12px 16px", color: "var(--text-3)", fontSize: "12px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Uživatel</th>
-                  <th style={{ textAlign: "left", padding: "12px 16px", color: "var(--text-3)", fontSize: "12px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Email</th>
-                  <th style={{ textAlign: "left", padding: "12px 16px", color: "var(--text-3)", fontSize: "12px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Role (Active Workspace)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {globalProfiles.length === 0 && !loadingProfiles ? (
-                  <tr>
-                    <td colSpan="3" style={{ textAlign: "center", padding: "40px", color: "var(--text-3)" }}>
-                      Žádné účty nenalezeny.
-                    </td>
-                  </tr>
-                ) : (
-                  globalProfiles.map((p) => {
-                    const roleColors = { owner: "var(--accent)", admin: "var(--blue)", member: "var(--green)", viewer: "var(--text-3)" };
-                    return (
-                      <tr key={p.id} style={{
-                        background: "rgba(255, 255, 255, 0.02)",
-                        border: "1px solid var(--border-soft)",
-                        borderRadius: "var(--r)",
-                      }}>
-                        {/* Uživatel */}
-                        <td style={{ padding: "14px 16px", borderTopLeftRadius: "var(--r)", borderBottomLeftRadius: "var(--r)", borderTop: "1px solid var(--border-soft)", borderBottom: "1px solid var(--border-soft)", borderLeft: "1px solid var(--border-soft)" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                            <div style={{
-                              width: "36px",
-                              height: "36px",
-                              borderRadius: "50%",
-                              background: (roleColors[p.role] || "var(--accent)") + "1a",
-                              border: `1px solid ${(roleColors[p.role] || "var(--accent)")}44`,
-                              color: roleColors[p.role] || "var(--accent)",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              fontWeight: 700,
-                              fontSize: "13px",
-                              fontFamily: "var(--mono)"
-                            }}>
-                              {(p.displayName || p.email || "U").slice(0, 2).toUpperCase()}
-                            </div>
-                            <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--text)" }}>
-                              {p.displayName}
-                            </span>
-                          </div>
-                        </td>
-                        {/* Email */}
-                        <td style={{ padding: "14px 16px", fontFamily: "var(--mono)", fontSize: "13px", color: "var(--text-2)", borderTop: "1px solid var(--border-soft)", borderBottom: "1px solid var(--border-soft)" }}>
-                          {p.email}
-                        </td>
-                        {/* Role */}
-                        <td style={{ padding: "14px 16px", borderTopRightRadius: "var(--r)", borderBottomRightRadius: "var(--r)", borderTop: "1px solid var(--border-soft)", borderBottom: "1px solid var(--border-soft)", borderRight: "1px solid var(--border-soft)" }}>
-                          <span style={{
-                            fontSize: "10px",
-                            fontWeight: 700,
-                            textTransform: "uppercase",
-                            letterSpacing: "0.08em",
-                            color: roleColors[p.role] || "var(--text-3)",
-                            background: (roleColors[p.role] || "var(--text-3)") + "12",
-                            padding: "4px 10px",
-                            borderRadius: "99px",
-                            border: `1px solid ${(roleColors[p.role] || "var(--text-3)")}33`,
-                            display: "inline-block"
-                          }}>
-                            {p.role || "member"}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+      {activeTab === "storage" && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
+          <MetricCard label="LocalStorage" value={formatBytes(storageSize)} hint="Přibližné lokální využití" icon="hard-drive" />
+          <MetricCard label="Poznámky" value={notes.length} hint={formatBytes(noteSize * 2)} icon="file-text" />
+          <MetricCard label="Přílohy" value={attachmentMetrics.count} hint={formatBytes(attachmentMetrics.size)} icon="paperclip" color="var(--green)" />
         </div>
       )}
 
-      {/* 5. TAB: KOŠ */}
       {activeTab === "trash" && (
-        <div style={{
-          background: "rgba(20, 24, 34, 0.6)",
-          backdropFilter: "blur(12px)",
-          border: "1px solid var(--border-soft)",
-          borderRadius: "var(--r-lg)",
-          padding: "24px",
-          animation: "fadeIn .2s ease-out"
-        }}>
-          <div style={{ marginBottom: "20px" }}>
-            <h3 style={{ fontSize: "18px", fontWeight: 700, color: "var(--text)" }}>
-              Koš a obnovení dat
-            </h3>
-            <p style={{ color: "var(--text-3)", fontSize: "13px", marginTop: "4px" }}>
-              Smazané úkoly, projekty a poznámky jsou zde bezpečně uchovány po dobu 30 dní, než dojde k jejich trvalému odstranění.
-            </p>
-          </div>
-
-          {combinedTrash.length === 0 ? (
-            <div style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: "60px 20px",
-              color: "var(--text-3)"
-            }}>
-              <div style={{
-                width: "56px",
-                height: "56px",
-                borderRadius: "50%",
-                background: "rgba(255, 255, 255, 0.03)",
-                color: "var(--text-4)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                marginBottom: "16px",
-                border: "1px solid var(--border-soft)"
-              }}>
-                <Icon name="trash" size={24} color="currentColor" />
-              </div>
-              <span style={{ fontSize: "15px", fontWeight: 600, color: "var(--text-2)" }}>Koš je prázdný</span>
-              <span style={{ fontSize: "13px", color: "var(--text-3)", textAlign: "center", marginTop: "4px", maxWidth: "340px" }}>
-                Smazáním projektů, úkolů nebo poznámek se zde objeví možnost jejich okamžitého obnovení.
-              </span>
-            </div>
-          ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: "0 8px" }}>
-                <thead>
-                  <tr>
-                    <th style={{ textAlign: "left", padding: "12px 16px", color: "var(--text-3)", fontSize: "12px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Název a Typ</th>
-                    <th style={{ textAlign: "left", padding: "12px 16px", color: "var(--text-3)", fontSize: "12px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Smazáno dne</th>
-                    <th style={{ textAlign: "left", padding: "12px 16px", color: "var(--text-3)", fontSize: "12px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Zbývá dní</th>
-                    <th style={{ textAlign: "right", padding: "12px 16px", color: "var(--text-3)", fontSize: "12px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Akce</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {combinedTrash.map((item) => {
-                    const daysRemaining = Math.max(1, 30 - Math.floor((Date.now() - item.updatedAt) / 86400000));
-                    const isUrgent = daysRemaining <= 7;
-                    const typeLabels = { project: "Projekt", task: "Úkol", note: "Poznámka" };
-                    const typeIcons = { project: "folder", task: "check-square", note: "file-text" };
-                    const typeColors = { project: "var(--accent)", task: "var(--blue)", note: "var(--red)" };
-
-                    return (
-                      <tr key={`${item.type}-${item.id}`} style={{
-                        background: "rgba(255, 255, 255, 0.02)",
-                        border: "1px solid var(--border-soft)",
-                        borderRadius: "var(--r)",
-                      }}>
-                        {/* Název a Typ */}
-                        <td style={{ padding: "14px 16px", borderTopLeftRadius: "var(--r)", borderBottomLeftRadius: "var(--r)", borderTop: "1px solid var(--border-soft)", borderBottom: "1px solid var(--border-soft)", borderLeft: "1px solid var(--border-soft)" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                            <div style={{
-                              padding: "6px",
-                              borderRadius: "var(--r-sm)",
-                              background: typeColors[item.type] + "1a",
-                              color: typeColors[item.type],
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center"
-                            }}>
-                              <Icon name={typeIcons[item.type]} size={16} color="currentColor" />
-                            </div>
-                            <div>
-                              <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--text)", display: "block" }}>
-                                {item.title}
-                              </span>
-                              <span style={{ fontSize: "11px", color: "var(--text-3)" }}>
-                                {typeLabels[item.type]}
-                              </span>
-                            </div>
-                          </div>
-                        </td>
-                        {/* Smazáno dne */}
-                        <td style={{ padding: "14px 16px", fontSize: "13px", color: "var(--text-2)", borderTop: "1px solid var(--border-soft)", borderBottom: "1px solid var(--border-soft)" }}>
-                          {new Date(item.updatedAt).toLocaleDateString("cs-CZ", { day: "numeric", month: "long", year: "numeric" })}
-                        </td>
-                        {/* Zbývá dní */}
-                        <td style={{ padding: "14px 16px", borderTop: "1px solid var(--border-soft)", borderBottom: "1px solid var(--border-soft)" }}>
-                          <span style={{
-                            fontSize: "12.5px",
-                            fontWeight: 700,
-                            color: isUrgent ? "var(--red)" : "var(--green)",
-                            fontFamily: "var(--mono)"
-                          }}>
-                            {daysRemaining} {daysRemaining === 1 ? "den" : daysRemaining < 5 ? "dny" : "dní"}
-                          </span>
-                        </td>
-                        {/* Akce */}
-                        <td style={{ padding: "14px 16px", borderTopRightRadius: "var(--r)", borderBottomRightRadius: "var(--r)", borderTop: "1px solid var(--border-soft)", borderBottom: "1px solid var(--border-soft)", borderRight: "1px solid var(--border-soft)" }}>
-                          <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
-                            <button
-                              onClick={() => handleRestore(item)}
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "6px",
-                                padding: "6px 12px",
-                                background: "rgba(255, 255, 255, 0.04)",
-                                border: "1px solid var(--border-soft)",
-                                borderRadius: "var(--r)",
-                                color: "var(--text-2)",
-                                fontSize: "12.5px",
-                                fontWeight: 600,
-                                cursor: "pointer",
-                                transition: "all 0.15s ease",
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.background = "var(--accent-soft)";
-                                e.currentTarget.style.color = "var(--accent)";
-                                e.currentTarget.style.borderColor = "rgba(var(--accent-rgb), 0.2)";
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.background = "rgba(255, 255, 255, 0.04)";
-                                e.currentTarget.style.color = "var(--text-2)";
-                                e.currentTarget.style.borderColor = "var(--border-soft)";
-                              }}
-                            >
-                              <Icon name="refresh-cw" size={12} color="currentColor" />
-                              Obnovit
-                            </button>
-                            <button
-                              onClick={() => handleHardDelete(item)}
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "6px",
-                                padding: "6px 12px",
-                                background: "var(--red-soft)",
-                                border: "1px solid rgba(239, 68, 68, 0.15)",
-                                borderRadius: "var(--r)",
-                                color: "var(--red)",
-                                fontSize: "12.5px",
-                                fontWeight: 600,
-                                cursor: "pointer",
-                                transition: "all 0.15s ease",
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.background = "var(--red)";
-                                e.currentTarget.style.color = "#fff";
-                                e.currentTarget.style.borderColor = "var(--red)";
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.background = "var(--red-soft)";
-                                e.currentTarget.style.color = "var(--red)";
-                                e.currentTarget.style.borderColor = "rgba(239, 68, 68, 0.15)";
-                              }}
-                            >
-                              <Icon name="trash" size={12} color="currentColor" />
-                              Smazat natrvalo
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+        <div style={{ display: "grid", gap: 16 }}>
+          <Card title={`Koš (${trashTotal})`} subtitle="Obnova nebo trvalé odstranění smazaných položek." icon="trash-2" />
+          <TrashSection title="Úkoly" items={trash?.tasks || []} onRestore={restoreTask} onDelete={permanentlyDeleteTask} />
+          <TrashSection title="Projekty" items={trash?.projects || []} onRestore={restoreProject} onDelete={permanentlyDeleteProject} />
+          <TrashSection title="Poznámky" items={trash?.notes || []} onRestore={restoreNote} onDelete={permanentlyDeleteNote} />
         </div>
       )}
     </div>
   );
 }
+
+function Progress({ label, value, total, color }) {
+  const pct = total ? Math.min(100, Math.round((value / total) * 100)) : 0;
+  return (
+    <div style={{ marginBottom: 13 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", color: "var(--text-2)", fontSize: 12.5, marginBottom: 5 }}><span>{label}</span><span style={{ color, fontFamily: "var(--mono)" }}>{value}</span></div>
+      <div style={{ height: 7, borderRadius: 4, background: "var(--bg-2)", overflow: "hidden" }}><div style={{ width: `${pct}%`, height: "100%", background: color }} /></div>
+    </div>
+  );
+}
+
+function KeyValue({ label, value }) {
+  return <div style={{ display: "flex", justifyContent: "space-between", gap: 14, padding: "8px 0", borderBottom: "1px solid var(--border-soft)", color: "var(--text-2)", fontSize: 12.5 }}><span>{label}</span><span style={{ color: "var(--text)", fontFamily: "var(--mono)", textAlign: "right" }}>{value}</span></div>;
+}
+
+function EmptyState({ title, text }) {
+  return <div style={{ textAlign: "center", padding: 36, color: "var(--text-3)" }}><div style={{ fontSize: 24, marginBottom: 8 }}>✅</div><div style={{ color: "var(--text)", fontWeight: 800 }}>{title}</div><div style={{ fontSize: 12.5, marginTop: 5 }}>{text}</div></div>;
+}
+
+function AdminField({ label, children }) {
+  return <label style={{ display: "grid", gap: 6, marginBottom: 10, color: "var(--text-2)", fontSize: 12.5, fontWeight: 700 }}>{label}{children}</label>;
+}
+
+function UserRow({ member }) {
+  const roleColors = { owner: "var(--accent)", admin: "var(--blue)", member: "var(--green)", viewer: "var(--text-3)" };
+  const color = roleColors[member.role] || "var(--text-3)";
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 14, padding: "12px 14px", border: "1px solid var(--border-soft)", borderRadius: 12, background: "var(--bg-2)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+        <div style={{ width: 34, height: 34, borderRadius: "50%", background: `${color}1a`, color, border: `1px solid ${color}44`, display: "grid", placeItems: "center", fontFamily: "var(--mono)", fontWeight: 900, fontSize: 12 }}>{(member.displayName || member.email || "U").slice(0, 2).toUpperCase()}</div>
+        <div style={{ minWidth: 0 }}><div style={{ color: "var(--text)", fontWeight: 800, fontSize: 13.5 }}>{member.displayName || "Bez jména"}</div><div style={{ color: "var(--text-3)", fontFamily: "var(--mono)", fontSize: 12, overflow: "hidden", textOverflow: "ellipsis" }}>{member.email || member.userId}</div></div>
+      </div>
+      <span style={{ color, background: `${color}12`, border: `1px solid ${color}33`, borderRadius: 999, padding: "4px 8px", fontSize: 10.5, fontFamily: "var(--mono)", fontWeight: 900, textTransform: "uppercase" }}>{member.role || "member"}</span>
+    </div>
+  );
+}
+
+function TrashSection({ title, items, onRestore, onDelete }) {
+  return (
+    <Card title={`${title} (${items.length})`}>
+      {!items.length ? <div style={{ color: "var(--text-3)", fontSize: 13 }}>Žádné položky.</div> : <div style={{ display: "grid", gap: 8 }}>{items.map((item) => <div key={item.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: 12, border: "1px solid var(--border-soft)", borderRadius: 12, background: "var(--bg-2)" }}><div style={{ color: "var(--text)", fontWeight: 750 }}>{item.title || item.name || "Bez názvu"}</div><div style={{ display: "flex", gap: 8 }}><SmallButton onClick={() => onRestore(item.id)}>Obnovit</SmallButton><SmallButton onClick={() => onDelete(item.id)} tone="danger">Smazat</SmallButton></div></div>)}</div>}
+    </Card>
+  );
+}
+
+const fieldStyle = { width: "100%", border: "1px solid var(--border-soft)", borderRadius: 10, background: "var(--bg-2)", color: "var(--text)", padding: "10px 11px", fontFamily: "var(--font-ui)", fontSize: 13, outline: "none" };

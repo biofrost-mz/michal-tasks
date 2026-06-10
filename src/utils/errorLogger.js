@@ -1,48 +1,20 @@
 // Globální zachytávač chyb pro aplikaci Michal Tasks
+import {
+  clearLocalErrorLogs,
+  getLocalErrorLogs,
+  saveErrorLog,
+} from "../services/errorLogsService.js";
 
-const ERR_KEY = "mt3:system_errors";
-
-// Bezpečné načtení chyb z LocalStorage
 export function getErrorLogs() {
-  try {
-    const raw = localStorage.getItem(ERR_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch (e) {
-    console.warn("Nepodařilo se načíst chybové logy:", e);
-    return [];
-  }
+  return getLocalErrorLogs();
 }
 
-// Uložení nové chyby s limitem 50 záznamů
 export function saveError(errorLog) {
-  try {
-    const list = getErrorLogs();
-    
-    // Vložení na začátek (nejnovější nahoře)
-    list.unshift(errorLog);
-    
-    // Omezení délky na 50 záznamů pro prevenci zaplnění LocalStorage
-    if (list.length > 50) {
-      list.pop();
-    }
-    
-    localStorage.setItem(ERR_KEY, JSON.stringify(list));
-    
-    // Vyvolání vlastního eventu pro real-time aktualizaci v AdminPage
-    window.dispatchEvent(new CustomEvent("mt3:error_logged", { detail: errorLog }));
-  } catch (e) {
-    console.warn("Nepodařilo se uložit chybový log:", e);
-  }
+  saveErrorLog(errorLog);
 }
 
-// Vyčištění chyb
 export function clearErrorLogs() {
-  try {
-    localStorage.setItem(ERR_KEY, JSON.stringify([]));
-    window.dispatchEvent(new CustomEvent("mt3:error_logged", { detail: null }));
-  } catch (e) {
-    console.warn("Nepodařilo se vymazat chybové logy:", e);
-  }
+  clearLocalErrorLogs();
 }
 
 // Inicializace globálních posluchačů
@@ -71,7 +43,7 @@ export function initGlobalErrorLogging() {
   // Zachycení zamítnutých slibů (Promises) bez catch handleru
   window.addEventListener("unhandledrejection", (event) => {
     const message = event.reason?.message || String(event.reason || "Zamítnutý Promise");
-    
+
     const errorLog = {
       id: Date.now() + "_" + Math.random().toString(36).substring(2, 7),
       timestamp: new Date().toISOString(),
