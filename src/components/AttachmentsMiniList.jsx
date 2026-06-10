@@ -30,7 +30,23 @@ export default function AttachmentsMiniList({ taskId, projectId }) {
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [signedUrls, setSignedUrls] = useState({});
+  const [refreshTick, setRefreshTick] = useState(0);
   const fileRef = useRef(null);
+
+  // Signed URL vyprší po 1 h — obnov je včas a při návratu na záložku,
+  // ať odkazy nepřestanou fungovat u dlouho otevřeného detailu.
+  useEffect(() => {
+    const bump = () => setRefreshTick((n) => n + 1);
+    const iv = setInterval(bump, (SIGNED_URL_EXPIRY_SECS - 600) * 1000); // ~50 min
+    const onVis = () => { if (document.visibilityState === "visible") bump(); };
+    window.addEventListener("focus", bump);
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      clearInterval(iv);
+      window.removeEventListener("focus", bump);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, []);
 
   const relevant = attachments.filter((a) =>
     (taskId && a.taskId === taskId) ||
@@ -55,7 +71,7 @@ export default function AttachmentsMiniList({ taskId, projectId }) {
     })();
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathsKey]);
+  }, [pathsKey, refreshTick]);
 
   const handleFiles = async (files) => {
     const file = files[0];

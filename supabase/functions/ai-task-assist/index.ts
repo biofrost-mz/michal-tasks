@@ -69,10 +69,10 @@ serve(async (req) => {
       );
     }
 
-    let prompt = "";
+    let aiPrompt = "";
 
     if (action === "subtasks") {
-      prompt = `Úkol: "${task.title}"${task.description ? `\nPopis: ${task.description}` : ""}
+      aiPrompt = `Úkol: "${task.title}"${task.description ? `\nPopis: ${task.description}` : ""}
 
 Navrhni 3–6 konkrétních, akčních podúkolů (subtasks) v češtině. Podúkoly musí pokrývat kompletní dokončení úkolu a být chronologicky seřazeny (od přípravy podkladů po finální odevzdání/kontrolu). Každý podúkol začni silným slovesem a omez na max 80 znaků.
 Vrať POUZE JSON pole stringů, žádný jiný text ani markdown.
@@ -82,7 +82,7 @@ Příklad: ["Sběr potřebných podkladů", "Realizace první verze návrhu", "I
       const existing = availableTags?.length
         ? `Existující tagy v aplikaci: ${availableTags.join(", ")}`
         : "Zatím žádné tagy v aplikaci.";
-      prompt = `Úkol: "${task.title}"${task.description ? `\nPopis: ${task.description}` : ""}
+      aiPrompt = `Úkol: "${task.title}"${task.description ? `\nPopis: ${task.description}` : ""}
 ${existing}
 
 Navrhni 1–3 nejrelevantnější štítky (tags) v češtině pro tento úkol. Striktně preferuj stávající tagy, pokud tematicky odpovídají. Nové tagy navrhuj pouze v případě, že žádný z existujících neodpovídá (používej malá písmena, jednoslovné, bez mezer).
@@ -90,7 +90,7 @@ Vrať POUZE JSON pole stringů.
 Příklad: ["design", "marketing", "vyvoj"]`;
 
     } else if (action === "description") {
-      prompt = `Název úkolu: "${task.title}"
+      aiPrompt = `Název úkolu: "${task.title}"
 
 Napiš pro tento úkol profesionální, strukturovaný a přehledný popis ve formátu Markdown v češtině. Popis strukturuj takto:
 
@@ -107,14 +107,14 @@ Napiš pro tento úkol profesionální, strukturovaný a přehledný popis ve fo
 Vrať POUZE vygenerovaný formátovaný text popisu, bez jakýchkoli dalších úvodních či závěrečných keců a bez zpětných uvozovek.`;
 
     } else if (action === "priority") {
-      prompt = `Úkol: "${task.title}"${task.description ? `\nPopis: ${task.description}` : ""}${task.dueDate ? `\nTermín: ${task.dueDate}` : ""}
+      aiPrompt = `Úkol: "${task.title}"${task.description ? `\nPopis: ${task.description}` : ""}${task.dueDate ? `\nTermín: ${task.dueDate}` : ""}
 
 Zhodnoť závažnost a naléhavost tohoto úkolu z hlediska prioritizace (low = nízká, medium = střední, high = vysoká). Projdi termín dokončení, název i popis a proveď hlubší úvahu nad důležitostí.
 Vrať POUZE JSON objekt s klíči "priority" a "reason" v češtině (reason musí být max 1 výstižná věta):
 {"priority":"low"|"medium"|"high","reason":"zdůvodnění priority na základě termínu nebo složitosti úkolu"}`;
 
     } else if (action === "note_summary") {
-      prompt = `Zanalyzuj a shrň tuto poznámku. Napiš vysoce profesionální, reprezentativní a výstižné shrnutí v češtině (2–3 věty).
+      aiPrompt = `Zanalyzuj a shrň tuto poznámku. Napiš vysoce profesionální, reprezentativní a výstižné shrnutí v češtině (2–3 věty).
 Shrnutí napiš jako souvislý text, který popíše hlavní myšlenku, kontext a klíčové závěry poznámky. Vrať POUZE text shrnutí.
 
 Název poznámky: ${note.title || "Bez názvu"}
@@ -122,7 +122,7 @@ Obsah:
 ${(note.content || "").slice(0, 4000)}`;
 
     } else if (action === "note_continue") {
-      prompt = `Pokračuj přirozeně a s vysokou odborností v psaní této poznámky v češtině. Navázej na poslední myšlenku a přidej 1–2 logicky propracované odstavce ve stejném stylu, formátování a tónu.
+      aiPrompt = `Pokračuj přirozeně a s vysokou odborností v psaní této poznámky v češtině. Navázej na poslední myšlenku a přidej 1–2 logicky propracované odstavce ve stejném stylu, formátování a tónu.
 Vrať POUZE nový navazující text ve formátu Markdown (neopakuj stávající text poznámky a nepiš žádné komentáře).
 
 Název poznámky: ${note.title || "Bez názvu"}
@@ -130,14 +130,14 @@ Obsah:
 ${(note.content || "").slice(-2000)}`;
 
     } else if (action === "note_summary_bullet") {
-      prompt = `Převeď obsah této poznámky do přehledných, stručných a strukturovaných odrážek (bullet-points) v češtině. Odrážky musí vystihovat nejdůležitější fakta, rozhodnutí nebo úkoly z poznámky. Použij standardní odrážky (pomlčky nebo tečky) a tučné písmo pro zvýraznění klíčových pojmů. Vrať POUZE naformátovaný text s odrážkami, bez jakýchkoli komentářů.
+      aiPrompt = `Převeď obsah této poznámky do přehledných, stručných a strukturovaných odrážek (bullet-points) v češtině. Odrážky musí vystihovat nejdůležitější fakta, rozhodnutí nebo úkoly z poznámky. Použij standardní odrážky (pomlčky nebo tečky) a tučné písmo pro zvýraznění klíčových pojmů. Vrať POUZE naformátovaný text s odrážkami, bez jakýchkoli komentářů.
 
 Název poznámky: ${note.title || "Bez názvu"}
 Obsah:
 ${(note.content || "").slice(0, 4000)}`;
 
     } else if (action === "note_fix_tone") {
-      prompt = `Oprav v této poznámce veškeré gramatické, pravopisné, typografické a stylistické chyby. Přepiš text do vysoce kultivované, čtivé, spisovné a profesionální češtiny (uprav slovní zásobu a strukturu vět k lepšímu), aniž bys změnil původní věcný význam a myšlenky. Ponech strukturu Markdown (nadpisy, odrážky), pokud je v poznámce přítomna.
+      aiPrompt = `Oprav v této poznámce veškeré gramatické, pravopisné, typografické a stylistické chyby. Přepiš text do vysoce kultivované, čtivé, spisovné a profesionální češtiny (uprav slovní zásobu a strukturu vět k lepšímu), aniž bys změnil původní věcný význam a myšlenky. Ponech strukturu Markdown (nadpisy, odrážky), pokud je v poznámce přítomna.
 Vrať POUZE kompletní upravený a opravený text poznámky, bez jakýchkoli vysvětlivek, uvozovek, poznámek pod čarou nebo komentářů okolo.
 
 Název poznámky: ${note.title || "Bez názvu"}
@@ -145,7 +145,7 @@ Obsah:
 ${(note.content || "").slice(0, 4000)}`;
 
     } else if (action === "note_extract_tasks") {
-      prompt = `Zanalyzuj obsah této poznámky a vytáhni z ní všechny konkrétní akční kroky, úkoly nebo sliby k vyřízení. Každý úkol formuluj v češtině jako akční větu začínající slovesem (max 80 znaků).
+      aiPrompt = `Zanalyzuj obsah této poznámky a vytáhni z ní všechny konkrétní akční kroky, úkoly nebo sliby k vyřízení. Každý úkol formuluj v češtině jako akční větu začínající slovesem (max 80 znaků).
 Vrať POUZE JSON pole stringů, žádný jiný text. Pokud v poznámce nejsou žádné akční úkoly, vrať prázdné pole [].
 Příklad: ["Zavolat klientovi ohledně zpětné vazby k návrhu", "Připravit finální prezentaci do páteční porady"]
 
@@ -163,7 +163,7 @@ ${(note.content || "").slice(0, 4000)}`;
       const projectList = projNames.length ? `Dostupné projekty: ${projNames.join(", ")}` : "Žádné projekty.";
       const tagList = tagNames.length ? `Dostupné tagy: ${tagNames.join(", ")}` : "Žádné tagy.";
 
-      prompt = `Zanalyzuj následující text a vytvoř z něj strukturovaný návrh úkolu.
+      aiPrompt = `Zanalyzuj následující text a vytvoř z něj strukturovaný návrh úkolu.
 Text od uživatele: "${text}"
 
 Parametry výstupu:
@@ -197,17 +197,17 @@ Vrať POUZE JSON objekt s následující strukturou (nic jiného, žádné markd
     const apiKey = Deno.env.get("GOOGLE_GENERATIVE_AI_API_KEY");
     if (apiKey) {
       try {
-        console.log(`ai-task-assist: Pokouším se volat Google Gemini API (gemini-2.5-flash) pro akci "${action}"...`);
+        console.log(`ai-task-assist: Pokouším se volat Google Gemini API (gemini-3.5-flash) pro akci "${action}"...`);
         const isJsonAction = ["subtasks", "tags", "priority", "note_extract_tasks", "draft_task"].includes(action);
         
         const geminiResp = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              model: "gemini-2.5-flash",
-              contents: [{ role: "user", parts: [{ text: prompt }] }],
+              model: "gemini-3.5-flash",
+              contents: [{ role: "user", parts: [{ text: aiPrompt }] }],
               systemInstruction: {
                 parts: [{ text: SYSTEM }]
               },
@@ -269,7 +269,7 @@ Vrať POUZE JSON objekt s následující strukturou (nic jiného, žádné markd
             model: "claude-3-5-haiku-20241022",
             max_tokens: 600,
             system: SYSTEM,
-            messages: [{ role: "user", content: prompt }],
+            messages: [{ role: "user", content: aiPrompt }],
           }),
         });
 

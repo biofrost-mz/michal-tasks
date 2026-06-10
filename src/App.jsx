@@ -11,18 +11,17 @@ import AtlasTopBar from "./layout/atlas/AtlasTopBar.jsx";
 import TaskDrawer from "./components/TaskDrawer.jsx";
 import CommandPalette from "./components/CommandPalette.jsx";
 import ShortcutHelper from "./components/ShortcutHelper.jsx";
-import DashboardPage from "./pages/DashboardPage.jsx";
-import TasksPage from "./pages/TasksPage.jsx";
 import { applyDocumentMetadata } from "./appMeta.js";
 import "./styles/atlas-shell.css";
 
+const DashboardPage        = lazy(() => import("./pages/DashboardPage.jsx"));
+const TasksPage            = lazy(() => import("./pages/TasksPage.jsx"));
 const NotesPage            = lazy(() => import("./pages/NotesPage.jsx"));
 const ProjectsPage         = lazy(() => import("./pages/ProjectsPage.jsx"));
 const ProjectDetailPage    = lazy(() => import("./pages/ProjectsPage.jsx").then((m) => ({ default: m.ProjectDetailPage })));
 const TimelinePage         = lazy(() => import("./pages/TimelinePage.jsx"));
 const TagsPage             = lazy(() => import("./pages/TagsPage.jsx"));
 const WorkspaceSettingsPage = lazy(() => import("./pages/WorkspaceSettingsPage.jsx"));
-const UserProfilePage      = lazy(() => import("./pages/UserProfilePage.jsx"));
 const QuickTodosPage       = lazy(() => import("./pages/QuickTodosPage.jsx"));
 const AdminPage            = lazy(() => import("./pages/AdminPage.jsx"));
 
@@ -60,6 +59,64 @@ function AppErrorReporter() {
   return null;
 }
 
+function AppUpdatePrompt() {
+  const toast = useToast();
+  const [updateSW, setUpdateSW] = useState(null);
+
+  useEffect(() => {
+    const handleUpdateReady = (event) => {
+      if (event.detail?.updateSW) setUpdateSW(() => event.detail.updateSW);
+    };
+    const handleOfflineReady = () => toast("Aplikace je připravená offline.", "success");
+
+    window.addEventListener("app:update-ready", handleUpdateReady);
+    window.addEventListener("app:offline-ready", handleOfflineReady);
+    return () => {
+      window.removeEventListener("app:update-ready", handleUpdateReady);
+      window.removeEventListener("app:offline-ready", handleOfflineReady);
+    };
+  }, [toast]);
+
+  if (!updateSW) return null;
+
+  return (
+    <div style={{
+      position: "fixed",
+      left: "50%",
+      bottom: "calc(84px + env(safe-area-inset-bottom, 0px))",
+      transform: "translateX(-50%)",
+      zIndex: 99998,
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      width: "min(440px, calc(100vw - 28px))",
+      padding: "10px 12px",
+      borderRadius: 14,
+      border: "1px solid var(--border-soft)",
+      background: "color-mix(in srgb, var(--surface) 94%, transparent)",
+      boxShadow: "0 18px 48px rgba(0,0,0,.28)",
+      backdropFilter: "blur(16px)",
+      WebkitBackdropFilter: "blur(16px)",
+      fontFamily: "var(--font-ui)",
+    }}>
+      <div style={{ width: 30, height: 30, borderRadius: 10, display: "grid", placeItems: "center", background: "var(--accent-soft)", color: "var(--accent)", flex: "0 0 auto" }}>
+        <Icon name="refresh-cw" size={15} color="currentColor" strokeWidth={2.3} />
+      </div>
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div style={{ color: "var(--text)", fontWeight: 850, fontSize: 13 }}>Je dostupná nová verze</div>
+        <div style={{ color: "var(--text-3)", fontSize: 11.5, marginTop: 2 }}>Aktualizace se načte bez tvrdého refresh.</div>
+      </div>
+      <button
+        type="button"
+        onClick={() => updateSW(true)}
+        style={{ height: 32, borderRadius: 10, border: 0, background: "var(--accent)", color: "var(--bg)", padding: "0 12px", fontWeight: 900, fontSize: 12, flex: "0 0 auto" }}
+      >
+        Aktualizovat
+      </button>
+    </div>
+  );
+}
+
 function MobileFAB() {
   const { page, setPage } = useApp();
 
@@ -88,8 +145,16 @@ function PageTransition({ pageKey, children }) {
   );
 }
 
+function PageLoader() {
+  return (
+    <div style={{ height: "100%", display: "grid", placeItems: "center", color: "var(--text-3)", fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 700 }}>
+      Načítám...
+    </div>
+  );
+}
+
 function AppShell() {
-  const { dk, setDk, isMobile, page, setPage, taskDetail, cmdOpen, setCmdOpen } = useApp();
+  const { dk, setDk, isMobile, page, setPage, taskDetail, cmdOpen, setCmdOpen, isSystemAdmin, loaded, tasks, setTaskDetail } = useApp();
   const [collapsed, setCollapsed] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const gPressedRef = useRef(false);
@@ -98,6 +163,25 @@ function AppShell() {
   useEffect(() => {
     applyDocumentMetadata(page);
   }, [page]);
+
+  // Deep-link z e-mailu: ?task=<id> otevře detail úkolu (po načtení dat)
+  useEffect(() => {
+    if (!loaded) return;
+    const params = new URLSearchParams(window.location.search);
+    const taskId = params.get("task");
+    if (!taskId) return;
+    if (tasks.some((t) => t.id === taskId)) setTaskDetail(taskId);
+    params.delete("task");
+    const q = params.toString();
+    window.history.replaceState({}, "", window.location.pathname + (q ? `?${q}` : ""));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded]);
+
+  useEffect(() => {
+    if (page === "admin" && !isSystemAdmin) {
+      setPage("dashboard");
+    }
+  }, [page, isSystemAdmin, setPage]);
 
   // Global keyboard shortcuts
   useEffect(() => {
@@ -196,6 +280,7 @@ function AppShell() {
 
       <OfflineBanner />
       <AppErrorReporter />
+      <AppUpdatePrompt />
       <div className={!isMobile ? `app ${collapsed ? "collapsed" : ""}` : undefined} style={isMobile ? { display: "flex", width: "100%", height: "100dvh", minHeight: "100svh", overflow: "hidden" } : undefined}>
         {!isMobile && <AtlasSidebar collapsed={collapsed} setCollapsed={setCollapsed} />}
         <div className={!isMobile ? "main" : undefined} style={isMobile ? { flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden" } : undefined}>
@@ -222,7 +307,7 @@ function AppShell() {
           })()}
           <main style={isMobile ? { flex: 1, minWidth: 0, width: "100%", overflowY: "auto", overflowX: "hidden", position: "relative", paddingBottom: "calc(66px + env(safe-area-inset-bottom, 0px))", overscrollBehaviorY: "contain" } : undefined}>
             <PageTransition pageKey={page}>
-              <Suspense fallback={null}>
+              <Suspense fallback={<PageLoader />}>
                 {page === "dashboard"          && <PageErrorBoundary label="Přehled">         <DashboardPage />         </PageErrorBoundary>}
                 {page === "projects"           && <PageErrorBoundary label="Projekty">        <ProjectsPage />          </PageErrorBoundary>}
                 {page === "project-detail"     && <PageErrorBoundary label="Detail projektu"> <ProjectDetailPage />     </PageErrorBoundary>}
@@ -230,10 +315,10 @@ function AppShell() {
                 {page === "timeline"           && <PageErrorBoundary label="Plán">            <TimelinePage />          </PageErrorBoundary>}
                 {page === "tags"               && <PageErrorBoundary label="Tagy">            <TagsPage />              </PageErrorBoundary>}
                 {page === "notes"              && <PageErrorBoundary label="Poznámky">        <NotesPage />             </PageErrorBoundary>}
-                {page === "workspace-settings" && <PageErrorBoundary label="Nastavení">       <WorkspaceSettingsPage /> </PageErrorBoundary>}
-                {page === "user-profile"       && <PageErrorBoundary label="Profil">          <UserProfilePage />       </PageErrorBoundary>}
+                {page === "workspace-settings" && <PageErrorBoundary label="Nastavení">       <WorkspaceSettingsPage initialTab="workspace" /> </PageErrorBoundary>}
+                {page === "user-profile"       && <PageErrorBoundary label="Nastavení">       <WorkspaceSettingsPage initialTab="account" />   </PageErrorBoundary>}
                 {page === "quick-todos"        && <PageErrorBoundary label="Rychlý seznam">   <QuickTodosPage />        </PageErrorBoundary>}
-                {page === "admin"              && <PageErrorBoundary label="Administrace">    <AdminPage />             </PageErrorBoundary>}
+                {page === "admin" && isSystemAdmin && <PageErrorBoundary label="Administrace">    <AdminPage />             </PageErrorBoundary>}
               </Suspense>
             </PageTransition>
           </main>

@@ -168,7 +168,6 @@ export default function AtlasSidebar({ collapsed, setCollapsed }) {
     userId,
     logout,
     setSelProject,
-    workspaceRole,
     dk,
     setDk,
   } = useApp();
@@ -255,7 +254,7 @@ export default function AtlasSidebar({ collapsed, setCollapsed }) {
             + Nový workspace
           </button>
           <button onClick={() => { setPage("workspace-settings"); setWsOpen(false); }} style={{ textAlign: "left", padding: "7px 8px", borderRadius: 7, color: "var(--text-2)", fontSize: 12.5 }}>
-            Správa workspace
+            Nastavení
           </button>
         </div>
       ) : null}
@@ -322,7 +321,7 @@ export default function AtlasSidebar({ collapsed, setCollapsed }) {
 
         {userOpen && !collapsed ? (
           <div style={{ position: "absolute", bottom: "calc(100% + 6px)", left: 6, right: 6, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r)", padding: 6, zIndex: 30 }}>
-            <button onClick={() => { setPage("user-profile"); setUserOpen(false); }} style={{ width: "100%", textAlign: "left", padding: "7px 8px", borderRadius: 7, color: "var(--text-2)", fontSize: 12.5 }}>Můj profil</button>
+            <button onClick={() => { setPage("user-profile"); setUserOpen(false); }} style={{ width: "100%", textAlign: "left", padding: "7px 8px", borderRadius: 7, color: "var(--text-2)", fontSize: 12.5 }}>Nastavení účtu</button>
             <button onClick={handleLogout} style={{ width: "100%", textAlign: "left", padding: "7px 8px", borderRadius: 7, color: "var(--red)", fontSize: 12.5 }}>Odhlásit se</button>
           </div>
         ) : null}

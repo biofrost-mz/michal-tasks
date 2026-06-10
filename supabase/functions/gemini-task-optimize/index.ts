@@ -86,22 +86,59 @@ serve(async (req) => {
       ? `Dostupné tagy: ${availableTags.join(", ")}`
       : "Žádné tagy zatím.";
 
-    const prompt = `Jsi špičkový expert na osobní produktivitu a GTD (Getting Things Done). Zanalyzuj zadaný úkol a navrhni jeho kompletní, vysoce profesionální optimalizaci.
+    const prompt = `Jsi absolutní špička v oboru osobní produktivity, elitní certifikovaný GTD (Getting Things Done) kouč a ostřílený Scrum Master / Agile Product Owner. Tvá kognitivní schopnost dekonstruovat vágní, chaotické nebo kusé zadání do precizních, strukturovaných a okamžitě vykonatelných kroků nemá obdoby.
 
-Vstupní údaje:
-Název úkolu: "${currentTitle}"
-${currentDescription ? `Popis úkolu: "${currentDescription}"` : ""}
+Zanalyzuj zadaný úkol a navrhni jeho kompletní, vysoce profesionální optimalizaci. Tvým výstupem musí být dokonale validní JSON splňující zadané schéma.
 
-Workspace kontext:
-${projectList}
-${tagList}
+Vstupní údaje k analýze:
+- Název úkolu: "${currentTitle}"
+${currentDescription ? `- Popis úkolu: "${currentDescription}"` : "- Popis úkolu: (bez popisu)"}
 
-Pravidla pro optimalizaci:
-1. optimizedTitle: Přeformuluj název na silnou, údernou akční větu v češtině začínající prémiovým, specifickým slovesem v infinitivu (např. místo obecného "Udělat analýzu" navrhni "Vypracovat hloubkovou srovnávací analýzu", místo "Web" navrhni "Zkonstruovat responzivní wireframe hlavní stránky"). Název musí jasně definovat očekávaný výsledek, zachovat klíčové informace a být gramaticky perfektní.
-2. suggestedProject: Vyber ze seznamu dostupných projektů ten JEDINÝ, který tematicky naprosto přesně odpovídá úkolu. Pokud žádný projekt ze seznamu neodpovídá, vrať prázdný řetězec "".
-3. suggestedTags: Vyber 1 až 3 nejrelevantnější tagy ze seznamu dostupných tagů. Pokud žádný z dostupných tagů nesedí, navrhni maximálně jeden nový, vysoce výstižný tag (malá písmena, jednoslovný).
-4. timeEstimate: Proveď realistický, střízlivý odhad celkového čistého času práce potřebného pro dokončení celého úkolu.
-5. subtasks: Vygeneruj 3 až 6 konkrétních, akčních podúkolů (subtasks) v češtině. Podúkoly MUSÍ být seřazeny chronologicky za sebou od přípravné fáze (např. sběr podkladů), přes samotnou realizaci, až po kontrolu kvality a finální odevzdání (každý podúkol max 80 znaků).`;
+Workspace kontext (Zde jsou reálná stávající data z uživatelovy aplikace, která musíš přednostně využít):
+- ${projectList}
+- ${tagList}
+
+Pravidla pro optimalizaci (všechny výstupy vygeneruj výhradně v bezchybné češtině):
+
+1. **optimizedTitle (Optimalizovaný název úkolu):**
+   - Transformuj původní název na silný, jasný, srozumitelný a nekompromisně akční titul začínající prémiovým, specifickým slovesem v infinitivu.
+   - Název musí přesně definovat měřitelný nebo hmatatelný výsledek (Definition of Done) a zachovat veškerý věcný kontext původního zadání.
+   - **KATEGORICKÝ ZÁKAZ** slabých, vágních a líných sloves: "udělat", "vyřešit", "pořešit", "připravit", "nastavit", "naplánovat", "zajistit", "podívat se", "zkusit", "pracovat na". Tato slovesa nic neříkají o skutečné povaze práce a jsou v profesionálním prostředí nepřípustná.
+   - Místo nich použij vysoce specifická akční slovesa, jako např.: "zanalyzovat", "zkonstruovat", "zvalidovat", "naimplementovat", "zrefaktorovat", "vypracovat", "shromáždit", "projednat", "zintegrovat", "sepsat", "otestovat", "zprovoznit", "publikovat", "objednat".
+   - Příklady přerodu ze špatného na excelentní název:
+     - "Udělat analýzu konkurence" -> "Vypracovat hloubkovou srovnávací analýzu klíčových konkurentů"
+     - "Webové stránky" -> "Zkonstruovat responzivní wireframe domovské stránky"
+     - "Zavolat Petrovi ohledně peněz" -> "Projednat s Petrem rozpočet na Q3 a schválit finální výši investice"
+     - "Koupit dárek" -> "Vybrat a objednat dárkový poukaz pro obchodního partnera"
+     - "Opravit chybu s přihlášením" -> "Zanalyzovat a opravit autentizační chybu v login komponentě"
+
+2. **suggestedProject (Doporučený projekt):**
+   - Pečlivě projdi seznam dostupných projektů. Vyber pouze ten JEDINÝ existující projekt, který tématicky dokonale ladí s úkolem.
+   - Buď maximálně konzervativní. Pokud v seznamu dostupných projektů neexistuje projekt, který by s úkolem prokazatelně a úzce souvisel, vrať hodnotu null nebo prázdný řetězec "".
+   - **PŘÍSNÝ ZÁKAZ HALUCINACÍ:** Nikdy nevymýšlej nové projekty! Pokud projekt není v seznamu, nepřiřazuj ho.
+
+3. **suggestedTags (Navržené tagy):**
+   - Navrhni **1 až 3** nejrelevantnější štítky.
+   - **Zlaté pravidlo:** Vždy prioritně vybírej ze seznamu dostupných tagů (case-insensitive porovnání).
+   - Pouze v případě, že žádný z dostupných tagů ani vzdáleně neodpovídá a nový tag by přinesl extrémní hodnotu, navrhni **maximálně jeden nový tag**.
+   - Pro nový tag platí extrémně přísná typografická omezení: pouze malá písmena, jednoslovný, bez diakritiky, bez mezer a bez speciálních znaků (např. "marketing", "copywriting", "finance", "dev", "design").
+
+4. **timeEstimate (Časový odhad):**
+   - Odhadni čistý čas potřebný pro vykonání celého úkolu.
+   - **Bojuj s plánovacím optimismem (Planning Fallacy):** Lidé mají tendenci čas podhodnocovat. Přidej rozumný časový pufr (cca 20-30 %) pro nečekané komplikace, otestování a začištění.
+   - Hodnota musí být striktně vybrána z tohoto výčtu: "15 min", "30 min", "1 hod", "2 hod", "půl dne", "celý den".
+     - Drobná korektura, rychlý e-mail -> "15 min" / "30 min"
+     - Běžná soustředěná práce -> "1 hod" / "2 hod"
+     - Komplexní blok úkolů, hluboká práce -> "půl dne"
+     - Velký, celodenní balík prací -> "celý den"
+
+5. **subtasks (Chronologický životní cyklus - krok za krokem):**
+   - Vygeneruj přesně **3 až 6 konkrétních, akčních a atomických podúkolů** (subtasks).
+   - Tyto podúkoly musí být seřazeny v naprosto striktní chronologické posloupnosti a pokrývat kompletní životní cyklus úspěšného doručení úkolu:
+     - **Fáze 1: Příprava a analýza (Preparation & Research)** (1-2 podúkoly) - např. shromáždit podklady, provést rešerši, prostudovat dokumentaci, definovat požadavky.
+     - **Fáze 2: Exekuce a tvorba (Execution & Creation)** (1-2 podúkoly) - např. vypracovat první koncept, napsat zdrojový kód, sestavit návrh smlouvy, naformátovat data.
+     - **Fáze 3: Validace, QA a doručení (Validation, QA & Handover)** (1-2 podúkoly) - např. zkontrolovat gramatiku, otestovat funkčnost na reálných datech, odeslat ke schválení, archivovat podklady.
+   - Každý podúkol must začínat silným, specifickým slovesem v infinitivu a mít **maximálně 80 znaků**. Zákaz neurčitých slov jako "udělat" i v podúkolech!`;
 
     let rawText = "";
     let success = false;
@@ -110,9 +147,9 @@ Pravidla pro optimalizaci:
     const apiKey = Deno.env.get("GOOGLE_GENERATIVE_AI_API_KEY");
     if (apiKey) {
       try {
-        console.log("gemini-task-optimize: Pokouším se volat Google Gemini API (gemini-2.5-flash)...");
+        console.log("gemini-task-optimize: Pokouším se volat Google Gemini API (gemini-3.5-flash)...");
         const geminiResp = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },

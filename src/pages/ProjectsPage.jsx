@@ -1561,7 +1561,7 @@ function AIProjectGeneratorModal({ onClose }) {
             <div>
               <h2 className="ai-prompt-heading">Navrhněte nový projekt s AI</h2>
               <p className="ai-prompt-sub">
-                Napište jakýkoliv záměr a umělá inteligence Zontero navrhne kompletní strukturovaný projekt,
+                Napište jakýkoliv záměr a umělá inteligence Zentero navrhne kompletní strukturovaný projekt,
                 barvu, akční úkoly s prioritami, časovými odhady a chronologickými podúkoly.
               </p>
 

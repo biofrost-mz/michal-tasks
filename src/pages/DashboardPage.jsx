@@ -7,7 +7,7 @@ import { formatDate, formatDateKey } from "../locale.js";
 import { parseYMD, projectColor, startOfToday, triggerConfettiBurst } from "../utils.js";
 import { getNamedayInfo } from "../data/czechNamedays.js";
 import { getSunTimes, getGreeting, getDayPhaseIcon } from "../data/sunCalc.js";
-import { fetchWeather, hasWeatherApiKey } from "../data/weather.js";
+import { fetchWeather } from "../data/weather.js";
 import { useCountUp } from "../hooks/useCountUp.js";
 import {
   mapTaskForAtlas,
@@ -59,7 +59,7 @@ function TaskCard({ task, onOpen, onStatusChange, onStar, projectsById }) {
   );
 }
 
-function Headline({ overdueCount, activeCount, totalCount, doneWeek, doneWeekAvg, addedToday, activeProjectsCount, doneProjectsCount, totalProjectsCount, streak, navigateToTasks, setPage, doneTodayCount }) {
+function Headline({ userName, overdueCount, activeCount, totalCount, doneWeek, doneWeekAvg, addedToday, activeProjectsCount, doneProjectsCount, totalProjectsCount, streak, navigateToTasks, setPage, doneTodayCount }) {
   const activeCountAnim = useCountUp(activeCount);
   const overdueCountAnim = useCountUp(overdueCount);
   const doneWeekAnim = useCountUp(doneWeek);
@@ -77,13 +77,39 @@ function Headline({ overdueCount, activeCount, totalCount, doneWeek, doneWeekAvg
   const greeting = getGreeting();
   const dayPhase = getDayPhaseIcon(now);
 
-  // Weather
+  // Weather — podle polohy uživatele (s opt-in geolokací), fallback Brno.
+  // Open-Meteo funguje i bez API klíče, takže počasí naběhne vždy.
   const [weather, setWeather] = useState(null);
   useEffect(() => {
-    if (!hasWeatherApiKey()) return;
-    fetchWeather().then(setWeather);
-    const iv = setInterval(() => fetchWeather().then(setWeather), 15 * 60 * 1000);
-    return () => clearInterval(iv);
+    let cancelled = false;
+    const load = (lat, lng) =>
+      fetchWeather(lat, lng).then((w) => { if (!cancelled) setWeather(w); }).catch(() => {});
+    const readCoords = () => {
+      try { return JSON.parse(localStorage.getItem("mt:coords") || "null"); } catch { return null; }
+    };
+
+    const saved = readCoords();
+    if (saved && typeof saved.lat === "number") {
+      load(saved.lat, saved.lng);
+    } else if (typeof navigator !== "undefined" && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const c = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          try { localStorage.setItem("mt:coords", JSON.stringify(c)); } catch { /* ignore */ }
+          load(c.lat, c.lng);
+        },
+        () => load(),                       // odmítnuto / chyba → výchozí poloha
+        { timeout: 8000, maximumAge: 30 * 60 * 1000 }
+      );
+    } else {
+      load();
+    }
+
+    const iv = setInterval(() => {
+      const c = readCoords();
+      if (c && typeof c.lat === "number") load(c.lat, c.lng); else load();
+    }, 15 * 60 * 1000);
+    return () => { cancelled = true; clearInterval(iv); };
   }, []);
 
   // Week comparison: percentage above/below average
@@ -102,7 +128,7 @@ function Headline({ overdueCount, activeCount, totalCount, doneWeek, doneWeekAvg
     <div className="headline">
       <div className="headline-top">
         <div>
-          <div className="hl-greet">{greeting}, Michale</div>
+          <div className="hl-greet">{greeting}{userName ? `, ${userName}` : ""}</div>
           <div className="hl-row">
             <div className="hl-daynum">
               <div className="hl-day">{dayName}</div>
@@ -237,11 +263,14 @@ function localDateKey(d) {
 }
 
 function buildStreak(tasks) {
-  const done = tasks.filter((t) => t.status === "done" && t.updatedAt);
+  // Počítáme den DOKONČENÍ (completedAt), ne poslední úpravy — editace starého
+  // hotového úkolu jinak omylem posunula sérii. Fallback na updatedAt kvůli
+  // starším úkolům bez completedAt.
+  const done = tasks.filter((t) => t.status === "done" && (t.completedAt || t.updatedAt));
   const dayMap = new Map();
 
   done.forEach((t) => {
-    const d = new Date(t.updatedAt);
+    const d = new Date(t.completedAt || t.updatedAt);
     d.setHours(0, 0, 0, 0);
     const key = localDateKey(d);
     dayMap.set(key, (dayMap.get(key) || 0) + 1);
@@ -345,7 +374,18 @@ export default function DashboardPage() {
     search,
     isMobile,
     setTasksPageFilter,
+    userId,
+    workspaceMembers,
   } = useApp();
+
+  // Jméno přihlášeného uživatele pro pozdrav (ne natvrdo)
+  const firstName = useMemo(() => {
+    const me = workspaceMembers?.find((m) => m.userId === userId);
+    const raw = (me?.displayName || me?.email || "").trim();
+    if (!raw) return "";
+    const first = raw.split(/[\s@.]+/)[0];
+    return first ? first.charAt(0).toUpperCase() + first.slice(1) : "";
+  }, [workspaceMembers, userId]);
 
   const [filter, setFilter] = useState("all");
   const [quickText, setQuickText] = useState("");
@@ -657,6 +697,7 @@ export default function DashboardPage() {
   return (
     <div className="content dashboard-content">
       <Headline
+        userName={firstName}
         overdueCount={overdue.length}
         activeCount={activeTasks.length}
         totalCount={tasks.length}
@@ -671,6 +712,46 @@ export default function DashboardPage() {
         setPage={setPage}
         doneTodayCount={doneTodayCount}
       />
+
+      {tasks.length === 0 && projects.length === 0 && (
+        <div
+          style={{
+            margin: "4px 0 18px", padding: "22px 24px",
+            background: "linear-gradient(135deg, var(--accent-soft), var(--bg-2))",
+            border: "1px solid var(--border)", borderRadius: 16,
+          }}
+        >
+          <div style={{ fontFamily: "var(--font-display, inherit)", fontSize: 19, fontWeight: 700, marginBottom: 4 }}>
+            Vítej{firstName ? `, ${firstName}` : ""}! Pojďme to rozjet 👋
+          </div>
+          <div style={{ color: "var(--text-2)", fontSize: 14, marginBottom: 18, maxWidth: 560 }}>
+            Appka funguje nejlíp, když má s čím pracovat. Stačí tři kroky a Přehled se zaplní životem.
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: 12, marginBottom: 18 }}>
+            {[
+              ["01", "Založ projekt", "Seskup související úkoly pod jeden cíl."],
+              ["02", "Přidej úkoly", "Termín, priorita, podúkoly — nebo ⌘K."],
+              ["03", "Nech AI naplánovat den", "Doporučí, čím začít podle priorit."],
+            ].map(([n, h, d]) => (
+              <div key={n} style={{ background: "var(--bg-2)", border: "1px solid var(--border)", borderRadius: 12, padding: "14px 16px" }}>
+                <div style={{ fontFamily: "var(--mono)", fontWeight: 700, color: "var(--accent)", fontSize: 13, marginBottom: 6 }}>{n}</div>
+                <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 3 }}>{h}</div>
+                <div style={{ color: "var(--text-3)", fontSize: 12.5, lineHeight: 1.5 }}>{d}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button className="ai-act" onClick={() => setPage("projects")}>Vytvořit první projekt</button>
+            <button
+              className="ai-act"
+              style={{ background: "transparent", border: "1px solid var(--border)", color: "var(--text)" }}
+              onClick={() => setPage("tasks")}
+            >
+              Přidat úkol
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="work">
         <div>

@@ -7,7 +7,7 @@ import { WorkspaceSwitcher } from './Sidebar.jsx'
 import { formatDateKey } from '../locale.js'
 
 export default function MobileNav({ toggleDk }) {
-  const { t, dk, page, setPage, tasks, projects, quickTodos, setCmdOpen, setTaskDetail, userEmail, workspaceMembers, userId, logout, workspaceRole } = useApp();
+  const { t, dk, page, setPage, tasks, projects, quickTodos, setCmdOpen, setTaskDetail, userEmail, workspaceMembers, userId, logout } = useApp();
   const confirm = useConfirm();
   const [moreOpen, setMoreOpen] = useState(false);
 
@@ -120,7 +120,7 @@ export default function MobileNav({ toggleDk }) {
               <WorkspaceSwitcher />
             </div>
 
-            {/* Workspace settings */}
+            {/* Settings */}
             <button
               onClick={() => handleNav("workspace-settings")}
               style={{
@@ -131,7 +131,7 @@ export default function MobileNav({ toggleDk }) {
               }}
             >
               <Icon name="settings" size={16} color={t.text3} strokeWidth={1.75} />
-              <span>Nastavení workspace</span>
+              <span>Nastavení</span>
             </button>
 
             {/* Reminders inline panel */}
@@ -208,7 +208,7 @@ export default function MobileNav({ toggleDk }) {
               <button onClick={() => handleNav("user-profile")} style={{
                 padding: "6px 12px", borderRadius: 8, border: `1px solid ${t.border}`,
                 background: t.input, color: t.text2, fontSize: 12, fontWeight: 500,
-              }}>Profil</button>
+              }}>Nastavení</button>
               <button onClick={handleLogout} style={{
                 padding: "6px 10px", borderRadius: 8, border: `1px solid ${t.border}`,
                 background: t.input, color: t.text3, fontSize: 12,

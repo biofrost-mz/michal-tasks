@@ -13,6 +13,43 @@ import DOMPurify from 'dompurify'
 
 const CURATED_TAG_COLORS = ["#38bdf8", "#34d399", "#fb7185", "#f472b6", "#fbbf24", "#a78bfa", "#c084fc", "#60a5fa", "#2dd4bf", "#fb923c"];
 const getRandomTagColor = () => CURATED_TAG_COLORS[Math.floor(Math.random() * CURATED_TAG_COLORS.length)];
+const BLOCKNOTE_VENDOR_CSS_ID = "blocknote-vendor-css";
+let blockNoteStylesPromise = null;
+
+function ensureBlockNoteStyles() {
+  if (typeof document === "undefined" || document.getElementById(BLOCKNOTE_VENDOR_CSS_ID)) {
+    return Promise.resolve();
+  }
+
+  if (!blockNoteStylesPromise) {
+    blockNoteStylesPromise = Promise.all([
+      import('@blocknote/core/fonts/inter.css?inline'),
+      import('@blocknote/mantine/style.css?inline'),
+    ]).then((styles) => {
+      if (document.getElementById(BLOCKNOTE_VENDOR_CSS_ID)) return;
+      const el = document.createElement("style");
+      el.id = BLOCKNOTE_VENDOR_CSS_ID;
+      el.textContent = styles.map((style) => style.default || "").join("\n");
+      document.head.appendChild(el);
+    });
+  }
+
+  return blockNoteStylesPromise;
+}
+
+function useBlockNoteStyles() {
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    ensureBlockNoteStyles().then(() => {
+      if (active) setReady(true);
+    });
+    return () => { active = false; };
+  }, []);
+
+  return ready;
+}
 
 const getTagColor = (tagName, globalTags) => {
   if (!tagName || !globalTags) return null;
@@ -84,25 +121,35 @@ function injectNoteCSS(dk) {
   color: ${accent};
 }
 .notes-workspace {
-  width: min(1480px, calc(100vw - 32px));
-  height: calc(100vh - 48px);
-  max-height: 980px;
-  margin: auto;
-  border-radius: 22px;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  border-radius: 0;
   overflow: hidden;
-  border: 1px solid var(--border);
+  border: 0;
   background: var(--bg);
   display: grid;
-  grid-template-columns: 286px minmax(0, 1fr) 330px;
-  box-shadow: 0 28px 90px rgba(0,0,0,.55);
+  grid-template-columns: 318px minmax(0, 1fr) 360px;
+  box-shadow: none;
 }
-.notes-workspace.no-props { grid-template-columns: 286px minmax(0, 1fr); }
+.notes-workspace.no-props { grid-template-columns: 318px minmax(0, 1fr); }
 .notes-workspace-panel {
   border-right: 1px solid var(--border-soft);
   min-height: 0;
   overflow: hidden;
 }
 .notes-editor-shell { min-width: 0; min-height: 0; display:flex; overflow:hidden; background: var(--bg); }
+.notes-page-empty {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  background: var(--bg);
+}
+.notes-page-empty .notes-grid-shell {
+  width: min(1180px, calc(100% - 56px));
+  margin: 0 auto;
+  padding: 28px 0 60px;
+}
 .notes-toolbar-wrap {
   position: sticky;
   top: 0;
@@ -341,9 +388,8 @@ function initEditorContent(content) {
 function PinIcon({ size = 14, filled = false, color = "currentColor" }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? color : "none"} stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-      <path d="M12 17v5" />
-      <path d="M9 10.5H5l1.5-2V4h11v4.5L16 10.5h-4z" />
-      <path d="M9 10.5v3a3 3 0 006 0v-3" />
+      <line x1="12" y1="17" x2="12" y2="22" />
+      <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z" />
     </svg>
   );
 }
@@ -482,10 +528,13 @@ function noteTemplateLabel(note) {
 }
 
 function notePriority(note) {
+  if (note.priority) return note.priority; // ručně nastavená priorita má přednost
   if (note.tags?.some(tag => tag.toLowerCase().includes("urgent") || tag.toLowerCase().includes("high"))) return "high";
   if (note.status === "idea" || note.status === "inbox") return "low";
   return "medium";
 }
+
+const PRIORITY_COLORS = { low: "#22c55e", medium: "#f59e0b", high: "#ef4444" };
 
 function linkedItemsForNote(note, projects, tasks) {
   const items = [];
@@ -511,6 +560,7 @@ function linkedItemsForNote(note, projects, tasks) {
 /* ─── NoteEditor ────────────────────────────── */
 function NoteEditor({ note, onSave, t, dk, isMobile, showProps, onToggleProps, onDelete, onTogglePin, projects, tasks, addTask }) {
   const { tags: globalTags } = useApp();
+  const blockNoteStylesReady = useBlockNoteStyles();
   const editor = useCreateBlockNote();
   const titleRef = useRef(null);
   const saveTimer = useRef(null);
@@ -523,6 +573,7 @@ function NoteEditor({ note, onSave, t, dk, isMobile, showProps, onToggleProps, o
   const [aiAction, setAiAction] = useState(null);
   const [aiLoading, setAiLoading] = useState(null);
   const [aiResult, setAiResult] = useState(null);
+  const [statusMenu, setStatusMenu] = useState(false);
 
   const serializeEditor = useCallback(() => {
     const html = editor.blocksToHTMLLossy(editor.document);
@@ -622,9 +673,6 @@ function NoteEditor({ note, onSave, t, dk, isMobile, showProps, onToggleProps, o
   const linkedProject = note.primaryProjectId ? projects.find(p => p.id === note.primaryProjectId) : null;
   const linkedTask = note.primaryTaskId ? tasks.find(tk => tk.id === note.primaryTaskId) : null;
   const linkedItems = linkedItemsForNote(note, projects, tasks);
-  const priorityKey = notePriority(note);
-  const templateLabel = noteTemplateLabel(note);
-
   return (
     <div style={{ display:"flex", flexDirection:"column", height:"100%", overflow:"hidden", position:"relative" }}>
       {/* Topbar */}
@@ -722,10 +770,10 @@ function NoteEditor({ note, onSave, t, dk, isMobile, showProps, onToggleProps, o
       {/* Scrollable editor area */}
       <div style={{ flex:1, overflow:"auto", position:"relative" }}>
         {/* Page content */}
-        <div style={{ width:"min(740px, calc(100% - 56px))", margin:"0 auto", padding:"16px 0 100px" }}>
+        <div style={{ width:"min(1040px, calc(100% - 72px))", margin:"0 auto", padding:"24px 0 100px" }}>
           {/* Page icon */}
           <div
-            style={{ width:52, height:52, borderRadius:14, display:"grid", placeItems:"center", fontSize:26, background:"rgba(255,255,255,.055)", border:`1px solid ${t.border}`, marginBottom:14, cursor:"text" }}
+            style={{ width:44, height:44, borderRadius:12, display:"grid", placeItems:"center", fontSize:23, background:"rgba(255,255,255,.045)", border:`1px solid ${t.border}`, marginBottom:16, cursor:"text" }}
             title="Klikni pro změnu ikony / emoji"
             onClick={() => {
               const em = prompt("Emoji nebo ikona:", note.icon || "📝");
@@ -733,14 +781,6 @@ function NoteEditor({ note, onSave, t, dk, isMobile, showProps, onToggleProps, o
             }}
           >
             {note.icon || "📝"}
-          </div>
-
-          <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap", color:t.text3, fontSize:12, marginBottom:8 }}>
-            <span>Upraveno {formatDateTime(note.updatedAt)}</span>
-            {linkedItems.length > 0 && <span style={{ color:"#bbf7d0", background:"rgba(34,197,94,.12)", border:"1px solid rgba(34,197,94,.2)", padding:"3px 9px", borderRadius:999, fontWeight:800 }}>Vazba připojena</span>}
-            <span style={{ background:statusInfo.bg, color:statusInfo.color, border:`1px solid ${statusInfo.color}40`, padding:"3px 9px", borderRadius:999, fontWeight:800 }}>
-              {statusInfo.label}
-            </span>
           </div>
 
           {/* Title */}
@@ -753,12 +793,12 @@ function NoteEditor({ note, onSave, t, dk, isMobile, showProps, onToggleProps, o
               width:"100%", border:"none", background:"transparent", color:t.text, outline:"none",
               fontFamily:"var(--font-ui)",
               fontSize:"clamp(32px, 4vw, 50px)", fontWeight:900, letterSpacing:"-.04em", lineHeight:1.04,
-              marginBottom:12, display:"block",
+              marginBottom:14, display:"block",
             }}
           />
 
           {/* Meta-line */}
-          <div style={{ display:"flex", gap:10, alignItems:"center", flexWrap:"wrap", color:t.text3, fontSize:12, paddingBottom:18, borderBottom:`1px solid ${t.border}`, marginBottom:22 }}>
+          <div style={{ display:"flex", gap:10, alignItems:"center", flexWrap:"wrap", color:t.text3, fontSize:12, paddingBottom:20, borderBottom:`1px solid ${t.border}`, marginBottom:26 }}>
             <span>Upraveno {formatDateTime(note.updatedAt)}</span>
             {linkedProject && (
               <span style={{ color:"var(--accent)", background:"var(--accent-soft)", border:"1px solid color-mix(in srgb, var(--accent) 28%, transparent)", padding:"3px 9px", borderRadius:999, fontWeight:700, fontSize:12 }}>
@@ -770,8 +810,25 @@ function NoteEditor({ note, onSave, t, dk, isMobile, showProps, onToggleProps, o
                 Úkol: {linkedTask.title || "Bez názvu"}
               </span>
             )}
-            <span style={{ background:statusInfo.bg, color:statusInfo.color, border:`1px solid ${statusInfo.color}40`, padding:"3px 9px", borderRadius:999, fontWeight:700, fontSize:12 }}>
-              {statusInfo.label}
+            <span style={{ position:"relative", display:"inline-flex" }}>
+              <button onClick={() => setStatusMenu(v => !v)} title="Změnit stav" style={{ display:"inline-flex", alignItems:"center", gap:5, background:statusInfo.bg, color:statusInfo.color, border:`1px solid ${statusInfo.color}40`, padding:"3px 9px", borderRadius:999, fontWeight:700, fontSize:12, cursor:"pointer" }}>
+                <span style={{ width:6, height:6, borderRadius:"50%", background:statusInfo.color }} />
+                {statusInfo.label}
+                <span style={{ opacity:.7, fontSize:9 }}>▾</span>
+              </button>
+              {statusMenu && (
+                <>
+                  <div onClick={() => setStatusMenu(false)} style={{ position:"fixed", inset:0, zIndex:40 }} />
+                  <div style={{ position:"absolute", top:"calc(100% + 5px)", left:0, zIndex:41, background:t.bg2, border:`1px solid ${t.border}`, borderRadius:10, boxShadow:"0 12px 30px rgba(0,0,0,.3)", padding:5, minWidth:150 }}>
+                    {Object.entries(NOTE_STATUSES).map(([k, v]) => (
+                      <button key={k} onClick={() => { onSave({ status:k }); setStatusMenu(false); }} style={{ width:"100%", display:"flex", alignItems:"center", gap:8, padding:"7px 9px", borderRadius:7, border:"none", background:note.status===k ? "var(--accent-soft)" : "transparent", color:note.status===k ? "var(--accent)" : t.text2, fontSize:12.5, fontWeight:note.status===k?700:500, cursor:"pointer", textAlign:"left" }}>
+                        <span style={{ width:8, height:8, borderRadius:"50%", background:v.color, flexShrink:0 }} />
+                        {v.label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </span>
               {note.tags?.length > 0 && note.tags.slice(0, 4).map(tag => {
               const col = getTagColor(tag, globalTags) || t.text3;
@@ -783,19 +840,18 @@ function NoteEditor({ note, onSave, t, dk, isMobile, showProps, onToggleProps, o
             })}
           </div>
 
-          <div className="notes-meta-strip">
-            <div className="notes-meta-item"><small>Stav</small><span>{statusInfo.label}</span></div>
-            <div className="notes-meta-item"><small>Typ</small><span>{templateLabel}</span></div>
-            <div className="notes-meta-item"><small>Projekt</small><span>{linkedProject?.name || "Bez projektu"}</span></div>
-            <div className="notes-meta-item"><small>Priorita</small><span>{NOTE_PRIORITIES[priorityKey]}</span></div>
-          </div>
-
           <div className="note-blocknote">
-            <BlockNoteView
-              editor={editor}
-              onChange={handleEditorChange}
-              theme={dk ? "dark" : "light"}
-            />
+            {blockNoteStylesReady ? (
+              <BlockNoteView
+                editor={editor}
+                onChange={handleEditorChange}
+                theme={dk ? "dark" : "light"}
+              />
+            ) : (
+              <div style={{ minHeight: 260, display: "grid", placeItems: "center", color: t.text3, fontSize: 13, fontWeight: 700 }}>
+                Načítám editor...
+              </div>
+            )}
           </div>
 
           <div className="notes-linked-panel">
@@ -820,27 +876,6 @@ function NoteEditor({ note, onSave, t, dk, isMobile, showProps, onToggleProps, o
             </button>
           </div>
 
-          <div className="notes-state-panel" aria-label="Připravené stavy poznámek">
-            <div className="notes-state-card">
-              <b style={{ color:t.text, fontSize:13 }}>Žádná poznámka není vybraná</b>
-              <p style={{ margin:"6px 0 10px", color:t.text3, fontSize:12 }}>Vyber poznámku nebo vytvoř novou.</p>
-              <button onClick={() => window.dispatchEvent(new CustomEvent("notes:create"))} style={{ height:30, borderRadius:9, background:"var(--accent)", color:"var(--bg)", padding:"0 12px", fontWeight:850, fontSize:12 }}>Nová poznámka</button>
-            </div>
-            <div className="notes-state-card">
-              <b style={{ color:t.text, fontSize:13 }}>Žádné poznámky ve filtru</b>
-              <p style={{ margin:"6px 0 10px", color:t.text3, fontSize:12 }}>Nic tu není. Zruš filtr nebo začni novou poznámku.</p>
-              <button style={{ height:30, borderRadius:9, border:`1px solid ${t.border}`, color:t.text2, padding:"0 12px", fontWeight:800, fontSize:12 }}>Zrušit filtr</button>
-            </div>
-            <div className="notes-state-card">
-              <b style={{ color:t.text, fontSize:13 }}>Loading</b>
-              <div className="notes-skeleton" style={{ marginTop:12 }}><span></span><span></span><span></span></div>
-            </div>
-            <div className="notes-state-card">
-              <b style={{ color:"#fecdd3", fontSize:13 }}>Chyba uložení</b>
-              <p style={{ margin:"6px 0 10px", color:t.text3, fontSize:12 }}>Nepodařilo se uložit poslední změnu.</p>
-              <button style={{ height:30, borderRadius:9, border:"1px solid rgba(239,68,68,.32)", color:"#fecdd3", padding:"0 12px", fontWeight:800, fontSize:12 }}>Zkusit znovu</button>
-            </div>
-          </div>
         </div>
 
       </div>
@@ -856,6 +891,7 @@ function NotePropertiesPanel({ note, onClose, t, isMobile, onExportMD, projects,
   const [showAllProjects, setShowAllProjects] = useState(true);
   const [showAllTasks,    setShowAllTasks]    = useState(false);
   const [taskSearch,      setTaskSearch]      = useState("");
+  const [iconPicker,      setIconPicker]      = useState(false);
 
   const linkedItems   = linkedItemsForNote(note, projects, tasks);
   const priorityKey   = notePriority(note);
@@ -1019,18 +1055,41 @@ function NotePropertiesPanel({ note, onClose, t, isMobile, onExportMD, projects,
         <div>
           {sh("Nastavení poznámky")}
           <div style={{ display:"grid", gap:7 }}>
-            <button onClick={() => {
-              const em = prompt("Emoji nebo ikona:", note.icon || "📝");
-              if (em !== null) updateNote(note.id, { icon: em.trim().slice(0,2) || null });
-            }} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:8, padding:"8px 10px", borderRadius:9, border:"1px solid var(--border-soft)", background:"var(--bg)", color:t.text2, fontSize:12.5, cursor:"pointer" }}>
-              <span>Ikona: {note.icon || "📝"}</span>
-              <span style={{ color:t.text3 }}>změnit</span>
-            </button>
-            <div style={{ padding:"8px 10px", borderRadius:9, border:"1px solid var(--border-soft)", background:"var(--bg)", color:t.text2, fontSize:12.5 }}>Šablona: {templateLabel}</div>
-            <div style={{ padding:"8px 10px", borderRadius:9, border:"1px solid var(--border-soft)", background:"var(--bg)", color:t.text2, fontSize:12.5 }}>Viditelnost: Soukromé</div>
-            <div style={{ padding:"8px 10px", borderRadius:9, border:"1px solid var(--border-soft)", background:"var(--bg)", color:t.text2, fontSize:12.5 }}>Priorita: {NOTE_PRIORITIES[priorityKey]}</div>
-            <button onClick={()=>updateNote(note.id,{archived:!note.archived})} style={{ textAlign:"left", padding:"8px 10px", borderRadius:9, border:"1px solid var(--border-soft)", background:"var(--bg)", color:t.text2, fontSize:12.5, cursor:"pointer" }}>
-              Archivace: {note.archived ? "zapnuto" : "vypnuto"}
+            {/* Ikona — picker místo prompt() */}
+            <div style={{ position:"relative" }}>
+              <button onClick={() => setIconPicker(v => !v)} style={{ width:"100%", display:"flex", alignItems:"center", justifyContent:"space-between", gap:8, padding:"8px 10px", borderRadius:9, border:`1px solid ${iconPicker ? "color-mix(in srgb, var(--accent) 40%, transparent)" : "var(--border-soft)"}`, background:"var(--bg)", color:t.text2, fontSize:12.5, cursor:"pointer" }}>
+                <span style={{ display:"flex", alignItems:"center", gap:8 }}><span style={{ fontSize:16 }}>{note.icon || "📝"}</span> Ikona</span>
+                <span style={{ color:t.text3 }}>{iconPicker ? "▲" : "▼"}</span>
+              </button>
+              {iconPicker && (
+                <div style={{ marginTop:6, padding:"8px", border:"1px solid var(--border-soft)", borderRadius:10, background:"var(--bg)", display:"flex", flexWrap:"wrap", gap:4 }}>
+                  {["📝","📌","💡","✅","🔥","⭐","📅","🎯","🐞","📊","📣","🧠","🔖","📁","💬","⚙️","🚀","❗","🧩","🗂️"].map(em => (
+                    <button key={em} onClick={() => { updateNote(note.id, { icon: em }); setIconPicker(false); }} style={{ width:32, height:32, borderRadius:8, border:`1px solid ${note.icon===em ? "color-mix(in srgb, var(--accent) 45%, transparent)" : "transparent"}`, background:note.icon===em ? "var(--accent-soft)" : "transparent", fontSize:17, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>{em}</button>
+                  ))}
+                  <button onClick={() => { updateNote(note.id, { icon: null }); setIconPicker(false); }} style={{ marginLeft:"auto", padding:"0 10px", height:32, borderRadius:8, border:"1px solid var(--border-soft)", background:"transparent", color:t.text3, fontSize:11.5, cursor:"pointer" }}>Bez ikony</button>
+                </div>
+              )}
+            </div>
+
+            {/* Priorita — editovatelná */}
+            <div style={{ padding:"8px 10px", borderRadius:9, border:"1px solid var(--border-soft)", background:"var(--bg)" }}>
+              <div style={{ fontSize:12.5, color:t.text2, marginBottom:7 }}>Priorita</div>
+              <div style={{ display:"flex", gap:5 }}>
+                {["low","medium","high"].map(p => {
+                  const isActive = priorityKey === p;
+                  const col = PRIORITY_COLORS[p];
+                  return (
+                    <button key={p} onClick={() => updateNote(note.id, { priority: p })} style={{ flex:1, padding:"5px 0", borderRadius:8, fontSize:11.5, fontWeight:700, cursor:"pointer", border:`1px solid ${isActive ? col+"66" : "var(--border-soft)"}`, background:isActive ? col+"1c" : "transparent", color:isActive ? col : t.text3 }}>
+                      {NOTE_PRIORITIES[p]}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div style={{ padding:"8px 10px", borderRadius:9, border:"1px solid var(--border-soft)", background:"var(--bg)", color:t.text3, fontSize:12.5, display:"flex", justifyContent:"space-between" }}><span>Šablona</span><span style={{ color:t.text2 }}>{templateLabel}</span></div>
+            <button onClick={()=>updateNote(note.id,{archived:!note.archived})} style={{ textAlign:"left", display:"flex", justifyContent:"space-between", padding:"8px 10px", borderRadius:9, border:"1px solid var(--border-soft)", background:"var(--bg)", color:t.text2, fontSize:12.5, cursor:"pointer" }}>
+              <span>Archivace</span><span style={{ color:note.archived ? t.accent : t.text3 }}>{note.archived ? "zapnuto" : "vypnuto"}</span>
             </button>
           </div>
         </div>
@@ -1392,14 +1451,28 @@ function NotesAtlasGrid({ notes, onOpenNote, onCreate, projects }) {
 }
 
 /* ─── NotesSidebar ──────────────────────────── */
-function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects }) {
-  const { tags: globalTags } = useApp();
+function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects, view = "editor", onSetView }) {
+  const { tags: globalTags, updateNote, uiSettings } = useApp();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("updated");
+  const [hoveredId, setHoveredId] = useState(null);
+
+  const compact = uiSettings?.density === "compact";
+  const togglePin = (n) => updateNote(n.id, { pinned: !n.pinned });
+  const toggleArchive = (n) => updateNote(n.id, { archived: !n.archived });
 
   const s = search.toLowerCase();
-  let filtered = notes.filter(n => !search || n.title.toLowerCase().includes(s) || n.content.toLowerCase().includes(s));
+  // Hledání kryje název, obsah, štítky i názvy navázaných projektů (jak slibuje placeholder).
+  const matchesSearch = (n) => {
+    if (!s) return true;
+    if (n.title.toLowerCase().includes(s) || n.content.toLowerCase().includes(s)) return true;
+    if ((n.tags || []).some(tag => tag.toLowerCase().includes(s))) return true;
+    const projIds = [n.primaryProjectId, ...(n.extraProjectIds || [])].filter(Boolean);
+    return projIds.some(pid => projects.find(p => p.id === pid)?.name?.toLowerCase().includes(s));
+  };
+  let filtered = notes.filter(matchesSearch);
 
   if (filter === "archive") {
     filtered = filtered.filter(n => n.archived);
@@ -1413,6 +1486,10 @@ function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects }) {
     else if (filter === "free")    filtered = filtered.filter(n => !n.primaryProjectId && !n.primaryTaskId && !n.extraProjectIds?.length && !n.extraTaskIds?.length);
   }
 
+  if (statusFilter !== "all" && filter !== "archive") {
+    filtered = filtered.filter(n => (n.status || "draft") === statusFilter);
+  }
+
   const sorted = [...filtered].sort((a,b) => {
     if (sortBy==="updated") return b.updatedAt - a.updatedAt;
     if (sortBy==="created") return b.createdAt - a.createdAt;
@@ -1423,12 +1500,22 @@ function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects }) {
   const yesterdayStart = new Date(todayStart.getTime() - 86400000);
   const weekStart      = new Date(todayStart.getTime() - 6*86400000);
 
-  const groups = (sortBy==="updated" && filter!=="archive") ? [
-    { label:"Dnes",        items:sorted.filter(n=>n.updatedAt>=todayStart.getTime()) },
-    { label:"Včera",       items:sorted.filter(n=>n.updatedAt>=yesterdayStart.getTime()&&n.updatedAt<todayStart.getTime()) },
-    { label:"Tento týden", items:sorted.filter(n=>n.updatedAt>=weekStart.getTime()&&n.updatedAt<yesterdayStart.getTime()) },
-    { label:"Starší",      items:sorted.filter(n=>n.updatedAt<weekStart.getTime()) },
-  ].filter(g=>g.items.length>0) : [{ label:null, items:sorted }];
+  // Připnuté drž vždy nahoře (kromě filtrů Připnuté / Archiv, kde by se duplikovaly).
+  const pinSection  = filter !== "pinned" && filter !== "archive";
+  const pinnedItems = pinSection ? sorted.filter(n => n.pinned)  : [];
+  const restItems   = pinSection ? sorted.filter(n => !n.pinned) : sorted;
+
+  const dateGroups = (sortBy==="updated" && filter!=="archive") ? [
+    { label:"Dnes",        items:restItems.filter(n=>n.updatedAt>=todayStart.getTime()) },
+    { label:"Včera",       items:restItems.filter(n=>n.updatedAt>=yesterdayStart.getTime()&&n.updatedAt<todayStart.getTime()) },
+    { label:"Tento týden", items:restItems.filter(n=>n.updatedAt>=weekStart.getTime()&&n.updatedAt<yesterdayStart.getTime()) },
+    { label:"Starší",      items:restItems.filter(n=>n.updatedAt<weekStart.getTime()) },
+  ] : [{ label:null, items:restItems }];
+
+  const groups = [
+    ...(pinnedItems.length ? [{ label:"Připnuté", pinned:true, items:pinnedItems }] : []),
+    ...dateGroups,
+  ].filter(g => g.items.length > 0);
 
   const activeCount  = notes.filter(n=>!n.archived).length;
   const archiveCount = notes.filter(n=>n.archived).length;
@@ -1436,7 +1523,8 @@ function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects }) {
   const filterTabs = [
     { k:"all",       l:"Vše",       count:activeCount },
     { k:"pinned",    l:"Připnuté"                     },
-    { k:"active",    l:"Aktivní"                      },
+    { k:"project",   l:"U projektu"                   },
+    { k:"free",      l:"Volné"                        },
     { k:"templates", l:"Šablony"                      },
     { k:"archive",   l:"Archiv",    count:archiveCount, muted:true },
   ];
@@ -1453,10 +1541,22 @@ function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects }) {
             </div>
             <span style={{ fontSize:11, color:t.text3, background:"rgba(255,255,255,.07)", padding:"1px 7px", borderRadius:99, fontWeight:700 }}>{activeCount}</span>
           </div>
-          <button onClick={onCreate} style={{ display:"flex", alignItems:"center", gap:5, padding:"7px 12px", borderRadius:9, border:"none", background:`linear-gradient(135deg, var(--accent), var(--accent-2))`, color:"var(--bg)", fontSize:12, fontWeight:800, cursor:"pointer", boxShadow:"0 6px 16px var(--accent-glow)" }}>
-            <Icon name="plus" size={13} color="var(--bg)" strokeWidth={2.5} />
-            Nová
-          </button>
+          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+            {onSetView && (
+              <div style={{ display:"flex", gap:2, background:"var(--bg-2)", border:`1px solid ${t.border}`, borderRadius:8, padding:2 }}>
+                <button onClick={()=>onSetView("editor")} title="Zobrazení: seznam" aria-label="Zobrazení seznam" style={{ display:"flex", padding:"4px 6px", borderRadius:6, border:"none", cursor:"pointer", background:view!=="gallery"?"var(--accent-soft)":"transparent", color:view!=="gallery"?"var(--accent)":t.text3 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><line x1="8" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="20" y2="12"/><line x1="8" y1="18" x2="20" y2="18"/><line x1="3.5" y1="6" x2="3.6" y2="6"/><line x1="3.5" y1="12" x2="3.6" y2="12"/><line x1="3.5" y1="18" x2="3.6" y2="18"/></svg>
+                </button>
+                <button onClick={()=>onSetView("gallery")} title="Zobrazení: galerie" aria-label="Zobrazení galerie" style={{ display:"flex", padding:"4px 6px", borderRadius:6, border:"none", cursor:"pointer", background:view==="gallery"?"var(--accent-soft)":"transparent", color:view==="gallery"?"var(--accent)":t.text3 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+                </button>
+              </div>
+            )}
+            <button onClick={onCreate} style={{ display:"flex", alignItems:"center", gap:5, padding:"7px 12px", borderRadius:9, border:"none", background:`linear-gradient(135deg, var(--accent), var(--accent-2))`, color:"var(--bg)", fontSize:12, fontWeight:800, cursor:"pointer", boxShadow:"0 6px 16px var(--accent-glow)" }}>
+              <Icon name="plus" size={13} color="var(--bg)" strokeWidth={2.5} />
+              Nová
+            </button>
+          </div>
         </div>
         <div style={{ position:"relative" }}>
           <Icon name="search" size={13} color={t.text3} strokeWidth={2} style={{ position:"absolute", left:9, top:"50%", transform:"translateY(-50%)", pointerEvents:"none" }} />
@@ -1494,7 +1594,15 @@ function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects }) {
             </button>
           );
         })}
-        <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{ marginLeft:"auto", padding:"3px 6px", borderRadius:6, border:"1px solid var(--border-soft)", background:"var(--bg-2)", color:"var(--text-2)", fontSize:11, outline:"none", flexShrink:0 }} aria-label="Seřazení poznámek">
+        <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} style={{ marginLeft:"auto", padding:"3px 6px", borderRadius:6, border:`1px solid ${statusFilter!=="all" ? "color-mix(in srgb, var(--accent) 40%, transparent)" : "var(--border-soft)"}`, background:"var(--bg-2)", color:statusFilter!=="all" ? "var(--accent)" : "var(--text-2)", fontSize:11, outline:"none", flexShrink:0 }} aria-label="Filtr podle stavu">
+          <option value="all">Stav: vše</option>
+          <option value="inbox">Inbox</option>
+          <option value="idea">Nápad</option>
+          <option value="draft">Koncept</option>
+          <option value="active">Aktivní</option>
+          <option value="done">Hotovo</option>
+        </select>
+        <select value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{ padding:"3px 6px", borderRadius:6, border:"1px solid var(--border-soft)", background:"var(--bg-2)", color:"var(--text-2)", fontSize:11, outline:"none", flexShrink:0 }} aria-label="Seřazení poznámek">
           <option value="updated">Upravené</option>
           <option value="created">Vytvořené</option>
           <option value="title">A–Z</option>
@@ -1531,31 +1639,49 @@ function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects }) {
               const rawPreview = (n.content || "").replace(/<[^>]+>/g," ").replace(/#{1,3} /g,"").replace(/\*\*/g,"").replace(/\*/g,"").trim();
               const preview   = rawPreview.length > 100 ? rawPreview.slice(0, 100) + "…" : rawPreview;
 
+              const status = NOTE_STATUSES[n.status] ?? NOTE_STATUSES.draft;
+              const showActs = hoveredId === n.id || isActive;
               return (
-                <button key={n.id} onClick={()=>onSelect(n.id)} style={{
+                <div key={n.id} role="button" tabIndex={0}
+                  onClick={()=>onSelect(n.id)}
+                  onKeyDown={e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); onSelect(n.id); } }}
+                  onMouseEnter={e=>{ setHoveredId(n.id); if(!isActive) e.currentTarget.style.background="rgba(255,255,255,.04)"; }}
+                  onMouseLeave={e=>{ setHoveredId(id=>id===n.id?null:id); if(!isActive) e.currentTarget.style.background="transparent"; }}
+                  style={{
                   display:"block", width:"100%", textAlign:"left",
-                  padding:"11px 10px 11px 14px", borderRadius:13, marginBottom:6,
+                  padding:compact ? "7px 8px 7px 12px" : "11px 10px 11px 14px", borderRadius:compact ? 11 : 13, marginBottom:compact ? 3 : 6,
                   background:isActive ? "var(--accent-soft)" : "transparent",
                   border:`1px solid ${isActive ? "color-mix(in srgb, var(--accent) 38%, transparent)" : "transparent"}`,
                   cursor:"pointer", position:"relative", overflow:"hidden",
                   transition:"background .15s", opacity:n.archived ? 0.6 : 1,
-                }}
-                  onMouseEnter={e=>{ if(!isActive) e.currentTarget.style.background="rgba(255,255,255,.04)"; }}
-                  onMouseLeave={e=>{ if(!isActive) e.currentTarget.style.background="transparent"; }}
-                >
+                }}>
                   <div style={{ position:"absolute", left:0, top:11, bottom:11, width:3, borderRadius:4, background:accentCol, opacity:.95 }} />
                   <div style={{ display:"flex", justifyContent:"space-between", gap:8, alignItems:"flex-start", marginBottom:4 }}>
                     <div style={{ display:"flex", alignItems:"center", gap:5, minWidth:0 }}>
+                      <span title={status.label} style={{ width:7, height:7, borderRadius:"50%", background:status.color, flexShrink:0 }} />
                       {n.icon && <span style={{ fontSize:13, flexShrink:0 }}>{n.icon}</span>}
                       {n.pinned && <PinIcon size={10} filled color="#f59e0b" />}
                       <span style={{ fontSize:13, fontWeight:800, color:isActive?"var(--accent)":t.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
                         {n.title || <em style={{ fontWeight:400, color:t.text3 }}>Bez názvu</em>}
                       </span>
                     </div>
-                    <span style={{ fontSize:11, color:t.text3, flexShrink:0, whiteSpace:"nowrap" }}>{relTime(n.updatedAt)}</span>
+                    <div style={{ display:"flex", alignItems:"center", gap:2, flexShrink:0 }}>
+                      {showActs ? (
+                        <>
+                          <button onClick={e=>{ e.stopPropagation(); togglePin(n); }} title={n.pinned?"Odepnout":"Připnout"} aria-label="Připnout poznámku" style={{ display:"flex", padding:3, borderRadius:6, border:"none", background:"transparent", color:n.pinned?"#f59e0b":t.text3, cursor:"pointer" }}>
+                            <PinIcon size={12} filled={n.pinned} color="currentColor" />
+                          </button>
+                          <button onClick={e=>{ e.stopPropagation(); toggleArchive(n); }} title={n.archived?"Obnovit z archivu":"Archivovat"} aria-label="Archivovat poznámku" style={{ display:"flex", padding:3, borderRadius:6, border:"none", background:"transparent", color:t.text3, cursor:"pointer" }}>
+                            <Icon name="archive" size={12} color="currentColor" strokeWidth={2} />
+                          </button>
+                        </>
+                      ) : (
+                        <span style={{ fontSize:11, color:t.text3, whiteSpace:"nowrap" }}>{relTime(n.updatedAt)}</span>
+                      )}
+                    </div>
                   </div>
                   {preview && (
-                    <div style={{ fontSize:12, color:t.text3, display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical", overflow:"hidden", lineHeight:1.45, marginBottom:n.tags?.length ? 6 : 0 }}>
+                    <div style={{ fontSize:12, color:t.text3, display:"-webkit-box", WebkitLineClamp:compact ? 1 : 2, WebkitBoxOrient:"vertical", overflow:"hidden", lineHeight:1.45, marginBottom:n.tags?.length ? 6 : 0 }}>
                       {preview}
                     </div>
                   )}
@@ -1564,15 +1690,15 @@ function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects }) {
                       {n.tags.slice(0,3).map(tag => {
                         const col = getTagColor(tag, globalTags) || "#aeb9d2";
                         return (
-                          <span key={tag} style={{ fontSize:10.5, padding:"2px 6px", borderRadius:999, background:`${col}15`, color:col, border:`1px solid ${col}25`, whiteSpace:"nowrap" }}>
+                          <button key={tag} onClick={e=>{ e.stopPropagation(); setSearch(tag); }} title={`Filtrovat: ${tag}`} style={{ fontSize:10.5, padding:"2px 6px", borderRadius:999, background:`${col}15`, color:col, border:`1px solid ${col}25`, whiteSpace:"nowrap", cursor:"pointer" }}>
                             {tag}
-                          </span>
+                          </button>
                         );
                       })}
                       {n.tags.length>3 && <span style={{ fontSize:10, color:t.text3 }}>+{n.tags.length-3}</span>}
                     </div>
                   )}
-                </button>
+                </div>
               );
             })}
           </div>
@@ -1580,12 +1706,9 @@ function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects }) {
       </div>
 
       <div style={{ padding:"7px 14px", borderTop:`1px solid ${t.border}`, fontSize:11.5, color:t.text3, flexShrink:0 }}>
-        <div style={{ display:"flex", gap:8 }}>
-          <button onClick={onCreate} style={{ flex:1, height:38, borderRadius:11, background:"linear-gradient(135deg, var(--accent), var(--accent-2))", color:"var(--bg)", fontWeight:900, fontSize:13 }}>+ Nová poznámka</button>
-          <button aria-label="Nastavení poznámek" style={{ width:38, height:38, borderRadius:11, border:"1px solid var(--border-soft)", color:t.text3 }}>
-            <Icon name="settings" size={14} color="currentColor" strokeWidth={2} />
-          </button>
-        </div>
+        <button onClick={onCreate} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%", height:38, borderRadius:11, border:"none", background:"linear-gradient(135deg, var(--accent), var(--accent-2))", color:"var(--bg)", fontWeight:900, fontSize:13, cursor:"pointer" }}>
+          <Icon name="plus" size={14} color="currentColor" strokeWidth={2.6} /> Nová poznámka
+        </button>
       </div>
     </div>
   );
@@ -1601,6 +1724,7 @@ export default function NotesPage() {
   const [mobileView,     setMobileView]     = useState("list");
   const [templatePicker, setTemplatePicker] = useState(false);
   const [showProps,      setShowProps]      = useState(false);
+  const [notesView,      setNotesView]      = useState("editor"); // "editor" | "gallery"
 
   useEffect(() => { injectNoteCSS(dk); }, [dk]);
 
@@ -1687,65 +1811,57 @@ export default function NotesPage() {
 
   if (!isMobile) {
     return (
-      <div style={{ minHeight: "100%", position: "relative" }}>
+      <div style={{ height: "100%", minHeight: 0, position: "relative" }}>
         {templatePicker && (
           <TemplatePickerModal onSelect={handleCreateFromTemplate} onClose={() => setTemplatePicker(false)} />
         )}
 
-        <NotesAtlasGrid
-          notes={notes}
-          projects={projects}
-          onCreate={handleCreate}
-          onOpenNote={(id) => { setSelId(id); setShowProps(true); }}
-        />
+        <div className={`notes-workspace ${showProps && selNote && notesView !== "gallery" ? "" : "no-props"}`}>
+          <div className="notes-workspace-panel">
+            <NotesSidebar
+              notes={notes}
+              selId={selId}
+              onSelect={(id) => { setSelId(id); setShowProps(true); setNotesView("editor"); }}
+              onCreate={handleCreate}
+              t={t}
+              projects={projects}
+              view={notesView}
+              onSetView={setNotesView}
+            />
+          </div>
 
-        {selNote && (
-          <div className="overlay" onClick={() => setSelId(null)}>
-            <div
-              onClick={e => e.stopPropagation()}
-              className={`notes-workspace ${showProps ? "" : "no-props"}`}
-              style={{
-                position: "relative",
-              }}
-            >
-              <button
-                onClick={() => setSelId(null)}
-                className="btn"
-                style={{ position: "absolute", top: 12, right: 12, zIndex: 10, padding: "6px 11px" }}
-              >
-                <Icon name="x" size={14} color="currentColor" strokeWidth={2} />
-                Zavřít
-              </button>
-              <div className="notes-workspace-panel">
-                <NotesSidebar
+          {notesView === "gallery" ? (
+            <div className="notes-page-empty">
+              <div className="notes-grid-shell">
+                <NotesAtlasGrid
                   notes={notes}
-                  selId={selId}
-                  onSelect={(id) => { setSelId(id); setShowProps(true); }}
-                  onCreate={handleCreate}
-                  t={t}
                   projects={projects}
+                  onCreate={handleCreate}
+                  onOpenNote={(id) => { setSelId(id); setShowProps(true); setNotesView("editor"); }}
                 />
               </div>
-              <div className="notes-editor-shell">
-                <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0, background: t.bg }}>
-                  <NoteEditor
-                    key={selNote.id}
-                    note={selNote}
-                    onSave={upd => updateNote(selNote.id, upd)}
-                    t={t}
-                    dk={dk}
-                    isMobile={false}
-                    showProps={showProps}
-                    onToggleProps={() => setShowProps(v => !v)}
-                    onDelete={() => handleDelete(selNote.id)}
-                    onTogglePin={() => updateNote(selNote.id, { pinned: !selNote.pinned })}
-                    projects={projects}
-                    tasks={tasks}
-                    addTask={addTask}
-                  />
-                </div>
-                {showProps && (
-                  <div className="notes-props-desktop" style={{ display:"contents" }}>
+            </div>
+          ) : selNote ? (
+            <div className="notes-editor-shell">
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0, background: t.bg }}>
+                <NoteEditor
+                  key={selNote.id}
+                  note={selNote}
+                  onSave={upd => updateNote(selNote.id, upd)}
+                  t={t}
+                  dk={dk}
+                  isMobile={false}
+                  showProps={showProps}
+                  onToggleProps={() => setShowProps(v => !v)}
+                  onDelete={() => handleDelete(selNote.id)}
+                  onTogglePin={() => updateNote(selNote.id, { pinned: !selNote.pinned })}
+                  projects={projects}
+                  tasks={tasks}
+                  addTask={addTask}
+                />
+              </div>
+              {showProps && (
+                <div className="notes-props-desktop" style={{ display:"contents" }}>
                   <NotePropertiesPanel
                     note={selNote}
                     onClose={() => setShowProps(false)}
@@ -1756,12 +1872,22 @@ export default function NotesPage() {
                     tasks={tasks}
                     addTask={addTask}
                   />
-                  </div>
-                )}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="notes-page-empty">
+              <div className="notes-grid-shell">
+                <NotesAtlasGrid
+                  notes={notes}
+                  projects={projects}
+                  onCreate={handleCreate}
+                  onOpenNote={(id) => { setSelId(id); setShowProps(true); }}
+                />
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     );
   }

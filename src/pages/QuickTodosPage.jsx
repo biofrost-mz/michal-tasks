@@ -13,6 +13,17 @@ const PRIORITY_CONFIG = {
   high:   { label: "Vysoká",  color: "#ef4444", bg: "#ef444418" },
 };
 
+const MAX_SWIPE = 132;
+const COMPLETE_THRESHOLD = 92;
+
+function openNativeDatePicker(input) {
+  try {
+    input.showPicker?.();
+  } catch {
+    // Some browsers expose showPicker but block it outside trusted gestures.
+  }
+}
+
 /* ─────────────────────────────────────────────
    QuickTodoCard — Atlas .tcard design with swipe support
 ───────────────────────────────────────────── */
@@ -30,8 +41,6 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
   const pointerIdRef = useRef(null);
   const archiveTimerRef = useRef(null);
   const completingRef = useRef(false);
-  const maxSwipeRef = useRef(132);   // fixed max swipe (approx 120-140px)
-  const thresholdRef = useRef(92);   // fixed complete threshold (approx 80-110px)
 
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(todo.text || "");
@@ -49,8 +58,8 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
     completingRef.current = true;
     navigator.vibrate?.([20, 30, 60]);
     setExiting(true);
-    setOffsetX(-maxSwipeRef.current);
-    offsetXRef.current = -maxSwipeRef.current;
+    setOffsetX(-MAX_SWIPE);
+    offsetXRef.current = -MAX_SWIPE;
 
     toast(
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -125,7 +134,11 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
       swipeAxisRef.current = "x";
       setSwiping(true);
       hasSwipedRef.current = true;
-      try { e.currentTarget.setPointerCapture?.(e.pointerId); } catch(err) {}
+      try {
+        e.currentTarget.setPointerCapture?.(e.pointerId);
+      } catch {
+        // Pointer capture is best-effort on some mobile browsers.
+      }
     }
 
     if (swipeAxisRef.current !== "x") return;
@@ -133,7 +146,7 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
 
     // ignore right swipe, use left swipe
     const currentX = Math.min(0, diff);
-    const clamped = Math.max(-maxSwipeRef.current, currentX);
+    const clamped = Math.max(-MAX_SWIPE, currentX);
 
     offsetXRef.current = clamped;
     setOffsetX(clamped);
@@ -147,7 +160,7 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
     setSwiping(false);
     const finalX = offsetXRef.current;
     
-    if (swipeAxisRef.current === "x" && finalX <= -thresholdRef.current) {
+    if (swipeAxisRef.current === "x" && finalX <= -COMPLETE_THRESHOLD) {
       triggerArchive();
     } else {
       setOffsetX(0);
@@ -158,7 +171,11 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
     startYRef.current = null;
     swipeAxisRef.current = null;
     pointerIdRef.current = null;
-    try { e.currentTarget.releasePointerCapture?.(e.pointerId); } catch(err) {}
+    try {
+      e.currentTarget.releasePointerCapture?.(e.pointerId);
+    } catch {
+      // Pointer capture may already be released.
+    }
   };
 
   const onPointerCancel = (e) => {
@@ -169,12 +186,16 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
     startYRef.current = null;
     swipeAxisRef.current = null;
     pointerIdRef.current = null;
-    try { e.currentTarget.releasePointerCapture?.(e.pointerId); } catch(err) {}
+    try {
+      e.currentTarget.releasePointerCapture?.(e.pointerId);
+    } catch {
+      // Pointer capture may already be released.
+    }
   };
 
-  const swipeFraction = Math.min(Math.abs(offsetX + hintOffset) / thresholdRef.current, 1);
+  const swipeFraction = Math.min(Math.abs(offsetX + hintOffset) / COMPLETE_THRESHOLD, 1);
   const bgOpacity = swipeFraction;
-  const pastThreshold = (offsetX + hintOffset) < -thresholdRef.current;
+  const pastThreshold = (offsetX + hintOffset) < -COMPLETE_THRESHOLD;
 
   // Map quickTodo to a visual status — active items are "todo"
   const statusClass = "todo";
@@ -268,7 +289,7 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
                 value={editDue}
                 onChange={(e) => setEditDue(e.target.value)}
                 style={{ padding: "8px 12px", fontSize: "13px" }}
-                onClick={(e) => { try { e.target.showPicker(); } catch(err) {} }}
+                onClick={(e) => openNativeDatePicker(e.target)}
               />
             </div>
           </div>
@@ -338,13 +359,13 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
       style={{
         "--drag-x": exiting ? "-115%" : `${offsetX + hintOffset}px`,
         "--swipe-progress": bgOpacity,
-        "--swipe-scale": pastThreshold ? 1.14 : 0.76 + swipeFraction * 0.24,
+        "--swipe-scale": pastThreshold ? 1.04 : 0.7 + swipeFraction * 0.22,
       }}
     >
       <div className="quick-todo-swipe-bg" aria-hidden="true">
         <div className="quick-todo-swipe-action">
           <div className="quick-todo-swipe-icon">
-            <Icon name="check" size={20} color="#ffffff" strokeWidth={3} />
+            <Icon name="check" size={14} color="#ecfdf5" strokeWidth={3} />
           </div>
           <span>Hotovo</span>
         </div>
@@ -411,7 +432,7 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
 /* ─────────────────────────────────────────────
    ArchivedRow — done items in .tcard done style
 ───────────────────────────────────────────── */
-function ArchivedRow({ todo, onRestore, onDelete, t }) {
+function ArchivedRow({ todo, onRestore, onDelete }) {
   const [hovered, setHovered] = useState(false);
   return (
     <div
@@ -525,8 +546,6 @@ export default function QuickTodosPage() {
 
   const hasExtras = priority || dueDate || tagsRaw || description;
   const panelBorder = "var(--border-soft)";
-  const inputBg = "var(--bg-2)";
-
   return (
     <div className="content">
       <div className="ph">
@@ -582,8 +601,8 @@ export default function QuickTodosPage() {
             <input
               type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
               className="detail-input" style={{ maxWidth: 180 }}
-              onClick={(e) => { try { e.target.showPicker(); } catch(err) {} }}
-              onFocus={(e) => { try { e.target.showPicker(); } catch(err) {} }}
+              onClick={(e) => openNativeDatePicker(e.target)}
+              onFocus={(e) => openNativeDatePicker(e.target)}
             />
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -739,7 +758,7 @@ export default function QuickTodosPage() {
           {archiveOpen && (
             <div className="tcards">
               {archived.map((todo) => (
-                <ArchivedRow key={todo.id} todo={todo} onRestore={restoreQuickTodo} onDelete={deleteQuickTodo} t={t} />
+                <ArchivedRow key={todo.id} todo={todo} onRestore={restoreQuickTodo} onDelete={deleteQuickTodo} />
               ))}
             </div>
           )}

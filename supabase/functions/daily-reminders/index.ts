@@ -1,4 +1,16 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  heroBlock,
+  section,
+  intro,
+  ctaCard,
+  contentRow,
+  footer,
+  emailShell,
+  type Chip,
+  type ChipTone,
+  type TaskRow,
+} from "../_shared/email.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -7,49 +19,103 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 const PRIORITY_LABELS: Record<string, string> = {
-  critical: "🔴 Kritická",
-  high: "🟠 Vysoká",
-  medium: "🟡 Střední",
-  low: "🟢 Nízká",
+  critical: "Kritická",
+  high: "Vysoká",
+  medium: "Střední",
+  low: "Nízká",
 };
 
-function escHtml(s: string): string {
-  return String(s ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
+const APP_URL = Deno.env.get("APP_URL") ?? "https://tasks.zichmichal.cz";
+const SECTION_LIMIT = 5;
+
+function formatDate(dateStr?: string): string {
+  if (!dateStr) return "Bez termínu";
+  return new Date(dateStr + "T00:00:00Z").toLocaleDateString("cs-CZ", {
+    day: "numeric",
+    month: "long",
+  });
 }
 
-function taskRow(task: Record<string, string>, projectName: string): string {
-  return `
-    <tr>
-      <td style="padding:9px 12px;border-bottom:1px solid #f0f0f0">
-        <strong style="color:#1a1e2e;font-size:13px">${escHtml(task.title)}</strong>
-        ${task.description ? `<br><span style="color:#6b7280;font-size:11px">${escHtml(task.description)}</span>` : ""}
-      </td>
-      <td style="padding:9px 12px;border-bottom:1px solid #f0f0f0;color:#6b7280;font-size:12px;white-space:nowrap">${escHtml(projectName)}</td>
-      <td style="padding:9px 12px;border-bottom:1px solid #f0f0f0;font-size:12px;white-space:nowrap">${task.priority ? PRIORITY_LABELS[task.priority] ?? escHtml(task.priority) : "—"}</td>
-    </tr>`;
+function plUkol(n: number): string {
+  return n === 1 ? "úkol" : n >= 2 && n <= 4 ? "úkoly" : "úkolů";
+}
+function plDni(n: number): string {
+  return n === 1 ? "den" : n >= 2 && n <= 4 ? "dny" : "dní";
 }
 
-function section(title: string, color: string, items: Record<string, string>[], projectMap: Record<string, string>): string {
+function prioChip(priority?: string): Chip | null {
+  if (!priority) return null;
+  const label = PRIORITY_LABELS[priority] ?? priority;
+  const tone: ChipTone = priority === "critical" || priority === "high" ? "red" : priority === "low" ? "green" : "amber";
+  return { text: label, tone };
+}
+
+function daysOverdue(due: string, todayStr: string): number {
+  const diff = (new Date(todayStr + "T00:00:00Z").getTime() - new Date(due + "T00:00:00Z").getTime()) / 86400000;
+  return Math.max(1, Math.round(diff));
+}
+
+function toRow(
+  t: Record<string, string>,
+  projectMap: Record<string, string>,
+  kind: "overdue" | "today" | "tomorrow",
+  todayStr: string,
+): TaskRow {
+  const accent = kind === "overdue" ? "#ef4444" : kind === "today" ? "#f59e0b" : "#22c55e";
+  const chips: Chip[] = [{ text: projectMap[t.project_id] ?? "Bez projektu", tone: "neutral" }];
+  if (kind === "overdue") {
+    const n = daysOverdue(t.due_date, todayStr);
+    chips.push({ text: `${n} ${plDni(n)} po termínu`, tone: "red" });
+  } else if (kind === "today") {
+    chips.push({ text: "Dnes", tone: "amber" });
+  } else {
+    chips.push({ text: "Zítra", tone: "green" });
+  }
+  const p = prioChip(t.priority);
+  if (p) chips.push(p);
+  return {
+    title: t.title || "Bez názvu",
+    url: `${APP_URL}/?task=${t.id}`,
+    desc: t.description || undefined,
+    chips,
+    accent,
+  };
+}
+
+function buildSection(
+  label: string,
+  dotColor: string,
+  pillTone: "red" | "amber" | "green",
+  items: Record<string, string>[],
+  kind: "overdue" | "today" | "tomorrow",
+  projectMap: Record<string, string>,
+  todayStr: string,
+): string {
   if (!items.length) return "";
-  return `
-    <div style="margin-bottom:28px">
-      <h3 style="margin:0 0 10px;font-size:13px;font-weight:700;color:${color};text-transform:uppercase;letter-spacing:.06em">${title} &nbsp;<span style="background:${color}18;border-radius:6px;padding:2px 8px;font-size:12px">${items.length}</span></h3>
-      <table style="width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;border:1px solid #e5e7ec">
-        <thead>
-          <tr style="background:#f5f6fa">
-            <th style="padding:7px 12px;text-align:left;font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em">Úkol</th>
-            <th style="padding:7px 12px;text-align:left;font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em">Projekt</th>
-            <th style="padding:7px 12px;text-align:left;font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em">Priorita</th>
-          </tr>
-        </thead>
-        <tbody>${items.map((t) => taskRow(t, projectMap[t.project_id] ?? "—")).join("")}</tbody>
-      </table>
-    </div>`;
+  const rows = items.slice(0, SECTION_LIMIT).map((t) => toRow(t, projectMap, kind, todayStr));
+  const extra = items.length - SECTION_LIMIT;
+  return section({
+    label,
+    dotColor,
+    countPill: { text: String(items.length), tone: pillTone },
+    tasks: rows,
+    moreHref: extra > 0 ? APP_URL : undefined,
+    moreText: extra > 0 ? `Zobrazit další ${extra} ${plUkol(extra)}` : undefined,
+  });
+}
+
+function textTaskLines(title: string, tasks: Record<string, string>[], projectMap: Record<string, string>, dueLabel: string): string {
+  if (!tasks.length) return "";
+  return [
+    title,
+    ...tasks.map((task) => {
+      const project = projectMap[task.project_id] ?? "Bez projektu";
+      const priority = task.priority ? PRIORITY_LABELS[task.priority] ?? task.priority : "Normální";
+      const date = dueLabel === "date" ? formatDate(task.due_date) : dueLabel;
+      return `- ${task.title || "Bez názvu"} (${project}, ${date}, ${priority})`;
+    }),
+    "",
+  ].join("\n");
 }
 
 async function sendDailyEmail(
@@ -60,45 +126,64 @@ async function sendDailyEmail(
   tomorrowStr: string,
 ) {
   const today = new Date(todayStr + "T00:00:00Z");
-  const overdue     = tasks.filter((t) => t.due_date < todayStr);
-  const dueToday    = tasks.filter((t) => t.due_date === todayStr);
+  const overdue = tasks.filter((t) => t.due_date < todayStr);
+  const dueToday = tasks.filter((t) => t.due_date === todayStr);
   const dueTomorrow = tasks.filter((t) => t.due_date === tomorrowStr);
 
   if (!overdue.length && !dueToday.length && !dueTomorrow.length) return false;
 
   const dateLabel = today.toLocaleDateString("cs-CZ", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   const subjectParts = [
-    overdue.length     ? `${overdue.length} prošlých`  : "",
-    dueToday.length    ? `${dueToday.length} dnes`     : "",
+    overdue.length ? `${overdue.length} prošlých` : "",
+    dueToday.length ? `${dueToday.length} dnes` : "",
     dueTomorrow.length ? `${dueTomorrow.length} zítra` : "",
   ].filter(Boolean).join(", ");
 
-  const html = `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f6fa;margin:0;padding:24px 16px">
-<div style="max-width:600px;margin:0 auto">
+  const text = [
+    `Denní přehled úkolů - ${dateLabel}`,
+    "",
+    subjectParts,
+    "",
+    textTaskLines("Prošlé termíny", overdue, projectMap, "Po termínu"),
+    textTaskLines("Splatné dnes", dueToday, projectMap, "Dnes"),
+    textTaskLines("Splatné zítra", dueTomorrow, projectMap, "Zítra"),
+    `Otevřít aplikaci: ${APP_URL}`,
+  ].join("\n");
 
-  <div style="background:linear-gradient(135deg,#3b82f6,#8b5cf6);border-radius:16px;padding:24px 28px;margin-bottom:24px;color:#fff">
-    <div style="font-size:22px;font-weight:800;margin-bottom:4px">📋 Denní přehled úkolů</div>
-    <div style="opacity:.85;font-size:14px">${dateLabel}</div>
-  </div>
+  const total = overdue.length + dueToday.length + dueTomorrow.length;
+  const body =
+    heroBlock({
+      dateLabel,
+      title: "Denní přehled úkolů",
+      countBadge: `${total} ${plUkol(total)}`,
+      subtitle: "Co už hoří, co je potřeba dnes a co se blíží v dalších dnech.",
+      stats: [
+        { label: "Po termínu", value: overdue.length, color: "#ef4444" },
+        { label: "Dnes", value: dueToday.length, color: "#f59e0b" },
+        { label: "Blíží se", value: dueTomorrow.length, color: "#22c55e" },
+      ],
+    }) +
+    contentRow(
+      intro("Ahoj, tady je stručný přehled úkolů, které potřebují pozornost — nejdřív po termínu, pak dnešní a blížící se.") +
+        buildSection("Po termínu", "#ef4444", "red", overdue, "overdue", projectMap, todayStr) +
+        buildSection("Splatné dnes", "#f59e0b", "amber", dueToday, "today", projectMap, todayStr) +
+        buildSection("Blíží se termín", "#22c55e", "green", dueTomorrow, "tomorrow", projectMap, todayStr) +
+        ctaCard({
+          title: "Chceš to rovnou odbavit?",
+          text: "Otevři Zentero a projdi úkoly podle termínu, priority nebo projektu.",
+          buttonText: "Otevřít aplikaci",
+          url: APP_URL,
+        }),
+    ) +
+    footer({
+      note: "Automatický denní souhrn ze Zentero. Čas přehledu, projekty v e-mailu i typy upozornění upravíš v",
+      settingsUrl: APP_URL,
+      unsubscribeText: "Odhlásit denní přehled",
+      unsubscribeUrl: APP_URL,
+      host: APP_URL.replace(/^https?:\/\//, ""),
+    });
 
-  <div style="display:flex;gap:10px;margin-bottom:24px;flex-wrap:wrap">
-    ${overdue.length     ? `<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 16px;color:#ef4444;font-weight:700;font-size:14px">🔴 ${overdue.length} prošlých</div>` : ""}
-    ${dueToday.length    ? `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 16px;color:#d97706;font-weight:700;font-size:14px">🟡 ${dueToday.length} dnes</div>` : ""}
-    ${dueTomorrow.length ? `<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 16px;color:#3b82f6;font-weight:700;font-size:14px">🔵 ${dueTomorrow.length} zítra</div>` : ""}
-  </div>
-
-  ${section("🔴 Prošlé termíny", "#ef4444", overdue, projectMap)}
-  ${section("🟡 Splatné dnes", "#d97706", dueToday, projectMap)}
-  ${section("🔵 Splatné zítra", "#3b82f6", dueTomorrow, projectMap)}
-
-  <div style="text-align:center;color:#9ca3af;font-size:12px;padding-top:16px;border-top:1px solid #e5e7ec">
-    Michal Tasks &nbsp;·&nbsp; <a href="https://tasks.zichmichal.cz" style="color:#3b82f6;text-decoration:none">Otevřít aplikaci →</a>
-  </div>
-
-</div>
-</body></html>`;
+  const html = emailShell({ preheader: `${subjectParts} čeká v dnešním plánu.`, title: "Denní přehled úkolů — Zentero", body });
 
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -107,10 +192,11 @@ async function sendDailyEmail(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: "Zontero <notifikace@tasks.zichmichal.cz>",
+      from: "Zentero <notifikace@tasks.zichmichal.cz>",
       to,
-      subject: `📋 ${subjectParts} · Michal Tasks`,
+      subject: `${subjectParts} · Zentero`,
       html,
+      text,
     }),
   });
 
@@ -142,7 +228,7 @@ Deno.serve(async (req) => {
 
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0);
-  const todayStr    = today.toISOString().slice(0, 10);
+  const todayStr = today.toISOString().slice(0, 10);
   const tomorrowStr = new Date(today.getTime() + 86400000).toISOString().slice(0, 10);
 
   // Fetch relevant tasks (all users, not done, due today or earlier or tomorrow)

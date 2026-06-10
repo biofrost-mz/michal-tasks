@@ -3,10 +3,19 @@ import { registerRoute, NavigationRoute } from 'workbox-routing'
 import { NetworkOnly, StaleWhileRevalidate, CacheFirst } from 'workbox-strategies'
 import { ExpirationPlugin } from 'workbox-expiration'
 import { CacheableResponsePlugin } from 'workbox-cacheable-response'
+import { clientsClaim } from 'workbox-core'
+
+clientsClaim()
 
 /* Precache all Vite-hashed build assets */
 precacheAndRoute(self.__WB_MANIFEST)
 cleanupOutdatedCaches()
+
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting()
+  }
+})
 
 /* Fonts — Fontshare */
 registerRoute(

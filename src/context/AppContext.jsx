@@ -33,6 +33,71 @@ const SK = {
   SETTINGS: "mt3:settings",
 };
 
+const DEFAULT_UI_SETTINGS = {
+  themeMode: "dark",
+  accent: "amber",
+  density: "comfortable",
+  reducedMotion: false,
+  defaultPage: "dashboard",
+};
+
+const ACCENT_THEMES = {
+  amber: {
+    label: "Amber",
+    dark: { accent: "#e3a850", accent2: "#d4923a", rgb: "227, 168, 80", soft: "rgba(227, 168, 80, 0.10)", glow: "rgba(227, 168, 80, 0.25)" },
+    light: { accent: "#c58a36", accent2: "#b07a2d", rgb: "197, 138, 54", soft: "rgba(197, 138, 54, 0.08)", glow: "rgba(197, 138, 54, 0.20)" },
+  },
+  emerald: {
+    label: "Emerald",
+    dark: { accent: "#34d399", accent2: "#10b981", rgb: "52, 211, 153", soft: "rgba(52, 211, 153, 0.11)", glow: "rgba(52, 211, 153, 0.24)" },
+    light: { accent: "#059669", accent2: "#047857", rgb: "5, 150, 105", soft: "rgba(5, 150, 105, 0.09)", glow: "rgba(5, 150, 105, 0.18)" },
+  },
+  sky: {
+    label: "Sky",
+    dark: { accent: "#38bdf8", accent2: "#0ea5e9", rgb: "56, 189, 248", soft: "rgba(56, 189, 248, 0.12)", glow: "rgba(56, 189, 248, 0.24)" },
+    light: { accent: "#0284c7", accent2: "#0369a1", rgb: "2, 132, 199", soft: "rgba(2, 132, 199, 0.09)", glow: "rgba(2, 132, 199, 0.18)" },
+  },
+  rose: {
+    label: "Rose",
+    dark: { accent: "#fb7185", accent2: "#f43f5e", rgb: "251, 113, 133", soft: "rgba(251, 113, 133, 0.11)", glow: "rgba(251, 113, 133, 0.23)" },
+    light: { accent: "#e11d48", accent2: "#be123c", rgb: "225, 29, 72", soft: "rgba(225, 29, 72, 0.08)", glow: "rgba(225, 29, 72, 0.16)" },
+  },
+  violet: {
+    label: "Violet",
+    dark: { accent: "#a78bfa", accent2: "#8b5cf6", rgb: "167, 139, 250", soft: "rgba(167, 139, 250, 0.11)", glow: "rgba(167, 139, 250, 0.22)" },
+    light: { accent: "#7c3aed", accent2: "#6d28d9", rgb: "124, 58, 237", soft: "rgba(124, 58, 237, 0.08)", glow: "rgba(124, 58, 237, 0.16)" },
+  },
+  slate: {
+    label: "Slate",
+    dark: { accent: "#cbd5e1", accent2: "#94a3b8", rgb: "203, 213, 225", soft: "rgba(203, 213, 225, 0.10)", glow: "rgba(203, 213, 225, 0.16)" },
+    light: { accent: "#475569", accent2: "#334155", rgb: "71, 85, 105", soft: "rgba(71, 85, 105, 0.08)", glow: "rgba(71, 85, 105, 0.12)" },
+  },
+};
+
+const VALID_PAGES = new Set(["dashboard", "tasks", "quick-todos", "projects", "timeline", "notes"]);
+
+function normalizeUiSettings(raw) {
+  const migratedTheme = raw?.themeMode || (typeof raw?.dk === "boolean" ? (raw.dk ? "dark" : "light") : DEFAULT_UI_SETTINGS.themeMode);
+  return {
+    ...DEFAULT_UI_SETTINGS,
+    ...raw,
+    themeMode: ["dark", "light", "system"].includes(migratedTheme) ? migratedTheme : DEFAULT_UI_SETTINGS.themeMode,
+    accent: ACCENT_THEMES[raw?.accent] ? raw.accent : DEFAULT_UI_SETTINGS.accent,
+    density: ["comfortable", "compact"].includes(raw?.density) ? raw.density : DEFAULT_UI_SETTINGS.density,
+    reducedMotion: !!raw?.reducedMotion,
+    defaultPage: VALID_PAGES.has(raw?.defaultPage) ? raw.defaultPage : DEFAULT_UI_SETTINGS.defaultPage,
+  };
+}
+
+function systemPrefersDark() {
+  if (typeof window === "undefined" || !window.matchMedia) return true;
+  return window.matchMedia("(prefers-color-scheme: dark)").matches;
+}
+
+function resolveThemeMode(mode) {
+  return mode === "system" ? systemPrefersDark() : mode !== "light";
+}
+
 // Storage adapter: optional window.storage -> localStorage
 const storage = {
   async get(key) {
@@ -53,7 +118,9 @@ const storage = {
     }
     try {
       localStorage.setItem(key, value);
-    } catch {}
+    } catch {
+      // Storage can be unavailable in private/sandboxed browser contexts.
+    }
   },
 };
 
@@ -151,6 +218,16 @@ async function dbFetchAll(userId, workspaceId) {
   };
 }
 
+function isSystemAdminEmail(email) {
+  const raw = import.meta.env.VITE_SYSTEM_ADMIN_EMAILS || "";
+  if (!email || !raw.trim()) return false;
+  const allowed = raw
+    .split(",")
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean);
+  return allowed.includes(email.toLowerCase());
+}
+
 /* ─────────────────────────────────────────────
    AppProvider
 ───────────────────────────────────────────── */
@@ -158,7 +235,11 @@ export function AppProvider({ children }) {
   const toast = useToast();
   const [session, setSession] = useState(null);
   const userId = session?.user?.id ?? null;
-  const [dk, setDk] = useState(true);
+  const userEmail = session?.user?.email ?? null;
+  const [isSystemAdmin, setIsSystemAdmin] = useState(false);
+  const [uiSettings, setUiSettings] = useState(DEFAULT_UI_SETTINGS);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [dk, setDkRaw] = useState(true);
   const [page, setPage] = useState("dashboard");
   const [timelineOffsetDays, setTimelineOffsetDays] = useState(0);
   const isMobile = useIsMobile();
@@ -228,24 +309,111 @@ export function AppProvider({ children }) {
     return () => sub?.subscription?.unsubscribe?.();
   }, []);
 
-  // Load UI settings (only dk)
+  useEffect(() => {
+    if (!userId) {
+      setIsSystemAdmin(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase.rpc("current_user_is_system_admin");
+      if (cancelled) return;
+      if (error) {
+        setIsSystemAdmin(isSystemAdminEmail(userEmail));
+        return;
+      }
+      setIsSystemAdmin(Boolean(data));
+    })();
+    return () => { cancelled = true; };
+  }, [userId, userEmail]);
+
+  const updateUiSettings = useCallback((patch) => {
+    setUiSettings((prev) => normalizeUiSettings({
+      ...prev,
+      ...(typeof patch === "function" ? patch(prev) : patch),
+    }));
+  }, []);
+
+  const setDk = useCallback((next) => {
+    setDkRaw((prev) => {
+      const resolved = typeof next === "function" ? next(prev) : next;
+      setUiSettings((current) => normalizeUiSettings({
+        ...current,
+        themeMode: resolved ? "dark" : "light",
+      }));
+      return resolved;
+    });
+  }, []);
+
+  // Load UI settings
   useEffect(() => {
     (async () => {
-      const s = await load(SK.SETTINGS, { dk: true });
-      setDk(s?.dk ?? true);
+      const s = normalizeUiSettings(await load(SK.SETTINGS, DEFAULT_UI_SETTINGS));
+      setUiSettings(s);
+      setDkRaw(resolveThemeMode(s.themeMode));
+      if (s.defaultPage !== "dashboard") setPage(s.defaultPage);
+      setSettingsLoaded(true);
     })();
   }, []);
 
   // Sync theme class to document.documentElement
+  // ─────────────────────────────────────────────────────────────
+  // PATCH — AppContext.jsx
+  //
+  // 1) Přidej import tokens.css do src/main.jsx (za './index.css'):
+  //
+  //    import './styles/tokens.css'
+  //
+  // 2) V AppContext.jsx rozšiř useEffect "Sync theme class" (řádky 360–377)
+  //    o nastavení color tokenů. Nahraď celý useEffect tímto:
+  // ─────────────────────────────────────────────────────────────
+
+  // Sync theme class + CSS tokens to document.documentElement
   useEffect(() => {
+    const root = document.documentElement;
     if (dk) {
-      document.documentElement.classList.add("dark");
-      document.documentElement.classList.remove("light");
+      root.classList.add("dark");
+      root.classList.remove("light");
     } else {
-      document.documentElement.classList.add("light");
-      document.documentElement.classList.remove("dark");
+      root.classList.add("light");
+      root.classList.remove("dark");
     }
-  }, [dk]);
+
+    // Accent tokeny (přepíší fallback v tokens.css)
+    const palette = ACCENT_THEMES[uiSettings.accent]?.[dk ? "dark" : "light"] || ACCENT_THEMES.amber[dk ? "dark" : "light"];
+    root.style.setProperty("--accent", palette.accent);
+    root.style.setProperty("--accent-2", palette.accent2);
+    root.style.setProperty("--accent-rgb", palette.rgb);
+    root.style.setProperty("--accent-soft", palette.soft);
+    root.style.setProperty("--accent-glow", palette.glow);
+
+    // Color tokeny — nastavíme inline aby přebily tokens.css pro daný mód
+    // (tokens.css řeší .dark/.light, tady jen accent-dependent border-h)
+    root.style.setProperty("--border-h",
+      dk
+        ? `color-mix(in srgb, ${palette.accent} 28%, transparent)`
+        : `color-mix(in srgb, ${palette.accent} 35%, transparent)`
+    );
+
+    root.dataset.density = uiSettings.density;
+    root.dataset.motion = uiSettings.reducedMotion ? "reduced" : "full";
+  }, [dk, uiSettings.accent, uiSettings.density, uiSettings.reducedMotion]);
+
+  // ─────────────────────────────────────────────────────────────
+  // HOTOVO — theme.js zůstává beze změny, t objekt funguje dál.
+  // Nové komponenty mohou používat var(--text-1), var(--space-4)
+  // atd. přímo z CSS bez propů.
+  // ─────────────────────────────────────────────────────────────
+
+
+  useEffect(() => {
+    if (uiSettings.themeMode !== "system" || typeof window === "undefined") return undefined;
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const handleSystemTheme = (event) => setDkRaw(event.matches);
+    setDkRaw(mq.matches);
+    mq.addEventListener("change", handleSystemTheme);
+    return () => mq.removeEventListener("change", handleSystemTheme);
+  }, [uiSettings.themeMode]);
 
   // Load from Supabase after login
   useEffect(() => {
@@ -257,8 +425,8 @@ export function AppProvider({ children }) {
         setLoaded(false);
         const displayNameFromMeta = session?.user?.user_metadata?.display_name || null;
         await supabase.from("user_profiles").upsert(
-          { 
-            id: userId, 
+          {
+            id: userId,
             email: session?.user?.email ?? null,
             ...(displayNameFromMeta ? { display_name: displayNameFromMeta } : {})
           },
@@ -367,10 +535,10 @@ export function AppProvider({ children }) {
     return () => { supabase.removeChannel(channel); };
   }, [activeWorkspaceId, loaded]);
 
-  // Save dk preference
+  // Save UI preferences
   useDebouncedEffect(() => {
-    if (loaded) save(SK.SETTINGS, { dk });
-  }, [dk, loaded], 350);
+    if (settingsLoaded) save(SK.SETTINGS, uiSettings);
+  }, [uiSettings, settingsLoaded], 350);
 
   // CRUD — Projects
   const addProject = useCallback((p) => {
@@ -1154,6 +1322,10 @@ export function AppProvider({ children }) {
   }, [userId]);
 
   const generateInviteLink = useCallback(async (role = "member") => {
+    const activeRole = workspaceMembers.find((m) => m.userId === userId)?.role ?? "viewer";
+    if (role === "admin" && activeRole !== "owner") {
+      throw new Error("Admin pozvánky může vytvářet jen owner workspace.");
+    }
     const token = uuid4().replace(/-/g, "");
     const { error } = await supabase.from("workspace_invites").insert({
       workspace_id: activeWorkspaceId,
@@ -1163,9 +1335,19 @@ export function AppProvider({ children }) {
     });
     if (error) throw error;
     return `${window.location.origin}?invite=${token}`;
-  }, [activeWorkspaceId, userId]);
+  }, [activeWorkspaceId, userId, workspaceMembers]);
 
   const acceptInvite = useCallback(async (token) => {
+    const { data: acceptedWsId, error: rpcError } = await supabase.rpc("accept_workspace_invite", {
+      invite_token: token,
+    });
+    if (!rpcError && acceptedWsId) return acceptedWsId;
+    const rpcMissing = rpcError?.code === "42883" || rpcError?.code === "PGRST202" || /could not find.*accept_workspace_invite/i.test(rpcError?.message || "");
+    if (rpcError && !rpcMissing) {
+      throw new Error(rpcError.message || "Pozvánka není platná nebo vypršela");
+    }
+
+    // Backward-compatible fallback until the accept_workspace_invite RPC is deployed.
     const { data: invite, error } = await supabase
       .from("workspace_invites")
       .select("*")
@@ -1205,7 +1387,7 @@ export function AppProvider({ children }) {
     );
   }, [userId, session]);
 
-  const t = theme(dk);
+  const t = theme(dk, uiSettings.accent);
   const openProject = (id) => {
     setSelProject(id);
     setPage("project-detail");
@@ -1215,6 +1397,9 @@ export function AppProvider({ children }) {
     t,
     dk,
     setDk,
+    uiSettings,
+    updateUiSettings,
+    accentThemes: ACCENT_THEMES,
     loaded,
     loadError,
     setLoadError,
@@ -1293,7 +1478,8 @@ export function AppProvider({ children }) {
     fetchWorkspaceInvites,
     revokeInvite,
     userId,
-    userEmail: session?.user?.email ?? null,
+    userEmail,
+    isSystemAdmin,
     logout: async () => {
       try {
         await supabase.auth.signOut();

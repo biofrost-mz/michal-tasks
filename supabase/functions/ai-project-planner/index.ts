@@ -97,27 +97,43 @@ serve(async (req) => {
       ? `Dostupné štítky v aplikaci (pokud se hodí, preferuj je): ${availableTags.join(", ")}`
       : "Žádné stávající štítky.";
 
-    const allowedColors = ["#3b82f6", "#22c55e", "#f59e0b", "#8b5cf6", "#ef4444", "#06b6d4", "#ec4899", "#84cc16", "#6366f1", "#f97316"];
-
-    const prompt = `Jsi elitní projektový manažer a agilní Scrum Master. Navrhni kompletní, detailní, a profesionální strukturu projektu na základě uživatelského záměru.
+    const allowedColors = ["#3b82f6", "#22c55e", "#f59e0b", "#8b5cf6", "#ef4444", "#06b6d4", "#ec4899", "#84cc16"];
+    const prompt = `Jsi elitní technický projektový manažer (PM), certifikovaný agilní Scrum Master a produktový vizionář s hlubokým pochopením produktové psychologie a softwarového inženýrství.
+Navrhni kompletní, do nejmenšího detailu promyšlenou, vysoce profesionální, robustní a plně realizovatelnou strukturu projektu na základě uživatelského záměru v češtině.
 
 Záměr uživatele: "${userPrompt}"
 
 ${tagList}
 
-Pravidla pro výstup:
-1. projectName: Vyber reprezentativní, výstižný a úderný název projektu v češtině.
-2. projectDescription: Napiš inspirativní, motivační popis projektu (2-4 věty v češtině). Měl by popisovat cíl, očekávané přínosy a celkový kontext projektu.
-3. projectColor: Vyber přesně jednu z těchto barev, která nejlépe vystihuje téma projektu (např. červená pro urgentní/obchodní, modrá pro technické, zelená pro ekologii/finance apod.):
-   Dostupné barvy: ${JSON.stringify(allowedColors)}
-4. tasks: Vygeneruj seznam 6 až 10 vysoce konkrétních, akčních a smysluplných úkolů, které pokrývají kompletní životní cyklus projektu (od přípravy/výzkumu, přes realizaci, až po kontrolu a předání).
-   Pro každý úkol uveď:
-   - title: Akční název začínající silným českým slovesem v rozkazovacím způsobu nebo infinitivu (např. "Zanalyzovat...", "Sestavit...", "Otestovat...").
-   - description: Stručný ale konkrétní popis úkolu (2-3 věty), co je cílem a jaké jsou klíčové parametry pro splnění.
-   - priority: "high" (vysoká), "medium" (střední), nebo "low" (nízká) na základě důležitosti.
-   - timeEstimate: Odhadovaný čas úkolu (vyber z: "15 min", "30 min", "1 hod", "2 hod", "půl dne", "celý den").
-   - subtasks: 3 až 5 logicky po sobě jdoucích podúkolů (milníků) pro dokončení tohoto úkolu v češtině (každý podúkol max 80 znaků).
-   - tags: 1 až 2 relevantní štítky. Použij dostupné štítky, pokud sedí s tématem, nebo vymysli nové (např. "marketing", "design", "vyvoj", "admin", "priprava"). Štítky piš malými písmeny, bez mezer a speciálních znaků.`;
+Pravidla pro tvorbu a výstup projektu:
+
+1. **projectName (Název projektu):**
+   - Vyber reprezentativní, výstižný, úderný a profesionální název v češtině (např. "Zprovoznění firemního intranetu", "Optimalizace konverzního trychtýře"), který perfektně charakterizuje podstatu celého projektu. Vyhni se obecným názvům.
+
+2. **projectDescription (Popis projektu):**
+   - Napiš inspirativní, vysoce motivační, věcný a detailní popis projektu v češtině o délce přesně 3 až 4 věty.
+   - Popis musí jasně formulovat strategický cíl projektu, jeho očekávané klíčové přínosy pro uživatele nebo byznys a celkový kontext dodávky.
+
+3. **projectColor (Barevný styl):**
+   - Vyber přesně jednu z povolených barev, která psychologicky nejlépe sedí k tématu projektu (např. červená pro prodej/urgentnost, zelená pro finance/ekologii, modrá/indigo pro software/technologie, fialová pro kreativní tvorbu apod.).
+   - Povolené barvy: ${JSON.stringify(allowedColors)}
+
+4. **tasks (Úkoly projektu):**
+   - Vygeneruj seznam **přesně 6 až 10 vysoce konkrétních, akčních a smysluplných úkolů**.
+   - Úkoly musí být uspořádány tak, aby logicky a chronologicky pokrývaly **kompletní životní cyklus (fázování) projektu**:
+     - **Fáze 1: Analýza & Příprava** (rešerše, sběr požadavků, příprava prostředí).
+     - **Fáze 2: Návrh & Specifikace** (wireframy, architektura, osnovy).
+     - **Fáze 3: Vývoj & Implementace** (samotná tvorba, programování, copywriting, konstrukce).
+     - **Fáze 4: Testování & Revize** (kontrola kvality, uživatelské testování, oprava chyb).
+     - **Fáze 5: Nasazení & Předání** (spuštění, odevzdání, archivace).
+   - Pro každý jednotlivý úkol uveď tyto parametry:
+     - **title (Název úkolu):** Akční název začínající silným českým slovesem v infinitivu (např. "Zkonstruovat...", "Zprovoznit...", "Analyzovat...", "Otestovat...", "Vytvořit...", "Zrefaktorovat...").
+       - **PŘÍSNÝ ZÁKAZ** slabých, vágních a neproduktivních sloves: "udělat", "vyřešit", "pořešit", "jít na", "pracovat na". Každý název musí jasně říkat, co se fyzicky provádí.
+     - **description (Popis úkolu):** Konkrétní a srozumitelný popis (2 až 3 věty) definující přesný cíl úkolu a povinně obsahující **Definici hotova (Definition of Done)** a **logické závislosti** (např. "Cílem je vytvořit kompletní databázový model. **Definition of Done:** Schválené ERD schéma a připravený migrační skript. Tento úkol přímo navazuje na dokončení předchozí analýzy požadavků.").
+     - **priority (Priorita):** Vyhodnoť logicky: "high" pro startovací analýzy a kritické realizační bloky, "medium" pro standardní vývoj, "low" pro doplňkové revize a drobnosti.
+     - **timeEstimate (Časový odhad):** Realistický střízlivý odhad času, který musí patřit výhradně do této sady: "15 min", "30 min", "1 hod", "2 hod", "půl dne", "celý den". Zapoj mírnou časovou rezervu pro potlačení plánovacího optimismu (Planning Fallacy).
+     - **subtasks (Milníky úkolu):** Vygeneruj **3 až 5 logicky po sobě jdoucích podúkolů** (mikro-kroků), které tvoří plán pro tento konkrétní úkol (délka každého subtasku max 80 znaků, začátek silným slovesem). Tyto podúkoly must pokrývat přípravu, realizaci i kontrolu.
+     - **tags (Štítky):** Vyber 1 až 2 relevantní štítky. Preferuj stávající štítky z databáze, pokud tematicky sedí, nebo navrhni nové, vysoce přesné (vždy malá písmena, jednoslovné, bez mezer a diakritiky, např. "vyvoj", "design", "marketing", "copy").`;
 
     let rawText = "";
     let success = false;
@@ -127,9 +143,9 @@ Pravidla pro výstup:
     const apiKey = Deno.env.get("GOOGLE_GENERATIVE_AI_API_KEY");
     if (apiKey) {
       try {
-        console.log("ai-project-planner: Volám Google Gemini API (gemini-2.5-flash)...");
+        console.log("ai-project-planner: Volám Google Gemini API (gemini-3.5-flash)...");
         const geminiResp = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
