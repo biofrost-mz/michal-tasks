@@ -947,7 +947,7 @@ function NotePropertiesPanel({ note, onClose, t, isMobile, onExportMD, projects,
 
   const panelStyle = isMobile
     ? { position:"fixed", left:0, right:0, bottom:0, top:"12vh", zIndex:300, background:t.bg2, overflowY:"auto", borderTop:`1px solid ${t.border}`, borderRadius:"18px 18px 0 0", boxShadow:"0 -24px 70px rgba(0,0,0,.45)" }
-    : { position:"fixed", right:0, top:44, bottom:0, width:310, zIndex:100, borderLeft:`1px solid ${t.border}`, background:t.bg2, overflowY:"auto", boxShadow:"-4px 0 24px rgba(0,0,0,.18)" };
+    : { position:"fixed", right:0, top:64, bottom:0, width:310, zIndex:100, borderLeft:`1px solid ${t.border}`, background:t.bg2, overflowY:"auto", boxShadow:"-4px 0 24px rgba(0,0,0,.18)" };
 
   const filteredTasks = tasks.filter(tk =>
     !taskSearch || (tk.title || "").toLowerCase().includes(taskSearch.toLowerCase())

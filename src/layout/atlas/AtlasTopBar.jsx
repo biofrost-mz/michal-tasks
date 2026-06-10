@@ -17,8 +17,10 @@ const PAGE_LABELS = {
 };
 
 export default function AtlasTopBar() {
-  const { page, projects, selProject, setCmdOpen, setPage, dk, setDk, displayName} = useApp();
-  const initials = ((displayName || "??").slice(0, 2)).toUpperCase();
+  const { page, projects, selProject, setCmdOpen, setPage, dk, setDk, workspaceMembers, userId, userEmail} = useApp();
+  const me = workspaceMembers?.find(m => m.userId === userId);
+  const displayName = me?.displayName || me?.email || userEmail || "Uživatel";
+  const initials = displayName.split(' ').filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase() || "?";
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   const crumbs = useMemo(() => {
@@ -87,22 +89,6 @@ export default function AtlasTopBar() {
           Nový úkol
         </button>
         <NotificationBell variant="atlas" />
-          {/* Theme toggle */}
-          <button
-            className="tb-bell"
-            onClick={() => setDk(!dk)}
-            title={dk ? "Přepnout na světlý režim" : "Přepnout na tmavý režim"}
-          >
-            <Icon name={dk ? "sun" : "moon"} size={15} color="currentColor" strokeWidth={1.75} />
-          </button>
-          {/* Klávesové zkratky */}
-          <button
-            className="tb-bell"
-            onClick={() => window.dispatchEvent(new CustomEvent("openShortcuts"))}
-            title="Klávesové zkratky (?)"
-          >
-            <span style={{ fontSize: 14, fontWeight: 700, fontFamily: "var(--mono)" }}>?</span>
-          </button>
           {/* User chip */}
           <div style={{ position: "relative" }}>
             <button
@@ -114,9 +100,28 @@ export default function AtlasTopBar() {
               <span className="tb-user-name">{displayName}</span>
             </button>
             {userMenuOpen && (
-              <div className="tb-user-menu" onClick={() => setUserMenuOpen(false)}>
-                <button onClick={() => { setPage("user-profile"); setUserMenuOpen(false); }}>
+              <div className="tb-user-menu">
+                <button
+                  style={{ display:"flex", alignItems:"center", gap:9 }}
+                  onClick={() => { setPage("user-profile"); setUserMenuOpen(false); }}
+                >
+                  <Icon name="user" size={13} color="currentColor" strokeWidth={2} />
                   Nastavení účtu
+                </button>
+                <button
+                  style={{ display:"flex", alignItems:"center", gap:9 }}
+                  onClick={() => { window.dispatchEvent(new CustomEvent("openShortcuts")); setUserMenuOpen(false); }}
+                >
+                  <Icon name="command" size={13} color="currentColor" strokeWidth={2} />
+                  Klávesové zkratky
+                </button>
+                <div style={{ borderTop:"1px solid var(--border-soft)", margin:"4px 6px" }} />
+                <button
+                  style={{ display:"flex", alignItems:"center", gap:9 }}
+                  onClick={() => { setDk(!dk); }}
+                >
+                  <Icon name={dk ? "sun" : "moon"} size={13} color="currentColor" strokeWidth={1.75} />
+                  {dk ? "Světlý režim" : "Tmavý režim"}
                 </button>
               </div>
             )}

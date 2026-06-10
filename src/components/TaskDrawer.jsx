@@ -639,19 +639,28 @@ export default function TaskDrawer() {
 
               {/* Tag Search / Add Input */}
               <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%" }}>
-                <input
-                  className="detail-input"
-                  style={{ padding: "8px 12px", fontSize: 13, width: "100%", boxSizing: "border-box" }}
-                  value={newTagName}
-                  onChange={(e) => setNewTagName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      handleCreateTagInline(newTagName);
-                    }
-                  }}
-                  placeholder="Hledat nebo vytvořit štítek…"
-                />
+                <div style={{ position: "relative" }}>
+                  <span style={{
+                    position: "absolute", left: 10, top: "50%",
+                    transform: "translateY(-50%)", pointerEvents: "none",
+                    display: "flex", opacity: 0.5,
+                  }}>
+                    <Icon name="search" size={13} color="var(--text-3)" strokeWidth={2} />
+                  </span>
+                  <input
+                    className="detail-input"
+                    style={{ padding: "8px 12px 8px 30px", fontSize: 13, width: "100%", boxSizing: "border-box" }}
+                    value={newTagName}
+                    onChange={(e) => setNewTagName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleCreateTagInline(newTagName);
+                      }
+                    }}
+                    placeholder="Hledat nebo vytvořit štítek…"
+                  />
+                </div>
               </div>
 
               {/* Interactive Filtered Tag List */}
