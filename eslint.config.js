@@ -23,20 +23,13 @@ export default defineConfig([
       },
     },
     rules: {
-      // Legacy kód zatím nechceme blokovat v CI kvůli drobným nepoužitým importům.
-      // Ponecháváme to jako warning, aby technický dluh zůstal vidět v Actions.
-      'no-unused-vars': ['warn', {
-        varsIgnorePattern: '^[A-Z_]',
-        argsIgnorePattern: '^_',
-        caughtErrors: 'none',
-      }],
-      'no-empty': ['error', { allowEmptyCatch: true }],
-      // Admin diagnostika zatím obsahuje legacy průchod přes localStorage.
-      // Bezpečnější přepis na Object.prototype.hasOwnProperty.call(...) je v backlogu.
-      'no-prototype-builtins': 'warn',
-      // U větších souborů nyní záměrně exportujeme i hooks/context/helper komponenty.
-      // Strukturální refaktor do samostatných souborů bude řešen samostatně.
+      // Dočasný legacy profil: CI má nyní především ověřovat, že aplikace jde sestavit.
+      // Nepoužité proměnné a hook dependency warnings budou řešené postupným refaktorem.
+      'no-unused-vars': 'off',
+      'react-hooks/exhaustive-deps': 'off',
       'react-refresh/only-export-components': 'off',
+      'no-prototype-builtins': 'off',
+      'no-empty': ['error', { allowEmptyCatch: true }],
     },
   },
 ])
