@@ -4,6 +4,8 @@ import { registerSW } from 'virtual:pwa-register'
 import './index.css'
 import App from './App.jsx'
 import { initGlobalErrorLogging } from './utils/errorLogger.js'
+import './styles/tokens.css'
+
 
 initGlobalErrorLogging();
 

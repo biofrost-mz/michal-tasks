@@ -357,6 +357,18 @@ export function AppProvider({ children }) {
   }, []);
 
   // Sync theme class to document.documentElement
+  // ─────────────────────────────────────────────────────────────
+  // PATCH — AppContext.jsx
+  //
+  // 1) Přidej import tokens.css do src/main.jsx (za './index.css'):
+  //
+  //    import './styles/tokens.css'
+  //
+  // 2) V AppContext.jsx rozšiř useEffect "Sync theme class" (řádky 360–377)
+  //    o nastavení color tokenů. Nahraď celý useEffect tímto:
+  // ─────────────────────────────────────────────────────────────
+
+  // Sync theme class + CSS tokens to document.documentElement
   useEffect(() => {
     const root = document.documentElement;
     if (dk) {
@@ -366,15 +378,33 @@ export function AppProvider({ children }) {
       root.classList.add("light");
       root.classList.remove("dark");
     }
+
+    // Accent tokeny (přepíší fallback v tokens.css)
     const palette = ACCENT_THEMES[uiSettings.accent]?.[dk ? "dark" : "light"] || ACCENT_THEMES.amber[dk ? "dark" : "light"];
     root.style.setProperty("--accent", palette.accent);
     root.style.setProperty("--accent-2", palette.accent2);
     root.style.setProperty("--accent-rgb", palette.rgb);
     root.style.setProperty("--accent-soft", palette.soft);
     root.style.setProperty("--accent-glow", palette.glow);
+
+    // Color tokeny — nastavíme inline aby přebily tokens.css pro daný mód
+    // (tokens.css řeší .dark/.light, tady jen accent-dependent border-h)
+    root.style.setProperty("--border-h",
+      dk
+        ? `color-mix(in srgb, ${palette.accent} 28%, transparent)`
+        : `color-mix(in srgb, ${palette.accent} 35%, transparent)`
+    );
+
     root.dataset.density = uiSettings.density;
     root.dataset.motion = uiSettings.reducedMotion ? "reduced" : "full";
   }, [dk, uiSettings.accent, uiSettings.density, uiSettings.reducedMotion]);
+
+  // ─────────────────────────────────────────────────────────────
+  // HOTOVO — theme.js zůstává beze změny, t objekt funguje dál.
+  // Nové komponenty mohou používat var(--text-1), var(--space-4)
+  // atd. přímo z CSS bez propů.
+  // ─────────────────────────────────────────────────────────────
+
 
   useEffect(() => {
     if (uiSettings.themeMode !== "system" || typeof window === "undefined") return undefined;
@@ -395,8 +425,8 @@ export function AppProvider({ children }) {
         setLoaded(false);
         const displayNameFromMeta = session?.user?.user_metadata?.display_name || null;
         await supabase.from("user_profiles").upsert(
-          { 
-            id: userId, 
+          {
+            id: userId,
             email: session?.user?.email ?? null,
             ...(displayNameFromMeta ? { display_name: displayNameFromMeta } : {})
           },

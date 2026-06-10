@@ -1,0 +1,169 @@
+/* ─────────────────────────────────────────────────────────────
+   Michal Tasks — Design Tokens
+   Zdroj pravdy pro celou appku. Nastavuje se přes:
+     - CSS třídy .dark / .light  na <html>  (AppContext)
+     - CSS proměnné --accent* na <html>     (AppContext)
+     - data-density="comfortable|compact"   (AppContext)
+     - data-motion="full|reduced"           (AppContext)
+   ───────────────────────────────────────────────────────────── */
+
+/* ── Typografie ──────────────────────────────────────────────── */
+:root {
+  --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI",
+    "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", ui-monospace,
+    "SFMono-Regular", Menlo, monospace;
+
+  --text-2xs: 10px;
+  --text-xs:  11px;
+  --text-sm:  13px;
+  --text-base: 14px;
+  --text-md:  15px;
+  --text-lg:  17px;
+  --text-xl:  20px;
+  --text-2xl: 24px;
+  --text-3xl: 30px;
+
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  --leading-tight:  1.25;
+  --leading-normal: 1.5;
+  --leading-loose:  1.75;
+}
+
+/* ── Spacing (4px grid) ───────────────────────────────────────── */
+:root {
+  --space-0:  0px;
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+}
+
+/* ── Hustota — compact zmenší padding o ~25% ─────────────────── */
+[data-density="compact"] {
+  --space-2:  6px;
+  --space-3:  10px;
+  --space-4:  12px;
+  --space-5:  16px;
+  --space-6:  20px;
+}
+
+/* ── Border radius ────────────────────────────────────────────── */
+:root {
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-full: 9999px;
+}
+
+/* ── Motion ───────────────────────────────────────────────────── */
+:root {
+  --dur-fast:   120ms;
+  --dur-normal: 200ms;
+  --dur-slow:   320ms;
+  --ease:       cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-in:    cubic-bezier(0.4, 0, 1, 1);
+  --ease-out:   cubic-bezier(0, 0, 0.2, 1);
+}
+
+[data-motion="reduced"] {
+  --dur-fast:   0ms;
+  --dur-normal: 0ms;
+  --dur-slow:   0ms;
+}
+
+/* ── Z-index ──────────────────────────────────────────────────── */
+:root {
+  --z-base:     0;
+  --z-raised:   10;
+  --z-dropdown: 100;
+  --z-sticky:   200;
+  --z-overlay:  300;
+  --z-modal:    400;
+  --z-toast:    500;
+}
+
+/* ── Barvy — dark mód ─────────────────────────────────────────── */
+.dark {
+  /* Pozadí */
+  --bg:       #0d0f19;
+  --bg-2:     #111422;
+  --card:     #181b28;
+  --card-h:   #1e2235;
+  --input:    #1a1d2c;
+  --kanban:   #0f1120;
+
+  /* Text */
+  --text-1:   #edf1f9;
+  --text-2:   #8d96a8;
+  --text-3:   #545e72;
+
+  /* Hranice */
+  --border:   #252a3c;
+  --border-h: color-mix(in srgb, var(--accent) 28%, transparent);
+
+  /* Stíny — vícevrstvé pro hloubku */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.35), 0 1px 2px rgba(0,0,0,0.25);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.4),  0 2px 4px rgba(0,0,0,0.3);
+  --shadow-lg: 0 12px 32px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.35);
+
+  /* Toast */
+  --toast-bg: #1e2235;
+
+  /* Accent fallback (přepíše AppContext) */
+  --accent:      #e3a850;
+  --accent-2:    #d4923a;
+  --accent-rgb:  227, 168, 80;
+  --accent-soft: rgba(227, 168, 80, 0.10);
+  --accent-glow: rgba(227, 168, 80, 0.25);
+}
+
+/* ── Barvy — light mód ────────────────────────────────────────── */
+.light {
+  /* Pozadí */
+  --bg:       #f2f3f8;
+  --bg-2:     #ffffff;
+  --card:     #ffffff;
+  --card-h:   #f0f2f8;
+  --input:    #f0f2f7;
+  --kanban:   #eceef4;
+
+  /* Text */
+  --text-1:   #181c2e;
+  --text-2:   #6b7280;
+  --text-3:   #9ca3af;
+
+  /* Hranice */
+  --border:   #e4e6ed;
+  --border-h: color-mix(in srgb, var(--accent) 35%, transparent);
+
+  /* Stíny — jemné, fyzické */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.10), 0 2px 4px rgba(0,0,0,0.06);
+  --shadow-lg: 0 12px 32px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.07);
+
+  /* Toast */
+  --toast-bg: #1a1e2e;
+
+  /* Accent fallback */
+  --accent:      #c58a36;
+  --accent-2:    #b07a2d;
+  --accent-rgb:  197, 138, 54;
+  --accent-soft: rgba(197, 138, 54, 0.08);
+  --accent-glow: rgba(197, 138, 54, 0.20);
+}
