@@ -13,6 +13,7 @@ import CommandPalette from "./components/CommandPalette.jsx";
 import ShortcutHelper from "./components/ShortcutHelper.jsx";
 import RemoteErrorLogsPanel from "./components/admin/RemoteErrorLogsPanel.jsx";
 import SystemHealthPanel from "./components/admin/SystemHealthPanel.jsx";
+import AiTestConsolePanel from "./components/admin/AiTestConsolePanel.jsx";
 import { applyDocumentMetadata } from "./appMeta.js";
 import "./styles/atlas-shell.css";
 
@@ -274,6 +275,9 @@ function AppShell() {
         <>
           <ErrorBoundary inline label="Health check">
             <SystemHealthPanel />
+          </ErrorBoundary>
+          <ErrorBoundary inline label="AI konzole">
+            <AiTestConsolePanel />
           </ErrorBoundary>
           <ErrorBoundary inline label="Produkční chyby">
             <RemoteErrorLogsPanel />
