@@ -65,6 +65,7 @@ function AppErrorReporter() {
 function AppUpdatePrompt() {
   const toast = useToast();
   const [updateSW, setUpdateSW] = useState(null);
+  const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
     const handleUpdateReady = (event) => {
@@ -81,6 +82,25 @@ function AppUpdatePrompt() {
   }, [toast]);
 
   if (!updateSW) return null;
+
+  const applyUpdate = async () => {
+    if (updating) return;
+    setUpdating(true);
+    let fallbackTimer = null;
+    try {
+      fallbackTimer = window.setTimeout(() => {
+        window.location.reload();
+      }, 2500);
+      await updateSW(true);
+      window.clearTimeout(fallbackTimer);
+      window.setTimeout(() => window.location.reload(), 250);
+    } catch (error) {
+      if (fallbackTimer) window.clearTimeout(fallbackTimer);
+      console.warn("SW update failed:", error);
+      toast("Aktualizace se nepodařila spustit, načítám stránku znovu.", "error");
+      window.setTimeout(() => window.location.reload(), 700);
+    }
+  };
 
   return (
     <div style={{
@@ -107,14 +127,15 @@ function AppUpdatePrompt() {
       </div>
       <div style={{ minWidth: 0, flex: 1 }}>
         <div style={{ color: "var(--text)", fontWeight: 850, fontSize: 13 }}>Je dostupná nová verze</div>
-        <div style={{ color: "var(--text-3)", fontSize: 11.5, marginTop: 2 }}>Aktualizace se načte bez tvrdého refresh.</div>
+        <div style={{ color: "var(--text-3)", fontSize: 11.5, marginTop: 2 }}>Aplikace se za chvíli načte v nové verzi.</div>
       </div>
       <button
         type="button"
-        onClick={() => updateSW(true)}
-        style={{ height: 32, borderRadius: 10, border: 0, background: "var(--accent)", color: "var(--bg)", padding: "0 12px", fontWeight: 900, fontSize: 12, flex: "0 0 auto" }}
+        onClick={applyUpdate}
+        disabled={updating}
+        style={{ height: 32, borderRadius: 10, border: 0, background: "var(--accent)", color: "var(--bg)", padding: "0 12px", fontWeight: 900, fontSize: 12, flex: "0 0 auto", opacity: updating ? 0.72 : 1, cursor: updating ? "wait" : "pointer" }}
       >
-        Aktualizovat
+        {updating ? "Aktualizuji..." : "Aktualizovat"}
       </button>
     </div>
   );

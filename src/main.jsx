@@ -18,6 +18,13 @@ createRoot(document.getElementById('root')).render(
 
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   let updateServiceWorker = () => Promise.resolve();
+  let refreshing = false;
+
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (refreshing) return;
+    refreshing = true;
+    window.location.reload();
+  });
 
   const notifyUpdateReady = () => {
     window.dispatchEvent(new CustomEvent('app:update-ready', { detail: { updateSW: updateServiceWorker } }));
