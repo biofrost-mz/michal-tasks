@@ -23,13 +23,17 @@ export default defineConfig([
       },
     },
     rules: {
-      // Dočasný legacy profil: CI má nyní především ověřovat, že aplikace jde sestavit.
-      // Nepoužité proměnné a hook dependency warnings budou řešené postupným refaktorem.
-      'no-unused-vars': 'off',
-      'react-hooks/exhaustive-deps': 'off',
-      'react-refresh/only-export-components': 'off',
-      'no-prototype-builtins': 'off',
+      // CI zatím bere lint jako poradní kontrolu, ale warningy chceme znovu vidět a postupně čistit.
+      'no-unused-vars': ['warn', {
+        varsIgnorePattern: '^[A-Z_]',
+        argsIgnorePattern: '^_',
+        caughtErrors: 'none',
+      }],
+      'react-hooks/exhaustive-deps': 'warn',
+      'no-prototype-builtins': 'error',
       'no-empty': ['error', { allowEmptyCatch: true }],
+      // Strukturální refaktor context/hook exportů bude řešen později mimo malé cleanup kroky.
+      'react-refresh/only-export-components': 'off',
     },
   },
 ])
