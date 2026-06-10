@@ -1,4 +1,8 @@
 import { supabase } from "../supabase.js";
+import {
+  recordAiProjectTaskPersisted,
+  recordAiProjectTaskTagsPersisted,
+} from "./aiProjectSaveReportService.js";
 
 const RETRY_DELAYS = [200, 500, 1000, 1800, 3000, 5000];
 
@@ -95,7 +99,11 @@ export async function insertTask(tsk, userId, workspaceId) {
   };
 
   const result = await runWithRetry(() => supabase.from("tasks").insert(payload), "insertTask");
-  if (result.ok) return { ok: true, projectLinked: true };
+  if (result.ok) {
+    const saveResult = { ok: true, projectLinked: true };
+    recordAiProjectTaskPersisted(tsk, saveResult);
+    return saveResult;
+  }
 
   // AI generátor projektů vytváří nový projekt a hned za ním více úkolů.
   // Pokud ještě není projekt zapsaný/viditelný pro FK vazbu, nechceme ztratit celý úkol.
@@ -121,10 +129,14 @@ export async function insertTask(tsk, userId, workspaceId) {
         payload.project_id,
         summarizeSupabaseError(relinkResult.error)
       );
-      return { ok: true, projectLinked: false, warning: relinkResult.error };
+      const saveResult = { ok: true, projectLinked: false, warning: relinkResult.error };
+      recordAiProjectTaskPersisted(tsk, saveResult);
+      return saveResult;
     }
 
-    return { ok: true, projectLinked: true, recovered: true };
+    const saveResult = { ok: true, projectLinked: true, recovered: true };
+    recordAiProjectTaskPersisted(tsk, saveResult);
+    return saveResult;
   }
 
   throw result.error;
@@ -145,6 +157,7 @@ export async function insertTaskTags(taskId, tagIds, userId) {
   if (!tagIds.length) return true;
   const rows = [...new Set(tagIds)].map((tagId) => ({ owner: userId, task_id: taskId, tag_id: tagId }));
   const result = await runWithRetry(() => supabase.from("task_tags").insert(rows), "insertTaskTags");
+  recordAiProjectTaskTagsPersisted(taskId, tagIds, result.ok);
   if (!result.ok) {
     console.warn("Task saved, but tag relation was skipped:", taskId, tagIds, summarizeSupabaseError(result.error));
   }
