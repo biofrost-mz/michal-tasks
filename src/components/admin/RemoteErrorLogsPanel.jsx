@@ -1,5 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { supabase } from "../../supabase.js";
+import {
+  deleteRemoteErrorLogsByIds,
+  deleteRemoteErrorLogsOlderThan,
+  fetchRemoteErrorLogs,
+} from "../../services/errorLogsService.js";
 import { useToast } from "../Toast.jsx";
 
 const SEVERITY_COLORS = {
@@ -35,10 +39,6 @@ function downloadJson(filename, payload) {
   link.remove();
 }
 
-function sinceDays(days) {
-  return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
-}
-
 export default function RemoteErrorLogsPanel({ embedded = false }) {
   const toast = useToast();
   const [open, setOpen] = useState(embedded);
@@ -50,13 +50,7 @@ export default function RemoteErrorLogsPanel({ embedded = false }) {
   const loadLogs = useCallback(async ({ silent = false } = {}) => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("app_error_logs")
-        .select("id, created_at, severity, type, message, filename, lineno, colno, stack, url, user_agent, app_version, metadata")
-        .order("created_at", { ascending: false })
-        .limit(50);
-
-      if (error) throw error;
+      const data = await fetchRemoteErrorLogs(50);
       setLogs(data || []);
       setLastLoadedAt(new Date().toISOString());
       if (!silent) toast("Produkční logy byly načteny", "success");
@@ -94,8 +88,7 @@ export default function RemoteErrorLogsPanel({ embedded = false }) {
 
     try {
       const ids = logs.map((log) => log.id).filter(Boolean);
-      const { error } = await supabase.from("app_error_logs").delete().in("id", ids);
-      if (error) throw error;
+      await deleteRemoteErrorLogsByIds(ids);
       setLogs([]);
       setExpandedId(null);
       toast("Vzdálené produkční logy byly vymazány", "success");
@@ -110,8 +103,7 @@ export default function RemoteErrorLogsPanel({ embedded = false }) {
     if (!confirmed) return;
 
     try {
-      const { error } = await supabase.from("app_error_logs").delete().lt("created_at", sinceDays(30));
-      if (error) throw error;
+      await deleteRemoteErrorLogsOlderThan(30);
       toast("Staré produkční logy byly vymazány", "success");
       loadLogs({ silent: true });
     } catch (error) {
