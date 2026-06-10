@@ -12,8 +12,8 @@ on:
       - main
 
 jobs:
-  lint-and-build:
-    name: Lint and build
+  lint-test-build:
+    name: Lint, test and build
     runs-on: ubuntu-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -36,6 +36,9 @@ jobs:
           npm run lint || {
             echo "::warning::ESLint reported issues in legacy code. CI continues and the production build remains the blocking check."
           }
+
+      - name: Run tests
+        run: npm run test
 
       - name: Build app
         run: npm run build
