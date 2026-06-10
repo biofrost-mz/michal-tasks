@@ -21,7 +21,6 @@ export default function AtlasTopBar() {
   const me = workspaceMembers?.find(m => m.userId === userId);
   const displayName = me?.displayName || me?.email || userEmail || "Uživatel";
   const initials = displayName.split(' ').filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase() || "?";
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   const crumbs = useMemo(() => {
     if (page === "project-detail") {
@@ -89,43 +88,15 @@ export default function AtlasTopBar() {
           Nový úkol
         </button>
         <NotificationBell variant="atlas" />
-          {/* User chip */}
-          <div style={{ position: "relative" }}>
-            <button
-              className="tb-user"
-              onClick={() => setUserMenuOpen(v => !v)}
-              title={displayName}
-            >
-              <div className="tb-user-av">{initials}</div>
-              <span className="tb-user-name">{displayName}</span>
-            </button>
-            {userMenuOpen && (
-              <div className="tb-user-menu">
-                <button
-                  style={{ display:"flex", alignItems:"center", gap:9 }}
-                  onClick={() => { setPage("user-profile"); setUserMenuOpen(false); }}
-                >
-                  <Icon name="user" size={13} color="currentColor" strokeWidth={2} />
-                  Nastavení účtu
-                </button>
-                <button
-                  style={{ display:"flex", alignItems:"center", gap:9 }}
-                  onClick={() => { window.dispatchEvent(new CustomEvent("openShortcuts")); setUserMenuOpen(false); }}
-                >
-                  <Icon name="command" size={13} color="currentColor" strokeWidth={2} />
-                  Klávesové zkratky
-                </button>
-                <div style={{ borderTop:"1px solid var(--border-soft)", margin:"4px 6px" }} />
-                <button
-                  style={{ display:"flex", alignItems:"center", gap:9 }}
-                  onClick={() => { setDk(!dk); }}
-                >
-                  <Icon name={dk ? "sun" : "moon"} size={13} color="currentColor" strokeWidth={1.75} />
-                  {dk ? "Světlý režim" : "Tmavý režim"}
-                </button>
-              </div>
-            )}
-          </div>
+          {/* User chip — přímá navigace na Nastavení */}
+          <button
+            className="tb-user"
+            onClick={() => setPage("user-profile")}
+            title="Nastavení účtu"
+          >
+            <div className="tb-user-av">{initials}</div>
+            <span className="tb-user-name">{displayName}</span>
+          </button>
       </div>
     </div>
   );

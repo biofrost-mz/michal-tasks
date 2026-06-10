@@ -299,21 +299,26 @@ export default function AtlasSidebar({ collapsed, setCollapsed }) {
         })}
       </div>
 
-      <div className="sb-foot" style={{ position: "relative" }}>
-        <button style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, textAlign: "left", background: "none", border: "none" }} onClick={() => setUserOpen((v) => !v)}>
-          <div className="sb-foot-av">{displayName.slice(0, 2).toUpperCase()}</div>
-          <div className="sb-foot-meta">
-            <div className="sb-foot-name">{displayName}</div>
-            <div className="sb-foot-sub">v2 · {dk ? "tmavý" : "světlý"}</div>
-          </div>
+      <div className="sb-foot">
+        {/* Apple-style dark/light toggle */}
+        <button
+          className={`sb-dk-toggle${dk ? " active" : ""}`}
+          onClick={() => setDk(!dk)}
+          title={dk ? "Přepnout na světlý režim" : "Přepnout na tmavý režim"}
+          aria-label={dk ? "Přepnout na světlý režim" : "Přepnout na tmavý režim"}
+        />
+        {/* Klávesové zkratky */}
+        <button
+          className="sb-shortcuts-btn"
+          onClick={() => window.dispatchEvent(new CustomEvent("openShortcuts"))}
+          title="Klávesové zkratky"
+          aria-label="Klávesové zkratky"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="2" y="5" width="20" height="14" rx="2"/>
+            <path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M8 13h.01M12 13h.01M16 13h.01M6 17h4M14 17h4"/>
+          </svg>
         </button>
-
-        {userOpen && !collapsed ? (
-          <div style={{ position: "absolute", bottom: "calc(100% + 6px)", left: 6, right: 6, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "var(--r)", padding: 6, zIndex: 30 }}>
-            <button onClick={() => { setPage("user-profile"); setUserOpen(false); }} style={{ width: "100%", textAlign: "left", padding: "7px 8px", borderRadius: 7, color: "var(--text-2)", fontSize: 12.5 }}>Nastavení účtu</button>
-            <button onClick={handleLogout} style={{ width: "100%", textAlign: "left", padding: "7px 8px", borderRadius: 7, color: "var(--red)", fontSize: 12.5 }}>Odhlásit se</button>
-          </div>
-        ) : null}
       </div>
     </aside>
   );

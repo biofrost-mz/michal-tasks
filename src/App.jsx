@@ -91,7 +91,11 @@ function AppUpdatePrompt() {
       fallbackTimer = window.setTimeout(() => {
         window.location.reload();
       }, 2500);
+      navigator.serviceWorker?.addEventListener('controllerchange', () => {
+        window.location.reload();
+      }, { once: true });
       await updateSW(true);
+      setTimeout(() => window.location.reload(), 3000);
       window.clearTimeout(fallbackTimer);
       window.setTimeout(() => window.location.reload(), 250);
     } catch (error) {
