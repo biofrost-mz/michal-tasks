@@ -1,5 +1,29 @@
 import { supabase } from "../supabase.js";
 
+const RETRY_DELAYS = [160, 320, 640, 1000, 1400];
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function shouldRetrySave(error) {
+  if (!error) return false;
+  return error.code === "23503";
+}
+
+async function runWithRetry(operation, label) {
+  let lastError = null;
+  for (let attempt = 0; attempt <= RETRY_DELAYS.length; attempt += 1) {
+    const { error } = await operation();
+    if (!error) return { ok: true, error: null };
+    lastError = error;
+    if (!shouldRetrySave(error) || attempt === RETRY_DELAYS.length) break;
+    await delay(RETRY_DELAYS[attempt]);
+  }
+  console.warn(`${label} failed:`, lastError);
+  return { ok: false, error: lastError };
+}
+
 export function normalizeTask(t, tagIds = []) {
   return {
     id: t.id,
@@ -44,7 +68,7 @@ export async function fetchTaskTags(taskIds) {
 }
 
 export async function insertTask(tsk, userId, workspaceId) {
-  const { error } = await supabase.from("tasks").insert({
+  const payload = {
     id: tsk.id,
     owner: userId,
     workspace_id: workspaceId,
@@ -63,8 +87,10 @@ export async function insertTask(tsk, userId, workspaceId) {
     subtasks: tsk.subtasks,
     ...(tsk.recurrence != null ? { recurrence: tsk.recurrence } : {}),
     completed_at: tsk.status === "done" ? new Date().toISOString() : null,
-  });
-  if (error) throw error;
+  };
+
+  const result = await runWithRetry(() => supabase.from("tasks").insert(payload), "insertTask");
+  if (!result.ok) throw result.error;
 }
 
 export async function updateTaskDB(id, payload) {
@@ -79,10 +105,10 @@ export async function deleteTaskDB(id) {
 }
 
 export async function insertTaskTags(taskId, tagIds, userId) {
-  if (!tagIds.length) return;
-  const rows = tagIds.map((tagId) => ({ owner: userId, task_id: taskId, tag_id: tagId }));
-  const { error } = await supabase.from("task_tags").insert(rows);
-  if (error) throw error;
+  if (!tagIds.length) return true;
+  const rows = [...new Set(tagIds)].map((tagId) => ({ owner: userId, task_id: taskId, tag_id: tagId }));
+  const result = await runWithRetry(() => supabase.from("task_tags").insert(rows), "insertTaskTags");
+  return result.ok;
 }
 
 export async function syncTaskTags(taskId, prevTagIds, nextTagIds, userId) {
