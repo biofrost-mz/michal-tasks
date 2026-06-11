@@ -14,10 +14,8 @@ const TAB_DEFS = [
   { id: "health", label: "Health check", icon: "activity", statusKey: "health" },
   { id: "diagnostics", label: "Diagnostika systému", icon: "settings" },
   { id: "ai", label: "AI konzole", icon: "sparkles", statusKey: "ai" },
-  { id: "production-errors", label: "Produkční chyby", icon: "server-crash", statusKey: "productionErrors" },
-  { id: "logs", label: "Logy & Bug report", icon: "file-warning", statusKey: "localLogs" },
+  { id: "logs", label: "Logy & Bug report", icon: "file-warning", statusKey: "logsCombined" },
   { id: "users", label: "Členové týmu", icon: "users" },
-  { id: "storage", label: "Úložiště", icon: "database" },
   { id: "trash", label: "Koš", icon: "trash-2" },
 ];
 
@@ -265,11 +263,18 @@ export default function AdminPage() {
         : dbLatency > 250 || swStatus === "Neregistrován" || errorLogs.length > 0
           ? "warning"
           : "ok";
+    const localLogsStatus = errorLogs.length === 0 ? "ok" : errorLogs.length <= 5 ? "warning" : "error";
+    const combinedLogsCount = productionErrors24h + errorLogs.length;
+    const combinedLogsStatus = productionErrorsStatus === "error" || localLogsStatus === "error"
+      ? "error"
+      : productionErrorsStatus === "warning" || localLogsStatus === "warning"
+        ? "warning"
+        : "ok";
+
     return {
       health: { status: healthStatus, value: healthStatus === "neutral" ? "—" : healthStatus === "ok" ? "OK" : healthStatus === "warning" ? "WARN" : "ERROR" },
       ai: { status: "ok", value: "OK" },
-      productionErrors: { status: productionErrorsStatus, value: String(productionErrors24h) },
-      localLogs: { status: errorLogs.length === 0 ? "ok" : errorLogs.length <= 5 ? "warning" : "error", value: String(errorLogs.length) },
+      logsCombined: { status: combinedLogsStatus, value: String(combinedLogsCount) },
     };
   }, [dbLatency, errorLogs.length, productionErrors24h, productionErrorsStatus, swStatus]);
 
@@ -331,27 +336,49 @@ export default function AdminPage() {
   }
 
   return (
-    <div style={{ padding: 32, maxWidth: 1400, margin: "0 auto" }}>
-      <style>{`@keyframes adminPulse{0%{transform:scale(.65);opacity:.45}70%{transform:scale(1.9);opacity:0}100%{transform:scale(1.9);opacity:0}}`}</style>
+    <div className="admin-page">
+      <style>{`
+        @keyframes adminPulse{0%{transform:scale(.65);opacity:.45}70%{transform:scale(1.9);opacity:0}100%{transform:scale(1.9);opacity:0}}
+        .admin-page{padding:32px;max-width:1400px;margin:0 auto;}
+        .admin-header{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;margin-bottom:22px;}
+        .admin-header-actions{display:flex;gap:8px;align-items:center;}
+        .admin-tabs{display:flex;gap:8px;border-bottom:1px solid var(--border-soft);overflow-x:auto;}
+        .admin-tab{display:flex;align-items:center;gap:8px;padding:12px 14px;border:0;background:transparent;color:var(--text-3);border-bottom:2px solid transparent;font-size:14px;font-weight:600;white-space:nowrap;}
+        .admin-tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:800;}
+        .admin-card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;}
+        .admin-diagnostics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;}
+        .admin-two-col{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(320px,.9fr);gap:18px;}
+        @media(max-width:760px){
+          .admin-page{padding:18px 12px 96px;}
+          .admin-header{flex-direction:column;gap:14px;margin-bottom:18px;}
+          .admin-header h1{font-size:26px!important;}
+          .admin-header p{font-size:13px!important;line-height:1.45;}
+          .admin-header-actions{width:100%;justify-content:space-between;align-items:stretch;}
+          .admin-tabs{margin:0 -12px;padding:0 12px 10px;border-bottom:0;gap:7px;scroll-snap-type:x mandatory;}
+          .admin-tab{padding:9px 11px;border:1px solid var(--border-soft);border-radius:999px;background:var(--surface);border-bottom:1px solid var(--border-soft);font-size:12px;scroll-snap-align:start;}
+          .admin-tab.active{background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 48%,var(--border-soft));}
+          .admin-card-grid,.admin-diagnostics-grid,.admin-two-col{grid-template-columns:1fr!important;}
+        }
+      `}</style>
       <div style={{ marginBottom: 26 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 24, marginBottom: 22 }}>
+        <div className="admin-header">
           <div>
             <h1 style={{ fontSize: 32, fontWeight: 800, color: "var(--text)", margin: "0 0 8px" }}>Systém & Administrace</h1>
             <p style={{ color: "var(--text-3)", fontSize: 15, margin: 0 }}>Technický dashboard, monitoring, AI diagnostika a správa aplikace Zentero.</p>
           </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <div className="admin-header-actions">
             <SmallButton onClick={exportDiagnostics} tone="accent">Export diagnostiky</SmallButton>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "9px 12px", borderRadius: 12, border: "1px solid var(--border-soft)", background: "var(--surface)", color: "var(--text-2)", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 800 }}>
-              <StatusDot status={statusByKey.health.status === "error" ? "error" : productionErrorsStatus === "error" ? "error" : statusByKey.health.status === "warning" || productionErrorsStatus === "warning" ? "warning" : "ok"} /> ONLINE
+              <StatusDot status={statusByKey.health.status === "error" ? "error" : statusByKey.logsCombined.status === "error" ? "error" : statusByKey.health.status === "warning" || statusByKey.logsCombined.status === "warning" ? "warning" : "ok"} /> ONLINE
             </span>
           </div>
         </div>
-        <div style={{ display: "flex", gap: 8, borderBottom: "1px solid var(--border-soft)", overflowX: "auto" }}>
+        <div className="admin-tabs">
           {TAB_DEFS.map((tab) => {
             const dynamic = tab.statusKey ? statusByKey[tab.statusKey] : null;
             const badge = tab.id === "trash" ? trashTotal : 0;
             return (
-              <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)} style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 14px", border: 0, background: "transparent", color: activeTab === tab.id ? "var(--accent)" : "var(--text-3)", borderBottom: activeTab === tab.id ? "2px solid var(--accent)" : "2px solid transparent", fontSize: 14, fontWeight: activeTab === tab.id ? 800 : 600, whiteSpace: "nowrap" }}>
+              <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)} className={`admin-tab ${activeTab === tab.id ? "active" : ""}`}>
                 <Icon name={tab.icon} size={15} color="currentColor" />
                 {tab.label}
                 {dynamic && <TabStatus status={dynamic.status} value={dynamic.value} />}
@@ -364,7 +391,7 @@ export default function AdminPage() {
 
       {activeTab === "overview" && (
         <div style={{ display: "grid", gap: 20 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
+          <div className="admin-card-grid">
             <MetricCard label="Úkoly" value={taskMetrics.total} hint={`${taskMetrics.active} aktivních · ${taskMetrics.done} hotovo`} icon="check-square" />
             <MetricCard label="Projekty" value={projectMetrics.total} hint={`${projectMetrics.active} aktivních · ${projectMetrics.archived} archiv`} icon="folder" color="var(--blue)" />
             <MetricCard label="Poznámky" value={notes.length} hint={`${tags.length} tagů · ${formatBytes(noteSize * 2)} textu`} icon="file-text" color="#a855f7" />
@@ -387,7 +414,7 @@ export default function AdminPage() {
       {activeTab === "health" && <SystemHealthPanel embedded />}
 
       {activeTab === "diagnostics" && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16 }}>
+        <div className="admin-diagnostics-grid">
           <Card title="Latence databáze Supabase" subtitle="Rychlý test dostupnosti databáze." icon="database" action={<SmallButton onClick={measureLatency} disabled={pinging}>{pinging ? "Měřím…" : "Testovat"}</SmallButton>}>
             <div style={{ fontSize: 34, fontWeight: 850, fontFamily: "var(--mono)", color: dbLatency && dbLatency > 300 ? "var(--red)" : dbLatency && dbLatency > 120 ? "var(--orange)" : "var(--green)" }}>{dbLatency ?? "—"} <span style={{ fontSize: 13, color: "var(--text-3)" }}>ms</span></div>
           </Card>
@@ -402,25 +429,29 @@ export default function AdminPage() {
               <SmallButton onClick={() => clearCachesAndReload()} tone="accent">Safe reload</SmallButton>
             </div>
           </Card>
-          <Card title="LocalStorage" subtitle="Lokální cache, nastavení a diagnostické logy." icon="hard-drive">
-            <div style={{ fontSize: 30, fontWeight: 850, fontFamily: "var(--mono)", color: "var(--accent)" }}>{formatBytes(storageSize)}</div>
+          <Card title="Úložiště & data" subtitle="Lokální cache, poznámky a přílohy v aktuálním workspace." icon="hard-drive">
+            <KeyValue label="LocalStorage" value={formatBytes(storageSize)} />
+            <KeyValue label="Poznámky" value={`${notes.length} položek`} />
+            <KeyValue label="Text poznámek" value={formatBytes(noteSize * 2)} />
+            <KeyValue label="Přílohy" value={`${attachmentMetrics.count} · ${formatBytes(attachmentMetrics.size)}`} />
           </Card>
         </div>
       )}
 
       {activeTab === "ai" && <AiTestConsolePanel embedded />}
 
-      {activeTab === "production-errors" && <RemoteErrorLogsPanel embedded />}
-
       {activeTab === "logs" && (
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.1fr) minmax(320px, .9fr)", gap: 18 }}>
-          <Card title="Lokální chyby v prohlížeči" subtitle={`Zachyceno ${errorLogs.length} lokálních chyb v tomto zařízení.`} icon="alert-triangle" action={<div style={{ display: "flex", gap: 8 }}><SmallButton onClick={simulateError}>Simulovat</SmallButton><SmallButton onClick={clearLocalLogs} tone="danger" disabled={!errorLogs.length}>Vyčistit</SmallButton></div>}>
-            {!errorLogs.length ? <EmptyState title="Systém běží hladce" text="Nebyly zachyceny žádné lokální chyby." /> : (
-              <div style={{ display: "grid", gap: 8, maxHeight: 360, overflowY: "auto" }}>
-                {errorLogs.map((log, index) => <div key={log.id || index} style={{ padding: 12, borderRadius: 12, border: "1px solid var(--border-soft)", background: "var(--bg-2)" }}><div style={{ color: "var(--text)", fontWeight: 800, fontSize: 13 }}>{log.message}</div><div style={{ color: "var(--text-3)", fontFamily: "var(--mono)", fontSize: 11.5, marginTop: 5 }}>{log.type || "client_error"} · {formatDate(log.timestamp)}</div></div>)}
-              </div>
-            )}
-          </Card>
+        <div className="admin-two-col">
+          <div style={{ display: "grid", gap: 18 }}>
+            <RemoteErrorLogsPanel embedded />
+            <Card title="Lokální chyby v prohlížeči" subtitle={`Zachyceno ${errorLogs.length} lokálních chyb v tomto zařízení.`} icon="alert-triangle" action={<div style={{ display: "flex", gap: 8 }}><SmallButton onClick={simulateError}>Simulovat</SmallButton><SmallButton onClick={clearLocalLogs} tone="danger" disabled={!errorLogs.length}>Vyčistit</SmallButton></div>}>
+              {!errorLogs.length ? <EmptyState title="Systém běží hladce" text="Nebyly zachyceny žádné lokální chyby." /> : (
+                <div style={{ display: "grid", gap: 8, maxHeight: 360, overflowY: "auto" }}>
+                  {errorLogs.map((log, index) => <div key={log.id || index} style={{ padding: 12, borderRadius: 12, border: "1px solid var(--border-soft)", background: "var(--bg-2)" }}><div style={{ color: "var(--text)", fontWeight: 800, fontSize: 13 }}>{log.message}</div><div style={{ color: "var(--text-3)", fontFamily: "var(--mono)", fontSize: 11.5, marginTop: 5 }}>{log.type || "client_error"} · {formatDate(log.timestamp)}</div></div>)}
+                </div>
+              )}
+            </Card>
+          </div>
           <Card title="Nahlásit chybu / bug report" subtitle="Založí úkol v aktuálním workspace a přibalí systémové údaje." icon="bug">
             <AdminField label="Název chyby"><input value={bugTitle} onChange={(e) => setBugTitle(e.target.value)} placeholder="Např. Pády při načítání AI asistenta…" style={fieldStyle} /></AdminField>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -440,14 +471,6 @@ export default function AdminPage() {
             {!workspaceMembers.length && <EmptyState title="Žádní členové" text="V aktuálním workspace nejsou načtení žádní členové." />}
           </div>
         </Card>
-      )}
-
-      {activeTab === "storage" && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
-          <MetricCard label="LocalStorage" value={formatBytes(storageSize)} hint="Přibližné lokální využití" icon="hard-drive" />
-          <MetricCard label="Poznámky" value={notes.length} hint={formatBytes(noteSize * 2)} icon="file-text" />
-          <MetricCard label="Přílohy" value={attachmentMetrics.count} hint={formatBytes(attachmentMetrics.size)} icon="paperclip" color="var(--green)" />
-        </div>
       )}
 
       {activeTab === "trash" && (
