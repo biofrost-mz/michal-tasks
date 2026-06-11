@@ -1,3 +1,5 @@
+import { supabase as supabaseClient } from "../supabase.js";
+
 export const AI_CONSOLE_ACTIONS = [
   {
     id: "draft_task",
@@ -64,9 +66,11 @@ function parseResult(result) {
   }
 }
 
+// Statický import (ne dynamický) — supabase je core dependency a importuje se
+// staticky i jinde; mix static+dynamic jinak nutí Vite/Rollup nechat modul
+// v hlavním chunku a vypisuje warning. Wrapper zůstává async kvůli call-sitům.
 async function getSupabaseClient() {
-  const module = await import("../supabase.js");
-  return module.supabase;
+  return supabaseClient;
 }
 
 export function getAiConsoleAction(actionId) {

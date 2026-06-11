@@ -11,12 +11,13 @@ import { supabase } from "../supabase.js";
 import theme from "../theme.js";
 import { uuid4, parseYMD, useDebouncedEffect, setGlobalProjects } from "../utils.js";
 import { runOptimisticMutation } from "../utils/optimistic.js";
+import { useQuickTodoMutations } from "./mutations/useQuickTodoMutations.js";
+import { useTagMutations } from "./mutations/useTagMutations.js";
 import * as taskService from "../services/taskService.js";
 import * as noteService from "../services/noteService.js";
 import * as projectService from "../services/projectService.js";
 import * as tagService from "../services/tagService.js";
 import * as workspaceService from "../services/workspaceService.js";
-import * as quickTodoService from "../services/quickTodoService.js";
 import * as attachmentService from "../services/attachmentService.js";
 import { useToast } from "../components/Toast.jsx";
 import { STATUSES, PRIORITIES } from "../constants.js";
@@ -602,33 +603,51 @@ export function AppProvider({ children }) {
 
   // Přeuspořádání úkolů — přijme nové pole úkolů v požadovaném pořadí
   const reorderTasks = useCallback((orderedTasks) => {
+    const prevTasks = tasksRef.current;
     const updated = orderedTasks.map((tk, i) => ({ ...tk, position: (i + 1) * 1000 }));
     setTasks((prev) => {
       const updatedMap = new Map(updated.map((tk) => [tk.id, tk]));
       return prev.map((tk) => updatedMap.has(tk.id) ? updatedMap.get(tk.id) : tk);
     });
     (async () => {
-      await Promise.all(
-        updated.map((tk) => supabase.from("tasks").update({ position: tk.position }).eq("id", tk.id))
-      );
+      try {
+        const results = await Promise.all(
+          updated.map((tk) => supabase.from("tasks").update({ position: tk.position }).eq("id", tk.id))
+        );
+        const failed = results.find((r) => r?.error);
+        if (failed) throw failed.error;
+      } catch {
+        // Rollback na původní pořadí + hlášení; jinak by se UI tiše rozešlo s DB.
+        setTasks(prevTasks);
+        reportError("Pořadí úkolů se nepodařilo uložit");
+      }
     })();
-  }, []);
+  }, [reportError]);
 
   const reorderProjects = useCallback((orderedProjects) => {
+    let prevProjects = null;
     const updated = orderedProjects.map((p, i) => ({ ...p, position: (i + 1) * 1000 }));
     setProjects((prev) => {
+      prevProjects = prev;
       const updatedMap = new Map(updated.map((p) => [p.id, p]));
       const rest = prev.filter((p) => !updatedMap.has(p.id));
       return [...updated, ...rest];
     });
     (async () => {
-      await Promise.all(
-        updated.map((p) =>
-          supabase.from("projects").update({ position: p.position }).eq("id", p.id)
-        )
-      );
+      try {
+        const results = await Promise.all(
+          updated.map((p) =>
+            supabase.from("projects").update({ position: p.position }).eq("id", p.id)
+          )
+        );
+        const failed = results.find((r) => r?.error);
+        if (failed) throw failed.error;
+      } catch {
+        if (prevProjects) setProjects(prevProjects);
+        reportError("Pořadí projektů se nepodařilo uložit");
+      }
     })();
-  }, []);
+  }, [reportError]);
 
   // CRUD — Tasks
   const addTask = useCallback((task) => {
@@ -848,54 +867,16 @@ export function AppProvider({ children }) {
     [taskDetail, reportError, toast]
   );
 
-  // CRUD — Tags
-  const addTag = useCallback((tag) => {
-    const tg = { id: uuid4(), name: (tag?.name || "").trim() || "tag", color: tag?.color || "#6366f1" };
-    if (!userId) {
-      setTags((p) => [...p, tg]);
-      return tg;
-    }
-    runOptimisticMutation({
-      apply: () => setTags((p) => [...p, tg]),
-      persist: () => tagService.insertTag(tg, userId, activeWorkspaceId),
-      rollback: () => setTags((p) => p.filter((x) => x.id !== tg.id)),
-      onError: reportError,
-      errorMessage: "Tag se nepodařilo uložit",
-    });
-    return tg;
-  }, [userId, activeWorkspaceId, reportError]);
-
-  const updateTag = useCallback((id, u) => {
-    const prevTag = tags.find((x) => x.id === id) ?? null;
-    setTags((p) => p.map((x) => (x.id === id ? { ...x, ...u } : x)));
-
-    const payload = {};
-    if (u.name !== undefined) payload.name = u.name;
-    if (u.color !== undefined) payload.color = u.color;
-    if (!Object.keys(payload).length) return;
-
-    runOptimisticMutation({
-      persist: () => tagService.updateTagDB(id, payload),
-      rollback: () => { if (prevTag) setTags((p) => p.map((x) => x.id === id ? prevTag : x)); },
-      onError: reportError,
-      errorMessage: "Tag se nepodařilo aktualizovat",
-    });
-  }, [tags, reportError]);
-
-  const deleteTag = useCallback((id) => {
-    const prevTags = tags;
-    const prevTasks = tasks;
-    runOptimisticMutation({
-      apply: () => {
-        setTags((p) => p.filter((x) => x.id !== id));
-        setTasks((p) => p.map((x) => ({ ...x, tagIds: (x.tagIds || []).filter((tid) => tid !== id) })));
-      },
-      persist: () => tagService.deleteTagDB(id),
-      rollback: () => { setTags(prevTags); setTasks(prevTasks); },
-      onError: reportError,
-      errorMessage: "Tag se nepodařilo smazat",
-    });
-  }, [tags, tasks, reportError]);
+  // CRUD — Tags (vyštěpeno do useTagMutations)
+  const { addTag, updateTag, deleteTag } = useTagMutations({
+    tags,
+    tasks,
+    setTags,
+    setTasks,
+    userId,
+    activeWorkspaceId,
+    reportError,
+  });
 
   // CRUD — Notes
   const addNote = useCallback((opts = {}) => {
@@ -924,7 +905,7 @@ export function AppProvider({ children }) {
       persist: () => noteService.insertNote(note, userId, activeWorkspaceId),
       rollback: () => setNotes((prev) => prev.filter((n) => n.id !== note.id)),
       onError: reportError,
-      errorMessage: "Poznámka se nepodařilo uložit",
+      errorMessage: "Poznámku se nepodařilo uložit",
     });
     return note;
   }, [userId, activeWorkspaceId, reportError]);
@@ -951,7 +932,7 @@ export function AppProvider({ children }) {
       persist: () => noteService.updateNoteDB(id, payload),
       rollback: () => { if (prevNote) setNotes((prev) => prev.map((n) => n.id === id ? prevNote : n)); },
       onError: reportError,
-      errorMessage: "Poznámka se nepodařilo aktualizovat",
+      errorMessage: "Poznámku se nepodařilo aktualizovat",
     });
   }, [notes, reportError]);
 
@@ -972,7 +953,7 @@ export function AppProvider({ children }) {
         setDeletedNotes((prev) => prev.filter((x) => x.id !== id));
       },
       onError: reportError,
-      errorMessage: "Poznámka se nepodařilo přesunout do koše",
+      errorMessage: "Poznámku se nepodařilo přesunout do koše",
     });
   }, [notes, reportError]);
 
@@ -1035,7 +1016,7 @@ export function AppProvider({ children }) {
         setNotes((prev) => prev.filter((x) => x.id !== id));
       },
       onError: reportError,
-      errorMessage: "Poznámka se nepodařilo obnovit",
+      errorMessage: "Poznámku se nepodařilo obnovit",
     });
   }, [deletedNotes, reportError]);
 
@@ -1068,7 +1049,7 @@ export function AppProvider({ children }) {
       persist: () => noteService.deleteNoteDB(id),
       rollback: () => { if (target) setDeletedNotes((prev) => [...prev, target]); },
       onError: reportError,
-      errorMessage: "Poznámka se nepodařilo permanentně smazat",
+      errorMessage: "Poznámku se nepodařilo permanentně smazat",
     });
   }, [deletedNotes, reportError]);
 
@@ -1097,96 +1078,23 @@ export function AppProvider({ children }) {
     await attachmentService.deleteAttachmentDB(att);
   }, []);
 
-  // CRUD — Quick Todos
-  const addQuickTodo = useCallback((text, extras = {}) => {
-    const qt = {
-      id: uuid4(),
-      text: (text || "").trim(),
-      done: false,
-      createdAt: Date.now(),
-      priority: extras.priority ?? null,
-      dueDate: extras.dueDate ?? null,
-      tags: extras.tags ?? null,
-      description: extras.description ?? null,
-    };
-    toast("Položka byla přidána", "success");
-    if (!userId) {
-      setQuickTodos((prev) => [qt, ...prev]);
-      return qt;
-    }
-    runOptimisticMutation({
-      apply: () => setQuickTodos((prev) => [qt, ...prev]),
-      persist: () => quickTodoService.insertQuickTodo(qt, userId, activeWorkspaceId),
-      rollback: () => setQuickTodos((prev) => prev.filter((q) => q.id !== qt.id)),
-      onError: reportError,
-      errorMessage: "Rychlý úkol se nepodařilo uložit",
-    });
-    return qt;
-  }, [userId, activeWorkspaceId, reportError, toast]);
-
-  const archiveQuickTodo = useCallback((id, options = {}) => {
-    const prevTodos = quickTodos;
-    if (!options.silent) toast("Položka byla dokončena", "success");
-    runOptimisticMutation({
-      apply: () => setQuickTodos((prev) => prev.map((q) => q.id === id ? { ...q, done: true } : q)),
-      persist: () => quickTodoService.updateQuickTodoDB(id, { done: true }),
-      rollback: () => setQuickTodos(prevTodos),
-      onError: reportError,
-      errorMessage: "Rychlý úkol se nepodařilo archivovat",
-    });
-  }, [quickTodos, reportError, toast]);
-
-  const restoreQuickTodo = useCallback((id) => {
-    const prevTodos = quickTodos;
-    toast("Položka byla obnovena", "success");
-    runOptimisticMutation({
-      apply: () => setQuickTodos((prev) => prev.map((q) => q.id === id ? { ...q, done: false } : q)),
-      persist: () => quickTodoService.updateQuickTodoDB(id, { done: false }),
-      rollback: () => setQuickTodos(prevTodos),
-      onError: reportError,
-      errorMessage: "Rychlý úkol se nepodařilo obnovit",
-    });
-  }, [quickTodos, reportError, toast]);
-
-  const deleteQuickTodo = useCallback((id) => {
-    const prevTodo = quickTodos.find((q) => q.id === id) ?? null;
-    toast("Položka byla smazána", "success");
-    runOptimisticMutation({
-      apply: () => setQuickTodos((prev) => prev.filter((q) => q.id !== id)),
-      persist: () => quickTodoService.deleteQuickTodoDB(id),
-      rollback: () => { if (prevTodo) setQuickTodos((prev) => [...prev, prevTodo]); },
-      onError: reportError,
-      errorMessage: "Rychlý úkol se nepodařilo smazat",
-    });
-  }, [quickTodos, reportError, toast]);
-
-  const updateQuickTodo = useCallback((id, payload) => {
-    const prevTodos = quickTodos;
-    toast("Změny uloženy", "success");
-    runOptimisticMutation({
-      apply: () => setQuickTodos((prev) => prev.map((q) => q.id === id ? { ...q, ...payload } : q)),
-      persist: () => quickTodoService.updateQuickTodoDB(id, payload),
-      rollback: () => setQuickTodos(prevTodos),
-      onError: reportError,
-      errorMessage: "Rychlý úkol se nepodařilo aktualizovat",
-    });
-  }, [quickTodos, reportError, toast]);
-
-  const clearArchivedQuickTodos = useCallback(() => {
-    const ids = quickTodos.filter((q) => q.done).map((q) => q.id);
-    if (!ids.length) return;
-    const prevTodos = quickTodos;
-    runOptimisticMutation({
-      apply: () => setQuickTodos((prev) => prev.filter((q) => !q.done)),
-      persist: async () => {
-        const { error } = await supabase.from("quick_todos").delete().in("id", ids);
-        if (error) throw error;
-      },
-      rollback: () => setQuickTodos(prevTodos),
-      onError: reportError,
-      errorMessage: "Archivované úkoly se nepodařilo smazat",
-    });
-  }, [quickTodos, reportError]);
+  // CRUD — Quick Todos (vyštěpeno do useQuickTodoMutations)
+  const {
+    addQuickTodo,
+    archiveQuickTodo,
+    restoreQuickTodo,
+    deleteQuickTodo,
+    updateQuickTodo,
+    clearArchivedQuickTodos,
+  } = useQuickTodoMutations({
+    quickTodos,
+    setQuickTodos,
+    userId,
+    activeWorkspaceId,
+    supabase,
+    reportError,
+    toast,
+  });
 
   const switchWorkspace = useCallback(async (wsId) => {
     if (wsId === activeWorkspaceId) return;
@@ -1308,6 +1216,23 @@ export function AppProvider({ children }) {
     if (role === "admin" && activeRole !== "owner") {
       throw new Error("Admin pozvánky může vytvářet jen owner workspace.");
     }
+
+    // Preferovaná cesta: RPC create_workspace_invite generuje token server-side
+    // a do DB ukládá jen jeho SHA-256 hash; raw token dostaneme jednou sem.
+    const { data: rawToken, error: rpcError } = await supabase.rpc("create_workspace_invite", {
+      p_workspace_id: activeWorkspaceId,
+      p_role: role,
+    });
+    if (!rpcError && rawToken) {
+      return `${window.location.origin}?invite=${rawToken}`;
+    }
+
+    // Fallback (RPC ještě nenasazená): starý insert s plain tokenem.
+    // Po nasazení migrace 20260610120000_invite_token_hash.sql se sem už nedostane.
+    const rpcMissing = rpcError?.code === "42883" || rpcError?.code === "PGRST202" ||
+      /could not find.*create_workspace_invite/i.test(rpcError?.message || "");
+    if (rpcError && !rpcMissing) throw rpcError;
+
     const token = uuid4().replace(/-/g, "");
     const { error } = await supabase.from("workspace_invites").insert({
       workspace_id: activeWorkspaceId,

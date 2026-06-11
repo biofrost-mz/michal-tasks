@@ -328,18 +328,25 @@ function AppShell() {
           <path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M8 13h.01M12 13h.01M16 13h.01M6 17h4M14 17h4"/>
         </svg>
       </button>
-      {page === "admin" && isSystemAdmin && (
+      {/* Plovoucí status pilule (svítící tečka zelená/oranžová/červená) — pro
+          system admina na VŠECH stránkách, ať je stav vidět na první pohled.
+          Mountuje se jednou v perzistentním shellu, takže silent check běží
+          jednou na startu a pilule nemizí při přepínání stránek. */}
+      {isSystemAdmin && (
         <>
           <ErrorBoundary inline label="Health check">
             <SystemHealthPanel />
-          </ErrorBoundary>
-          <ErrorBoundary inline label="AI konzole">
-            <AiTestConsolePanel />
           </ErrorBoundary>
           <ErrorBoundary inline label="Produkční chyby">
             <RemoteErrorLogsPanel />
           </ErrorBoundary>
         </>
+      )}
+      {/* AI konzole zůstává jen na admin stránce. */}
+      {page === "admin" && isSystemAdmin && (
+        <ErrorBoundary inline label="AI konzole">
+          <AiTestConsolePanel />
+        </ErrorBoundary>
       )}
       <div className={!isMobile ? `app ${collapsed ? "collapsed" : ""}` : undefined} style={isMobile ? { display: "flex", width: "100%", height: "100dvh", minHeight: "100svh", overflow: "hidden" } : undefined}>
         {!isMobile && <AtlasSidebar collapsed={collapsed} setCollapsed={setCollapsed} />}
