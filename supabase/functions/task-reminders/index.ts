@@ -188,10 +188,20 @@ Deno.serve(async (req) => {
   const emailMap: Record<string, string> = {};
   (profiles ?? []).forEach((p) => { if (p.email) emailMap[p.id] = p.email; });
 
+  // Načti notifikační preference
+  const { data: prefs } = await supabase
+    .from("notification_preferences")
+    .select("user_id, email_task_reminders")
+    .in("user_id", userIds);
+  const prefsMap: Record<string, boolean> = {};
+  (prefs ?? []).forEach((p) => { prefsMap[p.user_id] = p.email_task_reminders; });
+
   // Seskup úkoly per uživatel a odešli
   const byUser: Record<string, typeof tasks> = {};
   for (const task of tasks) {
     if (!task.created_by || !emailMap[task.created_by]) continue;
+    // Výchozí hodnota: true (pokud záznam neexistuje, pošli)
+    if (prefsMap[task.created_by] === false) continue;
     if (!byUser[task.created_by]) byUser[task.created_by] = [];
     byUser[task.created_by].push(task);
   }

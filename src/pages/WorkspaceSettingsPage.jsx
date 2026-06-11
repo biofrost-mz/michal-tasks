@@ -26,6 +26,14 @@ const tabs = [
   { id: 'app', label: 'Aplikace', icon: 'sliders-horizontal' },
 ]
 
+const DEFAULT_NOTIF_PREFS = {
+  email_task_reminders: true,
+  email_daily_digest: true,
+  push_task_reminders: true,
+  push_daily_digest: true,
+  digest_hour: 8,
+}
+
 function roleColor(role) {
   return roleColors[role] || roleColors.member
 }
@@ -86,6 +94,9 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
   const [savingProfile, setSavingProfile] = useState(false)
   const [resetSent, setResetSent] = useState(false)
 
+  const [notifPrefs, setNotifPrefs] = useState(DEFAULT_NOTIF_PREFS)
+  const [savingNotif, setSavingNotif] = useState(false)
+
   const canManage = workspaceRole === 'owner' || workspaceRole === 'admin'
   const isOwner = workspaceRole === 'owner'
 
@@ -106,6 +117,21 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
   useEffect(() => {
     setDisplayName(me?.displayName || '')
   }, [me?.displayName])
+
+  useEffect(() => {
+    if (!userId) return;
+    supabase.from("notification_preferences").select("*").eq("user_id", userId).single()
+      .then(({ data }) => { if (data) setNotifPrefs({ ...DEFAULT_NOTIF_PREFS, ...data }); });
+  }, [userId]);
+
+  const handleSaveNotifPrefs = async (patch) => {
+    const updated = { ...notifPrefs, ...patch };
+    setNotifPrefs(updated);
+    setSavingNotif(true);
+    const { error } = await supabase.from("notification_preferences").upsert({ user_id: userId, ...updated, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+    setSavingNotif(false);
+    if (error) toast("Nepodařilo se uložit nastavení", "error");
+  };
 
   const handleSaveName = async () => {
     if (!displayName.trim()) return
@@ -505,25 +531,70 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
           )}
 
           {activeTab === 'notifications' && (
-            <Section label="Notifikace" title="Push upozornění" description="Upozornění na blížící se termíny a připomínky." icon="bell">
-              {!push.supported ? (
-                <div style={mutedText}>Push notifikace nejsou v tomto prohlížeči podporovány nebo není nastaven VAPID klíč.</div>
-              ) : push.permission === 'denied' ? (
-                <div style={mutedText}>Notifikace jsou blokovány. Povol je v nastavení prohlížeče a stránku obnov.</div>
-              ) : (
-                <div className="ws-mobile-break">
-                  <div>
-                    <div style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--text)' }}>{push.subscribed ? 'Notifikace jsou zapnuté' : 'Push notifikace'}</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
-                      {push.subscribed ? 'Upozorníme tě na blížící se termíny a připomínky.' : 'Dostávej upozornění i když je app zavřená.'}
+            <>
+              <Section label="Notifikace" title="Push upozornění" description="Upozornění na blížící se termíny a připomínky." icon="bell">
+                {!push.supported ? (
+                  <div style={mutedText}>Push notifikace nejsou v tomto prohlížeči podporovány nebo není nastaven VAPID klíč.</div>
+                ) : push.permission === 'denied' ? (
+                  <div style={mutedText}>Notifikace jsou blokovány. Povol je v nastavení prohlížeče a stránku obnov.</div>
+                ) : (
+                  <div className="ws-mobile-break">
+                    <div>
+                      <div style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--text)' }}>{push.subscribed ? 'Notifikace jsou zapnuté' : 'Push notifikace'}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>
+                        {push.subscribed ? 'Upozorníme tě na blížící se termíny a připomínky.' : 'Dostávej upozornění i když je app zavřená.'}
+                      </div>
                     </div>
+                    <button className={`btn${push.subscribed ? '' : ' primary'}`} onClick={push.subscribed ? push.unsubscribe : push.subscribe} disabled={push.loading} style={{ flexShrink: 0, minWidth: 120 }}>
+                      {push.loading ? '…' : push.subscribed ? 'Vypnout' : 'Zapnout'}
+                    </button>
                   </div>
-                  <button className={`btn${push.subscribed ? '' : ' primary'}`} onClick={push.subscribed ? push.unsubscribe : push.subscribe} disabled={push.loading} style={{ flexShrink: 0, minWidth: 120 }}>
-                    {push.loading ? '…' : push.subscribed ? 'Vypnout' : 'Zapnout'}
-                  </button>
+                )}
+              </Section>
+
+              <Section label="Preference" title="Typy upozornění" description="Vyber si, které typy notifikací chceš dostávat." icon="sliders-horizontal">
+                <div style={{ display: 'grid', gap: 12 }}>
+                  {[
+                    { key: 'push_task_reminders', label: 'Push připomínky úkolů', desc: 'Upozornění v čas nastavené připomínky', disabled: !push.subscribed },
+                    { key: 'push_daily_digest', label: 'Push denní souhrn', desc: 'Ranní přehled úkolů na dnes', disabled: !push.subscribed },
+                    { key: 'email_task_reminders', label: 'E-mailové připomínky úkolů', desc: 'E-mail v čas nastavené připomínky' },
+                    { key: 'email_daily_digest', label: 'E-mailový denní souhrn', desc: 'Ranní přehled úkolů, termínů a projektů' },
+                  ].map(({ key, label, desc, disabled }) => (
+                    <div key={key} className="ws-mobile-break" style={{ alignItems: 'center', opacity: disabled ? 0.56 : 1 }}>
+                      <div>
+                        <div style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--text)' }}>{label}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>{desc}</div>
+                      </div>
+                      <button
+                        className={`btn${notifPrefs[key] ? ' primary' : ''}`}
+                        onClick={() => handleSaveNotifPrefs({ [key]: !notifPrefs[key] })}
+                        disabled={savingNotif || disabled}
+                        style={{ flexShrink: 0, minWidth: 88 }}
+                      >
+                        {notifPrefs[key] ? 'Zapnuto' : 'Vypnuto'}
+                      </button>
+                    </div>
+                  ))}
+
+                  <div className="ws-mobile-break" style={{ alignItems: 'center', paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+                    <div>
+                      <div style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--text)' }}>Čas denního souhrnu</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>Ve kolik hodin chceš ranní souhrn dostat.</div>
+                    </div>
+                    <select
+                      value={notifPrefs.digest_hour}
+                      onChange={(e) => handleSaveNotifPrefs({ digest_hour: Number(e.target.value) })}
+                      disabled={savingNotif || (!notifPrefs.email_daily_digest && !notifPrefs.push_daily_digest)}
+                      style={{ ...inputStyle, width: 112, flexShrink: 0 }}
+                    >
+                      {Array.from({ length: 24 }, (_, h) => (
+                        <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-              )}
-            </Section>
+              </Section>
+            </>
           )}
 
           {activeTab === 'app' && (

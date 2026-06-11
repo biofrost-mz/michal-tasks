@@ -261,10 +261,20 @@ Deno.serve(async (req) => {
   const emailMap: Record<string, string> = {};
   (profiles ?? []).forEach((p) => { if (p.email) emailMap[p.id] = p.email; });
 
+  // Fetch notification preferences
+  const { data: prefs } = await supabase
+    .from("notification_preferences")
+    .select("user_id, email_daily_digest")
+    .in("user_id", userIds);
+  const prefsMap: Record<string, boolean> = {};
+  (prefs ?? []).forEach((p) => { prefsMap[p.user_id] = p.email_daily_digest; });
+
   // Group tasks per user and send
   const byUser: Record<string, typeof tasks> = {};
   for (const task of tasks) {
     if (!task.created_by || !emailMap[task.created_by]) continue;
+    // Default: true (send if no preference record exists)
+    if (prefsMap[task.created_by] === false) continue;
     if (!byUser[task.created_by]) byUser[task.created_by] = [];
     byUser[task.created_by].push(task);
   }

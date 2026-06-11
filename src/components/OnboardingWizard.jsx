@@ -44,10 +44,15 @@ function Progress({ step }) {
   );
 }
 
-function Toggle({ on, onToggle }) {
+function Toggle({ on, onToggle, label }) {
   return (
     <div
+      role="switch"
+      aria-checked={on}
+      aria-label={label}
       onClick={onToggle}
+      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onToggle()}
+      tabIndex={0}
       style={{
         width: 40, height: 22, borderRadius: 11, flexShrink: 0, cursor: "pointer",
         background: on ? "var(--accent, #fbbf24)" : "rgba(255,255,255,0.12)",
@@ -71,6 +76,12 @@ const DEFAULT_PREFS = {
   email_task_reminders: true,
   email_daily_digest: true,
 };
+
+const NOTIF_ITEMS = [
+  { key: "push_task_reminders",  name: "Push notifikace", desc: "Připomenutí úkolů v prohlížeči" },
+  { key: "email_task_reminders", name: "E-mail: připomenutí úkolů", desc: "Blížící se termíny e-mailem" },
+  { key: "email_daily_digest",   name: "E-mail: denní souhrn", desc: "Každé ráno plán dne" },
+];
 
 export default function OnboardingWizard() {
   const { userId, setDk, renameWorkspace, workspaces, activeWorkspaceId } = useApp();
@@ -236,12 +247,6 @@ export default function OnboardingWizard() {
   }
 
   // ── Step 2 ──────────────────────────────────────────────────────────────
-  const NOTIF_ITEMS = [
-    { key: "push_task_reminders",  name: "Push notifikace", desc: "Připomenutí úkolů v prohlížeči" },
-    { key: "email_task_reminders", name: "E-mail: připomenutí úkolů", desc: "Blížící se termíny e-mailem" },
-    { key: "email_daily_digest",   name: "E-mail: denní souhrn", desc: "Každé ráno plán dne" },
-  ];
-
   if (step === 2) {
     return (
       <div style={OVERLAY}>
@@ -273,6 +278,7 @@ export default function OnboardingWizard() {
                 <Toggle
                   on={prefs[item.key]}
                   onToggle={() => setPrefs((p) => ({ ...p, [item.key]: !p[item.key] }))}
+                  label={item.name}
                 />
               </div>
             ))}

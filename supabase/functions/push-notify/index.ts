@@ -181,14 +181,42 @@ Deno.serve(async (req) => {
     }
   }
 
+  // Fetch push preferences for all subscribers
+  const allSubUserIds = await (async () => {
+    const allWsIds = [...wsNotif.keys()];
+    if (!allWsIds.length) return [] as string[];
+    const { data } = await supabase
+      .from("push_subscriptions")
+      .select("user_id")
+      .in("workspace_id", allWsIds);
+    return [...new Set((data ?? []).map((r: { user_id: string }) => r.user_id))];
+  })();
+
+  const { data: pushPrefs } = allSubUserIds.length
+    ? await supabase
+        .from("notification_preferences")
+        .select("user_id, push_task_reminders, push_daily_digest")
+        .in("user_id", allSubUserIds)
+    : { data: [] };
+  const pushPrefsMap = new Map(
+    (pushPrefs ?? []).map((p: { user_id: string; push_task_reminders: boolean; push_daily_digest: boolean }) => [p.user_id, p])
+  );
+
   let sent = 0;
   for (const [wsId, notifPayload] of wsNotif) {
+    const isDaily = notifPayload.tag === "daily-digest";
     const { data: subs } = await supabase
       .from("push_subscriptions")
-      .select("id, endpoint, p256dh, auth")
+      .select("id, user_id, endpoint, p256dh, auth")
       .eq("workspace_id", wsId);
 
     for (const sub of subs ?? []) {
+      // Check preference — default true if no record
+      const pref = pushPrefsMap.get(sub.user_id);
+      if (pref) {
+        if (isDaily && pref.push_daily_digest === false) continue;
+        if (!isDaily && pref.push_task_reminders === false) continue;
+      }
       try {
         const status = await sendPush(sub.endpoint, sub.p256dh, sub.auth, notifPayload);
         if (status === 200 || status === 201) sent++;
