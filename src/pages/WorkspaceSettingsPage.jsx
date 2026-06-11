@@ -314,7 +314,8 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
         .ws-mobile-break{display:flex;align-items:center;justify-content:space-between;gap:14px;}
         @media(max-width:767px){
           .workspace-settings-page{padding:14px 12px 104px!important;max-width:none!important;overflow-x:hidden;}
-          .ws-card{max-width:100%;overflow-wrap:anywhere;}
+          .ws-card{max-width:100%;overflow-wrap:break-word;}
+          .ws-card-head{flex-direction:column;align-items:stretch;}
           .ws-form-row input,.ws-form-row .ws-input,.ws-card input,.ws-card select{min-width:0!important;max-width:100%;}
           .ws-settings-hero{margin-bottom:12px;}
           .ws-settings-title{font-size:35px;margin:10px 0 8px;}

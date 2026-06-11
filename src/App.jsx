@@ -377,7 +377,7 @@ function AppShell() {
               </div>
             );
           })()}
-          <main style={isMobile ? { flex: 1, minWidth: 0, width: "100%", overflowY: "auto", overflowX: "hidden", position: "relative", paddingBottom: "calc(66px + env(safe-area-inset-bottom, 0px))", overscrollBehaviorY: "contain" } : undefined}>
+          <main style={isMobile ? { flex: 1, minWidth: 0, width: "100%", overflowY: "auto", overflowX: "hidden", position: "relative", paddingBottom: "calc(58px + env(safe-area-inset-bottom, 0px))", overscrollBehaviorY: "contain" } : undefined}>
             <PageTransition pageKey={page}>
               <Suspense fallback={<PageLoader />}>
                 {page === "dashboard" && <PageErrorBoundary label="Přehled"><DashboardPage /></PageErrorBoundary>}

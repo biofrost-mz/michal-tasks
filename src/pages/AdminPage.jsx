@@ -259,9 +259,9 @@ export default function AdminPage() {
   const statusByKey = useMemo(() => {
     const healthStatus = dbLatency == null
       ? "neutral"
-      : dbLatency > 500 || swStatus.startsWith("Chyba") || errorLogs.length > 5
+      : dbLatency > 1500 || swStatus.startsWith("Chyba")
         ? "error"
-        : dbLatency > 250 || swStatus === "Neregistrován" || errorLogs.length > 0
+        : dbLatency > 600 || swStatus === "Neregistrován"
           ? "warning"
           : "ok";
     const localLogsStatus = errorLogs.length === 0 ? "ok" : errorLogs.length <= 5 ? "warning" : "error";

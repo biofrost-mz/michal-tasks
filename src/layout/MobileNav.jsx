@@ -237,7 +237,7 @@ export default function MobileNav({ toggleDk }) {
               onClick={() => handleNav(n.id)}
               style={{
                 flex: 1, display: "flex", flexDirection: "column", alignItems: "center",
-                justifyContent: "center", gap: 3, padding: "8px 4px 8px",
+                justifyContent: "center", gap: 3, padding: "6px 4px 3px",
                 border: "none", background: "transparent",
                 color: act ? t.accent : t.text3,
                 position: "relative",
@@ -262,7 +262,7 @@ export default function MobileNav({ toggleDk }) {
           onClick={() => setMoreOpen((v) => !v)}
           style={{
             flex: 1, display: "flex", flexDirection: "column", alignItems: "center",
-            justifyContent: "center", gap: 3, padding: "8px 4px 8px",
+            justifyContent: "center", gap: 3, padding: "6px 4px 3px",
             border: "none", background: "transparent",
             color: moreOpen ? t.accent : t.text3,
             position: "relative",

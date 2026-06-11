@@ -5,6 +5,7 @@ import { useToast } from './Toast.jsx'
 import Icon from './Icon.jsx'
 import { STATUSES, PRIORITIES } from '../constants.js'
 import { supabase } from '../supabase.js'
+import { saveAiHistoryEntry } from '../services/aiHistoryService.js'
 
 export default function QuickAdd({ defaultProjectId = null }) {
   const { t, dk, addTask, projects, tags, addProject, addTag, setTaskDetail, isMobile } = useApp();
@@ -112,6 +113,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
     }
 
     setAiLoading(true);
+    const aiStart = performance.now();
     try {
       const todayDate = new Date().toISOString().slice(0, 10);
       const availableProjects = projects.map(p => p.name);
@@ -130,6 +132,14 @@ export default function QuickAdd({ defaultProjectId = null }) {
 
       if (error || data?.error) {
         const msg = data?.error || error?.message || String(error);
+        saveAiHistoryEntry({
+          action: "draft_task",
+          functionName: "ai-task-assist",
+          status: "error",
+          durationMs: performance.now() - aiStart,
+          error: msg,
+          metadata: { inputPreview: text, source: "quickadd" },
+        });
         if (msg.includes("non-2xx")) {
           toast("Chyba: AI služba není nasazená v Supabase (použij: supabase functions deploy ai-task-assist)", "error");
         } else if (msg.includes("Unauthorized") || error?.status === 401) {
@@ -153,6 +163,16 @@ export default function QuickAdd({ defaultProjectId = null }) {
 
       const cleaned = raw.replace(/^```[a-z]*\n?/i, "").replace(/```$/, "").trim();
       const parsed = JSON.parse(cleaned);
+
+      saveAiHistoryEntry({
+        action: "draft_task",
+        functionName: "ai-task-assist",
+        status: "success",
+        durationMs: performance.now() - aiStart,
+        meta: data?.meta,
+        summary: parsed.title || "Návrh úkolu",
+        metadata: { inputPreview: text, source: "quickadd" },
+      });
 
       if (parsed.title) setModalTitle(parsed.title);
       if (parsed.description) setDescription(parsed.description);
