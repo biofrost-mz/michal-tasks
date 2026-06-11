@@ -4,9 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="x-apple-disable-message-reformatting">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
 <title>Denní přehled úkolů — Zentero</title>
 <!--[if mso]><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->
 <style>
+  :root { color-scheme: light dark; supported-color-schemes: light dark; }
   .em-link:hover { opacity:.85; }
   .em-mob-stats { display:none; }
   @media only screen and (max-width:600px) {
@@ -19,217 +22,134 @@
     .em-desk-stats { display:none !important; }
     .em-mob-stats { display:block !important; }
   }
+  @media (prefers-color-scheme: dark) {
+    body, .em-bg { background:#0e1117 !important; }
+    .em-card { background:#171b26 !important; }
+    .em-soft { background:#1f2533 !important; }
+    .em-card, .em-soft, .em-bd { border-color:#2a3142 !important; }
+    .em-strong { color:#f1f5f9 !important; }
+    .em-muted { color:#9aa7b8 !important; }
+  }
 </style>
 </head>
-<body style="margin:0;padding:0;background:#f4f5f7;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%">
+<body class="em-bg" style="margin:0;padding:0;background:transparent;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent">9 úkolů potřebuje pozornost — 6 po termínu, 1 dnes, 2 se blíží.</div>
-
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f5f7">
+<table role="presentation" class="em-bg" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:transparent">
  <tr><td align="center" style="padding:30px 14px">
   <table role="presentation" class="em-container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif">
-
-   <!-- ░░ HERO ░░ -->
    <tr><td bgcolor="#4f46e5" style="border-radius:20px 20px 0 0;background:#4f46e5;background:linear-gradient(135deg,#2563eb 0%,#4f46e5 48%,#7c3aed 100%)">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td class="em-hero-pad" style="padding:26px 30px 24px">
-
-      <!-- brand row: logo+název vlevo, čas vpravo -->
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-        <td valign="middle">
-          <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-            <td valign="middle" style="width:34px;height:34px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.28);border-radius:11px;text-align:center;color:#ffffff;font-size:16px;font-weight:800;line-height:34px">Z</td>
-            <td valign="middle" style="padding-left:10px;color:#ffffff;font-size:15px;font-weight:800;letter-spacing:-.01em">Zentero</td>
-          </tr></table>
-        </td>
-        <td align="right" valign="middle" style="color:#ffffff;font-size:12px;font-weight:700;white-space:nowrap">
-          <span style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.24);border-radius:999px;padding:7px 12px">úterý 9. června 2026</span>
-        </td>
-      </tr></table>
-
-      <!-- nadpis + celkový počet hned vedle -->
-      <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-top:24px"><tr>
-        <td valign="middle" class="em-title" style="color:#ffffff;font-size:28px;line-height:1.12;font-weight:800;letter-spacing:-.025em">Denní přehled úkolů</td>
-        <td valign="middle" style="padding-left:12px;white-space:nowrap"><span style="display:inline-block;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.26);border-radius:999px;color:#ffffff;font-size:13px;font-weight:800;padding:5px 12px">9 úkolů</span></td>
-      </tr></table>
-      <div style="margin-top:9px;color:rgba(255,255,255,.86);font-size:14px;line-height:1.55;max-width:430px">Co už hoří, co je potřeba dnes a co se blíží v dalších dnech.</div>
-
-      <!-- DESKTOP: větší buňky -->
-      <table class="em-desk-stats" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:22px"><tr>
-        <td width="33%" valign="top" style="padding-right:5px">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.22);border-radius:14px"><tr><td style="padding:15px 17px">
-            <div style="color:#ffffff;font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#ef4444;vertical-align:middle;margin-right:7px"></span>Po termínu</div>
-            <div style="margin-top:9px;color:#ffffff;font-size:42px;line-height:1;font-weight:900;letter-spacing:-.045em">6</div>
-          </td></tr></table>
-        </td>
-        <td width="33%" valign="top" style="padding:0 3px">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.22);border-radius:14px"><tr><td style="padding:15px 17px">
-            <div style="color:#ffffff;font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#f59e0b;vertical-align:middle;margin-right:7px"></span>Dnes</div>
-            <div style="margin-top:9px;color:#ffffff;font-size:42px;line-height:1;font-weight:900;letter-spacing:-.045em">1</div>
-          </td></tr></table>
-        </td>
-        <td width="33%" valign="top" style="padding-left:5px">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.22);border-radius:14px"><tr><td style="padding:15px 17px">
-            <div style="color:#ffffff;font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#22c55e;vertical-align:middle;margin-right:7px"></span>Blíží se</div>
-            <div style="margin-top:9px;color:#ffffff;font-size:42px;line-height:1;font-weight:900;letter-spacing:-.045em">2</div>
-          </td></tr></table>
-        </td>
-      </tr></table>
-
-      <!-- MOBILE: kompaktní řádek (vedle sebe, oddělené tečkami) -->
-      <div class="em-mob-stats" style="margin-top:16px;color:#ffffff;font-size:13px;font-weight:700">
-        <span style="white-space:nowrap"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#ef4444;vertical-align:middle;margin-right:6px"></span>6&nbsp;<span style="color:rgba(255,255,255,.82);font-weight:600">po termínu</span></span>
-        <span style="color:rgba(255,255,255,.45);padding:0 7px">·</span>
-        <span style="white-space:nowrap"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#fbbf24;vertical-align:middle;margin-right:6px"></span>1&nbsp;<span style="color:rgba(255,255,255,.82);font-weight:600">dnes</span></span>
-        <span style="color:rgba(255,255,255,.45);padding:0 7px">·</span>
-        <span style="white-space:nowrap"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#4ade80;vertical-align:middle;margin-right:6px"></span>2&nbsp;<span style="color:rgba(255,255,255,.82);font-weight:600">se blíží</span></span>
-      </div>
-
-    </td></tr></table>
-   </td></tr>
-
-   <!-- ░░ CONTENT ░░ -->
-   <tr><td bgcolor="#ffffff" class="em-pad" style="background:#ffffff;border-left:1px solid #e7e7ea;border-right:1px solid #e7e7ea;padding:24px 30px">
-
-     <!-- intro -->
-     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f8fafc;border:1px solid #eef0f4;border-radius:14px"><tr><td style="padding:14px 16px;color:#667085;font-size:13.5px;line-height:1.55">
-       Ahoj Michale, tady je stručný přehled úkolů, které potřebují pozornost — nejdřív po termínu, pak dnešní a blížící se.
-     </td></tr></table>
-
-     <!-- PO TERMÍNU -->
-     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:22px"><tr>
-       <td style="font-size:13px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#18181b"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#ef4444;vertical-align:middle;margin-right:8px"></span>Po termínu</td>
-       <td align="right" style="font-size:12px;font-weight:800;color:#b42318"><span style="background:#fee4e2;border:1px solid #fecdca;border-radius:999px;padding:2px 9px">6</span></td>
+   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td class="em-hero-pad" style="padding:26px 30px 24px">
+     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+       <td valign="middle"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+         <td valign="middle" style="width:34px;height:34px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.28);border-radius:11px;text-align:center;color:#ffffff;font-size:16px;font-weight:800;line-height:34px">Z</td>
+         <td valign="middle" style="padding-left:10px;color:#ffffff;font-size:15px;font-weight:800;letter-spacing:-.01em">Zentero</td>
+       </tr></table></td>
+       <td align="right" valign="middle" style="color:#ffffff;font-size:12px;font-weight:700;white-space:nowrap"><span style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.24);border-radius:999px;padding:7px 12px">úterý 9. června 2026</span></td>
      </tr></table>
-     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:10px;border:1px solid #eef0f4;border-radius:14px">
-       <tr><td style="border-left:4px solid #ef4444;padding:15px 16px">
-         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-           <td valign="top">
-             <a class="em-link" href="https://tasks.zichmichal.cz/?task=t1" style="display:block;font-size:15px;font-weight:800;color:#18181b;letter-spacing:-.01em;text-decoration:none">AI odpovědi na e-maily</a>
-             <div style="margin-top:5px;color:#667085;font-size:13px;line-height:1.45">Propojit s linkou předpřipravené odpovědi a sjednotit tón.</div>
-             <div style="margin-top:10px">
-               <span style="display:inline-block;background:#f4f5f7;border:1px solid #e7e7ea;border-radius:999px;color:#475467;font-size:12px;font-weight:600;padding:4px 9px;margin:0 5px 5px 0">Projekty OC</span>
-               <span style="display:inline-block;background:#fff1f0;border:1px solid #ffd0cc;border-radius:999px;color:#b42318;font-size:12px;font-weight:700;padding:4px 9px;margin:0 5px 5px 0">6 dní po termínu</span>
-             </div>
-           </td>
-           <td valign="middle" align="right" class="em-hide" style="white-space:nowrap;padding-left:12px"><a class="em-link" href="https://tasks.zichmichal.cz/?task=t1" style="display:inline-block;background:#eef2ff;color:#4338ca;border-radius:10px;padding:8px 12px;font-size:12px;font-weight:800;text-decoration:none">Otevřít</a></td>
-         </tr></table>
-       </td></tr>
-       <tr><td style="border-left:4px solid #ef4444;padding:15px 16px;border-top:1px solid #eef0f4">
-         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-           <td valign="top">
-             <a class="em-link" href="https://tasks.zichmichal.cz/?task=t2" style="display:block;font-size:15px;font-weight:800;color:#18181b;letter-spacing:-.01em;text-decoration:none">Spolupráce: Cestujzababku.cz</a>
-             <div style="margin-top:5px;color:#667085;font-size:13px;line-height:1.45">Rozjedeme spolupráci? Čekáme na odpověď partnera.</div>
-             <div style="margin-top:10px">
-               <span style="display:inline-block;background:#f4f5f7;border:1px solid #e7e7ea;border-radius:999px;color:#475467;font-size:12px;font-weight:600;padding:4px 9px;margin:0 5px 5px 0">Spolupráce</span>
-               <span style="display:inline-block;background:#fff1f0;border:1px solid #ffd0cc;border-radius:999px;color:#b42318;font-size:12px;font-weight:700;padding:4px 9px;margin:0 5px 5px 0">4 dny po termínu</span>
-             </div>
-           </td>
-           <td valign="middle" align="right" class="em-hide" style="white-space:nowrap;padding-left:12px"><a class="em-link" href="https://tasks.zichmichal.cz/?task=t2" style="display:inline-block;background:#eef2ff;color:#4338ca;border-radius:10px;padding:8px 12px;font-size:12px;font-weight:800;text-decoration:none">Otevřít</a></td>
-         </tr></table>
-       </td></tr>
-       <tr><td style="border-left:4px solid #ef4444;padding:15px 16px;border-top:1px solid #eef0f4">
-         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-           <td valign="top">
-             <a class="em-link" href="https://tasks.zichmichal.cz/?task=t3" style="display:block;font-size:15px;font-weight:800;color:#18181b;letter-spacing:-.01em;text-decoration:none">Vytvořit medailonek</a>
-             <div style="margin-top:5px;color:#667085;font-size:13px;line-height:1.45">Scénář, harmonogram natáčení a seznam rekvizit.</div>
-             <div style="margin-top:10px">
-               <span style="display:inline-block;background:#f4f5f7;border:1px solid #e7e7ea;border-radius:999px;color:#475467;font-size:12px;font-weight:600;padding:4px 9px;margin:0 5px 5px 0">Videomedailonky</span>
-               <span style="display:inline-block;background:#fff1f0;border:1px solid #ffd0cc;border-radius:999px;color:#b42318;font-size:12px;font-weight:700;padding:4px 9px;margin:0 5px 5px 0">2 dny po termínu</span>
-               <span style="display:inline-block;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:999px;color:#15803d;font-size:12px;font-weight:700;padding:4px 9px;margin:0 5px 5px 0">Nízká</span>
-             </div>
-           </td>
-           <td valign="middle" align="right" class="em-hide" style="white-space:nowrap;padding-left:12px"><a class="em-link" href="https://tasks.zichmichal.cz/?task=t3" style="display:inline-block;background:#eef2ff;color:#4338ca;border-radius:10px;padding:8px 12px;font-size:12px;font-weight:800;text-decoration:none">Otevřít</a></td>
-         </tr></table>
-       </td></tr>
-       <tr><td style="padding:12px 16px;border-top:1px solid #eef0f4;text-align:center"><a class="em-link" href="https://tasks.zichmichal.cz" style="color:#4f46e5;font-size:12.5px;font-weight:700;text-decoration:none">Zobrazit další 3 po termínu →</a></td></tr>
-     </table>
-
-     <!-- DNES -->
-     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:22px"><tr>
-       <td style="font-size:13px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#18181b"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#f59e0b;vertical-align:middle;margin-right:8px"></span>Splatné dnes</td>
-       <td align="right" style="font-size:12px;font-weight:800;color:#b54708"><span style="background:#fef0c7;border:1px solid #fedf89;border-radius:999px;padding:2px 9px">1</span></td>
+     <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-top:24px"><tr>
+       <td valign="middle" class="em-title" style="color:#ffffff;font-size:28px;line-height:1.12;font-weight:800;letter-spacing:-.025em">Denní přehled úkolů</td><td valign="middle" style="padding-left:12px;white-space:nowrap"><span style="display:inline-block;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.26);border-radius:999px;color:#ffffff;font-size:13px;font-weight:800;padding:5px 12px">9 úkolů</span></td>
      </tr></table>
-     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:10px;border:1px solid #eef0f4;border-radius:14px">
-       <tr><td style="border-left:4px solid #f59e0b;padding:15px 16px">
-         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-           <td valign="top">
-             <a class="em-link" href="https://tasks.zichmichal.cz/?task=t4" style="display:block;font-size:15px;font-weight:800;color:#18181b;letter-spacing:-.01em;text-decoration:none">Zkontrolovat newsletter OCM</a>
-             <div style="margin-top:5px;color:#667085;font-size:13px;line-height:1.45">Projít texty, odkazy a zobrazení na mobilu před odesláním.</div>
-             <div style="margin-top:10px">
-               <span style="display:inline-block;background:#f4f5f7;border:1px solid #e7e7ea;border-radius:999px;color:#475467;font-size:12px;font-weight:600;padding:4px 9px;margin:0 5px 5px 0">Avenier Web</span>
-               <span style="display:inline-block;background:#fffaeb;border:1px solid #fedf89;border-radius:999px;color:#b54708;font-size:12px;font-weight:700;padding:4px 9px;margin:0 5px 5px 0">Dnes</span>
-             </div>
-           </td>
-           <td valign="middle" align="right" class="em-hide" style="white-space:nowrap;padding-left:12px"><a class="em-link" href="https://tasks.zichmichal.cz/?task=t4" style="display:inline-block;background:#eef2ff;color:#4338ca;border-radius:10px;padding:8px 12px;font-size:12px;font-weight:800;text-decoration:none">Otevřít</a></td>
-         </tr></table>
-       </td></tr>
-     </table>
-
-     <!-- BLÍŽÍ SE -->
-     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:22px"><tr>
-       <td style="font-size:13px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#18181b"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#22c55e;vertical-align:middle;margin-right:8px"></span>Blíží se termín</td>
-       <td align="right" style="font-size:12px;font-weight:800;color:#15803d"><span style="background:#dcfce7;border:1px solid #bbf7d0;border-radius:999px;padding:2px 9px">2</span></td>
+     <div style="margin-top:9px;color:rgba(255,255,255,.86);font-size:14px;line-height:1.55;max-width:430px">Co už hoří, co je potřeba dnes a co se blíží v dalších dnech.</div>
+     
+     <table class="em-desk-stats" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:22px"><tr><td width="33%" valign="top" style="padding-right:5px">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.22);border-radius:14px"><tr><td style="padding:15px 17px">
+        <div style="color:#ffffff;font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#ef4444;vertical-align:middle;margin-right:7px"></span>Po termínu</div>
+        <div style="margin-top:9px;color:#ffffff;font-size:42px;line-height:1;font-weight:900;letter-spacing:-.045em">6</div>
+      </td></tr></table>
+    </td><td width="33%" valign="top" style="padding:0 3px">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.22);border-radius:14px"><tr><td style="padding:15px 17px">
+        <div style="color:#ffffff;font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#f59e0b;vertical-align:middle;margin-right:7px"></span>Dnes</div>
+        <div style="margin-top:9px;color:#ffffff;font-size:42px;line-height:1;font-weight:900;letter-spacing:-.045em">1</div>
+      </td></tr></table>
+    </td><td width="33%" valign="top" style="padding-left:5px">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.22);border-radius:14px"><tr><td style="padding:15px 17px">
+        <div style="color:#ffffff;font-size:12px;font-weight:800;letter-spacing:.04em;text-transform:uppercase"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#22c55e;vertical-align:middle;margin-right:7px"></span>Blíží se</div>
+        <div style="margin-top:9px;color:#ffffff;font-size:42px;line-height:1;font-weight:900;letter-spacing:-.045em">2</div>
+      </td></tr></table>
+    </td></tr></table><div class="em-mob-stats" style="margin-top:16px;color:#ffffff;font-size:13px;font-weight:700"><span style="white-space:nowrap"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#ef4444;vertical-align:middle;margin-right:6px"></span>6&nbsp;<span style="color:rgba(255,255,255,.82);font-weight:600">po termínu</span></span><span style="color:rgba(255,255,255,.45);padding:0 7px">·</span><span style="white-space:nowrap"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#f59e0b;vertical-align:middle;margin-right:6px"></span>1&nbsp;<span style="color:rgba(255,255,255,.82);font-weight:600">dnes</span></span><span style="color:rgba(255,255,255,.45);padding:0 7px">·</span><span style="white-space:nowrap"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;vertical-align:middle;margin-right:6px"></span>2&nbsp;<span style="color:rgba(255,255,255,.82);font-weight:600">blíží se</span></span></div>
+   </td></tr></table>
+  </td></tr><tr><td bgcolor="#ffffff" class="em-pad em-card em-bd" style="background:#ffffff;border-left:1px solid #e7e7ea;border-right:1px solid #e7e7ea;padding:24px 30px"><table role="presentation" class="em-soft em-bd" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f8fafc;border:1px solid #eef0f4;border-radius:14px"><tr><td class="em-muted" style="padding:14px 16px;color:#667085;font-size:13.5px;line-height:1.55">Ahoj Michale, tady je stručný přehled úkolů, které potřebují pozornost — nejdřív po termínu, pak dnešní a blížící se.</td></tr></table><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:22px"><tr>
+     <td class="em-strong" style="font-size:13px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#18181b"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#ef4444;vertical-align:middle;margin-right:8px"></span>Po termínu</td><td align="right" style="font-size:12px;font-weight:800;color:#b42318"><span style="background:#fee4e2;border:1px solid #fecdca;border-radius:999px;padding:2px 9px">6</span></td>
+   </tr></table>
+   <table role="presentation" class="em-bd" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:10px;border:1px solid #eef0f4;border-radius:14px"><tr><td style="border-left:4px solid #ef4444;padding:15px 16px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+      <td valign="top">
+        <a class="em-link em-strong" href="https://tasks.zichmichal.cz/?task=t1" style="display:block;font-size:15px;font-weight:800;color:#18181b;letter-spacing:-.01em;text-decoration:none">AI odpovědi na e-maily</a>
+        <div class="em-muted" style="margin-top:5px;color:#667085;font-size:13px;line-height:1.45">Propojit s linkou předpřipravené odpovědi a sjednotit tón.</div>
+        <div style="margin-top:10px"><span style="display:inline-block;background:#f4f5f7;border:1px solid #e7e7ea;border-radius:999px;color:#475467;font-size:12px;font-weight:600;padding:4px 9px;margin:0 5px 5px 0">Projekty OC</span><span style="display:inline-block;background:#fff1f0;border:1px solid #ffd0cc;border-radius:999px;color:#b42318;font-size:12px;font-weight:700;padding:4px 9px;margin:0 5px 5px 0">6 dní po termínu</span></div>
+      </td>
+      <td valign="middle" align="right" class="em-hide" style="white-space:nowrap;padding-left:12px"><a class="em-link" href="https://tasks.zichmichal.cz/?task=t1" style="display:inline-block;background:#eef2ff;color:#4338ca;border-radius:10px;padding:8px 12px;font-size:12px;font-weight:800;text-decoration:none">Otevřít</a></td>
+    </tr></table>
+  </td></tr><tr><td style="border-left:4px solid #ef4444;padding:15px 16px;border-top:1px solid #eef0f4;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+      <td valign="top">
+        <a class="em-link em-strong" href="https://tasks.zichmichal.cz/?task=t2" style="display:block;font-size:15px;font-weight:800;color:#18181b;letter-spacing:-.01em;text-decoration:none">Spolupráce: Cestujzababku.cz</a>
+        <div class="em-muted" style="margin-top:5px;color:#667085;font-size:13px;line-height:1.45">Rozjedeme spolupráci? Čekáme na odpověď partnera.</div>
+        <div style="margin-top:10px"><span style="display:inline-block;background:#f4f5f7;border:1px solid #e7e7ea;border-radius:999px;color:#475467;font-size:12px;font-weight:600;padding:4px 9px;margin:0 5px 5px 0">Spolupráce</span><span style="display:inline-block;background:#fff1f0;border:1px solid #ffd0cc;border-radius:999px;color:#b42318;font-size:12px;font-weight:700;padding:4px 9px;margin:0 5px 5px 0">4 dny po termínu</span></div>
+      </td>
+      <td valign="middle" align="right" class="em-hide" style="white-space:nowrap;padding-left:12px"><a class="em-link" href="https://tasks.zichmichal.cz/?task=t2" style="display:inline-block;background:#eef2ff;color:#4338ca;border-radius:10px;padding:8px 12px;font-size:12px;font-weight:800;text-decoration:none">Otevřít</a></td>
+    </tr></table>
+  </td></tr><tr><td style="border-left:4px solid #ef4444;padding:15px 16px;border-top:1px solid #eef0f4;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+      <td valign="top">
+        <a class="em-link em-strong" href="https://tasks.zichmichal.cz/?task=t3" style="display:block;font-size:15px;font-weight:800;color:#18181b;letter-spacing:-.01em;text-decoration:none">Vytvořit medailonek</a>
+        <div class="em-muted" style="margin-top:5px;color:#667085;font-size:13px;line-height:1.45">Scénář, harmonogram natáčení a seznam rekvizit.</div>
+        <div style="margin-top:10px"><span style="display:inline-block;background:#f4f5f7;border:1px solid #e7e7ea;border-radius:999px;color:#475467;font-size:12px;font-weight:600;padding:4px 9px;margin:0 5px 5px 0">Videomedailonky</span><span style="display:inline-block;background:#fff1f0;border:1px solid #ffd0cc;border-radius:999px;color:#b42318;font-size:12px;font-weight:700;padding:4px 9px;margin:0 5px 5px 0">2 dny po termínu</span><span style="display:inline-block;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:999px;color:#15803d;font-size:12px;font-weight:700;padding:4px 9px;margin:0 5px 5px 0">Nízká</span></div>
+      </td>
+      <td valign="middle" align="right" class="em-hide" style="white-space:nowrap;padding-left:12px"><a class="em-link" href="https://tasks.zichmichal.cz/?task=t3" style="display:inline-block;background:#eef2ff;color:#4338ca;border-radius:10px;padding:8px 12px;font-size:12px;font-weight:800;text-decoration:none">Otevřít</a></td>
+    </tr></table>
+  </td></tr><tr><td style="padding:12px 16px;border-top:1px solid #eef0f4;text-align:center"><a class="em-link" href="https://tasks.zichmichal.cz" style="color:#4f46e5;font-size:12.5px;font-weight:700;text-decoration:none">Zobrazit další 3 po termínu →</a></td></tr></table><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:22px"><tr>
+     <td class="em-strong" style="font-size:13px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#18181b"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#f59e0b;vertical-align:middle;margin-right:8px"></span>Splatné dnes</td><td align="right" style="font-size:12px;font-weight:800;color:#b54708"><span style="background:#fef0c7;border:1px solid #fedf89;border-radius:999px;padding:2px 9px">1</span></td>
+   </tr></table>
+   <table role="presentation" class="em-bd" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:10px;border:1px solid #eef0f4;border-radius:14px"><tr><td style="border-left:4px solid #f59e0b;padding:15px 16px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+      <td valign="top">
+        <a class="em-link em-strong" href="https://tasks.zichmichal.cz/?task=t4" style="display:block;font-size:15px;font-weight:800;color:#18181b;letter-spacing:-.01em;text-decoration:none">Zkontrolovat newsletter OCM</a>
+        <div class="em-muted" style="margin-top:5px;color:#667085;font-size:13px;line-height:1.45">Projít texty, odkazy a zobrazení na mobilu před odesláním.</div>
+        <div style="margin-top:10px"><span style="display:inline-block;background:#f4f5f7;border:1px solid #e7e7ea;border-radius:999px;color:#475467;font-size:12px;font-weight:600;padding:4px 9px;margin:0 5px 5px 0">Avenier Web</span><span style="display:inline-block;background:#fffaeb;border:1px solid #fedf89;border-radius:999px;color:#b54708;font-size:12px;font-weight:700;padding:4px 9px;margin:0 5px 5px 0">Dnes</span></div>
+      </td>
+      <td valign="middle" align="right" class="em-hide" style="white-space:nowrap;padding-left:12px"><a class="em-link" href="https://tasks.zichmichal.cz/?task=t4" style="display:inline-block;background:#eef2ff;color:#4338ca;border-radius:10px;padding:8px 12px;font-size:12px;font-weight:800;text-decoration:none">Otevřít</a></td>
+    </tr></table>
+  </td></tr></table><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:22px"><tr>
+     <td class="em-strong" style="font-size:13px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#18181b"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#22c55e;vertical-align:middle;margin-right:8px"></span>Blíží se termín</td><td align="right" style="font-size:12px;font-weight:800;color:#15803d"><span style="background:#dcfce7;border:1px solid #bbf7d0;border-radius:999px;padding:2px 9px">2</span></td>
+   </tr></table>
+   <table role="presentation" class="em-bd" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:10px;border:1px solid #eef0f4;border-radius:14px"><tr><td style="border-left:4px solid #22c55e;padding:15px 16px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+      <td valign="top">
+        <a class="em-link em-strong" href="https://tasks.zichmichal.cz/?task=t5" style="display:block;font-size:15px;font-weight:800;color:#18181b;letter-spacing:-.01em;text-decoration:none">Fotky z konference</a>
+        <div class="em-muted" style="margin-top:5px;color:#667085;font-size:13px;line-height:1.45">Vybrat fotky a doupravit je.</div>
+        <div style="margin-top:10px"><span style="display:inline-block;background:#f4f5f7;border:1px solid #e7e7ea;border-radius:999px;color:#475467;font-size:12px;font-weight:600;padding:4px 9px;margin:0 5px 5px 0">Ad hoc</span><span style="display:inline-block;background:#f4f5f7;border:1px solid #e7e7ea;border-radius:999px;color:#475467;font-size:12px;font-weight:600;padding:4px 9px;margin:0 5px 5px 0">Zítra</span><span style="display:inline-block;background:#fffaeb;border:1px solid #fedf89;border-radius:999px;color:#b54708;font-size:12px;font-weight:700;padding:4px 9px;margin:0 5px 5px 0">Střední</span></div>
+      </td>
+      <td valign="middle" align="right" class="em-hide" style="white-space:nowrap;padding-left:12px"><a class="em-link" href="https://tasks.zichmichal.cz/?task=t5" style="display:inline-block;background:#eef2ff;color:#4338ca;border-radius:10px;padding:8px 12px;font-size:12px;font-weight:800;text-decoration:none">Otevřít</a></td>
+    </tr></table>
+  </td></tr><tr><td style="border-left:4px solid #22c55e;padding:15px 16px;border-top:1px solid #eef0f4;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+      <td valign="top">
+        <a class="em-link em-strong" href="https://tasks.zichmichal.cz/?task=t6" style="display:block;font-size:15px;font-weight:800;color:#18181b;letter-spacing:-.01em;text-decoration:none">Smazat fotky z článku</a>
+        <div class="em-muted" style="margin-top:5px;color:#667085;font-size:13px;line-height:1.45">Ponechat jen finální vizuály.</div>
+        <div style="margin-top:10px"><span style="display:inline-block;background:#f4f5f7;border:1px solid #e7e7ea;border-radius:999px;color:#475467;font-size:12px;font-weight:600;padding:4px 9px;margin:0 5px 5px 0">Ad hoc</span><span style="display:inline-block;background:#f4f5f7;border:1px solid #e7e7ea;border-radius:999px;color:#475467;font-size:12px;font-weight:600;padding:4px 9px;margin:0 5px 5px 0">Za 3 dny</span></div>
+      </td>
+      <td valign="middle" align="right" class="em-hide" style="white-space:nowrap;padding-left:12px"><a class="em-link" href="https://tasks.zichmichal.cz/?task=t6" style="display:inline-block;background:#eef2ff;color:#4338ca;border-radius:10px;padding:8px 12px;font-size:12px;font-weight:800;text-decoration:none">Otevřít</a></td>
+    </tr></table>
+  </td></tr></table><table role="presentation" class="em-soft em-bd" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:24px;background:#f6f6ff;border:1px solid #e6e6fb;border-radius:16px"><tr><td style="padding:18px 20px">
+     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+       <td valign="middle">
+         <div class="em-strong" style="font-size:16px;font-weight:800;color:#18181b;letter-spacing:-.01em">Chceš to rovnou odbavit?</div>
+         <div class="em-muted" style="margin-top:4px;color:#667085;font-size:13px;line-height:1.5">Otevři Zentero a projdi úkoly podle termínu, priority nebo projektu.</div>
+       </td>
+       <td valign="middle" align="right" class="em-btn-full" style="padding-left:14px">
+         <a class="em-link" href="https://tasks.zichmichal.cz" style="display:inline-block;background:#4f46e5;color:#ffffff;border-radius:12px;padding:13px 18px;font-size:14px;font-weight:800;text-decoration:none;white-space:nowrap">Otevřít aplikaci</a>
+       </td>
      </tr></table>
-     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:10px;border:1px solid #eef0f4;border-radius:14px">
-       <tr><td style="border-left:4px solid #22c55e;padding:15px 16px">
-         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-           <td valign="top">
-             <a class="em-link" href="https://tasks.zichmichal.cz/?task=t5" style="display:block;font-size:15px;font-weight:800;color:#18181b;letter-spacing:-.01em;text-decoration:none">Fotky z konference</a>
-             <div style="margin-top:5px;color:#667085;font-size:13px;line-height:1.45">Vybrat fotky a doupravit je.</div>
-             <div style="margin-top:10px">
-               <span style="display:inline-block;background:#f4f5f7;border:1px solid #e7e7ea;border-radius:999px;color:#475467;font-size:12px;font-weight:600;padding:4px 9px;margin:0 5px 5px 0">Ad hoc</span>
-               <span style="display:inline-block;background:#f4f5f7;border:1px solid #e7e7ea;border-radius:999px;color:#475467;font-size:12px;font-weight:600;padding:4px 9px;margin:0 5px 5px 0">Zítra</span>
-               <span style="display:inline-block;background:#fffaeb;border:1px solid #fedf89;border-radius:999px;color:#b54708;font-size:12px;font-weight:700;padding:4px 9px;margin:0 5px 5px 0">Střední</span>
-             </div>
-           </td>
-           <td valign="middle" align="right" class="em-hide" style="white-space:nowrap;padding-left:12px"><a class="em-link" href="https://tasks.zichmichal.cz/?task=t5" style="display:inline-block;background:#eef2ff;color:#4338ca;border-radius:10px;padding:8px 12px;font-size:12px;font-weight:800;text-decoration:none">Otevřít</a></td>
-         </tr></table>
-       </td></tr>
-       <tr><td style="border-left:4px solid #22c55e;padding:15px 16px;border-top:1px solid #eef0f4">
-         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-           <td valign="top">
-             <a class="em-link" href="https://tasks.zichmichal.cz/?task=t6" style="display:block;font-size:15px;font-weight:800;color:#18181b;letter-spacing:-.01em;text-decoration:none">Smazat fotky z článku</a>
-             <div style="margin-top:5px;color:#667085;font-size:13px;line-height:1.45">Ponechat jen finální vizuály.</div>
-             <div style="margin-top:10px">
-               <span style="display:inline-block;background:#f4f5f7;border:1px solid #e7e7ea;border-radius:999px;color:#475467;font-size:12px;font-weight:600;padding:4px 9px;margin:0 5px 5px 0">Ad hoc</span>
-               <span style="display:inline-block;background:#f4f5f7;border:1px solid #e7e7ea;border-radius:999px;color:#475467;font-size:12px;font-weight:600;padding:4px 9px;margin:0 5px 5px 0">Za 3 dny</span>
-             </div>
-           </td>
-           <td valign="middle" align="right" class="em-hide" style="white-space:nowrap;padding-left:12px"><a class="em-link" href="https://tasks.zichmichal.cz/?task=t6" style="display:inline-block;background:#eef2ff;color:#4338ca;border-radius:10px;padding:8px 12px;font-size:12px;font-weight:800;text-decoration:none">Otevřít</a></td>
-         </tr></table>
-       </td></tr>
-     </table>
-
-     <!-- CTA -->
-     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:24px;background:#f6f6ff;border:1px solid #e6e6fb;border-radius:16px"><tr><td style="padding:18px 20px">
-       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-         <td valign="middle">
-           <div style="font-size:16px;font-weight:800;color:#18181b;letter-spacing:-.01em">Chceš to rovnou odbavit?</div>
-           <div style="margin-top:4px;color:#667085;font-size:13px;line-height:1.5">Otevři Zentero a projdi úkoly podle termínu, priority nebo projektu.</div>
-         </td>
-         <td valign="middle" align="right" class="em-btn-full" style="padding-left:14px">
-           <a class="em-link" href="https://tasks.zichmichal.cz" style="display:inline-block;background:#4f46e5;color:#ffffff;border-radius:12px;padding:13px 18px;font-size:14px;font-weight:800;text-decoration:none;white-space:nowrap">Otevřít aplikaci</a>
-         </td>
-       </tr></table>
-     </td></tr></table>
-
-   </td></tr>
-
-   <!-- ░░ FOOTER ░░ -->
-   <tr><td style="height:5px;line-height:5px;font-size:0;background:#4f46e5;background:linear-gradient(90deg,#2563eb,#7c3aed)">&nbsp;</td></tr>
-   <tr><td bgcolor="#ffffff" class="em-pad" style="background:#ffffff;border:1px solid #e7e7ea;border-top:0;border-radius:0 0 20px 20px;padding:20px 30px 22px">
+   </td></tr></table></td></tr><tr><td style="height:5px;line-height:5px;font-size:0;background:#4f46e5;background:linear-gradient(90deg,#2563eb,#7c3aed)">&nbsp;</td></tr>
+   <tr><td bgcolor="#ffffff" class="em-pad em-card em-bd" style="background:#ffffff;border:1px solid #e7e7ea;border-top:0;border-radius:0 0 20px 20px;padding:20px 30px 22px">
      <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
        <td valign="middle" style="width:30px;height:30px;background:#4f46e5;border-radius:9px;text-align:center;color:#fff;font-weight:800;font-size:14px;line-height:30px">Z</td>
-       <td valign="middle" style="padding-left:9px;font-size:13px;font-weight:800;color:#1f2937">Zentero</td>
+       <td valign="middle" class="em-strong" style="padding-left:9px;font-size:13px;font-weight:800;color:#1f2937">Zentero</td>
      </tr></table>
-     <div style="margin-top:11px;color:#667085;font-size:12px;line-height:1.55">
-       Automatický denní souhrn ze Zentero. Čas přehledu, projekty v e-mailu i typy upozornění upravíš v
-       <a href="https://tasks.zichmichal.cz" style="color:#4f46e5;text-decoration:none">nastavení notifikací</a>.
-     </div>
-     <div style="margin-top:13px;color:#98a2b3;font-size:11px;line-height:1.5">
-       Nechceš už tyto e-maily dostávat? <a href="https://tasks.zichmichal.cz" style="color:#667085;text-decoration:underline">Odhlásit denní přehled</a> · tasks.zichmichal.cz
-     </div>
+     <div class="em-muted" style="margin-top:11px;color:#667085;font-size:12px;line-height:1.55">Automatický denní souhrn ze Zentero. Čas přehledu, projekty v e-mailu i typy upozornění upravíš v <a href="https://tasks.zichmichal.cz" style="color:#4f46e5;text-decoration:none">nastavení notifikací</a>.</div>
+     <div class="em-muted" style="margin-top:13px;color:#98a2b3;font-size:11px;line-height:1.5">Nechceš už tyto e-maily dostávat? <a href="https://tasks.zichmichal.cz" style="color:#667085;text-decoration:underline">Odhlásit denní přehled</a> · tasks.zichmichal.cz</div>
    </td></tr>
-
   </table>
  </td></tr>
 </table>
