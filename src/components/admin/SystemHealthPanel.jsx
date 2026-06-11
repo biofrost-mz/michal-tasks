@@ -94,9 +94,9 @@ function HealthRow({ title, value, status = "idle", detail }) {
   );
 }
 
-export default function SystemHealthPanel() {
+export default function SystemHealthPanel({ embedded = false }) {
   const toast = useToast();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(embedded);
   const [loading, setLoading] = useState(false);
   const [testingAi, setTestingAi] = useState(false);
   const [resetting, setResetting] = useState(false);
@@ -301,6 +301,70 @@ export default function SystemHealthPanel() {
 
   const overallMeta = STATUS_META[overallStatus];
 
+  const content = (
+    <div style={{
+      borderRadius: embedded ? "var(--r-lg)" : 18,
+      border: "1px solid var(--border-soft)",
+      background: embedded ? "var(--surface)" : "color-mix(in srgb, var(--surface) 98%, transparent)",
+      boxShadow: embedded ? "none" : "0 22px 70px rgba(0,0,0,.34)",
+      backdropFilter: embedded ? "none" : "blur(18px)",
+      WebkitBackdropFilter: embedded ? "none" : "blur(18px)",
+      overflow: "hidden",
+    }}>
+      <div style={{ padding: "16px 18px", borderBottom: "1px solid var(--border-soft)", display: "flex", justifyContent: "space-between", gap: 16 }}>
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+            <span style={{ fontSize: 16 }}>🩺</span>
+            <h3 style={{ margin: 0, color: "var(--text)", fontSize: 16, fontWeight: 850 }}>Systémový health check</h3>
+            <span style={{ color: overallMeta.color, background: overallMeta.soft, border: "1px solid var(--border-soft)", borderRadius: 999, padding: "3px 8px", fontFamily: "var(--mono)", fontSize: 11, fontWeight: 850 }}>
+              {overallMeta.label}
+            </span>
+          </div>
+          <p style={{ margin: "5px 0 0", color: "var(--text-3)", fontSize: 12.5 }}>
+            Rychlý přehled dostupnosti Supabase, PWA, lokálních a produkčních chyb. AI test se spouští ručně.
+          </p>
+        </div>
+        {!embedded && (
+          <button type="button" onClick={() => setOpen(false)} style={{ border: 0, background: "transparent", color: "var(--text-3)", fontSize: 22, lineHeight: 1 }} aria-label="Zavřít health check">
+            ×
+          </button>
+        )}
+      </div>
+
+      <div style={{ padding: "12px 18px", borderBottom: "1px solid var(--border-soft)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <div style={{ color: "var(--text-3)", fontSize: 11.5, fontFamily: "var(--mono)" }}>
+          {lastCheckedAt ? `Poslední kontrola: ${formatDateTime(lastCheckedAt)}` : "Kontrola zatím neproběhla"}
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+          <button type="button" onClick={() => runHealthCheck()} disabled={loading} style={smallButtonStyle}>
+            {loading ? "Kontroluji…" : "Obnovit"}
+          </button>
+          <button type="button" onClick={testAi} disabled={testingAi} style={{ ...smallButtonStyle, color: "var(--accent)", background: "var(--accent-soft)" }}>
+            {testingAi ? "Testuji AI…" : "Testovat AI"}
+          </button>
+          <button type="button" onClick={() => resetCacheAndReload()} disabled={resetting} style={smallButtonStyle}>
+            {resetting ? "Čistím…" : "Vyčistit cache"}
+          </button>
+          <button type="button" onClick={() => resetCacheAndReload({ safeMode: true })} disabled={resetting} style={{ ...smallButtonStyle, color: "var(--orange)", background: "var(--orange-soft)" }}>
+            Safe reload
+          </button>
+        </div>
+      </div>
+
+      <div style={{ padding: 14, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 10, maxHeight: embedded ? "none" : "calc(100vh - 260px)", overflowY: embedded ? "visible" : "auto" }}>
+        <HealthRow title="Verze aplikace" value={health.appVersion.value} status={health.appVersion.status} detail={health.appVersion.detail} />
+        <HealthRow title="Supabase DB" value={health.db.latency !== null ? `${health.db.latency} ms` : "—"} status={health.db.status} detail={health.db.detail} />
+        <HealthRow title="AI Edge Function" value={health.ai.latency !== null ? `${health.ai.latency} ms` : "ruční test"} status={health.ai.status} detail={health.ai.detail} />
+        <HealthRow title="Produkční chyby 24 h" value={String(health.remoteErrors24h.value)} status={health.remoteErrors24h.status} detail={health.remoteErrors24h.detail} />
+        <HealthRow title="Produkční chyby 7 dní" value={String(health.remoteErrors7d.value)} status={health.remoteErrors7d.status} detail={health.remoteErrors7d.detail} />
+        <HealthRow title="Lokální chyby" value={String(health.localErrors.value)} status={health.localErrors.status} detail={health.localErrors.detail} />
+        <HealthRow title="PWA Service Worker" value={health.pwa.value} status={health.pwa.status} detail={health.pwa.detail} />
+      </div>
+    </div>
+  );
+
+  if (embedded) return content;
+
   return (
     <div style={{
       position: "fixed",
@@ -335,65 +399,7 @@ export default function SystemHealthPanel() {
           <span style={{ fontSize: 13, fontWeight: 850 }}>Health check</span>
           <span style={{ color: overallMeta.color, fontFamily: "var(--mono)", fontSize: 11.5, fontWeight: 850 }}>{overallMeta.label}</span>
         </button>
-      ) : (
-        <div style={{
-          borderRadius: 18,
-          border: "1px solid var(--border-soft)",
-          background: "color-mix(in srgb, var(--surface) 98%, transparent)",
-          boxShadow: "0 22px 70px rgba(0,0,0,.34)",
-          backdropFilter: "blur(18px)",
-          WebkitBackdropFilter: "blur(18px)",
-          overflow: "hidden",
-        }}>
-          <div style={{ padding: "16px 18px", borderBottom: "1px solid var(--border-soft)", display: "flex", justifyContent: "space-between", gap: 16 }}>
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-                <span style={{ fontSize: 16 }}>🩺</span>
-                <h3 style={{ margin: 0, color: "var(--text)", fontSize: 16, fontWeight: 850 }}>Systémový health check</h3>
-                <span style={{ color: overallMeta.color, background: overallMeta.soft, border: "1px solid var(--border-soft)", borderRadius: 999, padding: "3px 8px", fontFamily: "var(--mono)", fontSize: 11, fontWeight: 850 }}>
-                  {overallMeta.label}
-                </span>
-              </div>
-              <p style={{ margin: "5px 0 0", color: "var(--text-3)", fontSize: 12.5 }}>
-                Rychlý přehled dostupnosti Supabase, PWA, lokálních a produkčních chyb. AI test se spouští ručně.
-              </p>
-            </div>
-            <button type="button" onClick={() => setOpen(false)} style={{ border: 0, background: "transparent", color: "var(--text-3)", fontSize: 22, lineHeight: 1 }} aria-label="Zavřít health check">
-              ×
-            </button>
-          </div>
-
-          <div style={{ padding: "12px 18px", borderBottom: "1px solid var(--border-soft)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-            <div style={{ color: "var(--text-3)", fontSize: 11.5, fontFamily: "var(--mono)" }}>
-              {lastCheckedAt ? `Poslední kontrola: ${formatDateTime(lastCheckedAt)}` : "Kontrola zatím neproběhla"}
-            </div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-              <button type="button" onClick={() => runHealthCheck()} disabled={loading} style={smallButtonStyle}>
-                {loading ? "Kontroluji…" : "Obnovit"}
-              </button>
-              <button type="button" onClick={testAi} disabled={testingAi} style={{ ...smallButtonStyle, color: "var(--accent)", background: "var(--accent-soft)" }}>
-                {testingAi ? "Testuji AI…" : "Testovat AI"}
-              </button>
-              <button type="button" onClick={() => resetCacheAndReload()} disabled={resetting} style={smallButtonStyle}>
-                {resetting ? "Čistím…" : "Vyčistit cache"}
-              </button>
-              <button type="button" onClick={() => resetCacheAndReload({ safeMode: true })} disabled={resetting} style={{ ...smallButtonStyle, color: "var(--orange)", background: "var(--orange-soft)" }}>
-                Safe reload
-              </button>
-            </div>
-          </div>
-
-          <div style={{ padding: 14, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 10, maxHeight: "calc(100vh - 260px)", overflowY: "auto" }}>
-            <HealthRow title="Verze aplikace" value={health.appVersion.value} status={health.appVersion.status} detail={health.appVersion.detail} />
-            <HealthRow title="Supabase DB" value={health.db.latency !== null ? `${health.db.latency} ms` : "—"} status={health.db.status} detail={health.db.detail} />
-            <HealthRow title="AI Edge Function" value={health.ai.latency !== null ? `${health.ai.latency} ms` : "ruční test"} status={health.ai.status} detail={health.ai.detail} />
-            <HealthRow title="Produkční chyby 24 h" value={String(health.remoteErrors24h.value)} status={health.remoteErrors24h.status} detail={health.remoteErrors24h.detail} />
-            <HealthRow title="Produkční chyby 7 dní" value={String(health.remoteErrors7d.value)} status={health.remoteErrors7d.status} detail={health.remoteErrors7d.detail} />
-            <HealthRow title="Lokální chyby" value={String(health.localErrors.value)} status={health.localErrors.status} detail={health.localErrors.detail} />
-            <HealthRow title="PWA Service Worker" value={health.pwa.value} status={health.pwa.status} detail={health.pwa.detail} />
-          </div>
-        </div>
-      )}
+      ) : content}
     </div>
   );
 }
