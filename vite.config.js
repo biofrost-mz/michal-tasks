@@ -14,6 +14,7 @@ export default defineConfig({
       srcDir: 'src',
       filename: 'sw.js',
       injectManifest: {
+        rollupFormat: 'iife',
         // Keep each deployed app shell paired with the hashed JS/CSS assets it references.
         // Without JS precaching, a cached index.html can point to a chunk already removed by hosting.
         globPatterns: ['index.html', '**/*.{js,css,svg,json,ico,png,woff2}'],

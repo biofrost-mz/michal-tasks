@@ -24,6 +24,7 @@ const TagsPage = lazy(() => import("./pages/TagsPage.jsx"));
 const WorkspaceSettingsPage = lazy(() => import("./pages/WorkspaceSettingsPage.jsx"));
 const QuickTodosPage = lazy(() => import("./pages/QuickTodosPage.jsx"));
 const AdminPage = lazy(() => import("./pages/AdminPage.jsx"));
+const AdminUsersPage = lazy(() => import("./pages/AdminUsersPage.jsx"));
 
 function OfflineBanner() {
   const [online, setOnline] = useState(() => (typeof navigator === "undefined" ? true : navigator.onLine));
@@ -229,7 +230,7 @@ function AppShell() {
   }, [loaded]);
 
   useEffect(() => {
-    if (page === "admin" && !isSystemAdmin) {
+    if ((page === "admin" || page === "admin-users") && !isSystemAdmin) {
       setPage("dashboard");
     }
   }, [page, isSystemAdmin, setPage]);
@@ -375,6 +376,7 @@ function AppShell() {
                 {page === "user-profile" && <PageErrorBoundary label="Nastavení"><WorkspaceSettingsPage initialTab="account" /></PageErrorBoundary>}
                 {page === "quick-todos" && <PageErrorBoundary label="Rychlý seznam"><QuickTodosPage /></PageErrorBoundary>}
                 {page === "admin" && isSystemAdmin && <PageErrorBoundary label="Administrace"><AdminPage /></PageErrorBoundary>}
+                {page === "admin-users" && isSystemAdmin && <PageErrorBoundary label="Uživatelé"><AdminUsersPage /></PageErrorBoundary>}
               </Suspense>
             </PageTransition>
           </main>

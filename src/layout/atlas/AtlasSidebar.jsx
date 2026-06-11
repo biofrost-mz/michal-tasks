@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { useApp } from "../../context/AppContext.jsx";
 import { useToast } from "../../components/Toast.jsx";
 import Icon from "../../components/Icon.jsx";
+import MZLogo from "../../components/MZLogo.jsx";
 import { projectColor } from "../../utils.js";
 
 const NAV = [
@@ -207,7 +208,7 @@ export default function AtlasSidebar({ collapsed, setCollapsed }) {
       </button>
 
       <div className="sb-brand" onClick={() => setPage("dashboard")} style={{ cursor: "pointer" }}>
-        <div className="sb-logo">Z</div>
+        <MZLogo size={32} style={{ boxShadow: "0 0 16px var(--accent-glow)" }} />
         <div className="sb-brand-text">
           <div className="sb-brand-name">Zentero</div>
           <div className="sb-brand-tag">personal OS · v2</div>

@@ -81,8 +81,8 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(data.title ?? 'Zentero', {
       body: data.body ?? 'Máš úkoly ke zpracování.',
-      icon: '/icon.svg',
-      badge: '/icon.svg',
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
       tag: data.tag ?? 'mt-push',
       data: { url: '/' },
     }),

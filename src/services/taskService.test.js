@@ -1,11 +1,9 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { normalizeTask, insertTask, updateTaskDB, syncTaskTags } from "./taskService.js";
+import { normalizeTask, insertTask, updateTaskDB } from "./taskService.js";
 
 // Mockujeme Supabase — testy ověřují logiku, ne síťová volání.
 const mockInsert = vi.fn();
 const mockUpdate = vi.fn();
-const mockDelete = vi.fn();
-const mockSelect = vi.fn();
 const mockEq = vi.fn();
 const mockIn = vi.fn();
 

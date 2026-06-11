@@ -1,35 +1,20 @@
 import React from 'react'
 
-export default function MZLogo({ size = 32, style = {} }) {
-  const id = "mzg";
+export default function MZLogo({ size = 32, style = {}, alt = "Zentero" }) {
   return (
-    <svg
+    <img
+      src="/brand-logo.png"
+      alt={alt}
       width={size}
       height={size}
-      viewBox="0 0 100 100"
-      xmlns="http://www.w3.org/2000/svg"
-      style={{ flexShrink: 0, borderRadius: "50%", ...style }}
-    >
-      <defs>
-        <radialGradient id={id} cx="44%" cy="36%" r="60%" gradientUnits="objectBoundingBox">
-          <stop offset="0%"   stopColor="#3dd4c5" />
-          <stop offset="28%"  stopColor="#1a9aaa" />
-          <stop offset="58%"  stopColor="#1060a0" />
-          <stop offset="100%" stopColor="#050912" />
-        </radialGradient>
-      </defs>
-      <circle cx="50" cy="50" r="50" fill={`url(#${id})`} />
-      <text
-        x="50" y="65"
-        fontFamily="var(--font-ui)"
-        fontWeight="800"
-        fontSize="38"
-        fill="white"
-        textAnchor="middle"
-        letterSpacing="-1"
-      >
-        MZ
-      </text>
-    </svg>
+      decoding="async"
+      style={{
+        flexShrink: 0,
+        borderRadius: Math.max(8, Math.round(size * 0.22)),
+        objectFit: "cover",
+        display: "block",
+        ...style,
+      }}
+    />
   );
 }

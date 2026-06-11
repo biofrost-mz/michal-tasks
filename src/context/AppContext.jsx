@@ -416,6 +416,7 @@ export function AppProvider({ children }) {
           {
             id: userId,
             email: userEmail,
+            last_seen_at: new Date().toISOString(),
             ...(userDisplayName ? { display_name: userDisplayName } : {})
           },
           { onConflict: "id", ignoreDuplicates: false }

@@ -127,6 +127,7 @@ export default function AdminPage() {
     workspaceMembers,
     activeWorkspaceId,
     isSystemAdmin,
+    setPage,
     addTask,
     restoreTask,
     restoreProject,
@@ -465,12 +466,24 @@ export default function AdminPage() {
       )}
 
       {activeTab === "users" && (
-        <Card title={`Členové aktuálního workspace (${workspaceMembers.length})`} subtitle="Týmové účty a role pro právě otevřený workspace. Globální adresář doporučuji oddělit jako samostatnou sekci mimo technický admin." icon="users">
-          <div style={{ display: "grid", gap: 10 }}>
-            {workspaceMembers.map((member, index) => <UserRow key={member.id || member.userId || index} member={member} />)}
-            {!workspaceMembers.length && <EmptyState title="Žádní členové" text="V aktuálním workspace nejsou načtení žádní členové." />}
-          </div>
-        </Card>
+        <div style={{ display: "grid", gap: 16 }}>
+          <Card
+            title="Globální správa uživatelů"
+            subtitle="Přehled všech registrovaných uživatelů aplikace, analytika aktivity a akce (zakázat, smazat, přidat do workspace)."
+            icon="shield"
+            action={
+              <SmallButton tone="accent" onClick={() => setPage("admin-users")}>
+                Otevřít správu →
+              </SmallButton>
+            }
+          />
+          <Card title={`Členové workspace (${workspaceMembers.length})`} subtitle="Uživatelé aktuálního workspace." icon="users">
+            <div style={{ display: "grid", gap: 10 }}>
+              {workspaceMembers.map((member, index) => <UserRow key={member.id || member.userId || index} member={member} />)}
+              {!workspaceMembers.length && <EmptyState title="Žádní členové" text="V aktuálním workspace nejsou načtení žádní členové." />}
+            </div>
+          </Card>
+        </div>
       )}
 
       {activeTab === "trash" && (

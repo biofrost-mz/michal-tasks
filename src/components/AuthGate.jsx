@@ -457,22 +457,13 @@ export default function AuthGate({ children }) {
                 text.style.textShadow = "none";
               }}
             >
-              <div style={{
-                width: "34px",
-                height: "34px",
-                background: "#fbbf24",
-                borderRadius: "8px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontWeight: "800",
-                color: "#000000",
-                fontSize: "19px",
-                boxShadow: "0 4px 14px rgba(251, 191, 36, 0.4)",
-                transition: "all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
-              }}>
-                Z
-              </div>
+              <MZLogo
+                size={34}
+                style={{
+                  boxShadow: "0 4px 14px rgba(251, 191, 36, 0.4)",
+                  transition: "all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+                }}
+              />
               <span style={{ fontSize: "20px", fontWeight: "850", letterSpacing: "1px", textTransform: "uppercase", transition: "all 0.3s ease" }}>
                 ZENTERO
               </span>
