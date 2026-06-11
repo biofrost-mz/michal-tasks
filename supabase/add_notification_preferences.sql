@@ -15,8 +15,11 @@ ALTER TABLE public.notification_preferences ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "notif_prefs_select_own" ON public.notification_preferences;
 CREATE POLICY "notif_prefs_select_own" ON public.notification_preferences
-  FOR SELECT USING (user_id = auth.uid());
+  FOR SELECT
+  USING (user_id = auth.uid());
 
 DROP POLICY IF EXISTS "notif_prefs_upsert_own" ON public.notification_preferences;
 CREATE POLICY "notif_prefs_upsert_own" ON public.notification_preferences
-  FOR ALL USING (user_id = auth.uid());
+  FOR ALL
+  USING (user_id = auth.uid())
+  WITH CHECK (user_id = auth.uid());
