@@ -4,19 +4,29 @@ import { useToast } from "../components/Toast.jsx";
 import Icon from "../components/Icon.jsx";
 import AiTestConsolePanel from "../components/admin/AiTestConsolePanel.jsx";
 import RemoteErrorLogsPanel from "../components/admin/RemoteErrorLogsPanel.jsx";
+import SystemHealthPanel from "../components/admin/SystemHealthPanel.jsx";
 import { APP_RELEASE_DATE, APP_VERSION } from "../appMeta.js";
 import { getErrorLogs, clearErrorLogs } from "../utils/errorLogger.js";
 import { supabase } from "../supabase.js";
 
 const TAB_DEFS = [
   { id: "overview", label: "Přehled & Statistiky", icon: "bar-chart-3" },
-  { id: "diagnostics", label: "Diagnostika systému", icon: "activity" },
-  { id: "ai", label: "AI konzole", icon: "sparkles" },
-  { id: "logs", label: "Logy & Bug report", icon: "file-warning" },
-  { id: "users", label: "Uživatelé", icon: "users" },
+  { id: "health", label: "Health check", icon: "activity", statusKey: "health" },
+  { id: "diagnostics", label: "Diagnostika systému", icon: "settings" },
+  { id: "ai", label: "AI konzole", icon: "sparkles", statusKey: "ai" },
+  { id: "production-errors", label: "Produkční chyby", icon: "server-crash", statusKey: "productionErrors" },
+  { id: "logs", label: "Logy & Bug report", icon: "file-warning", statusKey: "localLogs" },
+  { id: "users", label: "Členové týmu", icon: "users" },
   { id: "storage", label: "Úložiště", icon: "database" },
   { id: "trash", label: "Koš", icon: "trash-2" },
 ];
+
+const STATUS_COLORS = {
+  ok: "var(--green)",
+  warning: "var(--orange)",
+  error: "var(--red)",
+  neutral: "var(--text-3)",
+};
 
 function formatBytes(bytes) {
   if (!bytes || bytes < 0) return "0 B";
@@ -32,6 +42,10 @@ function formatDate(value) {
   } catch {
     return String(value);
   }
+}
+
+function sinceIso(hours) {
+  return new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
 }
 
 async function clearCachesAndReload() {
@@ -77,14 +91,30 @@ function SmallButton({ children, onClick, tone = "default", disabled = false }) 
   const color = tone === "danger" ? "var(--red)" : tone === "accent" ? "var(--accent)" : "var(--text-2)";
   const background = tone === "danger" ? "var(--red-soft)" : tone === "accent" ? "var(--accent-soft)" : "var(--bg-2)";
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      style={{ padding: "7px 10px", borderRadius: 9, border: "1px solid var(--border-soft)", background, color, fontSize: 12, fontWeight: 750, opacity: disabled ? 0.55 : 1 }}
-    >
+    <button type="button" onClick={onClick} disabled={disabled} style={{ padding: "7px 10px", borderRadius: 9, border: "1px solid var(--border-soft)", background, color, fontSize: 12, fontWeight: 750, opacity: disabled ? 0.55 : 1 }}>
       {children}
     </button>
+  );
+}
+
+function StatusDot({ status = "neutral" }) {
+  const color = STATUS_COLORS[status] || STATUS_COLORS.neutral;
+  return (
+    <span style={{ position: "relative", width: 9, height: 9, display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "0 0 auto" }}>
+      <span style={{ position: "absolute", inset: -4, borderRadius: "50%", background: color, opacity: status === "neutral" ? 0 : 0.16, animation: status === "neutral" ? "none" : "adminPulse 1.8s ease-out infinite" }} />
+      <span style={{ width: 8, height: 8, borderRadius: "50%", background: color, boxShadow: status === "neutral" ? "none" : `0 0 10px ${color}` }} />
+    </span>
+  );
+}
+
+function TabStatus({ status, value }) {
+  if (!status || value == null) return null;
+  const color = STATUS_COLORS[status] || STATUS_COLORS.neutral;
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "2px 6px", borderRadius: 999, border: "1px solid var(--border-soft)", background: "var(--bg-2)", color, fontFamily: "var(--mono)", fontSize: 10.5, fontWeight: 900 }}>
+      <StatusDot status={status} />
+      {value}
+    </span>
   );
 }
 
@@ -114,6 +144,8 @@ export default function AdminPage() {
   const [pinging, setPinging] = useState(false);
   const [swStatus, setSwStatus] = useState("Kontroluji…");
   const [storageSize, setStorageSize] = useState(0);
+  const [productionErrors24h, setProductionErrors24h] = useState(0);
+  const [productionErrorsStatus, setProductionErrorsStatus] = useState("neutral");
   const [bugTitle, setBugTitle] = useState("");
   const [bugArea, setBugArea] = useState("Dashboard");
   const [bugSeverity, setBugSeverity] = useState("Střední");
@@ -154,6 +186,26 @@ export default function AdminPage() {
       .then((registrations) => setSwStatus(registrations.length ? `Aktivní (${registrations.length} registrací)` : "Neregistrován"))
       .catch((error) => setSwStatus(`Chyba detekce: ${error.message}`));
   }, []);
+
+  const refreshProductionErrorStatus = useCallback(async () => {
+    try {
+      const { count, error } = await supabase
+        .from("app_error_logs")
+        .select("id", { count: "exact", head: true })
+        .gte("created_at", sinceIso(24));
+      if (error) throw error;
+      const value = count || 0;
+      setProductionErrors24h(value);
+      setProductionErrorsStatus(value === 0 ? "ok" : value <= 3 ? "warning" : "error");
+    } catch (error) {
+      console.warn("Production error count failed:", error);
+      setProductionErrorsStatus("error");
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshProductionErrorStatus();
+  }, [refreshProductionErrorStatus]);
 
   const measureLatency = useCallback(async () => {
     setPinging(true);
@@ -205,8 +257,24 @@ export default function AdminPage() {
   }), [trash]);
   const trashTotal = trashMetrics.tasks + trashMetrics.projects + trashMetrics.notes;
 
+  const statusByKey = useMemo(() => {
+    const healthStatus = dbLatency == null
+      ? "neutral"
+      : dbLatency > 500 || swStatus.startsWith("Chyba") || errorLogs.length > 5
+        ? "error"
+        : dbLatency > 250 || swStatus === "Neregistrován" || errorLogs.length > 0
+          ? "warning"
+          : "ok";
+    return {
+      health: { status: healthStatus, value: healthStatus === "neutral" ? "—" : healthStatus === "ok" ? "OK" : healthStatus === "warning" ? "WARN" : "ERROR" },
+      ai: { status: "ok", value: "OK" },
+      productionErrors: { status: productionErrorsStatus, value: String(productionErrors24h) },
+      localLogs: { status: errorLogs.length === 0 ? "ok" : errorLogs.length <= 5 ? "warning" : "error", value: String(errorLogs.length) },
+    };
+  }, [dbLatency, errorLogs.length, productionErrors24h, productionErrorsStatus, swStatus]);
+
   const exportDiagnostics = () => {
-    const data = { exportedAt: new Date().toISOString(), workspaceId: activeWorkspaceId, appVersion: APP_VERSION, dbLatency, swStatus, storageSize, metrics: { taskMetrics, projectMetrics, notes: notes.length, noteSize, quickTodoMetrics, attachmentMetrics, trashMetrics }, errorLogs };
+    const data = { exportedAt: new Date().toISOString(), workspaceId: activeWorkspaceId, appVersion: APP_VERSION, dbLatency, swStatus, storageSize, productionErrors24h, metrics: { taskMetrics, projectMetrics, notes: notes.length, noteSize, quickTodoMetrics, attachmentMetrics, trashMetrics }, errorLogs };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -264,6 +332,7 @@ export default function AdminPage() {
 
   return (
     <div style={{ padding: 32, maxWidth: 1400, margin: "0 auto" }}>
+      <style>{`@keyframes adminPulse{0%{transform:scale(.65);opacity:.45}70%{transform:scale(1.9);opacity:0}100%{transform:scale(1.9);opacity:0}}`}</style>
       <div style={{ marginBottom: 26 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 24, marginBottom: 22 }}>
           <div>
@@ -273,17 +342,19 @@ export default function AdminPage() {
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <SmallButton onClick={exportDiagnostics} tone="accent">Export diagnostiky</SmallButton>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "9px 12px", borderRadius: 12, border: "1px solid var(--border-soft)", background: "var(--surface)", color: "var(--text-2)", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 800 }}>
-              <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--green)" }} /> ONLINE
+              <StatusDot status={statusByKey.health.status === "error" ? "error" : productionErrorsStatus === "error" ? "error" : statusByKey.health.status === "warning" || productionErrorsStatus === "warning" ? "warning" : "ok"} /> ONLINE
             </span>
           </div>
         </div>
         <div style={{ display: "flex", gap: 8, borderBottom: "1px solid var(--border-soft)", overflowX: "auto" }}>
           {TAB_DEFS.map((tab) => {
-            const badge = tab.id === "logs" ? errorLogs.length : tab.id === "trash" ? trashTotal : 0;
+            const dynamic = tab.statusKey ? statusByKey[tab.statusKey] : null;
+            const badge = tab.id === "trash" ? trashTotal : 0;
             return (
               <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)} style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 14px", border: 0, background: "transparent", color: activeTab === tab.id ? "var(--accent)" : "var(--text-3)", borderBottom: activeTab === tab.id ? "2px solid var(--accent)" : "2px solid transparent", fontSize: 14, fontWeight: activeTab === tab.id ? 800 : 600, whiteSpace: "nowrap" }}>
                 <Icon name={tab.icon} size={15} color="currentColor" />
                 {tab.label}
+                {dynamic && <TabStatus status={dynamic.status} value={dynamic.value} />}
                 {badge > 0 && <span style={{ minWidth: 20, height: 20, padding: "0 6px", borderRadius: 10, background: "var(--accent)", color: "var(--bg)", fontSize: 11, display: "grid", placeItems: "center" }}>{badge}</span>}
               </button>
             );
@@ -313,6 +384,8 @@ export default function AdminPage() {
         </div>
       )}
 
+      {activeTab === "health" && <SystemHealthPanel embedded />}
+
       {activeTab === "diagnostics" && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16 }}>
           <Card title="Latence databáze Supabase" subtitle="Rychlý test dostupnosti databáze." icon="database" action={<SmallButton onClick={measureLatency} disabled={pinging}>{pinging ? "Měřím…" : "Testovat"}</SmallButton>}>
@@ -337,18 +410,17 @@ export default function AdminPage() {
 
       {activeTab === "ai" && <AiTestConsolePanel embedded />}
 
+      {activeTab === "production-errors" && <RemoteErrorLogsPanel embedded />}
+
       {activeTab === "logs" && (
         <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.1fr) minmax(320px, .9fr)", gap: 18 }}>
-          <div style={{ display: "grid", gap: 18 }}>
-            <RemoteErrorLogsPanel embedded />
-            <Card title="Lokální chyby v prohlížeči" subtitle={`Zachyceno ${errorLogs.length} lokálních chyb v tomto zařízení.`} icon="alert-triangle" action={<div style={{ display: "flex", gap: 8 }}><SmallButton onClick={simulateError}>Simulovat</SmallButton><SmallButton onClick={clearLocalLogs} tone="danger" disabled={!errorLogs.length}>Vyčistit</SmallButton></div>}>
-              {!errorLogs.length ? <EmptyState title="Systém běží hladce" text="Nebyly zachyceny žádné lokální chyby." /> : (
-                <div style={{ display: "grid", gap: 8, maxHeight: 360, overflowY: "auto" }}>
-                  {errorLogs.map((log, index) => <div key={log.id || index} style={{ padding: 12, borderRadius: 12, border: "1px solid var(--border-soft)", background: "var(--bg-2)" }}><div style={{ color: "var(--text)", fontWeight: 800, fontSize: 13 }}>{log.message}</div><div style={{ color: "var(--text-3)", fontFamily: "var(--mono)", fontSize: 11.5, marginTop: 5 }}>{log.type || "client_error"} · {formatDate(log.timestamp)}</div></div>)}
-                </div>
-              )}
-            </Card>
-          </div>
+          <Card title="Lokální chyby v prohlížeči" subtitle={`Zachyceno ${errorLogs.length} lokálních chyb v tomto zařízení.`} icon="alert-triangle" action={<div style={{ display: "flex", gap: 8 }}><SmallButton onClick={simulateError}>Simulovat</SmallButton><SmallButton onClick={clearLocalLogs} tone="danger" disabled={!errorLogs.length}>Vyčistit</SmallButton></div>}>
+            {!errorLogs.length ? <EmptyState title="Systém běží hladce" text="Nebyly zachyceny žádné lokální chyby." /> : (
+              <div style={{ display: "grid", gap: 8, maxHeight: 360, overflowY: "auto" }}>
+                {errorLogs.map((log, index) => <div key={log.id || index} style={{ padding: 12, borderRadius: 12, border: "1px solid var(--border-soft)", background: "var(--bg-2)" }}><div style={{ color: "var(--text)", fontWeight: 800, fontSize: 13 }}>{log.message}</div><div style={{ color: "var(--text-3)", fontFamily: "var(--mono)", fontSize: 11.5, marginTop: 5 }}>{log.type || "client_error"} · {formatDate(log.timestamp)}</div></div>)}
+              </div>
+            )}
+          </Card>
           <Card title="Nahlásit chybu / bug report" subtitle="Založí úkol v aktuálním workspace a přibalí systémové údaje." icon="bug">
             <AdminField label="Název chyby"><input value={bugTitle} onChange={(e) => setBugTitle(e.target.value)} placeholder="Např. Pády při načítání AI asistenta…" style={fieldStyle} /></AdminField>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -362,7 +434,7 @@ export default function AdminPage() {
       )}
 
       {activeTab === "users" && (
-        <Card title={`Uživatelé / členové workspace (${workspaceMembers.length})`} subtitle="Bezpečná náhrada původního globálního adresáře. Plný globální adresář doplníme po přidání admin API/RPC." icon="users">
+        <Card title={`Členové aktuálního workspace (${workspaceMembers.length})`} subtitle="Týmové účty a role pro právě otevřený workspace. Globální adresář doporučuji oddělit jako samostatnou sekci mimo technický admin." icon="users">
           <div style={{ display: "grid", gap: 10 }}>
             {workspaceMembers.map((member, index) => <UserRow key={member.id || member.userId || index} member={member} />)}
             {!workspaceMembers.length && <EmptyState title="Žádní členové" text="V aktuálním workspace nejsou načtení žádní členové." />}
