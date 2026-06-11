@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from "react";
 import { useApp } from "../../context/AppContext.jsx";
-import { useConfirm } from "../../components/Confirm.jsx";
 import { useToast } from "../../components/Toast.jsx";
 import Icon from "../../components/Icon.jsx";
 import { projectColor } from "../../utils.js";
@@ -163,22 +162,14 @@ export default function AtlasSidebar({ collapsed, setCollapsed }) {
     activeWorkspaceId,
     switchWorkspace,
     createWorkspace,
-    userEmail,
-    workspaceMembers,
-    userId,
-    logout,
     setSelProject,
-    dk,
   } = useApp();
 
   const toast = useToast();
-  const confirm = useConfirm();
 
   const [wsOpen, setWsOpen] = useState(false);
 
   const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId);
-  const me = workspaceMembers.find((m) => m.userId === userId);
-  const displayName = me?.displayName || me?.email || userEmail || "Uživatel";
 
   const counts = useMemo(() => ({
     quick: quickTodos.filter((q) => !q.done).length,
