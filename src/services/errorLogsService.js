@@ -1,14 +1,11 @@
-import { supabase as supabaseClient } from "../supabase.js";
-
 const ERR_KEY = "mt3:system_errors";
 const REMOTE_ERROR_LOGGING_ENABLED =
   import.meta.env.PROD || import.meta.env.VITE_ENABLE_REMOTE_ERROR_LOGGING === "true";
 const sentRecently = new Map();
 
-// Statický import místo dynamického `await import("../supabase.js")` — odstraní
-// mixed static/dynamic warning (supabase je stejně core a importuje se staticky jinde).
 async function getSupabaseClient() {
-  return supabaseClient;
+  const module = await import("../supabase.js");
+  return module.supabase;
 }
 
 function currentUrl() {
