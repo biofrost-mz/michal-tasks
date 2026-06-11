@@ -70,7 +70,7 @@ export default function MobileNav({ toggleDk }) {
             <div style={{
               position: "sticky", top: 0, zIndex: 1,
               display: "flex", alignItems: "center", justifyContent: "space-between",
-              padding: "16px 16px 12px",
+              padding: "calc(16px + env(safe-area-inset-top, 0px)) 16px 12px",
               background: t.bg2,
               borderBottom: `1px solid ${t.border}`,
             }}>

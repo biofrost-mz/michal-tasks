@@ -120,10 +120,11 @@ export default function SystemHealthPanel({ embedded = false }) {
       const registrations = await navigator.serviceWorker.getRegistrations();
       if (!registrations.length) return { status: "warning", value: "Neaktivní", detail: "Service Worker není registrovaný." };
       const waiting = registrations.some((registration) => registration.waiting);
+      // Čekající SW není chyba — jen je připravená novější verze. Nehlásíme jako WARN.
       return {
-        status: waiting ? "warning" : "ok",
-        value: `${registrations.length} registrací`,
-        detail: waiting ? "Service Worker čeká na aktivaci nové verze." : "PWA Service Worker je aktivní.",
+        status: "ok",
+        value: waiting ? "Nová verze čeká" : `${registrations.length} registrací`,
+        detail: waiting ? "Service Worker je aktivní; nová verze je připravená a aktivuje se po zavření aplikace." : "PWA Service Worker je aktivní.",
       };
     } catch (error) {
       return { status: "error", value: "Chyba", detail: error.message };
@@ -141,9 +142,9 @@ export default function SystemHealthPanel({ embedded = false }) {
       if (error) throw error;
       const latency = Math.round(performance.now() - start);
       return {
-        status: latency < 350 ? "ok" : "warning",
+        status: latency < 600 ? "ok" : latency < 1500 ? "warning" : "error",
         latency,
-        detail: latency < 350 ? "Databáze odpovídá rychle." : "Databáze odpovídá, ale pomaleji než obvykle.",
+        detail: latency < 600 ? "Databáze odpovídá rychle." : "Databáze odpovídá, ale pomaleji než obvykle.",
       };
     } catch (error) {
       return { status: "error", latency: null, detail: error.message };

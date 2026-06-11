@@ -2157,8 +2157,9 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    height: 46px;
-    padding: 0 16px;
+    height: calc(46px + env(safe-area-inset-top, 0px));
+    padding: env(safe-area-inset-top, 0px) 16px 0;
+    box-sizing: border-box;
     background: var(--surface);
     border-bottom: 1px solid var(--border-soft);
     flex-shrink: 0;

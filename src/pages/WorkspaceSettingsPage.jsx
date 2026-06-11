@@ -313,7 +313,9 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
         .ws-role-badge{font-family:var(--mono);font-size:10.5px;padding:3px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.06em;font-weight:850;}
         .ws-mobile-break{display:flex;align-items:center;justify-content:space-between;gap:14px;}
         @media(max-width:767px){
-          .workspace-settings-page{padding:14px 12px 104px!important;max-width:none!important;}
+          .workspace-settings-page{padding:14px 12px 104px!important;max-width:none!important;overflow-x:hidden;}
+          .ws-card{max-width:100%;overflow-wrap:anywhere;}
+          .ws-form-row input,.ws-form-row .ws-input,.ws-card input,.ws-card select{min-width:0!important;max-width:100%;}
           .ws-settings-hero{margin-bottom:12px;}
           .ws-settings-title{font-size:35px;margin:10px 0 8px;}
           .ws-settings-meta{gap:6px;font-size:11px;}

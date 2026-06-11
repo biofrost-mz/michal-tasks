@@ -64,11 +64,17 @@ export default function QuickAdd({ defaultProjectId = null }) {
       const title = event?.detail?.title || "";
       handleOpenModal(title);
     };
+    const aiHandler = () => {
+      handleOpenModal();
+      setShowAiDraft(true);
+    };
     window.addEventListener("focusQuickAdd", focusHandler);
     window.addEventListener("openQuickAddModal", modalHandler);
+    window.addEventListener("openQuickAddAI", aiHandler);
     return () => {
       window.removeEventListener("focusQuickAdd", focusHandler);
       window.removeEventListener("openQuickAddModal", modalHandler);
+      window.removeEventListener("openQuickAddAI", aiHandler);
     };
   }, [handleOpenModal]);
 

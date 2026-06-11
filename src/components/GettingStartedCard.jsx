@@ -59,7 +59,10 @@ export default function GettingStartedCard() {
       text: "Vyzkoušet AI asistenta",
       done: aiTried,
       actionLabel: "Vyzkoušet →",
-      action: () => setPage("dashboard"),
+      action: () => {
+        setPage("dashboard");
+        window.dispatchEvent(new Event("openQuickAddAI"));
+      },
     },
   ];
 
@@ -125,15 +128,19 @@ export default function GettingStartedCard() {
       </div>
 
       {/* Items */}
-      {items.map((item, i) => (
+      {items.map((item, i) => {
+        const rowClickable = !item.done && Boolean(item.action);
+        return (
         <div
           key={item.id}
+          onClick={rowClickable ? item.action : undefined}
           style={{
             display: "flex",
             alignItems: "center",
             gap: 10,
             padding: "8px 0",
             borderBottom: i < items.length - 1 ? "1px solid var(--border-soft)" : "none",
+            cursor: rowClickable ? "pointer" : "default",
           }}
         >
           {/* Checkmark */}
@@ -172,7 +179,7 @@ export default function GettingStartedCard() {
           {!item.done && item.action && (
             <button
               type="button"
-              onClick={item.action}
+              onClick={(e) => { e.stopPropagation(); item.action(); }}
               style={{
                 background: "none",
                 border: "none",
@@ -187,7 +194,8 @@ export default function GettingStartedCard() {
             </button>
           )}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
