@@ -26,18 +26,26 @@ function concat(...arrays: Uint8Array[]): Uint8Array {
   return out;
 }
 
+// Deno's newer lib types `Uint8Array` as `Uint8Array<ArrayBufferLike>`, which TS
+// no longer accepts where an ArrayBuffer-backed `BufferSource`/`BodyInit` is
+// required (Web Crypto, fetch). These arrays are always ArrayBuffer-backed at
+// runtime, so coerce to the concrete generic.
+function bs(u: Uint8Array): Uint8Array<ArrayBuffer> {
+  return u as Uint8Array<ArrayBuffer>;
+}
+
 async function hkdfExtract(salt: Uint8Array, ikm: Uint8Array): Promise<Uint8Array> {
-  const saltKey = await crypto.subtle.importKey("raw", salt, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-  return new Uint8Array(await crypto.subtle.sign("HMAC", saltKey, ikm));
+  const saltKey = await crypto.subtle.importKey("raw", bs(salt), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  return new Uint8Array(await crypto.subtle.sign("HMAC", saltKey, bs(ikm)));
 }
 
 async function hkdfExpand(prk: Uint8Array, info: Uint8Array, length: number): Promise<Uint8Array> {
-  const prkKey = await crypto.subtle.importKey("raw", prk, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const prkKey = await crypto.subtle.importKey("raw", bs(prk), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   const result = new Uint8Array(length);
   let t = new Uint8Array(0);
   let offset = 0;
   for (let i = 1; offset < length; i++) {
-    const block = new Uint8Array(await crypto.subtle.sign("HMAC", prkKey, concat(t, info, new Uint8Array([i]))));
+    const block = new Uint8Array(await crypto.subtle.sign("HMAC", prkKey, bs(concat(t, info, new Uint8Array([i])))));
     const take = Math.min(block.length, length - offset);
     result.set(block.slice(0, take), offset);
     t = block;
@@ -78,7 +86,7 @@ async function sendPush(endpoint: string, p256dh: string, auth: string, payload:
   const subPubBytes = b64urlDecode(p256dh);
 
   const subscriberPubKey = await crypto.subtle.importKey(
-    "raw", subPubBytes, { name: "ECDH", namedCurve: "P-256" }, false, []
+    "raw", bs(subPubBytes), { name: "ECDH", namedCurve: "P-256" }, false, []
   );
 
   const ephemeral = await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"]);
@@ -102,8 +110,8 @@ async function sendPush(endpoint: string, p256dh: string, auth: string, payload:
   const plaintext = enc.encode(JSON.stringify(payload));
   const padded = concat(plaintext, new Uint8Array([2])); // last-record delimiter
 
-  const aesKey = await crypto.subtle.importKey("raw", cek, { name: "AES-GCM" }, false, ["encrypt"]);
-  const ciphertext = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv: nonce }, aesKey, padded));
+  const aesKey = await crypto.subtle.importKey("raw", bs(cek), { name: "AES-GCM" }, false, ["encrypt"]);
+  const ciphertext = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv: bs(nonce) }, aesKey, bs(padded)));
 
   // aes128gcm content header: salt(16) || rs_uint32be(4) || keyid_len(1) || keyid || ciphertext
   const rsBytes = new Uint8Array(4);
@@ -122,7 +130,7 @@ async function sendPush(endpoint: string, p256dh: string, auth: string, payload:
       "TTL": "86400",
       "Urgency": "normal",
     },
-    body,
+    body: bs(body),
   });
   return res.status;
 }
