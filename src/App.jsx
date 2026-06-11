@@ -204,6 +204,7 @@ function AppShell() {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const gPressedRef = useRef(false);
   const gTimerRef = useRef(null);
+  const hideMobileFab = page === "workspace-settings" || page === "user-profile" || page === "admin";
 
   useEffect(() => {
     const handler = () => setShortcutsOpen(true);
@@ -396,7 +397,7 @@ function AppShell() {
             </ErrorBoundary>
           )}
         </div>
-        {isMobile && <MobileFAB />}
+        {isMobile && !hideMobileFab && <MobileFAB />}
         {isMobile && <MobileNav toggleDk={() => setDk(!dk)} />}
       </div>
     </>
