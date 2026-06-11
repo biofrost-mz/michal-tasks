@@ -105,7 +105,7 @@ export default function OnboardingWizard() {
     const handler = (e) => { if (e.key === "Escape") close(); };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   function close() {
     localStorage.setItem(LS_KEY, "1");

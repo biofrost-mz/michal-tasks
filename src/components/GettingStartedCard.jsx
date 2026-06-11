@@ -16,14 +16,22 @@ export default function GettingStartedCard() {
     () => Boolean(localStorage.getItem(LS_AI_TRIED))
   );
   const [hiding, setHiding] = useState(false);
-
-  const onboardingDone = Boolean(localStorage.getItem(LS_ONBOARDING));
+  const [onboardingDone, setOnboardingDone] = useState(
+    () => Boolean(localStorage.getItem(LS_ONBOARDING))
+  );
 
   // Listen for AI usage event dispatched by QuickAdd
   useEffect(() => {
     const handler = () => setAiTried(true);
     window.addEventListener("mt3:ai_tried", handler);
     return () => window.removeEventListener("mt3:ai_tried", handler);
+  }, []);
+
+  // React when wizard completes
+  useEffect(() => {
+    const handler = () => setOnboardingDone(true);
+    window.addEventListener("mt3:onboarding_done", handler);
+    return () => window.removeEventListener("mt3:onboarding_done", handler);
   }, []);
 
   const items = [
