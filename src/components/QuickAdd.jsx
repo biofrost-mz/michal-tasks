@@ -142,6 +142,9 @@ export default function QuickAdd({ defaultProjectId = null }) {
         return;
       }
 
+      localStorage.setItem("mt3:ai_tried", "1");
+      window.dispatchEvent(new Event("mt3:ai_tried"));
+
       const cleaned = raw.replace(/^```[a-z]*\n?/i, "").replace(/```$/, "").trim();
       const parsed = JSON.parse(cleaned);
 

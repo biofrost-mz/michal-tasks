@@ -25,6 +25,7 @@ const WorkspaceSettingsPage = lazy(() => import("./pages/WorkspaceSettingsPage.j
 const QuickTodosPage = lazy(() => import("./pages/QuickTodosPage.jsx"));
 const AdminPage = lazy(() => import("./pages/AdminPage.jsx"));
 const AdminUsersPage = lazy(() => import("./pages/AdminUsersPage.jsx"));
+const OnboardingWizard = lazy(() => import("./components/OnboardingWizard.jsx"));
 
 function OfflineBanner() {
   const [online, setOnline] = useState(() => (typeof navigator === "undefined" ? true : navigator.onLine));
@@ -203,6 +204,15 @@ function AppShell() {
   const { dk, setDk, isMobile, page, setPage, taskDetail, cmdOpen, setCmdOpen, isSystemAdmin, loaded, tasks, setTaskDetail } = useApp();
   const [collapsed, setCollapsed] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [onboardingDone, setOnboardingDone] = useState(
+    () => Boolean(localStorage.getItem("mt3:onboarding_done"))
+  );
+
+  useEffect(() => {
+    const handler = () => setOnboardingDone(true);
+    window.addEventListener("mt3:onboarding_done", handler);
+    return () => window.removeEventListener("mt3:onboarding_done", handler);
+  }, []);
   const gPressedRef = useRef(false);
   const gTimerRef = useRef(null);
   const hideMobileFab = page === "workspace-settings" || page === "user-profile" || page === "admin";
@@ -326,6 +336,11 @@ function AppShell() {
       <OfflineBanner />
       <AppErrorReporter />
       <AppUpdatePrompt />
+      {loaded && !onboardingDone && (
+        <Suspense fallback={null}>
+          <OnboardingWizard />
+        </Suspense>
+      )}
       <button
         className="shortcuts-fab"
         onClick={() => window.dispatchEvent(new CustomEvent("openShortcuts"))}

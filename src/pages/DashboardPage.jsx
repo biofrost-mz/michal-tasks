@@ -3,6 +3,7 @@ import { useApp } from "../context/AppContext.jsx";
 import Icon from "../components/Icon.jsx";
 import AIDailyPlan from "../components/AIDailyPlan.jsx";
 import QuickAdd from "../components/QuickAdd.jsx";
+import GettingStartedCard from "../components/GettingStartedCard.jsx";
 import { formatDate, formatDateKey } from "../locale.js";
 import { parseYMD, projectColor, startOfToday, triggerConfettiBurst } from "../utils.js";
 import { getNamedayInfo } from "../data/czechNamedays.js";
@@ -745,6 +746,7 @@ export default function DashboardPage() {
 
       <div className="work">
         <div>
+          <GettingStartedCard />
           {/* AI hero — desktop and mobile */}
           <div className="ai-hero">
             <div className="ai-orb">✦</div>
