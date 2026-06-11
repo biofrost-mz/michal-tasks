@@ -273,39 +273,41 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
     <div className="content workspace-settings-page">
       <style>{`
         body:has(.workspace-settings-page) .fab{display:none!important;}
-        .workspace-settings-page{max-width:1180px;margin:0 auto;}
-        .ws-settings-hero{margin-bottom:18px;}
-        .ws-back{border:0;background:none;padding:0;cursor:pointer;color:var(--accent);font-family:var(--mono);font-size:11px;font-weight:850;text-transform:uppercase;letter-spacing:.13em;}
-        .ws-settings-title{margin:12px 0 8px;font-family:var(--font-ui);font-size:42px;line-height:.96;color:var(--text);letter-spacing:-.045em;font-weight:720;}
+        .workspace-settings-page{max-width:880px;margin:0 auto;box-sizing:border-box;}
+        .workspace-settings-page *{box-sizing:border-box;}
+        .ws-settings-hero{margin-bottom:20px;}
+        .ws-back{border:0;background:none;padding:0;cursor:pointer;color:var(--accent);font-family:var(--mono);font-size:11px;font-weight:850;text-transform:uppercase;letter-spacing:.12em;}
+        .ws-settings-title{margin:10px 0 9px;font-family:var(--font-ui);font-size:30px;line-height:1.05;color:var(--text);letter-spacing:-.03em;font-weight:720;}
         .ws-settings-meta{display:flex;align-items:center;gap:7px;flex-wrap:wrap;color:var(--text-3);font-family:var(--mono);font-size:11.5px;}
-        .ws-meta-pill{display:inline-flex;align-items:center;gap:5px;padding:4px 8px;border-radius:999px;border:1px solid var(--border-soft);background:var(--surface);color:var(--text-2);font-family:var(--mono);font-size:11px;font-weight:750;}
+        .ws-meta-pill{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:999px;border:1px solid var(--border-soft);background:var(--surface);color:var(--text-2);font-family:var(--mono);font-size:11px;font-weight:750;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
         .ws-meta-pill.role{color:var(--accent);background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 28%,var(--border-soft));text-transform:uppercase;}
-        .ws-settings-layout{display:grid;grid-template-columns:220px minmax(0,1fr);gap:16px;align-items:start;}
-        .ws-settings-tabs{position:sticky;top:16px;background:var(--surface);border:1px solid var(--border-soft);border-radius:16px;padding:8px;}
-        .ws-settings-tabs-inner{display:grid;gap:4px;}
-        .ws-tab{display:flex;align-items:center;gap:9px;width:100%;padding:10px 11px;border-radius:11px;border:1px solid transparent;background:transparent;color:var(--text-2);font-size:13px;font-weight:650;text-align:left;}
-        .ws-tab.active{background:var(--accent-soft);color:var(--accent);font-weight:850;border-color:color-mix(in srgb,var(--accent) 24%,transparent);}
-        .ws-settings-panels{display:grid;gap:14px;min-width:0;}
-        .ws-card{background:var(--surface);border:1px solid var(--border-soft);border-radius:18px;padding:18px;box-shadow:0 1px 0 rgba(255,255,255,.04);}
+        .ws-settings-layout{display:grid;grid-template-columns:200px minmax(0,1fr);gap:18px;align-items:start;}
+        .ws-settings-tabs{position:sticky;top:16px;background:var(--surface);border:1px solid var(--border-soft);border-radius:14px;padding:6px;}
+        .ws-settings-tabs-inner{display:grid;gap:3px;}
+        .ws-tab{display:flex;align-items:center;gap:9px;width:100%;padding:9px 11px;border-radius:10px;border:1px solid transparent;background:transparent;color:var(--text-2);font-size:13px;font-weight:600;text-align:left;cursor:pointer;}
+        .ws-tab:hover{background:var(--bg-2);}
+        .ws-tab.active{background:var(--accent-soft);color:var(--accent);font-weight:800;border-color:color-mix(in srgb,var(--accent) 22%,transparent);}
+        .ws-settings-panels{display:grid;gap:10px;min-width:0;}
+        .ws-card{background:var(--surface);border:1px solid var(--border-soft);border-radius:14px;padding:16px;min-width:0;}
         .ws-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;}
-        .ws-card-title-wrap{display:flex;gap:10px;align-items:flex-start;min-width:0;}
-        .ws-card-icon{width:30px;height:30px;border-radius:11px;display:grid;place-items:center;color:var(--accent);background:var(--accent-soft);flex:0 0 auto;}
+        .ws-card-title-wrap{display:flex;gap:11px;align-items:flex-start;min-width:0;flex:1;}
+        .ws-card-icon{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;color:var(--accent);background:var(--accent-soft);flex:0 0 auto;}
         .ws-card-icon.danger{color:var(--red);background:var(--red-soft);}
-        .ws-section-label{font-family:var(--mono);font-size:10.5px;color:var(--text-4);text-transform:uppercase;letter-spacing:.11em;margin-bottom:6px;font-weight:850;}
+        .ws-section-label{font-family:var(--mono);font-size:10px;color:var(--text-4);text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px;font-weight:850;}
         .ws-section-label.danger{color:var(--red);}
-        .ws-card-title{font-size:14px;color:var(--text);font-weight:850;line-height:1.25;}
-        .ws-card-desc{font-size:12.5px;color:var(--text-3);line-height:1.45;margin-top:3px;}
+        .ws-card-title{font-size:14.5px;color:var(--text);font-weight:800;line-height:1.3;}
+        .ws-card-desc{font-size:12.5px;color:var(--text-3);line-height:1.5;margin-top:4px;}
         .ws-card-body{margin-top:14px;}
-        .ws-profile-card{display:flex;align-items:center;gap:16px;}
-        .ws-avatar{width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--bg);display:grid;place-items:center;font-family:var(--mono);font-size:20px;font-weight:850;box-shadow:0 0 12px var(--accent-glow);flex:0 0 auto;}
-        .ws-profile-name{font-family:var(--font-ui);font-size:30px;line-height:1.05;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.04em;}
-        .ws-profile-mail{font-size:13px;color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-        .ws-profile-role{display:inline-flex;margin-top:5px;padding:3px 8px;border-radius:999px;border:1px solid var(--border-soft);background:var(--bg-2);font-family:var(--mono);font-size:10.5px;color:var(--text-3);text-transform:uppercase;font-weight:850;}
+        .ws-profile-card{display:flex;align-items:center;gap:14px;}
+        .ws-avatar{width:50px;height:50px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:var(--bg);display:grid;place-items:center;font-family:var(--mono);font-size:17px;font-weight:850;flex:0 0 auto;}
+        .ws-profile-name{font-family:var(--font-ui);font-size:18px;font-weight:650;line-height:1.2;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.01em;}
+        .ws-profile-mail{font-size:13px;color:var(--text-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px;}
+        .ws-profile-role{display:inline-flex;margin-top:7px;padding:3px 8px;border-radius:999px;border:1px solid var(--border-soft);background:var(--bg-2);font-family:var(--mono);font-size:10px;color:var(--text-3);text-transform:uppercase;font-weight:850;}
         .ws-form-row{display:flex;gap:8px;flex-wrap:wrap;}
         .ws-form-hint{font-size:12px;color:var(--text-3);margin-top:8px;line-height:1.45;}
         .ws-danger-button{width:auto;}
-        .ws-system-action{display:flex;align-items:center;gap:6px;}
-        .ws-member-list,.ws-invite-list{border:1px solid var(--border-soft);border-radius:12px;overflow:hidden;}
+        .ws-system-action{display:flex;align-items:center;gap:6px;flex:0 0 auto;}
+        .ws-member-list,.ws-invite-list{border:1px solid var(--border-soft);border-radius:11px;overflow:hidden;}
         .ws-member-row,.ws-invite-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border-soft);background:var(--surface);}
         .ws-member-row:nth-child(even),.ws-invite-row:nth-child(even){background:var(--bg-2);}
         .ws-member-row:last-child,.ws-invite-row:last-child{border-bottom:0;}
@@ -313,32 +315,29 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
         .ws-role-badge{font-family:var(--mono);font-size:10.5px;padding:3px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.06em;font-weight:850;}
         .ws-mobile-break{display:flex;align-items:center;justify-content:space-between;gap:14px;}
         @media(max-width:767px){
-          .workspace-settings-page{padding:14px 12px 104px!important;max-width:none!important;overflow-x:hidden;}
-          .ws-card{max-width:100%;overflow-wrap:break-word;}
-          .ws-card-head{flex-direction:column;align-items:stretch;}
-          .ws-form-row input,.ws-form-row .ws-input,.ws-card input,.ws-card select{min-width:0!important;max-width:100%;}
-          .ws-settings-hero{margin-bottom:12px;}
-          .ws-settings-title{font-size:35px;margin:10px 0 8px;}
+          .workspace-settings-page{padding:16px 16px 96px!important;max-width:none!important;overflow-x:clip;}
+          .ws-card{max-width:100%;overflow-wrap:break-word;padding:15px;border-radius:14px;}
+          .ws-card-head{flex-direction:column;align-items:stretch;gap:13px;}
+          .ws-form-row input,.ws-form-row .ws-input,.ws-card input,.ws-card select,.ws-card textarea{min-width:0!important;max-width:100%;}
+          .ws-settings-hero{margin-bottom:14px;}
+          .ws-settings-title{font-size:25px;margin:9px 0 9px;}
           .ws-settings-meta{gap:6px;font-size:11px;}
-          .ws-meta-pill{padding:4px 7px;font-size:10.5px;max-width:100%;}
-          .ws-settings-layout{grid-template-columns:1fr;gap:12px;}
-          .ws-settings-tabs{position:sticky;top:0;z-index:20;margin:0 -12px;padding:7px 12px;border:0;border-radius:0;background:color-mix(in srgb,var(--bg) 86%,transparent);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);}
-          .ws-settings-tabs-inner{display:flex;gap:7px;overflow-x:auto;padding-bottom:2px;scroll-snap-type:x mandatory;scrollbar-width:none;}
+          .ws-meta-pill{padding:4px 8px;font-size:10.5px;}
+          .ws-settings-layout{grid-template-columns:1fr;gap:14px;}
+          .ws-settings-tabs{position:sticky;top:0;z-index:20;margin:0 -16px;padding:8px 16px;border:0;border-radius:0;border-bottom:1px solid var(--border-soft);background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);}
+          .ws-settings-tabs-inner{display:flex;gap:7px;overflow-x:auto;padding-bottom:1px;scroll-snap-type:x mandatory;scrollbar-width:none;}
           .ws-settings-tabs-inner::-webkit-scrollbar{display:none;}
-          .ws-tab{flex:0 0 auto;min-width:104px;justify-content:center;padding:9px 10px;border-radius:999px;border:1px solid var(--border-soft);background:var(--surface);font-size:12px;scroll-snap-align:start;}
-          .ws-tab.active{background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 42%,var(--border-soft));}
-          .ws-settings-panels{gap:12px;}
-          .ws-card{border-radius:16px;padding:14px;}
-          .ws-card-head{gap:10px;}
-          .ws-card-title-wrap{gap:9px;}
-          .ws-card-icon{width:28px;height:28px;border-radius:10px;}
-          .ws-card-body{margin-top:12px;}
-          .ws-profile-card{gap:12px;padding:14px;}
-          .ws-avatar{width:52px;height:52px;font-size:16px;}
-          .ws-profile-name{font-size:24px;}
+          .ws-tab{flex:0 0 auto;min-width:96px;justify-content:center;padding:8px 12px;border-radius:999px;border:1px solid var(--border-soft);background:var(--surface);font-size:12px;scroll-snap-align:start;}
+          .ws-tab.active{background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 40%,var(--border-soft));}
+          .ws-settings-panels{gap:10px;}
+          .ws-card-title-wrap{gap:10px;}
+          .ws-card-body{margin-top:13px;}
+          .ws-profile-card{gap:13px;padding:15px;}
+          .ws-avatar{width:46px;height:46px;font-size:15px;}
+          .ws-profile-name{font-size:17px;}
           .ws-profile-mail{font-size:12.5px;}
           .ws-form-row{display:grid;grid-template-columns:1fr;gap:8px;}
-          .ws-form-row .btn,.ws-card .btn{width:100%;justify-content:center;}
+          .ws-form-row .btn,.ws-card .btn{width:100%;justify-content:center;padding:11px 14px;}
           .ws-system-action{width:100%;justify-content:center;margin-top:2px;}
           .ws-danger-button{width:100%;}
           .ws-mobile-break{align-items:flex-start;flex-direction:column;gap:10px;}
@@ -441,7 +440,7 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
                 ) : (
                   <div className="ws-mobile-break">
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontFamily: 'var(--font-ui)', fontSize: isMobile ? 26 : 30, lineHeight: 1.05, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{active?.name || 'Bez názvu'}</div>
+                      <div style={{ fontFamily: 'var(--font-ui)', fontSize: isMobile ? 19 : 21, fontWeight: 650, lineHeight: 1.2, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{active?.name || 'Bez názvu'}</div>
                       <FormHint>{workspaceMembers.length} členů · tvoje role {workspaceRole}</FormHint>
                     </div>
                     {isOwner && <button className="btn" onClick={() => { setEditingName(true); setNewWsName(active?.name ?? '') }}>Přejmenovat</button>}

@@ -752,7 +752,9 @@ export default function DashboardPage() {
             <div className="ai-orb">✦</div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="ai-text-h">
-                Mám pro tebe <span className="num">{aiSuggestions.length}</span> návrhů, jak začít dnešní den.
+                {aiSuggestions.length === 0
+                  ? <>Žádné akutní úkoly — užij si klidný den. ✨</>
+                  : <>Mám pro tebe <span className="num">{aiSuggestions.length}</span> {aiSuggestions.length === 1 ? "návrh" : aiSuggestions.length <= 4 ? "návrhy" : "návrhů"}, jak začít dnešní den.</>}
               </div>
               <div className="ai-text-sub">
                 {activeTasks.length} aktivních · {overdue.length} po termínu · streak {streak.current} dní · Gemini 2.0
