@@ -28,8 +28,12 @@ export interface Chip {
 }
 
 export function chip(c: Chip): string {
+  return chipWithPad(c, "4px 9px");
+}
+
+function chipWithPad(c: Chip, pad: string): string {
   const t = CHIP_TONES[c.tone ?? "neutral"];
-  return `<span style="display:inline-block;background:${t.bg};border:1px solid ${t.bd};border-radius:999px;color:${t.fg};font-size:12px;font-weight:${t.weight};padding:4px 9px;margin:0 5px 5px 0">${escHtml(c.text)}</span>`;
+  return `<span style="display:inline-block;background:${t.bg};border:1px solid ${t.bd};border-radius:999px;color:${t.fg};font-size:12px;font-weight:${t.weight};padding:${pad};margin:0 5px 5px 0">${escHtml(c.text)}</span>`;
 }
 
 export interface StatItem {
@@ -103,22 +107,32 @@ export interface TaskRow {
   desc?: string;
   chips: Chip[];
   accent: string; // hex levého proužku
+  prominent?: boolean; // větší karta pro single-task reminder
 }
 
 function taskRowHtml(t: TaskRow, isFirst: boolean): string {
   const topBorder = isFirst ? "" : "border-top:1px solid #eef0f4;";
+  const titleSize = t.prominent ? "17px" : "15px";
+  const titleSpacing = t.prominent ? "-.015em" : "-.01em";
+  const descSize = t.prominent ? "13.5px" : "13px";
+  const descTop = t.prominent ? "6px" : "5px";
+  const descLine = t.prominent ? "1.5" : "1.45";
+  const chipPad = t.prominent ? "5px 10px" : "4px 9px";
+  const chipsTop = t.prominent ? "12px" : "10px";
   const desc = t.desc
-    ? `<div style="margin-top:5px;color:#667085;font-size:13px;line-height:1.45">${escHtml(t.desc)}</div>`
+    ? `<div style="margin-top:${descTop};color:#667085;font-size:${descSize};line-height:${descLine}">${escHtml(t.desc)}</div>`
     : "";
-  const chips = t.chips.length ? `<div style="margin-top:10px">${t.chips.map(chip).join("")}</div>` : "";
-  return `<tr><td style="border-left:4px solid ${t.accent};padding:15px 16px;${topBorder}">
+  const chipsHtml = t.chips.length
+    ? `<div style="margin-top:${chipsTop}">${t.chips.map((c) => chipWithPad(c, chipPad)).join("")}</div>`
+    : "";
+  return `<tr><td style="border-left:4px solid ${t.accent};padding:${t.prominent ? "16px 17px" : "15px 16px"};${topBorder}">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
       <td valign="top">
-        <a class="em-link" href="${t.url}" style="display:block;font-size:15px;font-weight:800;color:#18181b;letter-spacing:-.01em;text-decoration:none">${escHtml(t.title)}</a>
+        <a class="em-link" href="${t.url}" style="display:block;font-size:${titleSize};font-weight:800;color:#18181b;letter-spacing:${titleSpacing};text-decoration:none">${escHtml(t.title)}</a>
         ${desc}
-        ${chips}
+        ${chipsHtml}
       </td>
-      <td valign="middle" align="right" class="em-hide" style="white-space:nowrap;padding-left:12px"><a class="em-link" href="${t.url}" style="display:inline-block;background:#eef2ff;color:#4338ca;border-radius:10px;padding:8px 12px;font-size:12px;font-weight:800;text-decoration:none">Otevřít</a></td>
+      <td valign="middle" align="right" class="em-hide" style="white-space:nowrap;padding-left:12px"><a class="em-link" href="${t.url}" style="display:inline-block;background:#eef2ff;color:#4338ca;border-radius:10px;padding:${t.prominent ? "9px 13px" : "8px 12px"};font-size:12px;font-weight:800;text-decoration:none">Otevřít</a></td>
     </tr></table>
   </td></tr>`;
 }

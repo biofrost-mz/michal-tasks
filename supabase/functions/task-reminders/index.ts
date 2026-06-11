@@ -62,6 +62,7 @@ function toRow(t: Record<string, string>, projectMap: Record<string, string>): T
     desc: t.description || undefined,
     chips,
     accent: "#f59e0b",
+    prominent: true,
   };
 }
 
