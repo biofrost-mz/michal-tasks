@@ -120,7 +120,7 @@ function taskRowHtml(t: TaskRow, isFirst: boolean): string {
   const chipPad = t.prominent ? "5px 10px" : "4px 9px";
   const chipsTop = t.prominent ? "12px" : "10px";
   const desc = t.desc
-    ? `<div style="margin-top:${descTop};color:#667085;font-size:${descSize};line-height:${descLine}">${escHtml(t.desc)}</div>`
+    ? `<div class="em-muted" style="margin-top:${descTop};color:#667085;font-size:${descSize};line-height:${descLine}">${escHtml(t.desc)}</div>`
     : "";
   const chipsHtml = t.chips.length
     ? `<div style="margin-top:${chipsTop}">${t.chips.map((c) => chipWithPad(c, chipPad)).join("")}</div>`
@@ -128,7 +128,7 @@ function taskRowHtml(t: TaskRow, isFirst: boolean): string {
   return `<tr><td style="border-left:4px solid ${t.accent};padding:${t.prominent ? "16px 17px" : "15px 16px"};${topBorder}">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
       <td valign="top">
-        <a class="em-link" href="${t.url}" style="display:block;font-size:${titleSize};font-weight:800;color:#18181b;letter-spacing:${titleSpacing};text-decoration:none">${escHtml(t.title)}</a>
+        <a class="em-link em-strong" href="${t.url}" style="display:block;font-size:${titleSize};font-weight:800;color:#18181b;letter-spacing:${titleSpacing};text-decoration:none">${escHtml(t.title)}</a>
         ${desc}
         ${chipsHtml}
       </td>
@@ -166,13 +166,13 @@ export function section(o: SectionOpts): string {
       ? `<tr><td style="padding:12px 16px;border-top:1px solid #eef0f4;text-align:center"><a class="em-link" href="${o.moreHref}" style="color:#4f46e5;font-size:12.5px;font-weight:700;text-decoration:none">${escHtml(o.moreText)} →</a></td></tr>`
       : "";
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:22px"><tr>
-     <td style="font-size:13px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#18181b"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${o.dotColor};vertical-align:middle;margin-right:8px"></span>${escHtml(o.label)}</td>${pill}
+     <td class="em-strong" style="font-size:13px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#18181b"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${o.dotColor};vertical-align:middle;margin-right:8px"></span>${escHtml(o.label)}</td>${pill}
    </tr></table>
-   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:10px;border:1px solid #eef0f4;border-radius:14px">${rows}${more}</table>`;
+   <table role="presentation" class="em-bd" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:10px;border:1px solid #eef0f4;border-radius:14px">${rows}${more}</table>`;
 }
 
 export function intro(text: string): string {
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f8fafc;border:1px solid #eef0f4;border-radius:14px"><tr><td style="padding:14px 16px;color:#667085;font-size:13.5px;line-height:1.55">${escHtml(text)}</td></tr></table>`;
+  return `<table role="presentation" class="em-soft em-bd" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f8fafc;border:1px solid #eef0f4;border-radius:14px"><tr><td class="em-muted" style="padding:14px 16px;color:#667085;font-size:13.5px;line-height:1.55">${escHtml(text)}</td></tr></table>`;
 }
 
 export interface CtaOpts {
@@ -183,11 +183,11 @@ export interface CtaOpts {
 }
 
 export function ctaCard(o: CtaOpts): string {
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:24px;background:#f6f6ff;border:1px solid #e6e6fb;border-radius:16px"><tr><td style="padding:18px 20px">
+  return `<table role="presentation" class="em-soft em-bd" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:24px;background:#f6f6ff;border:1px solid #e6e6fb;border-radius:16px"><tr><td style="padding:18px 20px">
      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
        <td valign="middle">
-         <div style="font-size:16px;font-weight:800;color:#18181b;letter-spacing:-.01em">${escHtml(o.title)}</div>
-         <div style="margin-top:4px;color:#667085;font-size:13px;line-height:1.5">${escHtml(o.text)}</div>
+         <div class="em-strong" style="font-size:16px;font-weight:800;color:#18181b;letter-spacing:-.01em">${escHtml(o.title)}</div>
+         <div class="em-muted" style="margin-top:4px;color:#667085;font-size:13px;line-height:1.5">${escHtml(o.text)}</div>
        </td>
        <td valign="middle" align="right" class="em-btn-full" style="padding-left:14px">
          <a class="em-link" href="${o.url}" style="display:inline-block;background:#4f46e5;color:#ffffff;border-radius:12px;padding:13px 18px;font-size:14px;font-weight:800;text-decoration:none;white-space:nowrap">${escHtml(o.buttonText)}</a>
@@ -198,7 +198,7 @@ export function ctaCard(o: CtaOpts): string {
 
 // Obsahový bílý blok (intro + sekce + cta jdou dovnitř).
 export function contentRow(innerHtml: string): string {
-  return `<tr><td bgcolor="#ffffff" class="em-pad" style="background:#ffffff;border-left:1px solid #e7e7ea;border-right:1px solid #e7e7ea;padding:24px 30px">${innerHtml}</td></tr>`;
+  return `<tr><td bgcolor="#ffffff" class="em-pad em-card em-bd" style="background:#ffffff;border-left:1px solid #e7e7ea;border-right:1px solid #e7e7ea;padding:24px 30px">${innerHtml}</td></tr>`;
 }
 
 export interface FooterOpts {
@@ -214,13 +214,13 @@ export function footer(o: FooterOpts): string {
     ? `Nechceš už tyto e-maily dostávat? <a href="${o.unsubscribeUrl}" style="color:#667085;text-decoration:underline">${escHtml(o.unsubscribeText)}</a>${o.host ? ` · ${escHtml(o.host)}` : ""}`
     : escHtml(o.host ?? "");
   return `<tr><td style="height:5px;line-height:5px;font-size:0;background:#4f46e5;background:linear-gradient(90deg,#2563eb,#7c3aed)">&nbsp;</td></tr>
-   <tr><td bgcolor="#ffffff" class="em-pad" style="background:#ffffff;border:1px solid #e7e7ea;border-top:0;border-radius:0 0 20px 20px;padding:20px 30px 22px">
+   <tr><td bgcolor="#ffffff" class="em-pad em-card em-bd" style="background:#ffffff;border:1px solid #e7e7ea;border-top:0;border-radius:0 0 20px 20px;padding:20px 30px 22px">
      <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
        <td valign="middle" style="width:30px;height:30px;background:#4f46e5;border-radius:9px;text-align:center;color:#fff;font-weight:800;font-size:14px;line-height:30px">Z</td>
-       <td valign="middle" style="padding-left:9px;font-size:13px;font-weight:800;color:#1f2937">Zentero</td>
+       <td valign="middle" class="em-strong" style="padding-left:9px;font-size:13px;font-weight:800;color:#1f2937">Zentero</td>
      </tr></table>
-     <div style="margin-top:11px;color:#667085;font-size:12px;line-height:1.55">${escHtml(o.note)} <a href="${o.settingsUrl}" style="color:#4f46e5;text-decoration:none">nastavení notifikací</a>.</div>
-     <div style="margin-top:13px;color:#98a2b3;font-size:11px;line-height:1.5">${bottom}</div>
+     <div class="em-muted" style="margin-top:11px;color:#667085;font-size:12px;line-height:1.55">${escHtml(o.note)} <a href="${o.settingsUrl}" style="color:#4f46e5;text-decoration:none">nastavení notifikací</a>.</div>
+     <div class="em-muted" style="margin-top:13px;color:#98a2b3;font-size:11px;line-height:1.5">${bottom}</div>
    </td></tr>`;
 }
 
@@ -237,9 +237,12 @@ export function emailShell(o: ShellOpts): string {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="x-apple-disable-message-reformatting">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
 <title>${escHtml(o.title)}</title>
 <!--[if mso]><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->
 <style>
+  :root { color-scheme: light dark; supported-color-schemes: light dark; }
   .em-link:hover { opacity:.85; }
   .em-mob-stats { display:none; }
   @media only screen and (max-width:600px) {
@@ -252,11 +255,20 @@ export function emailShell(o: ShellOpts): string {
     .em-desk-stats { display:none !important; }
     .em-mob-stats { display:block !important; }
   }
+  /* Dark mode: declare our own palette so clients use it instead of auto-inverting. */
+  @media (prefers-color-scheme: dark) {
+    body, .em-bg { background:#0e1117 !important; }
+    .em-card { background:#171b26 !important; }
+    .em-soft { background:#1f2533 !important; }
+    .em-card, .em-soft, .em-bd { border-color:#2a3142 !important; }
+    .em-strong { color:#f1f5f9 !important; }
+    .em-muted { color:#9aa7b8 !important; }
+  }
 </style>
 </head>
-<body style="margin:0;padding:0;background:#f4f5f7;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%">
+<body class="em-bg" style="margin:0;padding:0;background:transparent;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent">${escHtml(o.preheader)}</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f5f7">
+<table role="presentation" class="em-bg" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:transparent">
  <tr><td align="center" style="padding:30px 14px">
   <table role="presentation" class="em-container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif">
    ${o.body}
