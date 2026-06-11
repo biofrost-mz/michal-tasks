@@ -7,9 +7,7 @@ export default defineConfig({
     environment: "node",
     globals: false,
     pool: "forks",
-    poolOptions: {
-      forks: { singleFork: true },
-    },
+    singleFork: true,
     testTimeout: 15000,
     server: {
       deps: {

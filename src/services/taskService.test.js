@@ -1,9 +1,25 @@
-import { describe, expect, it, vi } from "vitest";
-import { normalizeTask } from "./taskService.js";
+import { describe, expect, it, vi, beforeEach } from "vitest";
+import { normalizeTask, insertTask, updateTaskDB, syncTaskTags } from "./taskService.js";
 
-// Supabase client se vytváří při importu modulu — mockujeme ho,
-// aby testy nežádaly o env proměnné ani síťové spojení.
-vi.mock("../supabase.js", () => ({ supabase: {} }));
+// Mockujeme Supabase — testy ověřují logiku, ne síťová volání.
+const mockInsert = vi.fn();
+const mockUpdate = vi.fn();
+const mockDelete = vi.fn();
+const mockSelect = vi.fn();
+const mockEq = vi.fn();
+const mockIn = vi.fn();
+
+vi.mock("../supabase.js", () => ({
+  supabase: {
+    from: vi.fn(() => ({
+      insert: mockInsert,
+      update: mockUpdate,
+      delete: vi.fn(() => ({ eq: mockEq })),
+      select: vi.fn(() => ({ in: mockIn })),
+      eq: mockEq,
+    })),
+  },
+}));
 
 describe("normalizeTask", () => {
   it("mapuje plný DB řádek na frontend objekt", () => {
@@ -106,5 +122,65 @@ describe("normalizeTask", () => {
     expect(task.createdAt).toBeLessThanOrEqual(after);
     expect(task.updatedAt).toBeGreaterThanOrEqual(before);
     expect(task.updatedAt).toBeLessThanOrEqual(after);
+  });
+});
+
+describe("insertTask — smoke test", () => {
+  beforeEach(() => {
+    mockInsert.mockReset();
+  });
+
+  it("volá supabase.insert se správným payloadem", async () => {
+    mockInsert.mockResolvedValueOnce({ data: [{ id: "t1" }], error: null });
+
+    const tsk = {
+      id: "t1", title: "Nový úkol", description: "Popis",
+      status: "todo", priority: "medium", dueDate: "2026-07-01",
+      projectId: "proj-1", position: 5000, starred: false,
+      phases: [], subtasks: [], remindAt: null, assigneeUserId: null,
+    };
+    const result = await insertTask(tsk, "user-1", "ws-1");
+
+    expect(result.ok).toBe(true);
+    expect(mockInsert).toHaveBeenCalledOnce();
+    const payload = mockInsert.mock.calls[0][0];
+    expect(payload.title).toBe("Nový úkol");
+    expect(payload.owner).toBe("user-1");
+    expect(payload.workspace_id).toBe("ws-1");
+    expect(payload.completed_at).toBeNull();
+    expect(payload).not.toHaveProperty("remind_at");
+    expect(payload).not.toHaveProperty("assignee_user_id");
+  });
+
+  it("nastaví completed_at pokud je status done", async () => {
+    mockInsert.mockResolvedValueOnce({ data: [{}], error: null });
+
+    await insertTask(
+      { id: "t2", title: "Hotový", status: "done", phases: [], subtasks: [] },
+      "user-1", "ws-1"
+    );
+
+    const payload = mockInsert.mock.calls[0][0];
+    expect(payload.completed_at).not.toBeNull();
+  });
+
+  it("vyhodí chybu pokud supabase vrátí error bez FK race condition", async () => {
+    mockInsert.mockResolvedValueOnce({ data: null, error: { code: "42501", message: "permission denied" } });
+
+    await expect(
+      insertTask({ id: "t3", title: "Fail", status: "todo", phases: [], subtasks: [] }, "u", "ws")
+    ).rejects.toBeDefined();
+  });
+});
+
+describe("updateTaskDB — smoke test", () => {
+  it("volá supabase.update s id a payloadem", async () => {
+    mockUpdate.mockReturnValueOnce({ eq: mockEq });
+    mockEq.mockResolvedValueOnce({ error: null });
+
+    await updateTaskDB("task-99", { title: "Přejmenovaný" });
+
+    expect(mockUpdate).toHaveBeenCalledWith({ title: "Přejmenovaný" });
+    expect(mockEq).toHaveBeenCalledWith("id", "task-99");
   });
 });
