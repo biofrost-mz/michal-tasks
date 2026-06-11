@@ -1,4 +1,15 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
+
+// localStorage + window mock for Node environment
+const store = {};
+const localStorageMock = {
+  getItem: (k) => store[k] ?? null,
+  setItem: (k, v) => { store[k] = v; },
+  removeItem: (k) => { delete store[k]; },
+  clear: () => { Object.keys(store).forEach((k) => delete store[k]); },
+};
+vi.stubGlobal("localStorage", localStorageMock);
+vi.stubGlobal("window", { dispatchEvent: vi.fn() });
 import {
   clearAiHistory,
   getAiHistory,
@@ -23,7 +34,7 @@ describe("sanitizeAiHistoryMetadata", () => {
 describe("saveAiHistoryEntry", () => {
   beforeEach(() => {
     localStorage.clear();
-    vi.spyOn(window, "dispatchEvent").mockImplementation(() => true);
+    vi.mocked(window.dispatchEvent).mockClear();
   });
 
   it("does not persist raw input preview text", () => {
