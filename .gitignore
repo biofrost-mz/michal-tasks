@@ -22,6 +22,9 @@ supabase/supabase/.temp/
 !dist/
 !dist/**
 
+.superpowers/
+.claude/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

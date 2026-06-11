@@ -90,7 +90,7 @@ export function canRemoveMember(currentUserRole, targetRole, { isSelf = false } 
   return true;
 }
 
-export function canLeaveWorkspace(role, memberCount = 0) {
+export function canLeaveWorkspace(role, _memberCount = 0) {
   const normalized = normalizeWorkspaceRole(role);
   if (normalized !== "owner") return true;
   return false;
