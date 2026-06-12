@@ -2154,6 +2154,9 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 
   /* --- Mobile top bar --- */
   .mob-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 180;
     display: flex;
     align-items: center;
     justify-content: space-between;

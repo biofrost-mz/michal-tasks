@@ -330,7 +330,7 @@ function AppShell() {
         .su{animation:slideUp .28s cubic-bezier(.32,1,.4,1)}
         .pop{animation:pop .2s ease-out}
         .page-enter{animation:pageIn .18s cubic-bezier(.4,0,.2,1)}
-        .mobile-nav-bar{padding-bottom:env(safe-area-inset-bottom,0px)}
+        .mobile-nav-bar{padding-bottom:max(6px,calc(env(safe-area-inset-bottom,0px) - 18px))}
       `}</style>
 
       <OfflineBanner />
@@ -353,9 +353,9 @@ function AppShell() {
         </svg>
       </button>
 
-      <div className={!isMobile ? `app ${collapsed ? "collapsed" : ""}` : undefined} style={isMobile ? { display: "flex", width: "100%", height: "100dvh", minHeight: "100svh", overflow: "hidden" } : undefined}>
+      <div className={!isMobile ? `app ${collapsed ? "collapsed" : ""}` : undefined} style={isMobile ? { display: "flex", width: "100%", minHeight: "100svh", overflowX: "hidden" } : undefined}>
         {!isMobile && <AtlasSidebar collapsed={collapsed} setCollapsed={setCollapsed} />}
-        <div className={!isMobile ? "main" : undefined} style={isMobile ? { flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden" } : undefined}>
+        <div className={!isMobile ? "main" : undefined} style={isMobile ? { flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "visible" } : undefined}>
           {!isMobile && <AtlasTopBar />}
           {isMobile && (() => {
             const now = new Date();
@@ -377,7 +377,7 @@ function AppShell() {
               </div>
             );
           })()}
-          <main style={isMobile ? { flex: 1, minWidth: 0, width: "100%", overflowY: "auto", overflowX: "hidden", position: "relative", paddingBottom: "calc(58px + env(safe-area-inset-bottom, 0px))", overscrollBehaviorY: "contain" } : undefined}>
+          <main style={isMobile ? { flex: 1, minWidth: 0, width: "100%", overflow: "visible", position: "relative", paddingBottom: "calc(58px + max(6px, calc(env(safe-area-inset-bottom, 0px) - 18px)))", overscrollBehaviorY: "auto", WebkitOverflowScrolling: "touch" } : undefined}>
             <PageTransition pageKey={page}>
               <Suspense fallback={<PageLoader />}>
                 {page === "dashboard" && <PageErrorBoundary label="Přehled"><DashboardPage /></PageErrorBoundary>}
