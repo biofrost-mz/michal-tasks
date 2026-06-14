@@ -40,6 +40,9 @@
   --green-soft: rgba(34, 197, 94, 0.12);
   --green-glow: rgba(34, 197, 94, 0.3);
   --gray: #8b8f9c;
+  --prio-low: #60a5fa;
+  --prio-med: #fbbf24;
+  --prio-high: #f87171;
 
   /* dynamic overlays */
   --tb-bg: rgba(10, 12, 18, 0.85);
@@ -81,29 +84,40 @@
   /* brand — warm amber gold adjusted for contrast */
   --accent: #c58a36;
   --accent-2: #b07a2d;
-  --accent-soft: rgba(197, 138, 54, 0.08);
+  --accent-soft: rgba(197, 138, 54, 0.12);
   --accent-glow: rgba(197, 138, 54, 0.20);
 
   /* status colors — high-contrast safe tones for light background */
   --red: #d32f2f;
-  --red-soft: rgba(211, 47, 47, 0.08);
+  --red-soft: rgba(211, 47, 47, 0.12);
   --red-glow: rgba(211, 47, 47, 0.2);
   --orange: #ca8a04;
-  --orange-soft: rgba(202, 138, 4, 0.08);
+  --orange-soft: rgba(202, 138, 4, 0.12);
   --orange-glow: rgba(202, 138, 4, 0.18);
   --blue: #1565c0;
-  --blue-soft: rgba(21, 101, 192, 0.08);
+  --blue-soft: rgba(21, 101, 192, 0.12);
   --blue-glow: rgba(21, 101, 192, 0.2);
   --green: #2e7d32;
-  --green-soft: rgba(46, 125, 50, 0.08);
+  --green-soft: rgba(46, 125, 50, 0.12);
   --green-glow: rgba(46, 125, 50, 0.2);
   --gray: #5c637a;
+  --prio-low: #1565c0;
+  --prio-med: #b45309;
+  --prio-high: #c62828;
 
   /* dynamic overlays */
   --tb-bg: rgba(245, 246, 250, 0.85);
   --we-bg: rgba(0, 0, 0, 0.03);
   --accent-rgb: 197, 138, 54;
   --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
+:root.light .chip {
+  border-color: var(--border);
+}
+
+:root.light .prio {
+  background: color-mix(in srgb, var(--prio-color) 18%, transparent);
 }
 
 :root[data-density="compact"] {
