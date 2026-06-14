@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
+import { triggerConfettiBurst } from "../utils.js";
 
 const ILLUSTRATIONS = {
   tasks: (
@@ -67,6 +68,36 @@ const ILLUSTRATIONS = {
 };
 
 export default function EmptyState({ type = "tasks", title, description, action, actionLabel }) {
+  const doneRef = useRef(null);
+
+  useEffect(() => {
+    if (type !== "done") return;
+    if (sessionStorage.getItem("mt:all-done-confetti")) return;
+    sessionStorage.setItem("mt:all-done-confetti", "1");
+    if (doneRef.current) triggerConfettiBurst({ target: doneRef.current });
+  }, [type]);
+
+  if (type === "done") {
+    return (
+      <div className="empty-state" style={{ textAlign: "center", padding: "40px 20px" }}>
+        <div
+          ref={doneRef}
+          style={{
+            width: 64, height: 64, borderRadius: "50%", background: "#dcfce7",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            margin: "0 auto 16px",
+          }}
+        >
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        </div>
+        <div style={{ fontSize: 17, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>{title || "Vše hotovo!"}</div>
+        {description && <div style={{ fontSize: 14, color: "var(--text-3)", lineHeight: 1.5 }}>{description}</div>}
+      </div>
+    );
+  }
+
   const illustration = ILLUSTRATIONS[type] || ILLUSTRATIONS.tasks;
 
   return (
