@@ -11,6 +11,7 @@ import AtlasTopBar from "./layout/atlas/AtlasTopBar.jsx";
 import TaskDrawer from "./components/TaskDrawer.jsx";
 import CommandPalette from "./components/CommandPalette.jsx";
 import ShortcutHelper from "./components/ShortcutHelper.jsx";
+import SplashScreen from "./components/SplashScreen.jsx";
 import { applyDocumentMetadata } from "./appMeta.js";
 import "./styles/atlas-shell.css";
 
@@ -166,6 +167,17 @@ function AppUpdatePrompt() {
 
 function MobileFAB() {
   const { page, setPage } = useApp();
+  const [fabHint, setFabHint] = useState(false);
+
+  useEffect(() => {
+    if (sessionStorage.getItem("mt:fab-hint-shown")) return;
+    const timer = setTimeout(() => {
+      setFabHint(true);
+      sessionStorage.setItem("mt:fab-hint-shown", "1");
+      setTimeout(() => setFabHint(false), 2400);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, []);
 
   const openTaskModal = () => {
     const dispatchOpen = () => window.dispatchEvent(new CustomEvent("openQuickAddModal"));
@@ -178,7 +190,7 @@ function MobileFAB() {
   };
 
   return (
-    <button className="fab" onClick={openTaskModal} aria-label="Nový úkol">
+    <button className={`fab${fabHint ? " fab-hint" : ""}`} onClick={openTaskModal} aria-label="Nový úkol">
       <Icon name="plus" size={28} color="currentColor" strokeWidth={2.5} />
     </button>
   );
@@ -200,19 +212,98 @@ function PageLoader() {
   );
 }
 
+const PTR_THRESHOLD = 64;
+const PTR_MAX = 96;
+
+function usePullToRefresh(enabled, onRefresh) {
+  const [pullY, setPullY] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const startYRef = useRef(null);
+  const pullingRef = useRef(false);
+  const pullYRef = useRef(0);
+  const refreshingRef = useRef(false);
+  const onRefreshRef = useRef(onRefresh);
+  onRefreshRef.current = onRefresh;
+
+  useEffect(() => {
+    if (!enabled) return;
+
+    const onTouchStart = (e) => {
+      if (window.scrollY > 0) return;
+      startYRef.current = e.touches[0].clientY;
+      pullingRef.current = false;
+    };
+
+    const onTouchMove = (e) => {
+      if (startYRef.current == null) return;
+      const dy = e.touches[0].clientY - startYRef.current;
+      if (dy <= 0) { startYRef.current = null; return; }
+      pullingRef.current = true;
+      const clamped = Math.min(dy, PTR_MAX);
+      pullYRef.current = clamped;
+      setPullY(clamped);
+    };
+
+    const onTouchEnd = () => {
+      if (!pullingRef.current) { startYRef.current = null; return; }
+      if (pullYRef.current >= PTR_THRESHOLD && !refreshingRef.current) {
+        navigator.vibrate?.([15, 20]);
+        refreshingRef.current = true;
+        setRefreshing(true);
+        setPullY(PTR_THRESHOLD * 0.6);
+        pullYRef.current = PTR_THRESHOLD * 0.6;
+        Promise.resolve(onRefreshRef.current?.()).finally(() => {
+          refreshingRef.current = false;
+          setRefreshing(false);
+          setPullY(0);
+          pullYRef.current = 0;
+        });
+      } else {
+        setPullY(0);
+        pullYRef.current = 0;
+      }
+      startYRef.current = null;
+      pullingRef.current = false;
+    };
+
+    window.addEventListener("touchstart", onTouchStart, { passive: true });
+    window.addEventListener("touchmove", onTouchMove, { passive: true });
+    window.addEventListener("touchend", onTouchEnd);
+    return () => {
+      window.removeEventListener("touchstart", onTouchStart);
+      window.removeEventListener("touchmove", onTouchMove);
+      window.removeEventListener("touchend", onTouchEnd);
+    };
+  }, [enabled]);
+
+  return { pullY, refreshing };
+}
+
 function AppShell() {
-  const { dk, setDk, isMobile, page, setPage, taskDetail, cmdOpen, setCmdOpen, isSystemAdmin, loaded, tasks, setTaskDetail } = useApp();
+  const { dk, setDk, isMobile, page, setPage, taskDetail, cmdOpen, setCmdOpen, isSystemAdmin, loaded, tasks, setTaskDetail, refetchAll } = useApp();
   const [collapsed, setCollapsed] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [onboardingDone, setOnboardingDone] = useState(
     () => Boolean(localStorage.getItem("mt3:onboarding_done"))
   );
+  const [minTimePassed, setMinTimePassed] = useState(false);
+  const [splashDone, setSplashDone] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setMinTimePassed(true), 1200);
+    return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    if (loaded && minTimePassed) setSplashDone(true);
+  }, [loaded, minTimePassed]);
 
   useEffect(() => {
     const handler = () => setOnboardingDone(true);
     window.addEventListener("mt3:onboarding_done", handler);
     return () => window.removeEventListener("mt3:onboarding_done", handler);
   }, []);
+  const { pullY, refreshing } = usePullToRefresh(isMobile && loaded, refetchAll);
   const gPressedRef = useRef(false);
   const gTimerRef = useRef(null);
   const hideMobileFab = page === "workspace-settings" || page === "user-profile" || page === "admin";
@@ -330,9 +421,10 @@ function AppShell() {
         .su{animation:slideUp .28s cubic-bezier(.32,1,.4,1)}
         .pop{animation:pop .2s ease-out}
         .page-enter{animation:pageIn .18s cubic-bezier(.4,0,.2,1)}
-        .mobile-nav-bar{padding-bottom:max(6px,calc(env(safe-area-inset-bottom,0px) - 18px))}
+        .mobile-nav-bar{padding-bottom:env(safe-area-inset-bottom,0px)}
       `}</style>
 
+      <SplashScreen visible={!splashDone} />
       <OfflineBanner />
       <AppErrorReporter />
       <AppUpdatePrompt />
@@ -377,7 +469,31 @@ function AppShell() {
               </div>
             );
           })()}
-          <main style={isMobile ? { flex: 1, minWidth: 0, width: "100%", overflow: "visible", position: "relative", paddingBottom: "calc(58px + max(6px, calc(env(safe-area-inset-bottom, 0px) - 18px)))", overscrollBehaviorY: "auto", WebkitOverflowScrolling: "touch" } : undefined}>
+          {isMobile && pullY > 0 && (
+            <div style={{
+              position: "fixed",
+              top: "calc(46px + env(safe-area-inset-top, 0px))",
+              left: "50%",
+              transform: `translateX(-50%) translateY(${Math.min(pullY - 10, 48)}px)`,
+              zIndex: 190,
+              width: 34, height: 34,
+              borderRadius: "50%",
+              background: "var(--surface)",
+              border: "1px solid var(--border-soft)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              boxShadow: "0 2px 12px rgba(0,0,0,.18)",
+              opacity: Math.min(pullY / PTR_THRESHOLD, 1),
+              transition: refreshing ? "transform .2s ease" : "none",
+            }}>
+              <span style={refreshing ? { display: "flex", animation: "spin 0.8s linear infinite" } : {
+                display: "flex",
+                transform: `rotate(${(pullY / PTR_THRESHOLD) * 270}deg)`,
+              }}>
+                <Icon name="refresh-cw" size={15} color="var(--accent)" strokeWidth={2.2} />
+              </span>
+            </div>
+          )}
+          <main style={isMobile ? { flex: 1, minWidth: 0, width: "100%", overflow: "visible", position: "relative", paddingBottom: "calc(58px + env(safe-area-inset-bottom, 0px))", overscrollBehaviorY: "auto", WebkitOverflowScrolling: "touch" } : undefined}>
             <PageTransition pageKey={page}>
               <Suspense fallback={<PageLoader />}>
                 {page === "dashboard" && <PageErrorBoundary label="Přehled"><DashboardPage /></PageErrorBoundary>}

@@ -491,6 +491,20 @@ export default function QuickTodosPage() {
   const [filterPrio, setFilterPrio] = useState(null);
   const inputRef = useRef(null);
 
+  const prevTodosLenRef = useRef(quickTodos.length);
+  const [newestTodoId, setNewestTodoId] = useState(null);
+
+  useEffect(() => {
+    if (quickTodos.length > prevTodosLenRef.current) {
+      const newId = quickTodos[quickTodos.length - 1]?.id ?? null;
+      setNewestTodoId(newId);
+      const timer = setTimeout(() => setNewestTodoId(null), 400);
+      prevTodosLenRef.current = quickTodos.length;
+      return () => clearTimeout(timer);
+    }
+    prevTodosLenRef.current = quickTodos.length;
+  }, [quickTodos.length]);
+
   const rawActive = quickTodos.filter((q) => !q.done);
   const archived = quickTodos.filter((q) => q.done);
 
@@ -723,7 +737,14 @@ export default function QuickTodosPage() {
       ) : (
         <div className="tcards">
           {active.map((todo, idx) => (
-            <div key={todo.id} className="list-item-enter" style={{ "--item-index": Math.min(idx, 7) }}>
+            <div
+              key={todo.id}
+              className={`list-item-enter${todo.id === newestTodoId ? " task-slide-in" : ""}`}
+              style={{
+                "--item-index": Math.min(idx, 7),
+                ...(todo.id === newestTodoId ? { animationDelay: "0ms" } : {}),
+              }}
+            >
               <QuickTodoCard
                 todo={todo}
                 onArchive={archiveQuickTodo}

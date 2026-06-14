@@ -220,6 +220,20 @@ export default function TasksPage() {
     onStar: toggleStar,
   });
 
+  const prevTasksLenRef = useRef(tasks.length);
+  const [newestTaskId, setNewestTaskId] = useState(null);
+
+  useEffect(() => {
+    if (tasks.length > prevTasksLenRef.current) {
+      const newId = tasks[tasks.length - 1]?.id ?? null;
+      setNewestTaskId(newId);
+      const timer = setTimeout(() => setNewestTaskId(null), 400);
+      prevTasksLenRef.current = tasks.length;
+      return () => clearTimeout(timer);
+    }
+    prevTasksLenRef.current = tasks.length;
+  }, [tasks.length]);
+
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
   const [inlineEditId, setInlineEditId] = useState(null);
   const [inlineEditVal, setInlineEditVal] = useState("");
@@ -689,7 +703,10 @@ export default function TasksPage() {
                   focused={isFocused}
                   hintTarget={idx === 0}
                 >
-                  <div className={`tcard ${t.statusClass} ${t.overdue ? "alert" : ""} list-item-enter`} style={{ "--item-index": Math.min(idx, 7) }}>
+                  <div
+                    className={`tcard ${t.statusClass} ${t.overdue ? "alert" : ""} list-item-enter${t.id === newestTaskId ? " task-slide-in" : ""}`}
+                    style={{ "--item-index": Math.min(idx, 7), ...(t.id === newestTaskId ? { animationDelay: "0ms" } : {}) }}
+                  >
                     {cardInner}
                   </div>
                 </SwipeTaskCard>
@@ -699,10 +716,14 @@ export default function TasksPage() {
             return (
               <div
                 key={t.id}
-                className={`tcard ${t.statusClass} ${t.overdue ? "alert" : ""} list-item-enter`}
+                className={`tcard ${t.statusClass} ${t.overdue ? "alert" : ""} list-item-enter${t.id === newestTaskId ? " task-slide-in" : ""}`}
                 onClick={() => { setFocusedId(t.id); setTaskDetail(t.id); }}
                 onMouseEnter={() => { if (focusedId !== t.id) setFocusedId(t.id); }}
-                style={{ "--item-index": Math.min(idx, 7), ...(isFocused ? { outline: "1px solid var(--accent)", outlineOffset: -1 } : {}) }}
+                style={{
+                  "--item-index": Math.min(idx, 7),
+                  ...(t.id === newestTaskId ? { animationDelay: "0ms" } : {}),
+                  ...(isFocused ? { outline: "1px solid var(--accent)", outlineOffset: -1 } : {}),
+                }}
               >
                 {cardInner}
               </div>

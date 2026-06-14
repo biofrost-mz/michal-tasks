@@ -216,6 +216,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
       dueDate: dueDate || null,
       tagIds
     });
+    navigator.vibrate?.([20, 30, 60]);
 
     setModalOpen(false);
 
@@ -324,6 +325,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
 
         <button
           onClick={handleOpenModal}
+          className="btn-press"
           style={{
             padding: "0 20px",
             border: "none",
@@ -1057,6 +1059,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
               {/* Primary action na mobilu — nahoře, full width */}
               <button
                 onClick={() => handleCreate(false)}
+                className="btn-press"
                 style={{
                   padding: "13px 22px",
                   borderRadius: 12,
@@ -1119,6 +1122,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
                   </button>
                   <button
                     onClick={() => handleCreate(false)}
+                    className="btn-press"
                     style={{
                       padding: "10px 22px",
                       borderRadius: 10,
