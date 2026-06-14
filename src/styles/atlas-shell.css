@@ -3506,7 +3506,7 @@ body, p, li, td, th {
 }
 .empty-state { animation: empty-in 300ms ease-out both; }
 
-/* --- List item stagger ------------------------------------- */
+/* --- List item stagger (set --item-index inline in JSX, e.g. style={{"--item-index": idx}}) --- */
 @keyframes list-item-enter {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
