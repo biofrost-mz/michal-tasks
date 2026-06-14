@@ -59,6 +59,7 @@ CSS proměnné definované v `:root` a přepsané v `[data-theme="dark"]` (nebo 
 | `ProjectsPage` | 4× skeleton project card (širší, s progress barem) |
 | `NotesPage` | 3× skeleton note card (vyšší, více řádků) |
 | `QuickTodosPage` | 5× skeleton todo row |
+| `ProjectDetailPage` | 4× `SkeletonCard` (seznam úkolů projektu) |
 
 ### Přechod na reálný obsah
 Po `loaded → true`: reálný obsah nastoupí s `fade-in 200ms`. Skeleton jednoduše zmizí (bez animace ven — okamžité přepnutí).
@@ -94,6 +95,7 @@ Přidat `fade-in + slide-up` na `.empty-state`:
 | `QuickTodosPage` | 0 todos | `todos` | "Seznam je prázdný" + CTA |
 | `QuickTodosPage` | všechny done | speciální | "Vše splněno!" |
 | `TimelinePage` | 0 úkolů s termínem | `timeline` | "Žádné úkoly s termínem" |
+| `TagsPage` | 0 tagů | `filter` | "Zatím žádné tagy" + CTA |
 
 **3. "Vše hotovo" special case (TasksPage + QuickTodosPage)**  
 Odlišná varianta EmptyState bez SVG ilustrace — místo toho velká checkmark ikona (zelená), nadpis "Vše hotovo!", subtext "Užij si chvíli klidu." Bez action buttonu. Jednorázový micro-confetti burst při přepnutí do tohoto stavu (stejný `triggerConfettiBurst` jako swipe-done, sessionStorage key `mt:all-done-confetti`).
@@ -195,6 +197,19 @@ Projít dark mode na klíčových stránkách, opravit kontrastní nesrovnalosti
 
 ### 4.6 Spacing rytmus
 Sjednotit na 4px grid (4, 8, 12, 16, 20, 24, 32px). Zásah jen tam kde jsou outliers (nestandardní hodnoty jako 7px, 11px, 18px apod.).
+
+### 4.7 Reduced motion
+Všechny nové CSS animace musí respektovat `prefers-reduced-motion`. Jeden blok v `atlas-shell.css`:
+```css
+@media (prefers-reduced-motion: reduce) {
+  .skeleton,
+  .list-item-enter,
+  .empty-state,
+  .swipe-card,
+  .splash-overlay { animation: none !important; transition: none !important; }
+}
+```
+Funkčnost zůstává nedotčena — pouze vizuální pohyb se vypne.
 
 ---
 
