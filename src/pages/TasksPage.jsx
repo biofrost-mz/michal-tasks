@@ -226,13 +226,13 @@ export default function TasksPage() {
   useEffect(() => {
     if (tasks.length > prevTasksLenRef.current) {
       const newId = tasks[tasks.length - 1]?.id ?? null;
-      setNewestTaskId(newId);
+      setTimeout(() => setNewestTaskId(newId), 0);
       const timer = setTimeout(() => setNewestTaskId(null), 400);
       prevTasksLenRef.current = tasks.length;
       return () => clearTimeout(timer);
     }
     prevTasksLenRef.current = tasks.length;
-  }, [tasks.length]);
+  }, [tasks]);
 
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
   const [inlineEditId, setInlineEditId] = useState(null);

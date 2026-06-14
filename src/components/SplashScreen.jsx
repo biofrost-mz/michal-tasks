@@ -8,12 +8,14 @@ export default function SplashScreen({ visible }) {
 
   useEffect(() => {
     if (!visible) {
-      setHiding(true);
+      setTimeout(() => setHiding(true), 0);
       const t = setTimeout(() => setMounted(false), 360);
       return () => clearTimeout(t);
     } else {
-      setMounted(true);
-      setHiding(false);
+      setTimeout(() => {
+        setMounted(true);
+        setHiding(false);
+      }, 0);
     }
   }, [visible]);
 

@@ -510,7 +510,7 @@ export function ProjectDetailPage() {
 }
 
 export default function ProjectsPage() {
-  const { projects, tasks, addProject, openProject, updateProject, isMobile, loaded, dk } = useApp();
+  const { projects, tasks, addProject, openProject, updateProject, isMobile, loaded } = useApp();
   const toast = useToast();
 
   const [tab, setTab] = useState("active");

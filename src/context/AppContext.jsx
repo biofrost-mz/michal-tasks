@@ -470,7 +470,6 @@ export function AppProvider({ children }) {
       cancelled = true;
       clearTimeout(timeout);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, userEmail, userDisplayName, refreshCount]);
 
   // Realtime tasks sync

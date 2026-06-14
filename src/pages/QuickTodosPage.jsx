@@ -497,13 +497,13 @@ export default function QuickTodosPage() {
   useEffect(() => {
     if (quickTodos.length > prevTodosLenRef.current) {
       const newId = quickTodos[quickTodos.length - 1]?.id ?? null;
-      setNewestTodoId(newId);
+      setTimeout(() => setNewestTodoId(newId), 0);
       const timer = setTimeout(() => setNewestTodoId(null), 400);
       prevTodosLenRef.current = quickTodos.length;
       return () => clearTimeout(timer);
     }
     prevTodosLenRef.current = quickTodos.length;
-  }, [quickTodos.length]);
+  }, [quickTodos]);
 
   const rawActive = quickTodos.filter((q) => !q.done);
   const archived = quickTodos.filter((q) => q.done);

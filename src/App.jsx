@@ -223,7 +223,9 @@ function usePullToRefresh(enabled, onRefresh) {
   const pullYRef = useRef(0);
   const refreshingRef = useRef(false);
   const onRefreshRef = useRef(onRefresh);
-  onRefreshRef.current = onRefresh;
+  useEffect(() => {
+    onRefreshRef.current = onRefresh;
+  });
 
   useEffect(() => {
     if (!enabled) return;
