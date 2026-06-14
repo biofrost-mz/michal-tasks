@@ -3248,3 +3248,310 @@ body, p, li, td, th {
   color: var(--text-1);
   box-shadow: 0 4px 16px rgba(0, 0, 0, .22);
 }
+
+/* ─── Bidirectional swipe card shell ─── */
+.swipe-shell {
+  --drag-x: 0px;
+  --swipe-progress-r: 0;
+  --swipe-progress-l: 0;
+  --swipe-scale-r: 0.72;
+  --swipe-scale-l: 0.72;
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--r);
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.swipe-bg-right {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding-left: 24px;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 14% 50%, rgba(187,247,208,.2), transparent 34%),
+    linear-gradient(110deg, #0f766e 0%, #047857 55%, #064e3b 100%);
+  opacity: var(--swipe-progress-r);
+  transition: opacity .2s ease;
+  pointer-events: none;
+}
+.swipe-bg-right::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(225deg, transparent 0 43%, rgba(255,255,255,.12) 44% 45%, transparent 46% 100%);
+  opacity: calc(var(--swipe-progress-r) * .7);
+}
+
+.swipe-bg-left {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 24px;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 86% 50%, rgba(254,215,170,.18), transparent 34%),
+    linear-gradient(110deg, #92400e 0%, #b45309 55%, #d97706 100%);
+  opacity: var(--swipe-progress-l);
+  transition: opacity .2s ease;
+  pointer-events: none;
+}
+.swipe-bg-left::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(135deg, transparent 0 43%, rgba(255,255,255,.1) 44% 45%, transparent 46% 100%);
+  opacity: calc(var(--swipe-progress-l) * .7);
+}
+
+.swipe-action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: #fff;
+}
+.swipe-action-right {
+  opacity: var(--swipe-progress-r);
+  transform: scale(var(--swipe-scale-r));
+  transition: transform .22s cubic-bezier(.34,1.56,.64,1), opacity .16s ease;
+}
+.swipe-action-left {
+  opacity: var(--swipe-progress-l);
+  transform: scale(var(--swipe-scale-l));
+  transition: transform .22s cubic-bezier(.34,1.56,.64,1), opacity .16s ease;
+}
+.swipe-action span {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.swipe-action-right span { color: #d1fae5; }
+.swipe-action-left span  { color: #fde68a; }
+
+.swipe-icon {
+  position: relative;
+  width: 31px;
+  height: 31px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 8px 20px rgba(0,0,0,.18);
+}
+.swipe-icon-right {
+  background: rgba(2,44,34,.46);
+  border: 1px solid rgba(236,253,245,.32);
+}
+.swipe-icon-left {
+  background: rgba(66,27,0,.46);
+  border: 1px solid rgba(254,215,170,.32);
+}
+.swipe-shell.is-ready-right .swipe-icon-right {
+  background: rgba(236,253,245,.18);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.26), 0 8px 22px rgba(0,0,0,.22), 0 0 0 5px rgba(209,250,229,.1);
+}
+.swipe-shell.is-ready-left .swipe-icon-left {
+  background: rgba(254,215,170,.18);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 8px 22px rgba(0,0,0,.22), 0 0 0 5px rgba(253,230,138,.1);
+}
+
+.swipe-card {
+  position: relative;
+  z-index: 2;
+  touch-action: pan-y;
+  cursor: grab;
+  transform: translateX(var(--drag-x));
+  transition: transform .32s cubic-bezier(.34,1.56,.64,1), opacity .18s ease;
+  will-change: transform;
+}
+.swipe-card:hover,
+.swipe-card:active {
+  transform: translateX(var(--drag-x));
+}
+.swipe-shell.is-swiping .swipe-card {
+  cursor: grabbing;
+  transition: none;
+}
+.swipe-shell.is-swiping .swipe-bg-right,
+.swipe-shell.is-swiping .swipe-bg-left,
+.swipe-shell.is-swiping .swipe-action-right,
+.swipe-shell.is-swiping .swipe-action-left {
+  transition: none;
+}
+.swipe-shell.is-exiting .swipe-card {
+  opacity: 0;
+  transform: translateX(var(--drag-x)) scale(.95);
+  transition: transform .28s cubic-bezier(.4,0,.2,1), opacity .2s ease;
+}
+
+/* Swipe hint nudge animation */
+@keyframes swipe-hint-nudge {
+  0%   { transform: translateX(0); }
+  30%  { transform: translateX(-24px); }
+  60%  { transform: translateX(-18px); }
+  80%  { transform: translateX(-4px); }
+  100% { transform: translateX(0); }
+}
+.swipe-hint-nudge {
+  animation: swipe-hint-nudge 1.1s cubic-bezier(.34,1.56,.64,1) forwards;
+}
+
+/* ─── Splash screen ─── */
+@keyframes splash-pulse {
+  0%   { opacity: 0.5; transform: scale(1); }
+  100% { opacity: 0;   transform: scale(2.5); }
+}
+@keyframes splash-in {
+  from { opacity: 0; transform: scale(0.85); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes splash-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+.splash-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.splash-overlay.hiding {
+  animation: splash-out 350ms ease-in forwards;
+}
+.splash-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: splash-in 500ms ease-out both;
+}
+.splash-logo-wrap {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.splash-pulse {
+  position: absolute;
+  inset: -12px;
+  border-radius: 50%;
+  border: 2px solid #e3a850;
+  animation: splash-pulse 2.4s ease-out infinite;
+  pointer-events: none;
+}
+.splash-pulse:nth-child(2) {
+  animation-delay: 0.8s;
+}
+.splash-brand {
+  margin-top: 18px;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-family: var(--font-ui);
+}
+.splash-slogan {
+  margin-top: 5px;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* ============================================================
+   ESTETIKA SPRINT — animations, skeleton, polish
+   ============================================================ */
+
+/* --- Shadow system ----------------------------------------- */
+:root {
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.12);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.22);
+}
+
+/* --- Skeleton shimmer -------------------------------------- */
+@keyframes skeleton-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--sk-base) 25%,
+    var(--sk-hl)   50%,
+    var(--sk-base) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease infinite;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+/* --- Empty state entrance ---------------------------------- */
+@keyframes empty-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.empty-state { animation: empty-in 300ms ease-out both; }
+
+/* --- List item stagger ------------------------------------- */
+@keyframes list-item-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.list-item-enter {
+  animation: list-item-enter 220ms ease-out both;
+  animation-delay: calc(var(--item-index, 0) * 40ms);
+}
+
+/* --- Task slide-in (po přidání nového úkolu) -------------- */
+@keyframes task-slide-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.task-slide-in { animation: task-slide-in 220ms ease-out both; }
+
+/* --- Button press feedback --------------------------------- */
+.btn-press:active {
+  transform: scale(0.96);
+  transition: transform 80ms ease;
+}
+
+/* --- FAB pulse hint (jednorázové) -------------------------- */
+@keyframes fab-pulse {
+  0%, 100% { box-shadow: 0 4px 20px rgba(0,0,0,0.35), 0 0 0 0 rgba(227,168,80,0.45); }
+  50%       { box-shadow: 0 4px 20px rgba(0,0,0,0.35), 0 0 0 10px rgba(227,168,80,0); }
+}
+.fab.fab-hint { animation: fab-pulse 1.1s ease 2; }
+
+/* --- Interactive row transition ---------------------------- */
+.interactive-row {
+  transition: background 150ms ease, color 150ms ease;
+  cursor: pointer;
+}
+
+/* --- Reduced motion ---------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton,
+  .list-item-enter,
+  .task-slide-in,
+  .empty-state,
+  .fab.fab-hint,
+  .swipe-card,
+  .splash-overlay {
+    animation: none !important;
+    transition: none !important;
+  }
+}
