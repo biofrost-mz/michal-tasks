@@ -96,6 +96,7 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
 
   const [notifPrefs, setNotifPrefs] = useState(DEFAULT_NOTIF_PREFS)
   const [savingNotif, setSavingNotif] = useState(false)
+  const [pendingAction, setPendingAction] = useState(null)
 
   const canManage = workspaceRole === 'owner' || workspaceRole === 'admin'
   const isOwner = workspaceRole === 'owner'
@@ -180,8 +181,8 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
     }
   }
 
-  const handleRemove = async (member) => {
-    if (!await confirm(`Odebrat ${member.email || member.userId.slice(0, 8)} z workspace?`)) return
+  const handleRemove = async (member, skipConfirm = false) => {
+    if (!skipConfirm && !await confirm(`Odebrat ${member.email || member.userId.slice(0, 8)} z workspace?`)) return
     try {
       await removeMember(member.userId)
       toast('Člen odebrán', 'success')
@@ -190,8 +191,8 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
     }
   }
 
-  const handleLeave = async () => {
-    if (!await confirm('Opravdu chceš opustit tento workspace?')) return
+  const handleLeave = async (skipConfirm = false) => {
+    if (!skipConfirm && !await confirm('Opravdu chceš opustit tento workspace?')) return
     try {
       await leaveWorkspace()
       setPage('dashboard')
@@ -540,11 +541,13 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
             font-size:12px;
             margin-top:6px;
           }
-          .ws-member-row{align-items:flex-start;flex-wrap:wrap;padding:11px 10px;}
+          .ws-member-row{align-items:flex-start;flex-wrap:wrap;padding:11px 10px;min-height:52px;}
           .ws-member-row select{width:100%!important;}
           .ws-member-actions{display:grid!important;grid-template-columns:1fr auto;width:100%;gap:7px!important;margin-left:40px;}
           .ws-invite-row{flex-wrap:wrap;}
           .ws-invite-row .btn{width:auto;}
+          .ws-card + .ws-card { margin-top: 10px; }
+          .ws-section-label { margin-bottom: 8px; margin-top: 4px; }
         }
         @media(max-width:380px){
           .workspace-settings-page{padding-left:12px!important;padding-right:12px!important;}
@@ -656,7 +659,14 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
               </Section>
 
               <Section label="Nebezpečná zóna" title="Opustit workspace" description="Akce se týká jen tvého členství v tomto workspace." icon="alert-triangle" tone="danger">
-                {!isOwner && <button className="btn danger ws-danger-button" onClick={handleLeave}>Opustit workspace</button>}
+                {!isOwner && (
+                  <button
+                    className="btn danger ws-danger-button"
+                    onClick={isMobile ? () => setPendingAction({ type: 'leave' }) : handleLeave}
+                  >
+                    Opustit workspace
+                  </button>
+                )}
                 {isOwner && workspaceMembers.length === 1 && <div style={mutedText}>Workspace nelze opustit, jsi jediný člen.</div>}
                 {isOwner && workspaceMembers.length > 1 && <div style={mutedText}>Jako owner nemůžeš workspace opustit. Nejprve předej ownership.</div>}
               </Section>
@@ -685,7 +695,7 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
                               <option value="member">member</option>
                               <option value="viewer">viewer</option>
                             </select>
-                            <button className="btn danger" style={{ padding: '7px 10px' }} onClick={() => handleRemove(m)}>
+                            <button className="btn danger" style={{ padding: '7px 10px' }} onClick={() => isMobile ? setPendingAction({ type: 'remove', member: m }) : handleRemove(m)}>
                               <Icon name="trash" size={12} color="currentColor" strokeWidth={2} />
                             </button>
                           </div>
@@ -885,6 +895,59 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
           )}
         </div>
       </div>
+
+      {isMobile && pendingAction && (
+        <>
+          <div
+            onClick={() => setPendingAction(null)}
+            style={{ position: 'fixed', inset: 0, zIndex: 249, background: 'rgba(0,0,0,0.45)' }}
+          />
+          <div
+            style={{
+              position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 250,
+              background: 'var(--bg-2)', borderRadius: '16px 16px 0 0',
+              paddingBottom: 'calc(20px + env(safe-area-inset-bottom, 0px))',
+              boxShadow: 'var(--shadow-lg)',
+            }}
+          >
+            <div style={{ width: 40, height: 4, borderRadius: 2, background: 'var(--border)', margin: '12px auto 8px' }} />
+            <div style={{ padding: '12px 16px 16px' }}>
+              <p style={{ fontSize: 14, color: 'var(--text)', marginBottom: 16, fontWeight: 600 }}>
+                {pendingAction.type === 'leave' ? 'Opustit workspace?' : `Odebrat ${pendingAction.member?.email || pendingAction.member?.userId?.slice(0, 8) || 'člena'}?`}
+              </p>
+              <p style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 20, lineHeight: 1.5 }}>
+                {pendingAction.type === 'leave'
+                  ? 'Tato akce je nevratná. Přijdeš o přístup ke všem datům workspace.'
+                  : 'Člen ztratí přístup k workspace.'}
+              </p>
+              <button
+                onClick={async () => {
+                  if (pendingAction.type === 'leave') await handleLeave(true)
+                  else await handleRemove(pendingAction.member, true)
+                  setPendingAction(null)
+                }}
+                style={{
+                  width: '100%', padding: '13px', borderRadius: 12,
+                  background: '#ef4444', color: '#fff', border: 'none',
+                  fontSize: 15, fontWeight: 700, cursor: 'pointer', marginBottom: 8,
+                }}
+              >
+                {pendingAction.type === 'leave' ? 'Odejít' : 'Odebrat'}
+              </button>
+              <button
+                onClick={() => setPendingAction(null)}
+                style={{
+                  width: '100%', padding: '12px', borderRadius: 12,
+                  background: 'var(--bg-2)', color: 'var(--text-2)',
+                  border: '1px solid var(--border)', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                }}
+              >
+                Zrušit
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }
