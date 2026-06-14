@@ -17,6 +17,7 @@ import {
   Stepper,
   TagPill,
 } from "../components/atlas/AtlasTaskCard.jsx";
+import { SkeletonCard } from "../components/Skeleton.jsx";
 
 function getWeekNumber(date) {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
@@ -238,9 +239,11 @@ function Headline({ userName, overdueCount, activeCount, totalCount, doneWeek, d
           <div className="hl-stat-u" style={{ color: weekDiff >= 0 ? "var(--green)" : "var(--red)" }}>{weekDiffLabel}</div>
         </div>
         <div className="hl-stat" style={{ "--i": 3, cursor: "default" }}>
-          <div className="hl-stat-l">Streak 🔥</div>
-          <div className="hl-stat-v" style={{ color: "var(--accent)" }}>{streakCurrentAnim}</div>
-          <div className="hl-stat-u">dní · best {streak.best}</div>
+          <div className="hl-stat-l">Streak {streak.current > 0 ? "🔥" : ""}</div>
+          <div className="hl-stat-v" style={{ color: streak.current > 0 ? "var(--accent)" : "var(--text-4)" }}>{streakCurrentAnim}</div>
+          <div className="hl-stat-u" style={{ color: streak.current > 0 ? undefined : "var(--text-4)" }}>
+            {streak.current > 0 ? `dní · best ${streak.best}` : `best ${streak.best} · začni dnes`}
+          </div>
         </div>
         <div className="hl-stat" onClick={() => setPage("projects")} style={{ "--i": 4 }} title="Přejít na projekty">
           <div className="hl-stat-l">Projekty</div>
@@ -249,8 +252,8 @@ function Headline({ userName, overdueCount, activeCount, totalCount, doneWeek, d
         </div>
         <div className="hl-stat" style={{ "--i": 5, cursor: "default" }} title="Úkoly dokončené dnes">
           <div className="hl-stat-l">Dnes hotovo</div>
-          <div className="hl-stat-v" style={{ color: "var(--green)" }}>{doneTodayCountAnim}</div>
-          <div className="hl-stat-u">dnes{doneTodayCount > 0 ? " ↑" : ""}</div>
+          <div className="hl-stat-v" style={{ color: doneTodayCount > 0 ? "var(--green)" : "var(--text-4)" }}>{doneTodayCountAnim}</div>
+          <div className="hl-stat-u">{doneTodayCount > 0 ? "splněno ↑" : "začni dnes"}</div>
         </div>
       </div>
     </div>
@@ -366,6 +369,7 @@ export default function DashboardPage() {
     projects,
     notes,
     tags,
+    loaded,
     updateTask,
     setTaskDetail,
     openProject,
@@ -892,30 +896,38 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {groupBy === "status" && (
+          {!loaded ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
+              {[...Array(3)].map((_, i) => <SkeletonCard key={i} />)}
+            </div>
+          ) : (
             <>
-              {sec("overdue", "Po termínu", tasksToDisplay.filter(t => t.overdue), "alert", true)}
-              {sec("doing", "Rozpracováno", tasksToDisplay.filter(t => t.status === "doing" && !t.overdue), "doing")}
-              {sec("wait", "Čekám", tasksToDisplay.filter(t => t.status === "waiting"), "wait")}
-              {sec("todo", "To do", tasksToDisplay.filter(t => t.status === "todo"), "todo")}
-            </>
-          )}
+              {groupBy === "status" && (
+                <>
+                  {sec("overdue", "Po termínu", tasksToDisplay.filter(t => t.overdue), "alert", true)}
+                  {sec("doing", "Rozpracováno", tasksToDisplay.filter(t => t.status === "doing" && !t.overdue), "doing")}
+                  {sec("wait", "Čekám", tasksToDisplay.filter(t => t.status === "waiting"), "wait")}
+                  {sec("todo", "To do", tasksToDisplay.filter(t => t.status === "todo"), "todo")}
+                </>
+              )}
 
-          {groupBy === "project" && (
-            <>
-              {groupedByProject.map((g) => sec(g.id, g.title, g.items, g.marker, false, g.customColor))}
-            </>
-          )}
+              {groupBy === "project" && (
+                <>
+                  {groupedByProject.map((g) => sec(g.id, g.title, g.items, g.marker, false, g.customColor))}
+                </>
+              )}
 
-          {groupBy === "priority" && (
-            <>
-              {groupedByPriority.map((g) => sec(g.id, g.title, g.items, g.marker, false, g.customColor))}
-            </>
-          )}
+              {groupBy === "priority" && (
+                <>
+                  {groupedByPriority.map((g) => sec(g.id, g.title, g.items, g.marker, false, g.customColor))}
+                </>
+              )}
 
-          {groupBy === "dueDate" && (
-            <>
-              {groupedByDueDate.map((g) => sec(g.id, g.title, g.items, g.marker, g.id === "overdue", g.customColor))}
+              {groupBy === "dueDate" && (
+                <>
+                  {groupedByDueDate.map((g) => sec(g.id, g.title, g.items, g.marker, g.id === "overdue", g.customColor))}
+                </>
+              )}
             </>
           )}
         </div>

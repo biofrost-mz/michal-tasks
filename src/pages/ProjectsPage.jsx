@@ -10,7 +10,7 @@ import { projectColor, parseYMD, startOfToday, PROJECT_COLORS, uuid4 } from "../
 import { supabase } from "../supabase.js";
 import { PROJ_STATUS } from "../constants.js";
 import EmptyState from "../components/EmptyState.jsx";
-import { SkeletonCard } from "../components/Skeleton.jsx";
+import { SkeletonCard, SkeletonLine } from "../components/Skeleton.jsx";
 import {
   DndContext,
   DragOverlay,
@@ -510,7 +510,7 @@ export function ProjectDetailPage() {
 }
 
 export default function ProjectsPage() {
-  const { projects, tasks, addProject, openProject, updateProject, isMobile } = useApp();
+  const { projects, tasks, addProject, openProject, updateProject, isMobile, loaded, dk } = useApp();
   const toast = useToast();
 
   const [tab, setTab] = useState("active");
@@ -831,7 +831,11 @@ export default function ProjectsPage() {
         </div>
       ) : null}
 
-      {pGroupBy === "status" ? (
+      {!loaded ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {[...Array(4)].map((_, i) => <SkeletonCard key={i} />)}
+        </div>
+      ) : pGroupBy === "status" ? (
         <div>
           {groupedProjects.map(([key, group]) => (
             <div key={key} style={{ marginBottom: 32 }}>

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react'
+import { SkeletonLine } from '../components/Skeleton.jsx'
 import { useApp } from '../context/AppContext.jsx'
 import { useToast } from '../components/Toast.jsx'
 import Icon from '../components/Icon.jsx'
@@ -475,7 +476,7 @@ const SWIPE_HINT_KEY = "qt:swipe-hint-shown";
 const PRIORITY_ORDER = { high: 0, medium: 1, low: 2, "": 3, null: 3 };
 
 export default function QuickTodosPage() {
-  const { t, isMobile, quickTodos, addQuickTodo, archiveQuickTodo, restoreQuickTodo, deleteQuickTodo, clearArchivedQuickTodos } = useApp();
+  const { t, isMobile, quickTodos, addQuickTodo, archiveQuickTodo, restoreQuickTodo, deleteQuickTodo, clearArchivedQuickTodos, loaded } = useApp();
   const confirm = useConfirm();
   const [input, setInput] = useState("");
   const [expanded, setExpanded] = useState(false);
@@ -710,18 +711,32 @@ export default function QuickTodosPage() {
         </div>
       )}
 
-      <div className="tcards">
-        {active.map((todo, idx) => (
-          <QuickTodoCard
-            key={todo.id}
-            todo={todo}
-            onArchive={archiveQuickTodo}
-            onDelete={deleteQuickTodo}
-            isMobile={isMobile}
-            hintOffset={idx === 0 && showSwipeHint ? hintOffset : 0}
-          />
-        ))}
-      </div>
+      {!loaded ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {[...Array(5)].map((_, i) => {
+            const skVars = { "--sk-base": t.bg2 || "#e8e8ed", "--sk-hl": t.card || "#f5f5f7" };
+            return (
+              <div key={i} style={{ padding: "11px 14px", borderRadius: 10, border: `1px solid ${t.border}`, background: t.card, display: "flex", alignItems: "center", gap: 12, ...skVars }}>
+                <div className="skeleton" style={{ width: 18, height: 18, borderRadius: "50%" }} />
+                <div className="skeleton" style={{ height: 13, width: `${55 + (i * 7) % 30}%`, borderRadius: 6 }} />
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="tcards">
+          {active.map((todo, idx) => (
+            <QuickTodoCard
+              key={todo.id}
+              todo={todo}
+              onArchive={archiveQuickTodo}
+              onDelete={deleteQuickTodo}
+              isMobile={isMobile}
+              hintOffset={idx === 0 && showSwipeHint ? hintOffset : 0}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Archived section */}
       {archived.length > 0 && (

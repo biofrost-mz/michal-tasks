@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { SkeletonLine } from '../components/Skeleton.jsx'
 import { useCreateBlockNote } from '@blocknote/react'
 import { BlockNoteView } from '@blocknote/mantine'
 import { useApp } from '../context/AppContext.jsx'
@@ -1715,7 +1716,7 @@ function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects, view = "e
 
 /* ─── NotesPage ─────────────────────────────── */
 export default function NotesPage() {
-  const { t, dk, notes, addNote, updateNote, deleteNote, projects, tasks, addTask, openNoteId, setOpenNoteId, isMobile } = useApp();
+  const { t, dk, notes, addNote, updateNote, deleteNote, projects, tasks, addTask, openNoteId, setOpenNoteId, isMobile, loaded } = useApp();
   const toast   = useToast();
   const confirm = useConfirm();
 
@@ -1807,6 +1808,24 @@ export default function NotesPage() {
 
   const showList = mobileView === "list";
   const showDetail = mobileView === "detail";
+
+  if (!loaded) {
+    return (
+      <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 8 }}>
+        {[...Array(3)].map((_, i) => {
+          const skVars = dk ? { "--sk-base": "#1e2130", "--sk-hl": "#262b3d" } : { "--sk-base": "#e8e8ed", "--sk-hl": "#f5f5f7" };
+          return (
+            <div key={i} style={{ padding: "16px", borderRadius: 14, border: `1px solid ${t.border}`, background: t.card, ...skVars }}>
+              <div className="skeleton" style={{ height: 16, width: "60%", borderRadius: 6, marginBottom: 10 }} />
+              <div className="skeleton" style={{ height: 11, width: "100%", borderRadius: 6, marginBottom: 6 }} />
+              <div className="skeleton" style={{ height: 11, width: "80%", borderRadius: 6, marginBottom: 6 }} />
+              <div className="skeleton" style={{ height: 10, width: 80, borderRadius: 6, marginTop: 12 }} />
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
 
   if (!isMobile) {
     return (
