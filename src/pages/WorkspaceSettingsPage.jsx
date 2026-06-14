@@ -56,7 +56,7 @@ function Section({ label, title, description, icon, tone = 'default', children, 
             {description && <div className="ws-card-desc">{description}</div>}
           </div>
         </div>
-        {action}
+        {action && <div className="ws-card-action">{action}</div>}
       </div>
       {children && <div className="ws-card-body">{children}</div>}
     </section>
@@ -290,6 +290,7 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
         .ws-settings-panels{display:grid;gap:10px;min-width:0;}
         .ws-card{background:var(--surface);border:1px solid var(--border-soft);border-radius:14px;padding:16px;min-width:0;}
         .ws-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;}
+        .ws-card-action{flex:0 0 auto;}
         .ws-card-title-wrap{display:flex;gap:11px;align-items:flex-start;min-width:0;flex:1;}
         .ws-card-icon{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;color:var(--accent);background:var(--accent-soft);flex:0 0 auto;}
         .ws-card-icon.danger{color:var(--red);background:var(--red-soft);}
@@ -315,36 +316,242 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
         .ws-role-badge{font-family:var(--mono);font-size:10.5px;padding:3px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.06em;font-weight:850;}
         .ws-mobile-break{display:flex;align-items:center;justify-content:space-between;gap:14px;}
         @media(max-width:767px){
-          .workspace-settings-page{padding:16px 16px 96px!important;max-width:none!important;overflow-x:clip;}
-          .ws-card{max-width:100%;overflow-wrap:break-word;padding:15px;border-radius:14px;}
-          .ws-card-head{flex-direction:column;align-items:stretch;gap:13px;}
-          .ws-form-row input,.ws-form-row .ws-input,.ws-card input,.ws-card select,.ws-card textarea{min-width:0!important;max-width:100%;}
-          .ws-settings-hero{margin-bottom:14px;}
-          .ws-settings-title{font-size:25px;margin:9px 0 9px;}
-          .ws-settings-meta{gap:6px;font-size:11px;}
-          .ws-meta-pill{padding:4px 8px;font-size:10.5px;}
-          .ws-settings-layout{grid-template-columns:1fr;gap:14px;}
-          .ws-settings-tabs{position:sticky;top:0;z-index:20;margin:0 -16px;padding:8px 16px;border:0;border-radius:0;border-bottom:1px solid var(--border-soft);background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);}
-          .ws-settings-tabs-inner{display:flex;gap:7px;overflow-x:auto;padding-bottom:1px;scroll-snap-type:x mandatory;scrollbar-width:none;}
+          .workspace-settings-page{
+            width:100%;
+            padding:14px 14px calc(88px + max(6px, env(safe-area-inset-bottom, 0px)))!important;
+            max-width:none!important;
+            overflow-x:clip;
+          }
+          .ws-settings-hero{
+            margin:-2px 0 12px;
+            padding:0 1px;
+          }
+          .ws-back{
+            display:inline-flex;
+            align-items:center;
+            min-height:30px;
+            font-size:10.5px;
+            letter-spacing:.16em;
+          }
+          .ws-settings-title{
+            font-size:30px;
+            line-height:1;
+            margin:7px 0 10px;
+            letter-spacing:-.035em;
+          }
+          .ws-settings-meta{
+            gap:6px;
+            flex-wrap:nowrap;
+            overflow-x:auto;
+            scrollbar-width:none;
+            margin-right:-14px;
+            padding-right:14px;
+            -webkit-overflow-scrolling:touch;
+          }
+          .ws-settings-meta::-webkit-scrollbar{display:none;}
+          .ws-meta-pill{
+            flex:0 0 auto;
+            min-height:26px;
+            padding:4px 9px;
+            font-size:10.5px;
+          }
+          .ws-settings-email{
+            flex:0 1 auto;
+            min-width:0;
+            max-width:170px;
+            overflow:hidden;
+            text-overflow:ellipsis;
+            white-space:nowrap;
+          }
+          .ws-settings-layout{grid-template-columns:1fr;gap:12px;}
+          .ws-settings-tabs{
+            position:sticky;
+            top:0;
+            z-index:20;
+            margin:0 -14px 4px;
+            padding:7px 14px 8px;
+            border:0;
+            border-top:1px solid var(--border-soft);
+            border-bottom:1px solid var(--border-soft);
+            border-radius:0;
+            background:color-mix(in srgb,var(--bg) 92%,transparent);
+            backdrop-filter:blur(18px);
+            -webkit-backdrop-filter:blur(18px);
+          }
+          .ws-settings-tabs-inner{
+            display:flex;
+            gap:7px;
+            overflow-x:auto;
+            padding-bottom:1px;
+            scroll-snap-type:x proximity;
+            scrollbar-width:none;
+            -webkit-overflow-scrolling:touch;
+          }
           .ws-settings-tabs-inner::-webkit-scrollbar{display:none;}
-          .ws-tab{flex:0 0 auto;min-width:96px;justify-content:center;padding:8px 12px;border-radius:999px;border:1px solid var(--border-soft);background:var(--surface);font-size:12px;scroll-snap-align:start;}
-          .ws-tab.active{background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 40%,var(--border-soft));}
-          .ws-settings-panels{gap:10px;}
-          .ws-card-title-wrap{gap:10px;}
-          .ws-card-body{margin-top:13px;}
-          .ws-profile-card{gap:13px;padding:15px;}
-          .ws-avatar{width:46px;height:46px;font-size:15px;}
+          .ws-tab{
+            flex:0 0 auto;
+            width:auto;
+            min-width:0;
+            min-height:36px;
+            justify-content:center;
+            gap:6px;
+            padding:8px 12px;
+            border-radius:999px;
+            border:1px solid var(--border-soft);
+            background:var(--surface);
+            font-size:12px;
+            font-weight:750;
+            scroll-snap-align:start;
+            box-shadow:none;
+          }
+          .ws-tab.active{
+            background:color-mix(in srgb,var(--accent) 14%,var(--surface));
+            border-color:color-mix(in srgb,var(--accent) 42%,var(--border-soft));
+            box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 12%,transparent);
+          }
+          .ws-settings-panels{gap:9px;}
+          .ws-card{
+            width:100%;
+            max-width:100%;
+            overflow:hidden;
+            overflow-wrap:break-word;
+            padding:14px;
+            border-radius:12px;
+            background:color-mix(in srgb,var(--surface) 92%,var(--bg));
+            box-shadow:none;
+          }
+          .ws-card-head{
+            flex-direction:row;
+            align-items:flex-start;
+            gap:10px;
+          }
+          .ws-card-title-wrap{
+            gap:10px;
+            min-width:0;
+          }
+          .ws-card-title-wrap > div{
+            min-width:0;
+          }
+          .ws-card-action{
+            align-self:center;
+            margin-left:auto;
+          }
+          .ws-card-icon{
+            width:34px;
+            height:34px;
+            border-radius:10px;
+          }
+          .ws-section-label{
+            font-size:9.5px;
+            letter-spacing:.14em;
+            margin-bottom:3px;
+          }
+          .ws-card-title{
+            font-size:15.5px;
+            line-height:1.22;
+            letter-spacing:-.01em;
+          }
+          .ws-card-desc{
+            font-size:12.5px;
+            line-height:1.38;
+            margin-top:3px;
+            display:-webkit-box;
+            -webkit-line-clamp:2;
+            -webkit-box-orient:vertical;
+            overflow:hidden;
+          }
+          .ws-card-body{margin-top:12px;}
+          .ws-form-row input,.ws-form-row .ws-input,.ws-card input,.ws-card select,.ws-card textarea{min-width:0!important;max-width:100%;}
+          .ws-profile-card{
+            gap:12px;
+            padding:14px;
+            border-radius:13px;
+          }
+          .ws-avatar{
+            width:48px;
+            height:48px;
+            font-size:15px;
+          }
           .ws-profile-name{font-size:17px;}
           .ws-profile-mail{font-size:12.5px;}
-          .ws-form-row{display:grid;grid-template-columns:1fr;gap:8px;}
-          .ws-form-row .btn,.ws-card .btn{width:100%;justify-content:center;padding:11px 14px;}
-          .ws-system-action{width:100%;justify-content:center;margin-top:2px;}
-          .ws-danger-button{width:100%;}
-          .ws-mobile-break{align-items:flex-start;flex-direction:column;gap:10px;}
+          .ws-profile-role{
+            margin-top:6px;
+            padding:3px 7px;
+            font-size:9.5px;
+          }
+          .ws-form-row{
+            display:grid;
+            grid-template-columns:1fr auto;
+            align-items:center;
+            gap:8px;
+          }
+          .ws-form-row input{
+            min-height:44px;
+          }
+          .ws-form-row .btn{
+            min-height:42px;
+            justify-content:center;
+            padding:10px 13px;
+          }
+          .ws-card .btn{
+            min-height:40px;
+            justify-content:center;
+            padding:9px 13px;
+            border-radius:12px;
+            font-size:12.5px;
+            font-weight:800;
+          }
+          .ws-card .btn.primary{
+            box-shadow:none;
+          }
+          .ws-card-body > .btn:not(.ws-danger-button){
+            width:100%;
+          }
+          .ws-card-action .btn{
+            min-width:0;
+            white-space:nowrap;
+          }
+          .ws-system-action{
+            width:auto;
+            margin-top:0;
+          }
+          .ws-system-action svg{
+            display:none;
+          }
+          .ws-danger-button{
+            width:100%;
+            min-height:42px;
+          }
+          .ws-mobile-break{
+            align-items:flex-start;
+            flex-direction:column;
+            gap:10px;
+          }
+          .ws-mobile-break > .btn,
+          .ws-mobile-break > select,
+          .ws-mobile-break > div:last-child:not(:first-child){
+            width:100%!important;
+          }
+          .ws-mobile-break > div[style*="display: flex"]{
+            display:grid!important;
+            grid-template-columns:1fr 1fr;
+          }
+          .ws-form-hint{
+            font-size:12px;
+            margin-top:6px;
+          }
           .ws-member-row{align-items:flex-start;flex-wrap:wrap;padding:11px 10px;}
           .ws-member-row select{width:100%!important;}
           .ws-member-actions{display:grid!important;grid-template-columns:1fr auto;width:100%;gap:7px!important;margin-left:40px;}
           .ws-invite-row{flex-wrap:wrap;}
+          .ws-invite-row .btn{width:auto;}
+        }
+        @media(max-width:380px){
+          .workspace-settings-page{padding-left:12px!important;padding-right:12px!important;}
+          .ws-settings-tabs{margin-left:-12px;margin-right:-12px;padding-left:12px;padding-right:12px;}
+          .ws-settings-email{max-width:135px;}
+          .ws-form-row{grid-template-columns:1fr;}
+          .ws-form-row .btn{width:100%;}
         }
       `}</style>
 
@@ -354,7 +561,7 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
         <div className="ws-settings-meta">
           <MetaPill>{active?.name || 'Workspace'}</MetaPill>
           <MetaPill tone="role">role {workspaceRole}</MetaPill>
-          <span>{userEmail}</span>
+          <span className="ws-settings-email">{userEmail}</span>
         </div>
       </div>
 
@@ -463,7 +670,7 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
                   {workspaceMembers.map((m) => {
                     const color = roleColor(m.role)
                     return (
-                      <div key={m.userId} className="ws-member-row">
+                      <div key={m.userId} className="ws-member-row interactive-row">
                         <div className="ws-member-avatar" style={{ background: `${color}22`, border: `1px solid ${color}55`, color }}>
                           {getInitials(m)}
                         </div>
@@ -518,7 +725,7 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
                   {invites.length > 0 && (
                     <div className="ws-invite-list" style={{ marginTop: 8 }}>
                       {invites.map((inv) => (
-                        <div key={inv.id} className="ws-invite-row">
+                        <div key={inv.id} className="ws-invite-row interactive-row">
                           <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text)' }}>{inv.role}</span>
                           <span style={{ fontSize: 11.5, color: 'var(--text-3)' }}>vyprší {formatDate(inv.expires_at, { day: 'numeric', month: 'numeric', year: 'numeric' })}</span>
                           <span style={{ flex: 1 }} />
