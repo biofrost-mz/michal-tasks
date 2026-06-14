@@ -13,6 +13,8 @@ import QuickAdd from "../components/QuickAdd.jsx";
 import EmptyState from "../components/EmptyState.jsx";
 import { useTaskKeyboard } from "../hooks/useTaskKeyboard.js";
 import { formatDateKey } from "../locale.js";
+import SwipeTaskCard from "../components/SwipeTaskCard.jsx";
+import { SkeletonCard } from "../components/Skeleton.jsx";
 
 const CHIP_STATUSES = ["all", "active", "todo", "doing", "wait", "done"];
 const STATUS_LABELS = {
@@ -92,6 +94,7 @@ export default function TasksPage() {
     tasks,
     projects,
     tags,
+    loaded,
     updateTask,
     deleteTask,
     setTaskDetail,
@@ -545,7 +548,11 @@ export default function TasksPage() {
         </div>
       )}
 
-      {filtered.length === 0 ? (
+      {!loaded ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: "0 4px" }}>
+          {[...Array(5)].map((_, i) => <SkeletonCard key={i} />)}
+        </div>
+      ) : filtered.length === 0 ? (
         tasks.length === 0 ? (
           <EmptyState
             type="tasks"
@@ -618,59 +625,84 @@ export default function TasksPage() {
         </div>
       ) : (
         <div className="tcards" style={{ marginTop: 8 }}>
-          {filtered.map((t) => {
+          {filtered.map((t, idx) => {
             const isFocused = focusedId === t.id;
+            const cardInner = (
+              <>
+                <div className="tcard-state" onClick={(e) => {
+                   e.stopPropagation();
+                   const nextStatus = t.status === "done" ? "todo" : "done";
+                   if (nextStatus === "done") triggerConfettiBurst(e);
+                   setStatus(t.id, nextStatus);
+                 }} title="Toggle hotovo" />
+                <div className="tcard-body">
+                  {inlineEditId === t.id ? (
+                    <InlineEditInput
+                      taskId={t.id}
+                      value={inlineEditVal}
+                      onChange={setInlineEditVal}
+                      onCommit={commitInlineEdit}
+                      onCancel={() => setInlineEditId(null)}
+                      style={{ width: "100%", fontWeight: 600, fontSize: 14 }}
+                    />
+                  ) : (
+                    <div
+                      className="tcard-title"
+                      onDoubleClick={(e) => startInlineEdit(t, e)}
+                      title="Dvojklik pro úpravu"
+                    >{t.title}</div>
+                  )}
+                  {t.desc ? <div className="tcard-desc">{t.desc}</div> : null}
+                  <div className="tcard-meta">
+                    <ProjectPill projectId={t.project} projectsById={projectsById} />
+                    <PrioChip priority={t.priority} />
+                    {t.due ? <span className={`due ${t.overdue ? "overdue" : ""}`}>{t.due}</span> : null}
+                  </div>
+                </div>
+                <div className="tcard-acts" onClick={(e) => e.stopPropagation()}>
+                  <div className="stepper">
+                    {["todo", "doing", "wait", "done"].map((k) => (
+                      <button key={k} className={t.statusClass === k ? `cur ${k}` : ""} onClick={(e) => { e.stopPropagation(); setStatus(t.id, CLASS_TO_STATUS[k]); }}>
+                        {k === "todo" ? "Todo" : k === "doing" ? "Doing" : k === "wait" ? "Wait" : "Done"}
+                      </button>
+                    ))}
+                  </div>
+                  <button className={`icon-btn star ${t.starred ? "on" : ""}`} onClick={() => toggleStar(t.id)} title="Top úkol">★</button>
+                </div>
+              </>
+            );
+
+            if (isMobile) {
+              return (
+                <SwipeTaskCard
+                  key={t.id}
+                  task={t}
+                  onStatusChange={setStatus}
+                  onClick={() => { setFocusedId(t.id); setTaskDetail(t.id); }}
+                  onMouseEnter={() => { if (focusedId !== t.id) setFocusedId(t.id); }}
+                  focused={isFocused}
+                  hintTarget={idx === 0}
+                >
+                  <div className={`tcard ${t.statusClass} ${t.overdue ? "alert" : ""}`}>
+                    {cardInner}
+                  </div>
+                </SwipeTaskCard>
+              );
+            }
+
             return (
-            <div
-              key={t.id}
-              className={`tcard ${t.statusClass} ${t.overdue ? "alert" : ""}`}
-              onClick={() => { setFocusedId(t.id); setTaskDetail(t.id); }}
-              onMouseEnter={() => { if (focusedId !== t.id) setFocusedId(t.id); }}
-              style={isFocused ? { outline: "1px solid var(--accent)", outlineOffset: -1 } : undefined}
-            >
-              <div className="tcard-state" onClick={(e) => {
-                 e.stopPropagation();
-                 const nextStatus = t.status === "done" ? "todo" : "done";
-                 if (nextStatus === "done") triggerConfettiBurst(e);
-                 setStatus(t.id, nextStatus);
-               }} title="Toggle hotovo" />
-              <div className="tcard-body">
-                {inlineEditId === t.id ? (
-                  <InlineEditInput
-                    taskId={t.id}
-                    value={inlineEditVal}
-                    onChange={setInlineEditVal}
-                    onCommit={commitInlineEdit}
-                    onCancel={() => setInlineEditId(null)}
-                    style={{ width: "100%", fontWeight: 600, fontSize: 14 }}
-                  />
-                ) : (
-                  <div
-                    className="tcard-title"
-                    onDoubleClick={(e) => startInlineEdit(t, e)}
-                    title="Dvojklik pro úpravu"
-                  >{t.title}</div>
-                )}
-                {t.desc ? <div className="tcard-desc">{t.desc}</div> : null}
-                <div className="tcard-meta">
-                  <ProjectPill projectId={t.project} projectsById={projectsById} />
-                  <PrioChip priority={t.priority} />
-                  {t.due ? <span className={`due ${t.overdue ? "overdue" : ""}`}>{t.due}</span> : null}
-                </div>
+              <div
+                key={t.id}
+                className={`tcard ${t.statusClass} ${t.overdue ? "alert" : ""}`}
+                onClick={() => { setFocusedId(t.id); setTaskDetail(t.id); }}
+                onMouseEnter={() => { if (focusedId !== t.id) setFocusedId(t.id); }}
+                style={isFocused ? { outline: "1px solid var(--accent)", outlineOffset: -1 } : undefined}
+              >
+                {cardInner}
               </div>
-              <div className="tcard-acts" onClick={(e) => e.stopPropagation()}>
-                <div className="stepper">
-                  {["todo", "doing", "wait", "done"].map((k) => (
-                    <button key={k} className={t.statusClass === k ? `cur ${k}` : ""} onClick={(e) => { e.stopPropagation(); setStatus(t.id, CLASS_TO_STATUS[k]); }}>
-                      {k === "todo" ? "Todo" : k === "doing" ? "Doing" : k === "wait" ? "Wait" : "Done"}
-                    </button>
-                  ))}
-                </div>
-                <button className={`icon-btn star ${t.starred ? "on" : ""}`} onClick={() => toggleStar(t.id)} title="Top úkol">★</button>
-              </div>
-            </div>
-          );})}
-          {filtered.length > 0 && (
+            );
+          })}
+          {filtered.length > 0 && !isMobile && (
             <div style={{ textAlign: "center", padding: "12px 0 4px", fontSize: 11.5, color: "var(--text-4)", fontFamily: "var(--mono)" }}>
               J/K navigace · Enter detail · D hotovo · S hvězda
             </div>

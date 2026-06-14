@@ -10,6 +10,7 @@ import { projectColor, parseYMD, startOfToday, PROJECT_COLORS, uuid4 } from "../
 import { supabase } from "../supabase.js";
 import { PROJ_STATUS } from "../constants.js";
 import EmptyState from "../components/EmptyState.jsx";
+import { SkeletonCard } from "../components/Skeleton.jsx";
 import {
   DndContext,
   DragOverlay,
@@ -117,6 +118,7 @@ export function ProjectDetailPage() {
     projects,
     tasks,
     notes,
+    loaded,
     selProject,
     setPage,
     addTask,
@@ -370,6 +372,11 @@ export function ProjectDetailPage() {
         <span className="quickadd-kbd">Enter</span>
       </div>
 
+      {!loaded ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
+          {[...Array(4)].map((_, i) => <SkeletonCard key={i} />)}
+        </div>
+      ) : (
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -481,6 +488,7 @@ export function ProjectDetailPage() {
           ) : null}
         </DragOverlay>
       </DndContext>
+      )}
 
       <div style={{ marginTop: 32, borderTop: "1px solid var(--border)", paddingTop: 24 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
