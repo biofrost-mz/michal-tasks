@@ -12,7 +12,7 @@ const TAG_COLORS = [
 ];
 
 export default function TagsPage() {
-  const { tags, tasks, addTag, updateTag, deleteTag, loaded } = useApp();
+  const { tags, tasks, addTag, updateTag, deleteTag, loaded, isMobile } = useApp();
   const toast = useToast();
   const confirm = useConfirm();
 
@@ -89,8 +89,8 @@ export default function TagsPage() {
               onClick={() => setNewColor(c)}
               title={c}
               style={{
-                width: 16,
-                height: 16,
+                width: isMobile ? 22 : 16,
+                height: isMobile ? 22 : 16,
                 borderRadius: 4,
                 background: c,
                 border: newColor === c ? "1.5px solid #fff" : "1px solid transparent",
@@ -151,8 +151,8 @@ export default function TagsPage() {
                           onClick={() => setEditColor(c)}
                           title={c}
                           style={{
-                            width: 14,
-                            height: 14,
+                            width: isMobile ? 20 : 14,
+                            height: isMobile ? 20 : 14,
                             borderRadius: 4,
                             background: c,
                             border: editColor === c ? "1.5px solid #fff" : "1px solid transparent",
