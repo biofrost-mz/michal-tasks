@@ -100,7 +100,7 @@ function SortableKCard({ t }) {
     >
       <div className="kcard-t">{t.title || "Bez názvu"}</div>
       <div className="kcard-m">
-        {t.priority === "high" ? <span className="prio" style={{ "--prio-color": "#f87171" }}>↑ Vysoká</span> : null}
+        {t.priority === "high" ? <span className="prio" style={{ "--prio-color": "var(--prio-high)" }}>↑ Vysoká</span> : null}
         {t.dueDate ? <span className={`due ${taskOverdue(t) ? "overdue" : ""}`}>{taskDue(t)}</span> : null}
       </div>
       {Array.isArray(t.subtasks) && t.subtasks.length > 0 ? <div className="kcard-sub">≡ {t.subtasks.length} podúkoly</div> : null}
@@ -481,7 +481,7 @@ export function ProjectDetailPage() {
             >
               <div className="kcard-t">{activeTask.title || "Bez názvu"}</div>
               <div className="kcard-m">
-                {activeTask.priority === "high" ? <span className="prio" style={{ "--prio-color": "#f87171" }}>↑ Vysoká</span> : null}
+                {activeTask.priority === "high" ? <span className="prio" style={{ "--prio-color": "var(--prio-high)" }}>↑ Vysoká</span> : null}
                 {activeTask.dueDate ? <span className={`due ${taskOverdue(activeTask) ? "overdue" : ""}`}>{taskDue(activeTask)}</span> : null}
               </div>
             </div>

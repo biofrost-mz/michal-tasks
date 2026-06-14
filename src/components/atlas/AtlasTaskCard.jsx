@@ -9,9 +9,9 @@ export const CLASS_TO_STATUS = { todo: "todo", doing: "doing", wait: "waiting", 
 const STATUS_SHORT = { todo: "Todo", doing: "Doing", wait: "Wait", done: "Done" };
 
 const PRIORITY_META = {
-  low: { label: "Nízká", glyph: "↓", color: "#60a5fa" },
-  medium: { label: "Střední", glyph: "—", color: "#fbbf24" },
-  high: { label: "Vysoká", glyph: "↑", color: "#f87171" },
+  low: { label: "Nízká", glyph: "↓", color: "var(--prio-low)" },
+  medium: { label: "Střední", glyph: "—", color: "var(--prio-med)" },
+  high: { label: "Vysoká", glyph: "↑", color: "var(--prio-high)" },
 };
 
 export function formatShortDue(dueDate) {
