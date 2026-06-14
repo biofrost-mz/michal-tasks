@@ -689,7 +689,7 @@ export default function TasksPage() {
                   focused={isFocused}
                   hintTarget={idx === 0}
                 >
-                  <div className={`tcard ${t.statusClass} ${t.overdue ? "alert" : ""}`}>
+                  <div className={`tcard ${t.statusClass} ${t.overdue ? "alert" : ""} list-item-enter`} style={{ "--item-index": Math.min(idx, 7) }}>
                     {cardInner}
                   </div>
                 </SwipeTaskCard>
@@ -699,10 +699,10 @@ export default function TasksPage() {
             return (
               <div
                 key={t.id}
-                className={`tcard ${t.statusClass} ${t.overdue ? "alert" : ""}`}
+                className={`tcard ${t.statusClass} ${t.overdue ? "alert" : ""} list-item-enter`}
                 onClick={() => { setFocusedId(t.id); setTaskDetail(t.id); }}
                 onMouseEnter={() => { if (focusedId !== t.id) setFocusedId(t.id); }}
-                style={isFocused ? { outline: "1px solid var(--accent)", outlineOffset: -1 } : undefined}
+                style={{ "--item-index": Math.min(idx, 7), ...(isFocused ? { outline: "1px solid var(--accent)", outlineOffset: -1 } : {}) }}
               >
                 {cardInner}
               </div>

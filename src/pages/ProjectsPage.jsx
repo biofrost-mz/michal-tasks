@@ -630,7 +630,7 @@ export default function ProjectsPage() {
     setTimeout(() => newInputRef.current?.focus(), 40);
   };
 
-  const renderProjectCard = (p) => {
+  const renderProjectCard = (p, idx = 0) => {
     const projectTasks = tasks.filter((t) => t.projectId === p.id);
     const done = projectTasks.filter((t) => t.status === "done").length;
     const doing = projectTasks.filter((t) => t.status === "doing").length;
@@ -640,7 +640,7 @@ export default function ProjectsPage() {
     const overdueCount = projectTasks.filter((t) => taskOverdue(t)).length;
 
     return (
-      <div key={p.id} className="pcard" style={{ "--proj-color": projectColor(p.id) }} onClick={() => openProject(p.id)}>
+      <div key={p.id} className="pcard list-item-enter" style={{ "--proj-color": projectColor(p.id), "--item-index": Math.min(idx, 7) }} onClick={() => openProject(p.id)}>
         <div className="pcard-top">
           <span className="pcard-stat">{PROJ_STATUS[p.status]?.label || p.status}{overdueCount ? ` · ⚠ ${overdueCount}` : ""}</span>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -846,7 +846,7 @@ export default function ProjectsPage() {
                 </h2>
               </div>
               <div className="pgrid">
-                {group.items.map((p) => renderProjectCard(p))}
+                {group.items.map((p, idx) => renderProjectCard(p, idx))}
               </div>
             </div>
           ))}
@@ -865,7 +865,7 @@ export default function ProjectsPage() {
         </div>
       ) : (
         <div className="pgrid">
-          {sortedProjects.map((p) => renderProjectCard(p))}
+          {sortedProjects.map((p, idx) => renderProjectCard(p, idx))}
           {!showNew ? (
             <div
               className="pcard"

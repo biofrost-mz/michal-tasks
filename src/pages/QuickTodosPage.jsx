@@ -723,14 +723,15 @@ export default function QuickTodosPage() {
       ) : (
         <div className="tcards">
           {active.map((todo, idx) => (
-            <QuickTodoCard
-              key={todo.id}
-              todo={todo}
-              onArchive={archiveQuickTodo}
-              onDelete={deleteQuickTodo}
-              isMobile={isMobile}
-              hintOffset={idx === 0 && showSwipeHint ? hintOffset : 0}
-            />
+            <div key={todo.id} className="list-item-enter" style={{ "--item-index": Math.min(idx, 7) }}>
+              <QuickTodoCard
+                todo={todo}
+                onArchive={archiveQuickTodo}
+                onDelete={deleteQuickTodo}
+                isMobile={isMobile}
+                hintOffset={idx === 0 && showSwipeHint ? hintOffset : 0}
+              />
+            </div>
           ))}
         </div>
       )}
