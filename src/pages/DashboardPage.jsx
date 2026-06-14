@@ -575,9 +575,9 @@ export default function DashboardPage() {
     });
 
     return [
-      { id: "high", title: "Vysoká priorita", items: groups.high, marker: "alert", customColor: "#f87171" },
-      { id: "medium", title: "Střední priorita", items: groups.medium, marker: "wait", customColor: "#fbbf24" },
-      { id: "low", title: "Nízká priorita", items: groups.low, marker: "todo", customColor: "#60a5fa" }
+      { id: "high", title: "Vysoká priorita", items: groups.high, marker: "alert", customColor: "var(--prio-high)" },
+      { id: "medium", title: "Střední priorita", items: groups.medium, marker: "wait", customColor: "var(--prio-med)" },
+      { id: "low", title: "Nízká priorita", items: groups.low, marker: "todo", customColor: "var(--prio-low)" }
     ].filter(g => g.items.length > 0);
   }, [tasksToDisplay]);
 
