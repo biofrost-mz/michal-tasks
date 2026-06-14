@@ -561,6 +561,12 @@ export default function TasksPage() {
             action={() => window.dispatchEvent(new CustomEvent("focusQuickAdd"))}
             actionLabel="Vytvořit první úkol"
           />
+        ) : statusFilter === "active" && activeCount === 0 ? (
+          <EmptyState
+            type="done"
+            title="Vše hotovo!"
+            description="Užij si chvíli klidu."
+          />
         ) : (
           <EmptyState
             type="filter"

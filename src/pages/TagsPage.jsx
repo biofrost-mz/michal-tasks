@@ -3,6 +3,7 @@ import { useApp } from "../context/AppContext.jsx";
 import { useToast } from "../components/Toast.jsx";
 import { useConfirm } from "../components/Confirm.jsx";
 import Icon from "../components/Icon.jsx";
+import EmptyState from "../components/EmptyState.jsx";
 
 const TAG_COLORS = [
   "#ef4444", "#f97316", "#f59e0b", "#eab308", "#84cc16", "#22c55e", "#10b981",
@@ -11,7 +12,7 @@ const TAG_COLORS = [
 ];
 
 export default function TagsPage() {
-  const { tags, tasks, addTag, updateTag, deleteTag } = useApp();
+  const { tags, tasks, addTag, updateTag, deleteTag, loaded } = useApp();
   const toast = useToast();
   const confirm = useConfirm();
 
@@ -117,6 +118,13 @@ export default function TagsPage() {
           <div>Akce</div>
         </div>
 
+        {loaded && rows.length === 0 && (
+          <EmptyState
+            type="filter"
+            title="Zatím žádné tagy"
+            description="Tagy se vytvoří automaticky při přidání úkolu nebo pomocí formuláře výše."
+          />
+        )}
         {rows.map(({ tag, count }) => {
           const isEditing = editingId === tag.id;
           const widthPct = Math.round((count / max) * 100);

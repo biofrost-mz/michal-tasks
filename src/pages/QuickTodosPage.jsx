@@ -674,7 +674,7 @@ export default function QuickTodosPage() {
       )}
 
       {/* Active todos — Atlas .tcard cards */}
-      {rawActive.length === 0 && archived.length === 0 && (
+      {loaded && rawActive.length === 0 && archived.length === 0 && (
         <EmptyState
           type="todos"
           title="Žádné položky"
@@ -684,11 +684,8 @@ export default function QuickTodosPage() {
         />
       )}
 
-      {rawActive.length === 0 && archived.length > 0 && (
-        <div style={{ textAlign: "center", padding: "32px 20px 24px", color: "var(--text-3)" }}>
-          <Icon name="check-circle" size={36} color="#22c55e" strokeWidth={1.5} />
-          <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text-2)", marginTop: 8 }}>Vše hotovo!</div>
-        </div>
+      {loaded && rawActive.length === 0 && archived.length > 0 && (
+        <EmptyState type="done" title="Vše splněno!" description="Skvělá práce!" />
       )}
 
       {rawActive.length > 0 && active.length === 0 && (

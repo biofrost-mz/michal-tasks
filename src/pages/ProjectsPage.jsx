@@ -879,7 +879,7 @@ export default function ProjectsPage() {
         </div>
       )}
 
-      {!sortedProjects.length && !showNew ? (
+      {loaded && !sortedProjects.length && !showNew ? (
         <EmptyState
           type="projects"
           title={tab === "all" ? "Zatím žádné projekty" : `Žádné projekty ve stavu „${PROJ_STATUS[tab]?.label ?? tab}"`}

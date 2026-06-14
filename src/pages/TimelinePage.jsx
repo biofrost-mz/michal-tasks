@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { useApp } from "../context/AppContext.jsx";
 import { parseYMD, projectColor, startOfToday } from "../utils.js";
 import { formatDate, formatDateKey } from "../locale.js";
+import EmptyState from "../components/EmptyState.jsx";
 
 const DOW_CS = ["Ne", "Po", "Út", "St", "Čt", "Pá", "So"];
 
@@ -840,6 +841,7 @@ export default function TimelinePage() {
     addTask,
     setTaskDetail,
     isMobile,
+    loaded,
     timelineOffsetDays: offsetDays,
     setTimelineOffsetDays: setOffsetDays,
   } = useApp();
@@ -1091,6 +1093,14 @@ export default function TimelinePage() {
           );
         })}
 
+        {loaded && tasks.filter((t) => t.dueDate).length === 0 && (
+          <EmptyState
+            type="timeline"
+            title="Žádné úkoly s termínem"
+            description="Přidej termíny k úkolům a uvidíš je zde."
+          />
+        )}
+
         {addingForCell && (
           <CellAddModal
             addingForCell={addingForCell}
@@ -1124,6 +1134,14 @@ export default function TimelinePage() {
           </div>
         </div>
       </div>
+
+      {loaded && tasks.filter((t) => t.dueDate).length === 0 && (
+        <EmptyState
+          type="timeline"
+          title="Žádné úkoly s termínem"
+          description="Přidej termíny k úkolům a uvidíš je zde."
+        />
+      )}
 
       <div className="tl">
         <div className="tl-head">
