@@ -289,6 +289,8 @@ export function AppProvider({ children }) {
 
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState(null);
+  const [refreshCount, setRefreshCount] = useState(0);
+  const refetchAll = useCallback(() => setRefreshCount((c) => c + 1), []);
 
   const [taskDetail, setTaskDetail] = useState(null);
   const [search, setSearch] = useState("");
@@ -468,7 +470,8 @@ export function AppProvider({ children }) {
       cancelled = true;
       clearTimeout(timeout);
     };
-  }, [userId, userEmail, userDisplayName]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, userEmail, userDisplayName, refreshCount]);
 
   // Realtime tasks sync
   useEffect(() => {
@@ -1386,6 +1389,7 @@ export function AppProvider({ children }) {
     leaveWorkspace,
     fetchWorkspaceInvites,
     revokeInvite,
+    refetchAll,
     userId,
     userEmail,
     isSystemAdmin,

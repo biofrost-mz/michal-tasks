@@ -276,7 +276,7 @@ export default function MobileNav({ toggleDk }) {
               alignItems: "center", justifyContent: "center", padding: "0 3px",
             }}>{urgentCount > 99 ? "99+" : urgentCount}</span>
           )}
-          <Icon name="list" size={24} color={moreOpen ? t.accent : t.text3} strokeWidth={moreOpen ? 2.25 : 1.75} />
+          <Icon name="more-horizontal" size={24} color={moreOpen ? t.accent : t.text3} strokeWidth={moreOpen ? 2.25 : 1.75} />
           <span style={{ fontSize: 12, fontWeight: moreOpen ? 600 : 400 }}>Více</span>
         </button>
       </nav>

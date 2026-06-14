@@ -12,6 +12,9 @@ const DEFAULT_LAT = 49.1951;
 const DEFAULT_LNG = 16.6068;
 const CACHE_MS = 15 * 60 * 1000; // 15 minut
 
+const CITY_ALIASES = { "Bruno": "Brno", "Brno-střed": "Brno", "Brno-sever": "Brno" };
+const normalizeCityName = (name) => CITY_ALIASES[name] || name || "Brno";
+
 let cache = null;
 let cacheTime = 0;
 
@@ -161,7 +164,7 @@ export async function fetchWeather(lat = DEFAULT_LAT, lng = DEFAULT_LNG) {
           label: cond.label,
           wind: Math.round((data.wind?.speed ?? 0) * 3.6), // m/s → km/h
           humidity: data.main?.humidity ?? 0,
-          city: data.name || "Brno",
+          city: normalizeCityName(data.name),
         };
         cacheTime = Date.now();
         return cache;
