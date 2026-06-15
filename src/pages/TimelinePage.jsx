@@ -3,6 +3,7 @@ import { useApp } from "../context/AppContext.jsx";
 import { parseYMD, projectColor, startOfToday } from "../utils.js";
 import { formatDate, formatDateKey } from "../locale.js";
 import EmptyState from "../components/EmptyState.jsx";
+import { SectionLabel } from "../components/ui/index.js";
 
 const DOW_CS = ["Ne", "Po", "Út", "St", "Čt", "Pá", "So"];
 
@@ -251,9 +252,9 @@ function CellAddModal({ addingForCell, onClose, onAdd }) {
           {/* Section 1: Základní */}
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <div>
-              <label style={{ display: "block", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-3)", marginBottom: 6, fontWeight: 600 }}>
+              <SectionLabel style={{ marginBottom: 6 }}>
                 Název úkolu
-              </label>
+              </SectionLabel>
               <input
                 className="detail-input"
                 style={{
@@ -279,9 +280,9 @@ function CellAddModal({ addingForCell, onClose, onAdd }) {
 
             <div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                <label style={{ display: "block", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-3)", fontWeight: 600 }}>
+                <SectionLabel>
                   Projekt
-                </label>
+                </SectionLabel>
                 {isCreatingProj ? (
                   <span style={{ fontSize: 11, color: "var(--accent)", cursor: "pointer" }} onClick={() => setIsCreatingProj(false)}>Zrušit</span>
                 ) : (
@@ -392,9 +393,9 @@ function CellAddModal({ addingForCell, onClose, onAdd }) {
           <div style={{ display: "flex", flexDirection: "column", gap: 14, borderTop: "1px solid rgba(255, 255, 255, 0.06)", paddingTop: 16 }}>
             {/* Status (Stav) Selector as segment switch */}
             <div>
-              <label style={{ display: "block", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-3)", marginBottom: 6, fontWeight: 600 }}>
+              <SectionLabel style={{ marginBottom: 6 }}>
                 Stav úkolu
-              </label>
+              </SectionLabel>
               <div
                 style={{
                   display: "grid",
@@ -439,9 +440,9 @@ function CellAddModal({ addingForCell, onClose, onAdd }) {
 
             {/* Priority Selector as segment switch */}
             <div>
-              <label style={{ display: "block", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-3)", marginBottom: 6, fontWeight: 600 }}>
+              <SectionLabel style={{ marginBottom: 6 }}>
                 Priorita
-              </label>
+              </SectionLabel>
               <div
                 style={{
                   display: "grid",
@@ -486,9 +487,9 @@ function CellAddModal({ addingForCell, onClose, onAdd }) {
 
             {/* Due date and preset shortcuts */}
             <div>
-              <label style={{ display: "block", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-3)", marginBottom: 6, fontWeight: 600 }}>
+              <SectionLabel style={{ marginBottom: 6 }}>
                 Termín dokončení
-              </label>
+              </SectionLabel>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <input
                   type="date"
@@ -597,9 +598,9 @@ function CellAddModal({ addingForCell, onClose, onAdd }) {
               <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 12, padding: "4px 0" }}>
                 {/* Description */}
                 <div>
-                  <label style={{ display: "block", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-3)", marginBottom: 6, fontWeight: 600 }}>
+                  <SectionLabel style={{ marginBottom: 6 }}>
                     Poznámky / Popis
-                  </label>
+                  </SectionLabel>
                   <textarea
                     className="detail-input"
                     style={{
@@ -621,9 +622,9 @@ function CellAddModal({ addingForCell, onClose, onAdd }) {
 
                 {/* Tags autocomplete selector */}
                 <div style={{ position: "relative" }}>
-                  <label style={{ display: "block", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--text-3)", marginBottom: 6, fontWeight: 600 }}>
+                  <SectionLabel style={{ marginBottom: 6 }}>
                     Tagy (Štítky)
-                  </label>
+                  </SectionLabel>
                   
                   {/* Selected Tags Pills */}
                   {selectedTagIds.length > 0 && (
