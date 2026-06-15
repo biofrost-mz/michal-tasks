@@ -396,49 +396,48 @@ function PinIcon({ size = 14, filled = false, color = "currentColor" }) {
 }
 
 /* ─── Module-level panel helpers (avoid remount on parent render) ─── */
-function PRow({ t, label, children }) {
+function PRow({ label, children }) {
   return (
     <div style={{ display:"grid", gridTemplateColumns:"90px 1fr", gap:10, alignItems:"flex-start", padding:"7px 0", borderBottom:`1px solid rgba(255,255,255,.055)`, fontSize:12 }}>
-      <div style={{ color:t.text3, fontWeight:700, paddingTop:2 }}>{label}</div>
-      <div style={{ color:t.text2 }}>{children}</div>
+      <div style={{ color:"var(--text-3)", fontWeight:700, paddingTop:2 }}>{label}</div>
+      <div style={{ color:"var(--text-2)" }}>{children}</div>
     </div>
   );
 }
 
-function PropCard({ t, title: ctitle, children, noPad }) {
+function PropCard({ title: ctitle, children, noPad }) {
   return (
     <div style={{ border:"1px solid var(--border-soft)", borderRadius:14, background:"var(--surface)", padding:noPad?"0":"12px", marginBottom:10 }}>
-      {ctitle && <div style={{ fontSize:12, fontWeight:750, color:t.text, marginBottom:8, padding:noPad?"12px 12px 0":"0" }}>{ctitle}</div>}
+      {ctitle && <div style={{ fontSize:12, fontWeight:750, color:"var(--text)", marginBottom:8, padding:noPad?"12px 12px 0":"0" }}>{ctitle}</div>}
       {children}
     </div>
   );
 }
 
-function MiniItem({ t, left, right, onClick }) {
+function MiniItem({ left, right, onClick }) {
   return (
-    <div onClick={onClick} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, padding:"8px 10px", borderRadius:10, background:"var(--bg-2)", border:"1px solid var(--border-soft)", fontSize:12, color:t.text2, cursor:onClick?"pointer":"default", transition:"background .1s" }}
+    <div onClick={onClick} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:10, padding:"8px 10px", borderRadius:10, background:"var(--bg-2)", border:"1px solid var(--border-soft)", fontSize:12, color:"var(--text-2)", cursor:onClick?"pointer":"default", transition:"background .1s" }}
       onMouseEnter={e=>{ if(onClick) e.currentTarget.style.background="var(--surface-2)"; }}
       onMouseLeave={e=>{ e.currentTarget.style.background="var(--bg-2)"; }}
     >
       <span style={{ display:"flex", alignItems:"center", gap:6 }}>{left}</span>
-      <span style={{ color:t.text3, fontSize:11, flexShrink:0 }}>{right}</span>
+      <span style={{ color:"var(--text-3)", fontSize:11, flexShrink:0 }}>{right}</span>
     </div>
   );
 }
 
 /* ─── TemplatePickerModal ───────────────────── */
 function TemplatePickerModal({ onSelect, onClose }) {
-  const { t } = useApp();
   return (
     <div onClick={onClose} style={{ position:"fixed", inset:0, zIndex:400, background:"#0007", display:"flex", alignItems:"center", justifyContent:"center" }}>
-      <div onClick={e=>e.stopPropagation()} style={{ background:"var(--surface)", border:"1px solid var(--border-soft)", borderRadius:16, padding:28, maxWidth:560, width:"calc(100% - 32px)", maxHeight:"88vh", overflowY:"auto", boxShadow:t.shadow }}>
+      <div onClick={e=>e.stopPropagation()} style={{ background:"var(--surface)", border:"1px solid var(--border-soft)", borderRadius:16, padding:28, maxWidth:560, width:"calc(100% - 32px)", maxHeight:"88vh", overflowY:"auto", boxShadow:"var(--shadow-sm)" }}>
         <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20 }}>
           <div>
             <div style={{ fontSize:28, fontWeight:700, fontFamily:"var(--font-ui)", marginBottom:4, lineHeight:1 }}>Nová poznámka</div>
-            <div style={{ fontSize:12, color:t.text3 }}>Vyber šablonu nebo začni prázdnou stránkou</div>
+            <div style={{ fontSize:12, color:"var(--text-3)" }}>Vyber šablonu nebo začni prázdnou stránkou</div>
           </div>
           <button onClick={onClose} style={{ background:"var(--bg-2)", border:"1px solid var(--border-soft)", borderRadius:8, padding:6, cursor:"pointer", display:"flex" }}>
-            <Icon name="x" size={16} color={t.text3} strokeWidth={2} />
+            <Icon name="x" size={16} color="var(--text-3)" strokeWidth={2} />
           </button>
         </div>
         <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:10 }}>
@@ -446,16 +445,16 @@ function TemplatePickerModal({ onSelect, onClose }) {
             <button key={tpl.id} onClick={()=>onSelect(tpl)} style={{
               display:"flex", flexDirection:"column", alignItems:"flex-start", gap:8,
               padding:16, borderRadius:10, border:"1px solid var(--border-soft)",
-              background:"var(--bg-2)", color:t.text, cursor:"pointer", textAlign:"left", transition:"all .12s",
+              background:"var(--bg-2)", color:"var(--text)", cursor:"pointer", textAlign:"left", transition:"all .12s",
             }}
               onMouseEnter={e=>{e.currentTarget.style.borderColor="var(--accent-2)"; e.currentTarget.style.background="var(--accent-soft)";}}
               onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--border-soft)"; e.currentTarget.style.background="var(--bg-2)";}}
             >
-              <div style={{ width:32, height:32, borderRadius:8, background:t.accentBg, display:"flex", alignItems:"center", justifyContent:"center" }}>
-                <Icon name={tpl.icon} size={16} color={t.accent} strokeWidth={1.8} />
+              <div style={{ width:32, height:32, borderRadius:8, background:"var(--accent-soft)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                <Icon name={tpl.icon} size={16} color="var(--accent)" strokeWidth={1.8} />
               </div>
               <div style={{ fontSize:13, fontWeight:700 }}>{tpl.label}</div>
-              <div style={{ fontSize:12, color:t.text3, lineHeight:1.5 }}>{tpl.desc}</div>
+              <div style={{ fontSize:12, color:"var(--text-3)", lineHeight:1.5 }}>{tpl.desc}</div>
             </button>
           ))}
         </div>
@@ -559,7 +558,7 @@ function linkedItemsForNote(note, projects, tasks) {
 }
 
 /* ─── NoteEditor ────────────────────────────── */
-function NoteEditor({ note, onSave, t, dk, isMobile, showProps, onToggleProps, onDelete, onTogglePin, projects, tasks, addTask }) {
+function NoteEditor({ note, onSave, dk, isMobile, showProps, onToggleProps, onDelete, onTogglePin, projects, tasks, addTask }) {
   const { tags: globalTags } = useApp();
   const blockNoteStylesReady = useBlockNoteStyles();
   const editor = useCreateBlockNote();
@@ -677,22 +676,22 @@ function NoteEditor({ note, onSave, t, dk, isMobile, showProps, onToggleProps, o
   return (
     <div style={{ display:"flex", flexDirection:"column", height:"100%", overflow:"hidden", position:"relative" }}>
       {/* Topbar */}
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", borderBottom:`1px solid ${t.border}`, padding:"0 20px", height:54, flexShrink:0, background:t.bg2 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:7, fontSize:13, color:t.text3, minWidth:0 }}>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", borderBottom:"1px solid var(--border)", padding:"0 20px", height:54, flexShrink:0, background:"var(--bg-2)" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:7, fontSize:13, color:"var(--text-3)", minWidth:0 }}>
           {isMobile && (
-            <button onClick={() => window.dispatchEvent(new CustomEvent("notes:open-list"))} style={{ display:"flex", alignItems:"center", justifyContent:"center", width:30, height:30, borderRadius:9, border:`1px solid ${t.border}`, background:"transparent", color:t.text3, cursor:"pointer" }} aria-label="Otevřít seznam poznámek">
+            <button onClick={() => window.dispatchEvent(new CustomEvent("notes:open-list"))} style={{ display:"flex", alignItems:"center", justifyContent:"center", width:30, height:30, borderRadius:9, border:"1px solid var(--border)", background:"transparent", color:"var(--text-3)", cursor:"pointer" }} aria-label="Otevřít seznam poznámek">
               <Icon name="menu" size={14} color="currentColor" strokeWidth={2} />
             </button>
           )}
           <span>Poznámky</span>
           <span style={{ opacity:.5 }}>›</span>
-          <span style={{ color:t.text, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{note.title || "Bez názvu"}</span>
+          <span style={{ color:"var(--text)", fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{note.title || "Bez názvu"}</span>
           <span style={{ width:7, height:7, borderRadius:"50%", background:saveState === "saving" ? "#f59e0b" : "#22c55e", boxShadow:"0 0 12px rgba(34,197,94,.5)", flexShrink:0 }} />
-          {!isMobile && <span style={{ color:t.text3 }}>{saveState === "saving" ? "Ukládám…" : saveState === "saved" ? "Uloženo" : "Uloženo před 12 s"}</span>}
+          {!isMobile && <span style={{ color:"var(--text-3)" }}>{saveState === "saving" ? "Ukládám…" : saveState === "saved" ? "Uloženo" : "Uloženo před 12 s"}</span>}
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:6, flexShrink:0 }}>
           {saveState === "saving" && (
-            <span style={{ fontSize:11, color:t.text3, display:"flex", alignItems:"center", gap:4 }}>
+            <span style={{ fontSize:11, color:"var(--text-3)", display:"flex", alignItems:"center", gap:4 }}>
               <span style={{ animation:"spin .7s linear infinite", display:"inline-block" }}>◌</span> Ukládám
             </span>
           )}
@@ -701,28 +700,28 @@ function NoteEditor({ note, onSave, t, dk, isMobile, showProps, onToggleProps, o
               <Icon name="check" size={11} color="#22c55e" strokeWidth={2.5} /> Uloženo
             </span>
           )}
-          <button onClick={()=>setAiOpen(v=>!v)} style={{ display:"flex", alignItems:"center", gap:5, padding:"5px 10px", borderRadius:8, border:`1px solid ${aiOpen ? t.accent+"60" : t.border}`, background:aiOpen ? `${t.accent}18` : "rgba(245,158,11,.1)", color:"#fde68a", fontSize:12, fontWeight:700, cursor:"pointer" }}>
+          <button onClick={()=>setAiOpen(v=>!v)} style={{ display:"flex", alignItems:"center", gap:5, padding:"5px 10px", borderRadius:8, border:`1px solid ${aiOpen ? "rgba(var(--accent-rgb),0.38)" : "var(--border)"}`, background:aiOpen ? "rgba(var(--accent-rgb),0.094)" : "rgba(245,158,11,.1)", color:"#fde68a", fontSize:12, fontWeight:700, cursor:"pointer" }}>
             ✨ AI
           </button>
           {!isMobile && (
             <>
-              <button style={{ display:"flex", alignItems:"center", gap:5, padding:"5px 10px", borderRadius:8, border:`1px solid ${t.border}`, background:"transparent", color:t.text3, fontSize:12, fontWeight:700, cursor:"pointer" }}>
+              <button style={{ display:"flex", alignItems:"center", gap:5, padding:"5px 10px", borderRadius:8, border:"1px solid var(--border)", background:"transparent", color:"var(--text-3)", fontSize:12, fontWeight:700, cursor:"pointer" }}>
                 Sdílet
               </button>
-              <button onClick={() => window.dispatchEvent(new CustomEvent("notes:export-md"))} style={{ display:"flex", alignItems:"center", gap:5, padding:"5px 10px", borderRadius:8, border:`1px solid ${t.border}`, background:"transparent", color:t.text3, fontSize:12, fontWeight:700, cursor:"pointer" }}>
+              <button onClick={() => window.dispatchEvent(new CustomEvent("notes:export-md"))} style={{ display:"flex", alignItems:"center", gap:5, padding:"5px 10px", borderRadius:8, border:"1px solid var(--border)", background:"transparent", color:"var(--text-3)", fontSize:12, fontWeight:700, cursor:"pointer" }}>
                 Export
               </button>
             </>
           )}
-          <button onClick={onTogglePin} style={{ display:"flex", alignItems:"center", gap:5, padding:"5px 10px", borderRadius:8, border:`1px solid ${note.pinned ? "#f59e0b" : t.border}`, background:note.pinned ? "#f59e0b18" : "transparent", color:note.pinned ? "#f59e0b" : t.text3, fontSize:12, fontWeight:700, cursor:"pointer" }}>
+          <button onClick={onTogglePin} style={{ display:"flex", alignItems:"center", gap:5, padding:"5px 10px", borderRadius:8, border:`1px solid ${note.pinned ? "#f59e0b" : "var(--border)"}`, background:note.pinned ? "#f59e0b18" : "transparent", color:note.pinned ? "#f59e0b" : "var(--text-3)", fontSize:12, fontWeight:700, cursor:"pointer" }}>
             <PinIcon size={13} filled={note.pinned} color="currentColor" />
           </button>
-          <button onClick={onToggleProps} style={{ display:"flex", alignItems:"center", gap:5, padding:"5px 10px", borderRadius:8, border:`1px solid ${showProps ? t.accent+"60" : t.border}`, background:showProps ? t.accentBg : "transparent", color:showProps ? t.accent : t.text3, fontSize:12, fontWeight:700, cursor:"pointer" }}>
+          <button onClick={onToggleProps} style={{ display:"flex", alignItems:"center", gap:5, padding:"5px 10px", borderRadius:8, border:`1px solid ${showProps ? "rgba(var(--accent-rgb),0.38)" : "var(--border)"}`, background:showProps ? "var(--accent-soft)" : "transparent", color:showProps ? "var(--accent)" : "var(--text-3)", fontSize:12, fontWeight:700, cursor:"pointer" }}>
             <Icon name="settings" size={13} color="currentColor" strokeWidth={2} />
             {isMobile ? "Vlastnosti" : ""}
           </button>
           {onDelete && (
-            <button onClick={onDelete} style={{ display:"flex", alignItems:"center", padding:"5px 8px", borderRadius:8, border:"none", background:"transparent", color:t.text3, cursor:"pointer" }}>
+            <button onClick={onDelete} style={{ display:"flex", alignItems:"center", padding:"5px 8px", borderRadius:8, border:"none", background:"transparent", color:"var(--text-3)", cursor:"pointer" }}>
               <Icon name="trash" size={13} color="#ef4444" strokeWidth={2} />
             </button>
           )}
@@ -731,16 +730,16 @@ function NoteEditor({ note, onSave, t, dk, isMobile, showProps, onToggleProps, o
 
       {/* AI Panel */}
       {aiOpen && (
-        <div style={{ borderBottom:`1px solid ${t.border}`, background:`${t.accent}0d`, padding:"8px 20px 10px", flexShrink:0 }}>
+        <div style={{ borderBottom:"1px solid var(--border)", background:"rgba(var(--accent-rgb),0.051)", padding:"8px 20px 10px", flexShrink:0 }}>
           <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
-            <span style={{ fontSize:12, fontWeight:700, color:t.accent }}>✨ AI asistent</span>
+            <span style={{ fontSize:12, fontWeight:700, color:"var(--accent)" }}>✨ AI asistent</span>
             <div style={{ display:"flex", gap:4 }}>
               {NOTE_AI_ACTIONS.map(a => (
                 <button key={a.id} onClick={()=>runAI(a.id)} disabled={!!aiLoading} style={{
                   display:"flex", alignItems:"center", gap:5, padding:"4px 10px", borderRadius:6, fontSize:12, fontWeight:600,
-                  border:`1px solid ${aiAction===a.id ? t.accent+"60" : t.border}`,
-                  background:aiAction===a.id ? `${t.accent}20` : t.input,
-                  color:aiAction===a.id ? t.accent : t.text2, cursor:aiLoading?"wait":"pointer",
+                  border:`1px solid ${aiAction===a.id ? "rgba(var(--accent-rgb),0.38)" : "var(--border)"}`,
+                  background:aiAction===a.id ? "var(--accent-soft)" : "var(--input)",
+                  color:aiAction===a.id ? "var(--accent)" : "var(--text-2)", cursor:aiLoading?"wait":"pointer",
                 }}>
                   {aiLoading===a.id ? <span style={{animation:"spin .7s linear infinite"}}>◌</span> : <Icon name={a.icon} size={11} color="currentColor" strokeWidth={2} />}
                   {a.label}
@@ -749,19 +748,19 @@ function NoteEditor({ note, onSave, t, dk, isMobile, showProps, onToggleProps, o
             </div>
           </div>
           {aiResult !== null && (
-            <div style={{ background:t.bg, border:`1px solid ${t.border}`, borderRadius:8, padding:"10px 12px", marginTop:8 }}>
+            <div style={{ background:"var(--bg)", border:"1px solid var(--border)", borderRadius:8, padding:"10px 12px", marginTop:8 }}>
               {typeof aiResult === "string" ? (
-                <div style={{ fontSize:13, color:t.text, lineHeight:1.6, whiteSpace:"pre-wrap", maxHeight:140, overflow:"auto" }}>{aiResult}</div>
+                <div style={{ fontSize:13, color:"var(--text)", lineHeight:1.6, whiteSpace:"pre-wrap", maxHeight:140, overflow:"auto" }}>{aiResult}</div>
               ) : (
                 <div>
-                  {aiResult.map((item,i) => <div key={i} style={{ fontSize:13, color:t.text, padding:"2px 0", display:"flex", gap:7, alignItems:"center" }}><div style={{ width:5,height:5,borderRadius:"50%",background:t.accent,flexShrink:0 }}/>{String(item)}</div>)}
+                  {aiResult.map((item,i) => <div key={i} style={{ fontSize:13, color:"var(--text)", padding:"2px 0", display:"flex", gap:7, alignItems:"center" }}><div style={{ width:5,height:5,borderRadius:"50%",background:"var(--accent)",flexShrink:0 }}/>{String(item)}</div>)}
                 </div>
               )}
               <div style={{ display:"flex", gap:6, marginTop:8 }}>
-                <button onClick={applyAI} style={{ padding:"5px 14px", borderRadius:6, border:"none", background:t.accent, color:"#fff", fontSize:12, fontWeight:600, cursor:"pointer" }}>
+                <button onClick={applyAI} style={{ padding:"5px 14px", borderRadius:6, border:"none", background:"var(--accent)", color:"#fff", fontSize:12, fontWeight:600, cursor:"pointer" }}>
                   {aiAction==="note_extract_tasks" ? "Přidat jako úkoly" : "Přidat do poznámky"}
                 </button>
-                <button onClick={()=>{setAiResult(null);setAiAction(null);}} style={{ padding:"5px 12px", borderRadius:6, border:`1px solid ${t.border}`, background:"transparent", color:t.text2, fontSize:12, cursor:"pointer" }}>Zahodit</button>
+                <button onClick={()=>{setAiResult(null);setAiAction(null);}} style={{ padding:"5px 12px", borderRadius:6, border:"1px solid var(--border)", background:"transparent", color:"var(--text-2)", fontSize:12, cursor:"pointer" }}>Zahodit</button>
               </div>
             </div>
           )}
@@ -774,7 +773,7 @@ function NoteEditor({ note, onSave, t, dk, isMobile, showProps, onToggleProps, o
         <div style={{ width:"min(1040px, calc(100% - 72px))", margin:"0 auto", padding:"24px 0 100px" }}>
           {/* Page icon */}
           <div
-            style={{ width:44, height:44, borderRadius:12, display:"grid", placeItems:"center", fontSize:23, background:"rgba(255,255,255,.045)", border:`1px solid ${t.border}`, marginBottom:16, cursor:"text" }}
+            style={{ width:44, height:44, borderRadius:12, display:"grid", placeItems:"center", fontSize:23, background:"rgba(255,255,255,.045)", border:"1px solid var(--border)", marginBottom:16, cursor:"text" }}
             title="Klikni pro změnu ikony / emoji"
             onClick={() => {
               const em = prompt("Emoji nebo ikona:", note.icon || "📝");
@@ -791,7 +790,7 @@ function NoteEditor({ note, onSave, t, dk, isMobile, showProps, onToggleProps, o
             onChange={handleTitleChange}
             placeholder="Nová poznámka"
             style={{
-              width:"100%", border:"none", background:"transparent", color:t.text, outline:"none",
+              width:"100%", border:"none", background:"transparent", color:"var(--text)", outline:"none",
               fontFamily:"var(--font-ui)",
               fontSize:"clamp(32px, 4vw, 50px)", fontWeight:900, letterSpacing:"-.04em", lineHeight:1.04,
               marginBottom:14, display:"block",
@@ -799,7 +798,7 @@ function NoteEditor({ note, onSave, t, dk, isMobile, showProps, onToggleProps, o
           />
 
           {/* Meta-line */}
-          <div style={{ display:"flex", gap:10, alignItems:"center", flexWrap:"wrap", color:t.text3, fontSize:12, paddingBottom:20, borderBottom:`1px solid ${t.border}`, marginBottom:26 }}>
+          <div style={{ display:"flex", gap:10, alignItems:"center", flexWrap:"wrap", color:"var(--text-3)", fontSize:12, paddingBottom:20, borderBottom:"1px solid var(--border)", marginBottom:26 }}>
             <span>Upraveno {formatDateTime(note.updatedAt)}</span>
             {linkedProject && (
               <span style={{ color:"var(--accent)", background:"var(--accent-soft)", border:"1px solid color-mix(in srgb, var(--accent) 28%, transparent)", padding:"3px 9px", borderRadius:999, fontWeight:700, fontSize:12 }}>
@@ -820,9 +819,9 @@ function NoteEditor({ note, onSave, t, dk, isMobile, showProps, onToggleProps, o
               {statusMenu && (
                 <>
                   <div onClick={() => setStatusMenu(false)} style={{ position:"fixed", inset:0, zIndex:40 }} />
-                  <div style={{ position:"absolute", top:"calc(100% + 5px)", left:0, zIndex:41, background:t.bg2, border:`1px solid ${t.border}`, borderRadius:10, boxShadow:"0 12px 30px rgba(0,0,0,.3)", padding:5, minWidth:150 }}>
+                  <div style={{ position:"absolute", top:"calc(100% + 5px)", left:0, zIndex:41, background:"var(--bg-2)", border:"1px solid var(--border)", borderRadius:10, boxShadow:"0 12px 30px rgba(0,0,0,.3)", padding:5, minWidth:150 }}>
                     {Object.entries(NOTE_STATUSES).map(([k, v]) => (
-                      <button key={k} onClick={() => { onSave({ status:k }); setStatusMenu(false); }} style={{ width:"100%", display:"flex", alignItems:"center", gap:8, padding:"7px 9px", borderRadius:7, border:"none", background:note.status===k ? "var(--accent-soft)" : "transparent", color:note.status===k ? "var(--accent)" : t.text2, fontSize:12.5, fontWeight:note.status===k?700:500, cursor:"pointer", textAlign:"left" }}>
+                      <button key={k} onClick={() => { onSave({ status:k }); setStatusMenu(false); }} style={{ width:"100%", display:"flex", alignItems:"center", gap:8, padding:"7px 9px", borderRadius:7, border:"none", background:note.status===k ? "var(--accent-soft)" : "transparent", color:note.status===k ? "var(--accent)" : "var(--text-2)", fontSize:12.5, fontWeight:note.status===k?700:500, cursor:"pointer", textAlign:"left" }}>
                         <span style={{ width:8, height:8, borderRadius:"50%", background:v.color, flexShrink:0 }} />
                         {v.label}
                       </button>
@@ -832,7 +831,7 @@ function NoteEditor({ note, onSave, t, dk, isMobile, showProps, onToggleProps, o
               )}
             </span>
               {note.tags?.length > 0 && note.tags.slice(0, 4).map(tag => {
-              const col = getTagColor(tag, globalTags) || t.text3;
+              const col = getTagColor(tag, globalTags) || "var(--text-3)";
               return (
                 <span key={tag} style={{ color:col, background:`${col}15`, border:`1px solid ${col}25`, padding:"3px 7px", borderRadius:999, fontSize:11.5, fontWeight:600 }}>
                   #{tag}
@@ -849,7 +848,7 @@ function NoteEditor({ note, onSave, t, dk, isMobile, showProps, onToggleProps, o
                 theme={dk ? "dark" : "light"}
               />
             ) : (
-              <div style={{ minHeight: 260, display: "grid", placeItems: "center", color: t.text3, fontSize: 13, fontWeight: 700 }}>
+              <div style={{ minHeight: 260, display: "grid", placeItems: "center", color: "var(--text-3)", fontSize: 13, fontWeight: 700 }}>
                 Načítám editor...
               </div>
             )}
@@ -857,22 +856,22 @@ function NoteEditor({ note, onSave, t, dk, isMobile, showProps, onToggleProps, o
 
           <div className="notes-linked-panel">
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, marginBottom:12 }}>
-              <b style={{ fontSize:14, color:t.text }}>Navázané položky</b>
-              <small style={{ color:t.text3 }}>{linkedItems.length} aktivní vazby</small>
+              <b style={{ fontSize:14, color:"var(--text)" }}>Navázané položky</b>
+              <small style={{ color:"var(--text-3)" }}>{linkedItems.length} aktivní vazby</small>
             </div>
             {linkedItems.length > 0 ? (
               <div className="notes-linked-grid">
                 {linkedItems.map(item => (
                   <div key={`${item.type}:${item.id}`} className="notes-linked-item">
-                    <small style={{ display:"block", color:t.text3, fontSize:11, marginBottom:5 }}>{item.meta}</small>
-                    <span style={{ display:"block", color:t.text, fontSize:13, fontWeight:850, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{item.title}</span>
+                    <small style={{ display:"block", color:"var(--text-3)", fontSize:11, marginBottom:5 }}>{item.meta}</small>
+                    <span style={{ display:"block", color:"var(--text)", fontSize:13, fontWeight:850, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{item.title}</span>
                   </div>
                 ))}
               </div>
             ) : (
-              <div style={{ color:t.text3, fontSize:13 }}>Poznámka zatím není připojená k úkolu ani projektu.</div>
+              <div style={{ color:"var(--text-3)", fontSize:13 }}>Poznámka zatím není připojená k úkolu ani projektu.</div>
             )}
-            <button onClick={onToggleProps} style={{ width:"100%", marginTop:12, height:34, borderRadius:10, border:`1px solid ${t.border}`, background:"transparent", color:t.text2, fontWeight:800, fontSize:12 }}>
+            <button onClick={onToggleProps} style={{ width:"100%", marginTop:12, height:34, borderRadius:10, border:"1px solid var(--border)", background:"transparent", color:"var(--text-2)", fontWeight:800, fontSize:12 }}>
               + Připojit další vazbu
             </button>
           </div>
@@ -885,7 +884,7 @@ function NoteEditor({ note, onSave, t, dk, isMobile, showProps, onToggleProps, o
 }
 
 /* ─── NotePropertiesPanel ───────────────────── */
-function NotePropertiesPanel({ note, onClose, t, isMobile, onExportMD, projects, tasks, addTask }) {
+function NotePropertiesPanel({ note, onClose, isMobile, onExportMD, projects, tasks, addTask }) {
   const { updateNote, tags: globalTags, addTag: createGlobalTag } = useApp();
   const toast = useToast();
   const [tagSearch,       setTagSearch]       = useState("");
@@ -947,25 +946,25 @@ function NotePropertiesPanel({ note, onClose, t, isMobile, onExportMD, projects,
   };
 
   const panelStyle = isMobile
-    ? { position:"fixed", left:0, right:0, bottom:0, top:"12vh", zIndex:300, background:t.bg2, overflowY:"auto", borderTop:`1px solid ${t.border}`, borderRadius:"18px 18px 0 0", boxShadow:"0 -24px 70px rgba(0,0,0,.45)" }
-    : { position:"fixed", right:0, top:64, bottom:0, width:310, zIndex:100, borderLeft:`1px solid ${t.border}`, background:t.bg2, overflowY:"auto", boxShadow:"-4px 0 24px rgba(0,0,0,.18)" };
+    ? { position:"fixed", left:0, right:0, bottom:0, top:"12vh", zIndex:300, background:"var(--bg-2)", overflowY:"auto", borderTop:"1px solid var(--border)", borderRadius:"18px 18px 0 0", boxShadow:"0 -24px 70px rgba(0,0,0,.45)" }
+    : { position:"fixed", right:0, top:64, bottom:0, width:310, zIndex:100, borderLeft:"1px solid var(--border)", background:"var(--bg-2)", overflowY:"auto", boxShadow:"-4px 0 24px rgba(0,0,0,.18)" };
 
   const filteredTasks = tasks.filter(tk =>
     !taskSearch || (tk.title || "").toLowerCase().includes(taskSearch.toLowerCase())
   );
 
   const sh = (label) => (
-    <div style={{ fontSize:11, fontWeight:750, textTransform:"uppercase", letterSpacing:".07em", color:t.text3, marginBottom:8 }}>{label}</div>
+    <div style={{ fontSize:11, fontWeight:750, textTransform:"uppercase", letterSpacing:".07em", color:"var(--text-3)", marginBottom:8 }}>{label}</div>
   );
   const sep = <div style={{ height:1, background:"var(--border-soft)", margin:"4px 0" }} />;
 
   return (
     <div style={panelStyle}>
       {/* Header */}
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"14px 16px 12px", borderBottom:`1px solid ${t.border}`, position:"sticky", top:0, background:t.bg2, zIndex:1 }}>
-        <span style={{ fontSize:13, fontWeight:800, color:t.text, letterSpacing:"-.2px" }}>Vlastnosti</span>
-        <button onClick={onClose} style={{ background:"none", border:"none", cursor:"pointer", padding:4, display:"flex", color:t.text3 }}>
-          <Icon name="x" size={15} color={t.text3} strokeWidth={2} />
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"14px 16px 12px", borderBottom:"1px solid var(--border)", position:"sticky", top:0, background:"var(--bg-2)", zIndex:1 }}>
+        <span style={{ fontSize:13, fontWeight:800, color:"var(--text)", letterSpacing:"-.2px" }}>Vlastnosti</span>
+        <button onClick={onClose} style={{ background:"none", border:"none", cursor:"pointer", padding:4, display:"flex", color:"var(--text-3)" }}>
+          <Icon name="x" size={15} color="var(--text-3)" strokeWidth={2} />
         </button>
       </div>
 
@@ -982,7 +981,7 @@ function NotePropertiesPanel({ note, onClose, t, isMobile, onExportMD, projects,
                   padding:"4px 11px", borderRadius:999, fontSize:12, fontWeight:700,
                   border:`1px solid ${isActive ? v.color+"60" : "var(--border-soft)"}`,
                   background: isActive ? v.color+"18" : "transparent",
-                  color: isActive ? v.color : t.text3,
+                  color: isActive ? v.color : "var(--text-3)",
                   cursor:"pointer", transition:"all .15s",
                 }}>
                   {v.label}
@@ -998,7 +997,7 @@ function NotePropertiesPanel({ note, onClose, t, isMobile, onExportMD, projects,
           {note.tags?.length > 0 && (
             <div style={{ display:"flex", flexWrap:"wrap", gap:5, marginBottom:8 }}>
               {note.tags.map(tag => {
-                const col = getTagColor(tag, globalTags) || t.accent;
+                const col = getTagColor(tag, globalTags) || "var(--accent)";
                 return (
                   <span key={tag} style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"3px 8px 3px 6px", borderRadius:999, fontSize:11.5, fontWeight:600, background:`${col}18`, color:col, border:`1px solid ${col}30` }}>
                     <span style={{ width:6, height:6, borderRadius:"50%", background:col, flexShrink:0 }} />
@@ -1012,7 +1011,7 @@ function NotePropertiesPanel({ note, onClose, t, isMobile, onExportMD, projects,
             </div>
           )}
           <div style={{ position:"relative", marginBottom:6 }}>
-            <Icon name="search" size={12} color={t.text3} strokeWidth={2} style={{ position:"absolute", left:9, top:"50%", transform:"translateY(-50%)", pointerEvents:"none" }} />
+            <Icon name="search" size={12} color="var(--text-3)" strokeWidth={2} style={{ position:"absolute", left:9, top:"50%", transform:"translateY(-50%)", pointerEvents:"none" }} />
             <input
               value={tagSearch}
               onChange={e=>setTagSearch(e.target.value)}
@@ -1021,7 +1020,7 @@ function NotePropertiesPanel({ note, onClose, t, isMobile, onExportMD, projects,
                 else if (e.key==="Backspace" && !tagSearch && note.tags?.length) removeTag(note.tags[note.tags.length-1]);
               }}
               placeholder="Hledat nebo přidat štítek…"
-              style={{ width:"100%", padding:"6px 10px 6px 28px", borderRadius:8, border:"1px solid var(--border-soft)", background:"var(--bg)", color:t.text, fontSize:12, outline:"none", boxSizing:"border-box" }}
+              style={{ width:"100%", padding:"6px 10px 6px 28px", borderRadius:8, border:"1px solid var(--border-soft)", background:"var(--bg)", color:"var(--text)", fontSize:12, outline:"none", boxSizing:"border-box" }}
             />
           </div>
           {filteredGlobalTags.length > 0 && (
@@ -1032,7 +1031,7 @@ function NotePropertiesPanel({ note, onClose, t, isMobile, onExportMD, projects,
                   <span key={gt.id} onClick={()=>toggleGlobalTag(gt)} style={{
                     display:"inline-flex", alignItems:"center", gap:5, padding:"3px 9px", borderRadius:8, fontSize:11.5, fontWeight:600,
                     background: active ? "var(--accent-soft)" : "transparent",
-                    color: active ? "var(--accent)" : t.text2,
+                    color: active ? "var(--accent)" : "var(--text-2)",
                     border:`1px solid ${active ? "color-mix(in srgb, var(--accent) 30%, transparent)" : "var(--border-soft)"}`,
                     cursor:"pointer", transition:"all .12s",
                   }}>
@@ -1058,29 +1057,29 @@ function NotePropertiesPanel({ note, onClose, t, isMobile, onExportMD, projects,
           <div style={{ display:"grid", gap:7 }}>
             {/* Ikona — picker místo prompt() */}
             <div style={{ position:"relative" }}>
-              <button onClick={() => setIconPicker(v => !v)} style={{ width:"100%", display:"flex", alignItems:"center", justifyContent:"space-between", gap:8, padding:"8px 10px", borderRadius:9, border:`1px solid ${iconPicker ? "color-mix(in srgb, var(--accent) 40%, transparent)" : "var(--border-soft)"}`, background:"var(--bg)", color:t.text2, fontSize:12.5, cursor:"pointer" }}>
+              <button onClick={() => setIconPicker(v => !v)} style={{ width:"100%", display:"flex", alignItems:"center", justifyContent:"space-between", gap:8, padding:"8px 10px", borderRadius:9, border:`1px solid ${iconPicker ? "color-mix(in srgb, var(--accent) 40%, transparent)" : "var(--border-soft)"}`, background:"var(--bg)", color:"var(--text-2)", fontSize:12.5, cursor:"pointer" }}>
                 <span style={{ display:"flex", alignItems:"center", gap:8 }}><span style={{ fontSize:16 }}>{note.icon || "📝"}</span> Ikona</span>
-                <span style={{ color:t.text3 }}>{iconPicker ? "▲" : "▼"}</span>
+                <span style={{ color:"var(--text-3)" }}>{iconPicker ? "▲" : "▼"}</span>
               </button>
               {iconPicker && (
                 <div style={{ marginTop:6, padding:"8px", border:"1px solid var(--border-soft)", borderRadius:10, background:"var(--bg)", display:"flex", flexWrap:"wrap", gap:4 }}>
                   {["📝","📌","💡","✅","🔥","⭐","📅","🎯","🐞","📊","📣","🧠","🔖","📁","💬","⚙️","🚀","❗","🧩","🗂️"].map(em => (
                     <button key={em} onClick={() => { updateNote(note.id, { icon: em }); setIconPicker(false); }} style={{ width:32, height:32, borderRadius:8, border:`1px solid ${note.icon===em ? "color-mix(in srgb, var(--accent) 45%, transparent)" : "transparent"}`, background:note.icon===em ? "var(--accent-soft)" : "transparent", fontSize:17, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>{em}</button>
                   ))}
-                  <button onClick={() => { updateNote(note.id, { icon: null }); setIconPicker(false); }} style={{ marginLeft:"auto", padding:"0 10px", height:32, borderRadius:8, border:"1px solid var(--border-soft)", background:"transparent", color:t.text3, fontSize:11.5, cursor:"pointer" }}>Bez ikony</button>
+                  <button onClick={() => { updateNote(note.id, { icon: null }); setIconPicker(false); }} style={{ marginLeft:"auto", padding:"0 10px", height:32, borderRadius:8, border:"1px solid var(--border-soft)", background:"transparent", color:"var(--text-3)", fontSize:11.5, cursor:"pointer" }}>Bez ikony</button>
                 </div>
               )}
             </div>
 
             {/* Priorita — editovatelná */}
             <div style={{ padding:"8px 10px", borderRadius:9, border:"1px solid var(--border-soft)", background:"var(--bg)" }}>
-              <div style={{ fontSize:12.5, color:t.text2, marginBottom:7 }}>Priorita</div>
+              <div style={{ fontSize:12.5, color:"var(--text-2)", marginBottom:7 }}>Priorita</div>
               <div style={{ display:"flex", gap:5 }}>
                 {["low","medium","high"].map(p => {
                   const isActive = priorityKey === p;
                   const col = PRIORITY_COLORS[p];
                   return (
-                    <button key={p} onClick={() => updateNote(note.id, { priority: p })} style={{ flex:1, padding:"5px 0", borderRadius:8, fontSize:11.5, fontWeight:700, cursor:"pointer", border:`1px solid ${isActive ? col+"66" : "var(--border-soft)"}`, background:isActive ? col+"1c" : "transparent", color:isActive ? col : t.text3 }}>
+                    <button key={p} onClick={() => updateNote(note.id, { priority: p })} style={{ flex:1, padding:"5px 0", borderRadius:8, fontSize:11.5, fontWeight:700, cursor:"pointer", border:`1px solid ${isActive ? col+"66" : "var(--border-soft)"}`, background:isActive ? col+"1c" : "transparent", color:isActive ? col : "var(--text-3)" }}>
                       {NOTE_PRIORITIES[p]}
                     </button>
                   );
@@ -1088,9 +1087,9 @@ function NotePropertiesPanel({ note, onClose, t, isMobile, onExportMD, projects,
               </div>
             </div>
 
-            <div style={{ padding:"8px 10px", borderRadius:9, border:"1px solid var(--border-soft)", background:"var(--bg)", color:t.text3, fontSize:12.5, display:"flex", justifyContent:"space-between" }}><span>Šablona</span><span style={{ color:t.text2 }}>{templateLabel}</span></div>
-            <button onClick={()=>updateNote(note.id,{archived:!note.archived})} style={{ textAlign:"left", display:"flex", justifyContent:"space-between", padding:"8px 10px", borderRadius:9, border:"1px solid var(--border-soft)", background:"var(--bg)", color:t.text2, fontSize:12.5, cursor:"pointer" }}>
-              <span>Archivace</span><span style={{ color:note.archived ? t.accent : t.text3 }}>{note.archived ? "zapnuto" : "vypnuto"}</span>
+            <div style={{ padding:"8px 10px", borderRadius:9, border:"1px solid var(--border-soft)", background:"var(--bg)", color:"var(--text-3)", fontSize:12.5, display:"flex", justifyContent:"space-between" }}><span>Šablona</span><span style={{ color:"var(--text-2)" }}>{templateLabel}</span></div>
+            <button onClick={()=>updateNote(note.id,{archived:!note.archived})} style={{ textAlign:"left", display:"flex", justifyContent:"space-between", padding:"8px 10px", borderRadius:9, border:"1px solid var(--border-soft)", background:"var(--bg)", color:"var(--text-2)", fontSize:12.5, cursor:"pointer" }}>
+              <span>Archivace</span><span style={{ color:note.archived ? "var(--accent)" : "var(--text-3)" }}>{note.archived ? "zapnuto" : "vypnuto"}</span>
             </button>
           </div>
         </div>
@@ -1108,29 +1107,29 @@ function NotePropertiesPanel({ note, onClose, t, isMobile, onExportMD, projects,
                     <Icon name={item.type === "task" ? "check-square" : "folder"} size={13} color={item.type === "task" ? "#22c55e" : "var(--accent)"} strokeWidth={2} />
                   </div>
                   <div style={{ minWidth:0 }}>
-                    <b style={{ display:"block", color:t.text, fontSize:12.5, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{item.title}</b>
-                    <small style={{ color:t.text3 }}>{item.meta}</small>
+                    <b style={{ display:"block", color:"var(--text)", fontSize:12.5, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{item.title}</b>
+                    <small style={{ color:"var(--text-3)" }}>{item.meta}</small>
                   </div>
                 </div>
               ))}
             </div>
           )}
-          <div style={{ fontSize:11, fontWeight:750, textTransform:"uppercase", letterSpacing:".07em", color:t.text3, margin:"8px 0 6px" }}>Projekt</div>
+          <div style={{ fontSize:11, fontWeight:750, textTransform:"uppercase", letterSpacing:".07em", color:"var(--text-3)", margin:"8px 0 6px" }}>Projekt</div>
           <select
             value={note.primaryProjectId || ""}
             onChange={e => {
               const v = e.target.value;
               updateNote(note.id, { primaryProjectId: v || null, primaryTaskId: v ? null : note.primaryTaskId });
             }}
-            style={{ width:"100%", background:"var(--bg)", border:"1px solid var(--border-soft)", borderRadius:8, color:t.text2, fontSize:12, padding:"6px 8px", outline:"none", cursor:"pointer", boxSizing:"border-box" }}
+            style={{ width:"100%", background:"var(--bg)", border:"1px solid var(--border-soft)", borderRadius:8, color:"var(--text-2)", fontSize:12, padding:"6px 8px", outline:"none", cursor:"pointer", boxSizing:"border-box" }}
           >
             <option value="">— Bez projektu</option>
             {projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
           {projects.length > 0 && (
             <div style={{ marginTop:8 }}>
-              <button onClick={()=>setShowAllProjects(v=>!v)} style={{ display:"flex", alignItems:"center", gap:5, background:"none", border:"none", color:t.text3, fontSize:11, cursor:"pointer", padding:"2px 0", fontWeight:600 }}>
-                <Icon name={showAllProjects?"chevron-up":"chevron-down"} size={11} color={t.text3} strokeWidth={2} />
+              <button onClick={()=>setShowAllProjects(v=>!v)} style={{ display:"flex", alignItems:"center", gap:5, background:"none", border:"none", color:"var(--text-3)", fontSize:11, cursor:"pointer", padding:"2px 0", fontWeight:600 }}>
+                <Icon name={showAllProjects?"chevron-up":"chevron-down"} size={11} color="var(--text-3)" strokeWidth={2} />
                 Propojit více projektů
               </button>
               {showAllProjects && (
@@ -1144,7 +1143,7 @@ function NotePropertiesPanel({ note, onClose, t, isMobile, onExportMD, projects,
                         display:"flex", alignItems:"center", gap:7, padding:"5px 8px", borderRadius:7,
                         border:`1px solid ${isPrimary?col+"60":isExtra?col+"40":"var(--border-soft)"}`,
                         background: isPrimary?col+"18":isExtra?col+"10":"transparent",
-                        color: isPrimary||isExtra?col:t.text2,
+                        color: isPrimary||isExtra?col:"var(--text-2)",
                         fontSize:12, cursor:isPrimary?"default":"pointer", textAlign:"left",
                       }}>
                         <div style={{ width:7, height:7, borderRadius:"50%", background:col, flexShrink:0 }} />
@@ -1162,28 +1161,28 @@ function NotePropertiesPanel({ note, onClose, t, isMobile, onExportMD, projects,
 
         {/* ── Úkol ── */}
         <div>
-          <div style={{ fontSize:11, fontWeight:750, textTransform:"uppercase", letterSpacing:".07em", color:t.text3, marginBottom:8 }}>Úkol</div>
+          <div style={{ fontSize:11, fontWeight:750, textTransform:"uppercase", letterSpacing:".07em", color:"var(--text-3)", marginBottom:8 }}>Úkol</div>
           <select
             value={note.primaryTaskId || ""}
             onChange={e => updateNote(note.id, { primaryTaskId: e.target.value || null })}
-            style={{ width:"100%", background:"var(--bg)", border:"1px solid var(--border-soft)", borderRadius:8, color:t.text2, fontSize:12, padding:"6px 8px", outline:"none", cursor:"pointer", boxSizing:"border-box" }}
+            style={{ width:"100%", background:"var(--bg)", border:"1px solid var(--border-soft)", borderRadius:8, color:"var(--text-2)", fontSize:12, padding:"6px 8px", outline:"none", cursor:"pointer", boxSizing:"border-box" }}
           >
             <option value="">— Bez úkolu</option>
             {tasks.map(tk=><option key={tk.id} value={tk.id}>{tk.title||"Bez názvu"}</option>)}
           </select>
           {tasks.length > 0 && (
             <div style={{ marginTop:8 }}>
-              <button onClick={()=>setShowAllTasks(v=>!v)} style={{ display:"flex", alignItems:"center", gap:5, background:"none", border:"none", color:t.text3, fontSize:11, cursor:"pointer", padding:"2px 0", fontWeight:600 }}>
-                <Icon name={showAllTasks?"chevron-up":"chevron-down"} size={11} color={t.text3} strokeWidth={2} />
+              <button onClick={()=>setShowAllTasks(v=>!v)} style={{ display:"flex", alignItems:"center", gap:5, background:"none", border:"none", color:"var(--text-3)", fontSize:11, cursor:"pointer", padding:"2px 0", fontWeight:600 }}>
+                <Icon name={showAllTasks?"chevron-up":"chevron-down"} size={11} color="var(--text-3)" strokeWidth={2} />
                 Propojit více úkolů
               </button>
               {showAllTasks && (
                 <div style={{ marginTop:6 }}>
                   <input value={taskSearch} onChange={e=>setTaskSearch(e.target.value)} placeholder="Hledat úkol…"
-                    style={{ width:"100%", padding:"5px 8px", borderRadius:7, border:"1px solid var(--border-soft)", background:"var(--bg)", color:t.text, fontSize:11, outline:"none", boxSizing:"border-box", marginBottom:5 }}
+                    style={{ width:"100%", padding:"5px 8px", borderRadius:7, border:"1px solid var(--border-soft)", background:"var(--bg)", color:"var(--text)", fontSize:11, outline:"none", boxSizing:"border-box", marginBottom:5 }}
                   />
                   <div style={{ display:"flex", flexDirection:"column", gap:3, maxHeight:160, overflowY:"auto" }}>
-                    {filteredTasks.length===0 && <div style={{ fontSize:11, color:t.text3 }}>Žádné úkoly</div>}
+                    {filteredTasks.length===0 && <div style={{ fontSize:11, color:"var(--text-3)" }}>Žádné úkoly</div>}
                     {filteredTasks.map(tk => {
                       const isPrimary = tk.id===note.primaryTaskId;
                       const isExtra   = (note.extraTaskIds||[]).includes(tk.id);
@@ -1192,10 +1191,10 @@ function NotePropertiesPanel({ note, onClose, t, isMobile, onExportMD, projects,
                           display:"flex", alignItems:"center", gap:7, padding:"5px 8px", borderRadius:7,
                           border:`1px solid ${isPrimary||isExtra?"color-mix(in srgb, var(--accent) 35%, transparent)":"var(--border-soft)"}`,
                           background: isPrimary||isExtra?"var(--accent-soft)":"transparent",
-                          color: isPrimary||isExtra?"var(--accent)":t.text2,
+                          color: isPrimary||isExtra?"var(--accent)":"var(--text-2)",
                           fontSize:12, cursor:isPrimary?"default":"pointer", textAlign:"left",
                         }}>
-                          <Icon name="check-square" size={11} color={isPrimary||isExtra?"var(--accent)":t.text3} strokeWidth={2} />
+                          <Icon name="check-square" size={11} color={isPrimary||isExtra?"var(--accent)":"var(--text-3)"} strokeWidth={2} />
                           <span style={{ flex:1, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{tk.title||"Bez názvu"}</span>
                           {isPrimary && <span style={{ fontSize:10, fontWeight:700 }}>primární</span>}
                           {isExtra   && <Icon name="check" size={10} color="var(--accent)" strokeWidth={2.5} />}
@@ -1216,11 +1215,11 @@ function NotePropertiesPanel({ note, onClose, t, isMobile, onExportMD, projects,
 
         {/* ── AI pomocník ── */}
         <div style={{ border:"1px solid color-mix(in srgb, var(--accent) 24%, transparent)", borderRadius:14, padding:13, background:"linear-gradient(160deg, var(--accent-soft), rgba(59,130,246,.05))", boxShadow:"0 0 28px rgba(var(--accent-rgb), .08)" }}>
-          <div style={{ fontSize:13, fontWeight:900, color:t.text, marginBottom:6 }}>✨ AI pomocník</div>
-          <div style={{ fontSize:12, color:t.text3, lineHeight:1.45, marginBottom:10 }}>Mock akce připravené pro pozdější napojení. Reálný backend se teď nespouští.</div>
+          <div style={{ fontSize:13, fontWeight:900, color:"var(--text)", marginBottom:6 }}>✨ AI pomocník</div>
+          <div style={{ fontSize:12, color:"var(--text-3)", lineHeight:1.45, marginBottom:10 }}>Mock akce připravené pro pozdější napojení. Reálný backend se teď nespouští.</div>
           <div style={{ display:"grid", gap:6 }}>
             {NOTE_AI_MOCK_ACTIONS.map(action => (
-              <button key={action} onClick={() => toast(`${action}: mock akce připravena`, "info")} style={{ height:31, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 10px", borderRadius:9, border:"1px solid var(--border-soft)", background:"rgba(0,0,0,.12)", color:t.text2, fontSize:12 }}>
+              <button key={action} onClick={() => toast(`${action}: mock akce připravena`, "info")} style={{ height:31, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"0 10px", borderRadius:9, border:"1px solid var(--border-soft)", background:"rgba(0,0,0,.12)", color:"var(--text-2)", fontSize:12 }}>
                 {action}<span>↵</span>
               </button>
             ))}
@@ -1231,20 +1230,20 @@ function NotePropertiesPanel({ note, onClose, t, isMobile, onExportMD, projects,
         <div>
           {sh("Historie")}
           <div style={{ display:"grid", gap:6, fontSize:12 }}>
-            <div style={{ display:"flex", justifyContent:"space-between", color:t.text3 }}><span>Vytvořeno</span><b style={{ color:t.text2 }}>{formatDateTime(note.createdAt)}</b></div>
-            <div style={{ display:"flex", justifyContent:"space-between", color:t.text3 }}><span>Naposledy upraveno</span><b style={{ color:t.text2 }}>{formatDateTime(note.updatedAt)}</b></div>
-            <div style={{ display:"flex", justifyContent:"space-between", color:t.text3 }}><span>Poslední editor</span><b style={{ color:t.text2 }}>Michal</b></div>
+            <div style={{ display:"flex", justifyContent:"space-between", color:"var(--text-3)" }}><span>Vytvořeno</span><b style={{ color:"var(--text-2)" }}>{formatDateTime(note.createdAt)}</b></div>
+            <div style={{ display:"flex", justifyContent:"space-between", color:"var(--text-3)" }}><span>Naposledy upraveno</span><b style={{ color:"var(--text-2)" }}>{formatDateTime(note.updatedAt)}</b></div>
+            <div style={{ display:"flex", justifyContent:"space-between", color:"var(--text-3)" }}><span>Poslední editor</span><b style={{ color:"var(--text-2)" }}>Michal</b></div>
           </div>
-          <button style={{ width:"100%", marginTop:10, padding:"8px 10px", borderRadius:9, border:"1px solid var(--border-soft)", color:t.text2, fontSize:12, fontWeight:750 }}>Zobrazit historii</button>
+          <button style={{ width:"100%", marginTop:10, padding:"8px 10px", borderRadius:9, border:"1px solid var(--border-soft)", color:"var(--text-2)", fontSize:12, fontWeight:750 }}>Zobrazit historii</button>
         </div>
 
         {/* ── Rychlé akce ── */}
         <div>
           {sh("Akce")}
           <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-            <MiniItem t={t} left={<><PinIcon size={11} filled={note.pinned} color="#f59e0b" /> {note.pinned?"Odepnout":"Připnout poznámku"}</>} right="⌥P" onClick={()=>updateNote(note.id,{pinned:!note.pinned})} />
+            <MiniItem left={<><PinIcon size={11} filled={note.pinned} color="#f59e0b" /> {note.pinned?"Odepnout":"Připnout poznámku"}</>} right="⌥P" onClick={()=>updateNote(note.id,{pinned:!note.pinned})} />
             <MiniItem t={t} left="🧠 Vytáhnout úkoly z textu" right="AI" onClick={runAIExtract} />
-            <MiniItem t={t} left={note.archived?"🗄️ Obnovit z archivu":"🗄️ Archivovat poznámku"} right="" onClick={()=>updateNote(note.id,{archived:!note.archived})} />
+            <MiniItem left={note.archived?"🗄️ Obnovit z archivu":"🗄️ Archivovat poznámku"} right="" onClick={()=>updateNote(note.id,{archived:!note.archived})} />
             <MiniItem t={t} left="📤 Export jako .md" right=".md" onClick={onExportMD} />
           </div>
         </div>
@@ -1452,7 +1451,7 @@ function NotesAtlasGrid({ notes, onOpenNote, onCreate, projects }) {
 }
 
 /* ─── NotesSidebar ──────────────────────────── */
-function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects, view = "editor", onSetView }) {
+function NotesSidebar({ notes, selId, onSelect, onCreate, projects, view = "editor", onSetView }) {
   const { tags: globalTags, updateNote, uiSettings } = useApp();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
@@ -1531,23 +1530,23 @@ function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects, view = "e
   ];
 
   return (
-    <div style={{ display:"flex", flexDirection:"column", height:"100%", background:t.bg2 }}>
-      <div style={{ padding:"16px 14px 10px", borderBottom:`1px solid ${t.border}`, flexShrink:0 }}>
+    <div style={{ display:"flex", flexDirection:"column", height:"100%", background:"var(--bg-2)" }}>
+      <div style={{ padding:"16px 14px 10px", borderBottom:"1px solid var(--border)", flexShrink:0 }}>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
             <div style={{ display:"flex", alignItems:"center", gap:7 }}>
-              <Icon name="file-text" size={16} color={t.accent} strokeWidth={2} />
+              <Icon name="file-text" size={16} color="var(--accent)" strokeWidth={2} />
             <div style={{ minWidth:0 }}>
               <span style={{ display:"block", fontSize:15, fontWeight:850, fontFamily:"var(--font-ui)", letterSpacing:"-.3px" }}>Poznámky</span>
 </div>
-            <span style={{ fontSize:11, color:t.text3, background:"rgba(255,255,255,.07)", padding:"1px 7px", borderRadius:99, fontWeight:700 }}>{activeCount}</span>
+            <span style={{ fontSize:11, color:"var(--text-3)", background:"rgba(255,255,255,.07)", padding:"1px 7px", borderRadius:99, fontWeight:700 }}>{activeCount}</span>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:8 }}>
             {onSetView && (
-              <div style={{ display:"flex", gap:2, background:"var(--bg-2)", border:`1px solid ${t.border}`, borderRadius:8, padding:2 }}>
-                <button onClick={()=>onSetView("editor")} title="Zobrazení: seznam" aria-label="Zobrazení seznam" style={{ display:"flex", padding:"4px 6px", borderRadius:6, border:"none", cursor:"pointer", background:view!=="gallery"?"var(--accent-soft)":"transparent", color:view!=="gallery"?"var(--accent)":t.text3 }}>
+              <div style={{ display:"flex", gap:2, background:"var(--bg-2)", border:"1px solid var(--border)", borderRadius:8, padding:2 }}>
+                <button onClick={()=>onSetView("editor")} title="Zobrazení: seznam" aria-label="Zobrazení seznam" style={{ display:"flex", padding:"4px 6px", borderRadius:6, border:"none", cursor:"pointer", background:view!=="gallery"?"var(--accent-soft)":"transparent", color:view!=="gallery"?"var(--accent)":"var(--text-3)" }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><line x1="8" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="20" y2="12"/><line x1="8" y1="18" x2="20" y2="18"/><line x1="3.5" y1="6" x2="3.6" y2="6"/><line x1="3.5" y1="12" x2="3.6" y2="12"/><line x1="3.5" y1="18" x2="3.6" y2="18"/></svg>
                 </button>
-                <button onClick={()=>onSetView("gallery")} title="Zobrazení: galerie" aria-label="Zobrazení galerie" style={{ display:"flex", padding:"4px 6px", borderRadius:6, border:"none", cursor:"pointer", background:view==="gallery"?"var(--accent-soft)":"transparent", color:view==="gallery"?"var(--accent)":t.text3 }}>
+                <button onClick={()=>onSetView("gallery")} title="Zobrazení: galerie" aria-label="Zobrazení galerie" style={{ display:"flex", padding:"4px 6px", borderRadius:6, border:"none", cursor:"pointer", background:view==="gallery"?"var(--accent-soft)":"transparent", color:view==="gallery"?"var(--accent)":"var(--text-3)" }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
                 </button>
               </div>
@@ -1559,21 +1558,21 @@ function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects, view = "e
           </div>
         </div>
         <div style={{ position:"relative" }}>
-          <span style={{ position:"absolute", left:9, top:"50%", transform:"translateY(-50%)", pointerEvents:"none", display:"flex" }}><Icon name="search" size={13} color={t.text3} strokeWidth={2} /></span>
+          <span style={{ position:"absolute", left:9, top:"50%", transform:"translateY(-50%)", pointerEvents:"none", display:"flex" }}><Icon name="search" size={13} color="var(--text-3)" strokeWidth={2} /></span>
           <input
             value={search} onChange={e=>setSearch(e.target.value)}
             placeholder="Hledat poznámku, štítek, projekt…"
             style={{ width:"100%", padding:"7px 28px 7px 30px", borderRadius:9, border:"1px solid var(--border-soft)", background:"var(--bg-2)", color:"var(--text)", fontSize:12.5, outline:"none", boxSizing:"border-box" }}
           />
           {search && (
-            <button onClick={()=>setSearch("")} style={{ position:"absolute", right:8, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", color:t.text3, cursor:"pointer", padding:2, display:"flex" }}>
-              <Icon name="x" size={12} color={t.text3} strokeWidth={2} />
+            <button onClick={()=>setSearch("")} style={{ position:"absolute", right:8, top:"50%", transform:"translateY(-50%)", background:"none", border:"none", color:"var(--text-3)", cursor:"pointer", padding:2, display:"flex" }}>
+              <Icon name="x" size={12} color="var(--text-3)" strokeWidth={2} />
             </button>
           )}
         </div>
       </div>
 
-      <div style={{ display:"flex", alignItems:"center", gap:4, padding:"6px 10px", overflowX:"auto", borderBottom:`1px solid ${t.border}`, flexShrink:0 }}>
+      <div style={{ display:"flex", alignItems:"center", gap:4, padding:"6px 10px", overflowX:"auto", borderBottom:"1px solid var(--border)", flexShrink:0 }}>
         {filterTabs.map(tab => {
           const isActive = filter === tab.k;
           return (
@@ -1582,14 +1581,14 @@ function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects, view = "e
               border:`1px solid ${isActive && !tab.muted ? "color-mix(in srgb, var(--accent) 28%, transparent)" : "transparent"}`,
               flexShrink:0,
               background:isActive ? (tab.muted ? "rgba(255,255,255,.06)" : "var(--accent-soft)") : "transparent",
-              color:isActive ? (tab.muted ? t.text2 : "var(--accent)") : t.text3, cursor:"pointer",
+              color:isActive ? (tab.muted ? "var(--text-2)" : "var(--accent)") : "var(--text-3)", cursor:"pointer",
               display:"flex", alignItems:"center", gap:4,
             }}>
               {tab.k === "pinned" && <PinIcon size={10} filled={isActive} color="currentColor" />}
               {tab.k === "archive" && <Icon name="archive" size={10} color="currentColor" strokeWidth={2} />}
               {tab.l}
               {tab.count !== undefined && tab.count > 0 && (
-                <span style={{ fontSize:10, background:"rgba(255,255,255,.07)", color:t.text3, padding:"0 4px", borderRadius:99, fontWeight:700 }}>{tab.count}</span>
+                <span style={{ fontSize:10, background:"rgba(255,255,255,.07)", color:"var(--text-3)", padding:"0 4px", borderRadius:99, fontWeight:700 }}>{tab.count}</span>
               )}
             </button>
           );
@@ -1611,11 +1610,11 @@ function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects, view = "e
 
       <div style={{ flex:1, overflow:"auto", padding:"6px 8px 8px" }}>
         {sorted.length === 0 && (
-          <div style={{ textAlign:"center", padding:"40px 16px", color:t.text3 }}>
+          <div style={{ textAlign:"center", padding:"40px 16px", color:"var(--text-3)" }}>
             <div style={{ opacity:.1, marginBottom:12, display:"flex", justifyContent:"center" }}>
-              <Icon name={filter==="archive" ? "archive" : "file-text"} size={44} color={t.text} strokeWidth={1} />
+              <Icon name={filter==="archive" ? "archive" : "file-text"} size={44} color="var(--text)" strokeWidth={1} />
             </div>
-            <div style={{ fontSize:13, fontWeight:600, marginBottom:5, color:t.text2 }}>
+            <div style={{ fontSize:13, fontWeight:600, marginBottom:5, color:"var(--text-2)" }}>
               {search ? `Nic pro „${search}"` : "Žádné poznámky"}
             </div>
             {!search && filter==="all" && (
@@ -1629,7 +1628,7 @@ function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects, view = "e
         {groups.map(group => (
           <div key={group.label ?? "all"}>
             {group.label && (
-              <div style={{ fontSize:11, fontWeight:850, textTransform:"uppercase", letterSpacing:".07em", color:t.text3, padding:"10px 6px 5px" }}>
+              <div style={{ fontSize:11, fontWeight:850, textTransform:"uppercase", letterSpacing:".07em", color:"var(--text-3)", padding:"10px 6px 5px" }}>
                 {group.label}
               </div>
             )}
@@ -1661,27 +1660,27 @@ function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects, view = "e
                       <span title={status.label} style={{ width:7, height:7, borderRadius:"50%", background:status.color, flexShrink:0 }} />
                       {n.icon && <span style={{ fontSize:13, flexShrink:0 }}>{n.icon}</span>}
                       {n.pinned && <PinIcon size={10} filled color="#f59e0b" />}
-                      <span style={{ fontSize:13, fontWeight:800, color:isActive?"var(--accent)":t.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-                        {n.title || <em style={{ fontWeight:400, color:t.text3 }}>Bez názvu</em>}
+                      <span style={{ fontSize:13, fontWeight:800, color:isActive?"var(--accent)":"var(--text)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                        {n.title || <em style={{ fontWeight:400, color:"var(--text-3)" }}>Bez názvu</em>}
                       </span>
                     </div>
                     <div style={{ display:"flex", alignItems:"center", gap:2, flexShrink:0 }}>
                       {showActs ? (
                         <>
-                          <button onClick={e=>{ e.stopPropagation(); togglePin(n); }} title={n.pinned?"Odepnout":"Připnout"} aria-label="Připnout poznámku" style={{ display:"flex", padding:3, borderRadius:6, border:"none", background:"transparent", color:n.pinned?"#f59e0b":t.text3, cursor:"pointer" }}>
+                          <button onClick={e=>{ e.stopPropagation(); togglePin(n); }} title={n.pinned?"Odepnout":"Připnout"} aria-label="Připnout poznámku" style={{ display:"flex", padding:3, borderRadius:6, border:"none", background:"transparent", color:n.pinned?"#f59e0b":"var(--text-3)", cursor:"pointer" }}>
                             <PinIcon size={12} filled={n.pinned} color="currentColor" />
                           </button>
-                          <button onClick={e=>{ e.stopPropagation(); toggleArchive(n); }} title={n.archived?"Obnovit z archivu":"Archivovat"} aria-label="Archivovat poznámku" style={{ display:"flex", padding:3, borderRadius:6, border:"none", background:"transparent", color:t.text3, cursor:"pointer" }}>
+                          <button onClick={e=>{ e.stopPropagation(); toggleArchive(n); }} title={n.archived?"Obnovit z archivu":"Archivovat"} aria-label="Archivovat poznámku" style={{ display:"flex", padding:3, borderRadius:6, border:"none", background:"transparent", color:"var(--text-3)", cursor:"pointer" }}>
                             <Icon name="archive" size={12} color="currentColor" strokeWidth={2} />
                           </button>
                         </>
                       ) : (
-                        <span style={{ fontSize:11, color:t.text3, whiteSpace:"nowrap" }}>{relTime(n.updatedAt)}</span>
+                        <span style={{ fontSize:11, color:"var(--text-3)", whiteSpace:"nowrap" }}>{relTime(n.updatedAt)}</span>
                       )}
                     </div>
                   </div>
                   {preview && (
-                    <div style={{ fontSize:12, color:t.text3, display:"-webkit-box", WebkitLineClamp:compact ? 1 : 2, WebkitBoxOrient:"vertical", overflow:"hidden", lineHeight:1.45, marginBottom:n.tags?.length ? 6 : 0 }}>
+                    <div style={{ fontSize:12, color:"var(--text-3)", display:"-webkit-box", WebkitLineClamp:compact ? 1 : 2, WebkitBoxOrient:"vertical", overflow:"hidden", lineHeight:1.45, marginBottom:n.tags?.length ? 6 : 0 }}>
                       {preview}
                     </div>
                   )}
@@ -1695,7 +1694,7 @@ function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects, view = "e
                           </button>
                         );
                       })}
-                      {n.tags.length>3 && <span style={{ fontSize:10, color:t.text3 }}>+{n.tags.length-3}</span>}
+                      {n.tags.length>3 && <span style={{ fontSize:10, color:"var(--text-3)" }}>+{n.tags.length-3}</span>}
                     </div>
                   )}
                 </div>
@@ -1705,7 +1704,7 @@ function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects, view = "e
         ))}
       </div>
 
-      <div style={{ padding:"7px 14px", borderTop:`1px solid ${t.border}`, fontSize:11.5, color:t.text3, flexShrink:0 }}>
+      <div style={{ padding:"7px 14px", borderTop:"1px solid var(--border)", fontSize:11.5, color:"var(--text-3)", flexShrink:0 }}>
         <button onClick={onCreate} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:6, width:"100%", height:38, borderRadius:11, border:"none", background:"linear-gradient(135deg, var(--accent), var(--accent-2))", color:"var(--bg)", fontWeight:900, fontSize:13, cursor:"pointer" }}>
           <Icon name="plus" size={14} color="currentColor" strokeWidth={2.6} /> Nová poznámka
         </button>
@@ -1716,7 +1715,7 @@ function NotesSidebar({ notes, selId, onSelect, onCreate, t, projects, view = "e
 
 /* ─── NotesPage ─────────────────────────────── */
 export default function NotesPage() {
-  const { t, dk, notes, addNote, updateNote, deleteNote, projects, tasks, addTask, openNoteId, setOpenNoteId, isMobile, loaded } = useApp();
+  const { dk, notes, addNote, updateNote, deleteNote, projects, tasks, addTask, openNoteId, setOpenNoteId, isMobile, loaded } = useApp();
   const toast   = useToast();
   const confirm = useConfirm();
 
@@ -1815,7 +1814,7 @@ export default function NotesPage() {
         {[...Array(3)].map((_, i) => {
           const skVars = dk ? { "--sk-base": "#1e2130", "--sk-hl": "#262b3d" } : { "--sk-base": "#e8e8ed", "--sk-hl": "#f5f5f7" };
           return (
-            <div key={i} style={{ padding: "16px", borderRadius: 14, border: `1px solid ${t.border}`, background: t.card, ...skVars }}>
+            <div key={i} style={{ padding: "16px", borderRadius: 14, border: "1px solid var(--border)", background: "var(--surface)", ...skVars }}>
               <div className="skeleton" style={{ height: 16, width: "60%", borderRadius: 6, marginBottom: 10 }} />
               <div className="skeleton" style={{ height: 11, width: "100%", borderRadius: 6, marginBottom: 6 }} />
               <div className="skeleton" style={{ height: 11, width: "80%", borderRadius: 6, marginBottom: 6 }} />
@@ -1841,7 +1840,6 @@ export default function NotesPage() {
               selId={selId}
               onSelect={(id) => { setSelId(id); setShowProps(true); setNotesView("editor"); }}
               onCreate={handleCreate}
-              t={t}
               projects={projects}
               view={notesView}
               onSetView={setNotesView}
@@ -1861,12 +1859,11 @@ export default function NotesPage() {
             </div>
           ) : selNote ? (
             <div className="notes-editor-shell">
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0, background: t.bg }}>
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0, background: "var(--bg)" }}>
                 <NoteEditor
                   key={selNote.id}
                   note={selNote}
                   onSave={upd => updateNote(selNote.id, upd)}
-                  t={t}
                   dk={dk}
                   isMobile={false}
                   showProps={showProps}
@@ -1883,7 +1880,6 @@ export default function NotesPage() {
                   <NotePropertiesPanel
                     note={selNote}
                     onClose={() => setShowProps(false)}
-                    t={t}
                     isMobile={false}
                     onExportMD={handleExportMD}
                     projects={projects}
@@ -1923,7 +1919,6 @@ export default function NotesPage() {
             selId={selId}
             onSelect={(id) => { setSelId(id); setShowProps(false); setMobileView("detail"); }}
             onCreate={handleCreate}
-            t={t}
             projects={projects}
           />
         </div>
@@ -1931,23 +1926,22 @@ export default function NotesPage() {
 
       {showDetail && (
         <div style={{ flex: 1, display: "flex", overflow: "hidden", minWidth: 0 }}>
-          <div style={{ position: "absolute", top: 0, left: 0, right: 0, display: "none", alignItems: "center", gap: 8, padding: "12px 16px", borderBottom: `1px solid ${t.border}`, background: t.bg2, zIndex: 50 }}>
-            <button onClick={() => setMobileView("list")} style={{ background: "none", border: "none", color: t.accent, display: "flex", alignItems: "center", gap: 4, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>
-              <Icon name="chevron-left" size={16} color={t.accent} strokeWidth={2.5} />
+          <div style={{ position: "absolute", top: 0, left: 0, right: 0, display: "none", alignItems: "center", gap: 8, padding: "12px 16px", borderBottom: "1px solid var(--border)", background: "var(--bg-2)", zIndex: 50 }}>
+            <button onClick={() => setMobileView("list")} style={{ background: "none", border: "none", color: "var(--accent)", display: "flex", alignItems: "center", gap: 4, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>
+              <Icon name="chevron-left" size={16} color="var(--accent)" strokeWidth={2.5} />
               Zpět
             </button>
-            <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: t.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {selNote?.title || "Nová poznámka"}
             </span>
           </div>
 
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0, background: t.bg }}>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0, background: "var(--bg)" }}>
             {selNote ? (
               <NoteEditor
                 key={selNote.id}
                 note={selNote}
                 onSave={upd => updateNote(selNote.id, upd)}
-                t={t}
                 dk={dk}
                 isMobile
                 showProps={showProps}
@@ -1959,9 +1953,9 @@ export default function NotesPage() {
                     addTask={addTask}
                   />
             ) : (
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: t.text3, gap: 12 }}>
-                <div style={{ opacity: 0.08 }}><Icon name="file-text" size={72} color={t.text} strokeWidth={0.75} /></div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: t.text2, fontFamily: "var(--font-ui)" }}>Žádná poznámka vybrána</div>
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "var(--text-3)", gap: 12 }}>
+                <div style={{ opacity: 0.08 }}><Icon name="file-text" size={72} color="var(--text)" strokeWidth={0.75} /></div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-2)", fontFamily: "var(--font-ui)" }}>Žádná poznámka vybrána</div>
                 <div style={{ fontSize: 13 }}>Vyber ze seznamu nebo vytvoř novou</div>
                 <button onClick={handleCreate} style={{ marginTop: 4, padding: "9px 22px", borderRadius: 10, border: "none", background: "var(--accent)", color: "var(--bg)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                   + Nová poznámka
@@ -1974,7 +1968,6 @@ export default function NotesPage() {
             <NotePropertiesPanel
               note={selNote}
               onClose={() => setShowProps(false)}
-              t={t}
               isMobile
               onExportMD={handleExportMD}
               projects={projects}

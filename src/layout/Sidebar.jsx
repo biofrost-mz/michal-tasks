@@ -26,7 +26,7 @@ import { CSS } from '@dnd-kit/utilities'
    Workspace Switcher
 ───────────────────────────────────────────── */
 export function WorkspaceSwitcher() {
-  const { t, workspaces, activeWorkspaceId, switchWorkspace, createWorkspace, generateInviteLink, workspaceRole, setPage } = useApp();
+  const { workspaces, activeWorkspaceId, switchWorkspace, createWorkspace, generateInviteLink, workspaceRole, setPage } = useApp();
   const toast = useToast();
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -72,28 +72,28 @@ export function WorkspaceSwitcher() {
           gap: 8,
           padding: "8px 10px",
           borderRadius: 8,
-          border: `1px solid ${t.border}`,
-          background: t.input,
-          color: t.text,
+          border: "1px solid var(--border)",
+          background: "var(--input)",
+          color: "var(--text)",
           cursor: "pointer",
           fontSize: 13,
           fontWeight: 600,
         }}
       >
-        <div style={{ width: 24, height: 24, borderRadius: 6, background: t.accent, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12, fontWeight: 800, flexShrink: 0 }}>
+        <div style={{ width: 24, height: 24, borderRadius: 6, background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12, fontWeight: 800, flexShrink: 0 }}>
           {active?.name?.[0]?.toUpperCase() ?? "?"}
         </div>
         <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "left" }}>
           {active?.name ?? "Načítám…"}
         </span>
-        <Icon name="chevron-down" size={13} color={t.text3} strokeWidth={2} />
+        <Icon name="chevron-down" size={13} color="var(--text-3)" strokeWidth={2} />
       </button>
 
       {open && (
         <>
           <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 199 }} />
-          <div className="pop" style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0, background: t.bg2, border: `1px solid ${t.border}`, borderRadius: 10, zIndex: 200, overflow: "hidden", boxShadow: t.shadow }}>
-            <div style={{ padding: "6px 6px 4px", fontSize: 12, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: "0.08em" }}>Workspace</div>
+          <div className="pop" style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0, background: "var(--bg-2)", border: "1px solid var(--border)", borderRadius: 10, zIndex: 200, overflow: "hidden", boxShadow: "var(--shadow-sm)" }}>
+            <div style={{ padding: "6px 6px 4px", fontSize: 12, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Workspace</div>
             {workspaces.map((ws) => (
               <button
                 key={ws.id}
@@ -101,19 +101,19 @@ export function WorkspaceSwitcher() {
                 style={{
                   display: "flex", alignItems: "center", gap: 8, width: "100%",
                   padding: "7px 8px", borderRadius: 7, border: "none",
-                  background: ws.id === activeWorkspaceId ? t.accentBg : "transparent",
-                  color: ws.id === activeWorkspaceId ? t.accent : t.text,
+                  background: ws.id === activeWorkspaceId ? "var(--accent-soft)" : "transparent",
+                  color: ws.id === activeWorkspaceId ? "var(--accent)" : "var(--text)",
                   cursor: "pointer", fontSize: 13, fontWeight: ws.id === activeWorkspaceId ? 600 : 400,
                 }}
               >
-                <div style={{ width: 20, height: 20, borderRadius: 5, background: ws.id === activeWorkspaceId ? t.accent : t.border, display: "flex", alignItems: "center", justifyContent: "center", color: ws.id === activeWorkspaceId ? "#fff" : t.text2, fontSize: 12, fontWeight: 800, flexShrink: 0 }}>
+                <div style={{ width: 20, height: 20, borderRadius: 5, background: ws.id === activeWorkspaceId ? "var(--accent)" : "var(--border)", display: "flex", alignItems: "center", justifyContent: "center", color: ws.id === activeWorkspaceId ? "#fff" : "var(--text-2)", fontSize: 12, fontWeight: 800, flexShrink: 0 }}>
                   {ws.name[0].toUpperCase()}
                 </div>
                 <span style={{ flex: 1, textAlign: "left" }}>{ws.name}</span>
-                <span style={{ fontSize: 12, color: t.text3 }}>{ws.role}</span>
+                <span style={{ fontSize: 12, color: "var(--text-3)" }}>{ws.role}</span>
               </button>
             ))}
-            <div style={{ borderTop: `1px solid ${t.border}`, margin: "4px 0" }} />
+            <div style={{ borderTop: "1px solid var(--border)", margin: "4px 0" }} />
             {creating ? (
               <div style={{ padding: "6px 8px", display: "flex", gap: 6 }}>
                 <input
@@ -122,26 +122,26 @@ export function WorkspaceSwitcher() {
                   onChange={(e) => setNewName(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") handleCreate(); if (e.key === "Escape") setCreating(false); }}
                   placeholder="Název workspace…"
-                  style={{ flex: 1, padding: "5px 8px", borderRadius: 6, border: `1px solid ${t.border}`, background: t.input, color: t.text, fontSize: 12 }}
+                  style={{ flex: 1, padding: "5px 8px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--input)", color: "var(--text)", fontSize: 12 }}
                 />
-                <button onClick={handleCreate} style={{ padding: "5px 10px", borderRadius: 6, border: "none", background: t.accent, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>OK</button>
+                <button onClick={handleCreate} style={{ padding: "5px 10px", borderRadius: 6, border: "none", background: "var(--accent)", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>OK</button>
               </div>
             ) : (
-              <button onClick={() => setCreating(true)} style={{ display: "flex", alignItems: "center", gap: 7, width: "100%", padding: "7px 8px", borderRadius: 7, border: "none", background: "transparent", color: t.text2, cursor: "pointer", fontSize: 12 }}>
-                <Icon name="plus" size={13} color={t.text3} strokeWidth={2} />
+              <button onClick={() => setCreating(true)} style={{ display: "flex", alignItems: "center", gap: 7, width: "100%", padding: "7px 8px", borderRadius: 7, border: "none", background: "transparent", color: "var(--text-2)", cursor: "pointer", fontSize: 12 }}>
+                <Icon name="plus" size={13} color="var(--text-3)" strokeWidth={2} />
                 Nový workspace
               </button>
             )}
             {(workspaceRole === "owner" || workspaceRole === "admin") && (
               <>
-                <button onClick={() => { setInviteOpen(true); setOpen(false); }} style={{ display: "flex", alignItems: "center", gap: 7, width: "100%", padding: "7px 8px", borderRadius: 7, border: "none", background: "transparent", color: t.text2, cursor: "pointer", fontSize: 12 }}>
-                  <Icon name="plus" size={13} color={t.text3} strokeWidth={2} />
+                <button onClick={() => { setInviteOpen(true); setOpen(false); }} style={{ display: "flex", alignItems: "center", gap: 7, width: "100%", padding: "7px 8px", borderRadius: 7, border: "none", background: "transparent", color: "var(--text-2)", cursor: "pointer", fontSize: 12 }}>
+                  <Icon name="plus" size={13} color="var(--text-3)" strokeWidth={2} />
                   Pozvat člena
                 </button>
               </>
             )}
-            <button onClick={() => { setPage("workspace-settings"); setOpen(false); }} style={{ display: "flex", alignItems: "center", gap: 7, width: "100%", padding: "7px 8px", borderRadius: 7, border: "none", background: "transparent", color: t.text2, cursor: "pointer", fontSize: 12 }}>
-              <Icon name="list" size={13} color={t.text3} strokeWidth={2} />
+            <button onClick={() => { setPage("workspace-settings"); setOpen(false); }} style={{ display: "flex", alignItems: "center", gap: 7, width: "100%", padding: "7px 8px", borderRadius: 7, border: "none", background: "transparent", color: "var(--text-2)", cursor: "pointer", fontSize: 12 }}>
+              <Icon name="list" size={13} color="var(--text-3)" strokeWidth={2} />
               Správa workspace
             </button>
           </div>
@@ -152,34 +152,34 @@ export function WorkspaceSwitcher() {
       {inviteOpen && (
         <>
           <div onClick={() => { setInviteOpen(false); setInviteLink(""); }} style={{ position: "fixed", inset: 0, background: "#0005", zIndex: 300 }} />
-          <div className="pop" style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", background: t.bg2, border: `1px solid ${t.border}`, borderRadius: 14, padding: "24px 28px", zIndex: 301, width: 360, maxWidth: "calc(100vw - 32px)", boxShadow: t.shadow }}>
+          <div className="pop" style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", background: "var(--bg-2)", border: "1px solid var(--border)", borderRadius: 14, padding: "24px 28px", zIndex: 301, width: 360, maxWidth: "calc(100vw - 32px)", boxShadow: "var(--shadow-sm)" }}>
             <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 16 }}>Pozvat do workspace</div>
-            <div style={{ fontSize: 12, color: t.text2, marginBottom: 10 }}>Role pozvaného:</div>
+            <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 10 }}>Role pozvaného:</div>
             <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
               {["member", "viewer", "admin"].map((r) => (
-                <button key={r} onClick={() => setInviteRole(r)} style={{ padding: "5px 12px", borderRadius: 6, border: `1px solid ${inviteRole === r ? t.accent : t.border}`, background: inviteRole === r ? t.accentBg : "transparent", color: inviteRole === r ? t.accent : t.text2, fontSize: 12, fontWeight: inviteRole === r ? 600 : 400, cursor: "pointer" }}>
+                <button key={r} onClick={() => setInviteRole(r)} style={{ padding: "5px 12px", borderRadius: 6, border: `1px solid ${inviteRole === r ? "var(--accent)" : "var(--border)"}`, background: inviteRole === r ? "var(--accent-soft)" : "transparent", color: inviteRole === r ? "var(--accent)" : "var(--text-2)", fontSize: 12, fontWeight: inviteRole === r ? 600 : 400, cursor: "pointer" }}>
                   {r}
                 </button>
               ))}
             </div>
             {inviteLink ? (
               <>
-                <div style={{ fontSize: 12, color: t.text2, marginBottom: 6 }}>Zkopíruj a pošli odkaz:</div>
+                <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 6 }}>Zkopíruj a pošli odkaz:</div>
                 <div style={{ display: "flex", gap: 6 }}>
-                  <input readOnly value={inviteLink} style={{ flex: 1, padding: "7px 10px", borderRadius: 7, border: `1px solid ${t.border}`, background: t.input, color: t.text, fontSize: 12 }} onClick={(e) => e.target.select()} />
-                  <button onClick={() => { navigator.clipboard.writeText(inviteLink); toast("Zkopírováno", "success"); }} style={{ padding: "7px 12px", borderRadius: 7, border: "none", background: t.accent, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                  <input readOnly value={inviteLink} style={{ flex: 1, padding: "7px 10px", borderRadius: 7, border: "1px solid var(--border)", background: "var(--input)", color: "var(--text)", fontSize: 12 }} onClick={(e) => e.target.select()} />
+                  <button onClick={() => { navigator.clipboard.writeText(inviteLink); toast("Zkopírováno", "success"); }} style={{ padding: "7px 12px", borderRadius: 7, border: "none", background: "var(--accent)", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                     Kopírovat
                   </button>
                 </div>
-                <div style={{ fontSize: 12, color: t.text3, marginTop: 6 }}>Platnost 7 dní</div>
+                <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 6 }}>Platnost 7 dní</div>
               </>
             ) : (
-              <button onClick={handleGenerateLink} style={{ width: "100%", padding: "9px", borderRadius: 8, border: "none", background: t.accent, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+              <button onClick={handleGenerateLink} style={{ width: "100%", padding: "9px", borderRadius: 8, border: "none", background: "var(--accent)", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
                 Vygenerovat odkaz
               </button>
             )}
-            <button onClick={() => { setInviteOpen(false); setInviteLink(""); }} style={{ position: "absolute", top: 14, right: 14, background: "none", border: "none", color: t.text3, cursor: "pointer", padding: 4, display: "flex", alignItems: "center" }}>
-              <Icon name="x" size={16} color={t.text3} strokeWidth={2} />
+            <button onClick={() => { setInviteOpen(false); setInviteLink(""); }} style={{ position: "absolute", top: 14, right: 14, background: "none", border: "none", color: "var(--text-3)", cursor: "pointer", padding: 4, display: "flex", alignItems: "center" }}>
+              <Icon name="x" size={16} color="var(--text-3)" strokeWidth={2} />
             </button>
           </div>
         </>
@@ -192,7 +192,7 @@ export function WorkspaceSwitcher() {
    User Bar (bottom of sidebar)
 ───────────────────────────────────────────── */
 function UserBar({ setPage }) {
-  const { t, userEmail, logout, workspaceMembers, userId } = useApp();
+  const { userEmail, logout, workspaceMembers, userId } = useApp();
   const toast = useToast();
   const confirm = useConfirm();
   const [open, setOpen] = useState(false);
@@ -211,31 +211,31 @@ function UserBar({ setPage }) {
     <div style={{ position: "relative" }}>
       <button
         onClick={() => setOpen((v) => !v)}
-        style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 8, border: "none", background: "transparent", color: t.text, cursor: "pointer", textAlign: "left" }}
+        style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 8, border: "none", background: "transparent", color: "var(--text)", cursor: "pointer", textAlign: "left" }}
       >
         <div style={{ width: 32, height: 32, borderRadius: "50%", background: "linear-gradient(135deg,#3b82f6,#8b5cf6)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12, fontWeight: 800, flexShrink: 0 }}>
           {initials}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{me?.displayName || displayName}</div>
-          {me?.displayName && <div style={{ fontSize: 12, color: t.text3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{userEmail}</div>}
+          {me?.displayName && <div style={{ fontSize: 12, color: "var(--text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{userEmail}</div>}
         </div>
-        <Icon name="chevron-up" size={12} color={t.text3} strokeWidth={2} />
+        <Icon name="chevron-up" size={12} color="var(--text-3)" strokeWidth={2} />
       </button>
 
       {open && (
         <>
           <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 199 }} />
-          <div className="pop" style={{ position: "absolute", bottom: "calc(100% + 6px)", left: 0, right: 0, background: t.bg2, border: `1px solid ${t.border}`, borderRadius: 10, zIndex: 200, overflow: "hidden", boxShadow: t.shadow }}>
-            <div style={{ padding: "8px 10px 6px", fontSize: 12, color: t.text3, borderBottom: `1px solid ${t.border}` }}>
-              <div style={{ fontWeight: 600, color: t.text, marginBottom: 1 }}>{me?.displayName || "—"}</div>
+          <div className="pop" style={{ position: "absolute", bottom: "calc(100% + 6px)", left: 0, right: 0, background: "var(--bg-2)", border: "1px solid var(--border)", borderRadius: 10, zIndex: 200, overflow: "hidden", boxShadow: "var(--shadow-sm)" }}>
+            <div style={{ padding: "8px 10px 6px", fontSize: 12, color: "var(--text-3)", borderBottom: "1px solid var(--border)" }}>
+              <div style={{ fontWeight: 600, color: "var(--text)", marginBottom: 1 }}>{me?.displayName || "—"}</div>
               <div>{userEmail}</div>
             </div>
-            <button onClick={() => { setPage("user-profile"); setOpen(false); }} style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "8px 10px", border: "none", background: "transparent", color: t.text, cursor: "pointer", fontSize: 13 }}>
-              <Icon name="user" size={13} color={t.text3} strokeWidth={2} />
+            <button onClick={() => { setPage("user-profile"); setOpen(false); }} style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "8px 10px", border: "none", background: "transparent", color: "var(--text)", cursor: "pointer", fontSize: 13 }}>
+              <Icon name="user" size={13} color="var(--text-3)" strokeWidth={2} />
               Můj profil
             </button>
-            <div style={{ borderTop: `1px solid ${t.border}` }} />
+            <div style={{ borderTop: "1px solid var(--border)" }} />
             <button onClick={handleLogout} style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "8px 10px", border: "none", background: "transparent", color: "#ef4444", cursor: "pointer", fontSize: 13 }}>
               <Icon name="x" size={13} color="#ef4444" strokeWidth={2} />
               Odhlásit se
@@ -253,7 +253,7 @@ function UserBar({ setPage }) {
 /* ─────────────────────────────────────────────
    Sortable Project Item
 ───────────────────────────────────────────── */
-function SortableProjectItem({ p, tasks, t, openProject }) {
+function SortableProjectItem({ p, tasks, openProject }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: p.id });
   const [hovered, setHovered] = useState(false);
   const count = tasks.filter((tk) => tk.projectId === p.id && tk.status !== "done").length;
@@ -277,7 +277,7 @@ function SortableProjectItem({ p, tasks, t, openProject }) {
         {...listeners}
         style={{
           cursor: "grab",
-          color: t.text3,
+          color: "var(--text-3)",
           fontSize: 12,
           padding: "6px 4px 6px 10px",
           flexShrink: 0,
@@ -300,7 +300,7 @@ function SortableProjectItem({ p, tasks, t, openProject }) {
           borderRadius: 6,
           background: "transparent",
           border: "none",
-          color: t.text2,
+          color: "var(--text-2)",
           fontSize: 13,
           textAlign: "left",
           cursor: "pointer",
@@ -311,12 +311,12 @@ function SortableProjectItem({ p, tasks, t, openProject }) {
             width: 7,
             height: 7,
             borderRadius: "50%",
-            background: projectColor(p.id) || t.text3,
+            background: projectColor(p.id) || "var(--text-3)",
             flexShrink: 0,
           }}
         />
         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{p.name}</span>
-        {count > 0 && <span className="mono" style={{ fontSize: 12, color: t.text3 }}>{count}</span>}
+        {count > 0 && <span className="mono" style={{ fontSize: 12, color: "var(--text-3)" }}>{count}</span>}
       </button>
     </div>
   );
@@ -325,7 +325,7 @@ function SortableProjectItem({ p, tasks, t, openProject }) {
 /* ─────────────────────────────────────────────
    Mini Calendar
 ───────────────────────────────────────────── */
-function MiniCalendar({ t, tasks, setPage }) {
+function MiniCalendar({ tasks, setPage }) {
   const now   = new Date();
   const todayY = now.getFullYear();
   const todayM = now.getMonth();
@@ -358,20 +358,20 @@ function MiniCalendar({ t, tasks, setPage }) {
   const isCurrentMonth = vy === todayY && vm === todayM;
 
   return (
-    <div style={{ padding: "12px 10px 8px", borderBottom: `1px solid ${t.border}` }}>
+    <div style={{ padding: "12px 10px 8px", borderBottom: "1px solid var(--border)" }}>
       {/* Month nav */}
       <div style={{ display: "flex", alignItems: "center", marginBottom: 8 }}>
-        <button onClick={prevMonth} style={{ background: "none", border: "none", color: t.text3, cursor: "pointer", padding: "2px 5px", borderRadius: 5, fontSize: 15, lineHeight: 1, display: "flex", alignItems: "center" }}>‹</button>
-        <button onClick={goToday} style={{ flex: 1, background: "none", border: "none", color: isCurrentMonth ? t.text : t.text3, cursor: "pointer", fontSize: 12, fontWeight: 700, textAlign: "center", padding: "0 4px", lineHeight: 1 }}>
+        <button onClick={prevMonth} style={{ background: "none", border: "none", color: "var(--text-3)", cursor: "pointer", padding: "2px 5px", borderRadius: 5, fontSize: 15, lineHeight: 1, display: "flex", alignItems: "center" }}>‹</button>
+        <button onClick={goToday} style={{ flex: 1, background: "none", border: "none", color: isCurrentMonth ? "var(--text)" : "var(--text-3)", cursor: "pointer", fontSize: 12, fontWeight: 700, textAlign: "center", padding: "0 4px", lineHeight: 1 }}>
           {monthLabel}{vy !== todayY ? ` ${vy}` : ""}
         </button>
-        <button onClick={nextMonth} style={{ background: "none", border: "none", color: t.text3, cursor: "pointer", padding: "2px 5px", borderRadius: 5, fontSize: 15, lineHeight: 1, display: "flex", alignItems: "center" }}>›</button>
+        <button onClick={nextMonth} style={{ background: "none", border: "none", color: "var(--text-3)", cursor: "pointer", padding: "2px 5px", borderRadius: 5, fontSize: 15, lineHeight: 1, display: "flex", alignItems: "center" }}>›</button>
       </div>
 
       {/* Day-of-week headers */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: 3 }}>
         {["Po","Út","St","Čt","Pá","So","Ne"].map(d => (
-          <div key={d} style={{ textAlign: "center", fontSize: 10, color: t.text3, fontWeight: 700 }}>{d}</div>
+          <div key={d} style={{ textAlign: "center", fontSize: 10, color: "var(--text-3)", fontWeight: 700 }}>{d}</div>
         ))}
       </div>
 
@@ -396,14 +396,14 @@ function MiniCalendar({ t, tasks, setPage }) {
                 height: 26, width: "100%",
                 display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
                 borderRadius: 5, border: "none",
-                background: isToday ? t.accent : "transparent",
-                color: isToday ? "#fff" : isWeekend ? t.text3 : isPast ? t.text3 : t.text2,
+                background: isToday ? "var(--accent)" : "transparent",
+                color: isToday ? "#fff" : isWeekend ? "var(--text-3)" : isPast ? "var(--text-3)" : "var(--text-2)",
                 fontSize: 11, fontWeight: isToday ? 800 : 400,
                 cursor: openTasks.length > 0 ? "pointer" : "default",
                 position: "relative", padding: 0,
                 opacity: isPast && !isToday && !hasOverdue ? 0.55 : 1,
               }}
-              onMouseEnter={e => { if (openTasks.length > 0 && !isToday) e.currentTarget.style.background = `${t.accent}20`; }}
+              onMouseEnter={e => { if (openTasks.length > 0 && !isToday) e.currentTarget.style.background = "var(--accent-soft)"; }}
               onMouseLeave={e => { if (!isToday) e.currentTarget.style.background = "transparent"; }}
             >
               {day}
@@ -411,7 +411,7 @@ function MiniCalendar({ t, tasks, setPage }) {
                 <div style={{
                   position: "absolute", bottom: 2, left: "50%", transform: "translateX(-50%)",
                   width: 3, height: 3, borderRadius: "50%",
-                  background: isToday ? "rgba(255,255,255,.75)" : hasOverdue ? "#ef4444" : t.accent,
+                  background: isToday ? "rgba(255,255,255,.75)" : hasOverdue ? "#ef4444" : "var(--accent)",
                 }} />
               )}
             </button>
@@ -423,7 +423,7 @@ function MiniCalendar({ t, tasks, setPage }) {
 }
 
 export default function Sidebar({ toggleDk }) {
-  const { t, dk, projects, tasks, quickTodos, page, setPage, openProject, search, setSearch, setTaskDetail, setCmdOpen, reorderProjects } = useApp();
+  const { dk, projects, tasks, quickTodos, page, setPage, openProject, search, setSearch, setTaskDetail, setCmdOpen, reorderProjects } = useApp();
   const active = projects.filter((p) => p.status === "active");
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const searchRef = useRef(null);
@@ -468,8 +468,8 @@ export default function Sidebar({ toggleDk }) {
       style={{
         width: 260,
         minWidth: 260,
-        background: t.bg2,
-        borderRight: `1px solid ${t.border}`,
+        background: "var(--bg-2)",
+        borderRight: "1px solid var(--border)",
         display: "flex",
         flexDirection: "column",
         overflow: "visible",
@@ -493,12 +493,12 @@ export default function Sidebar({ toggleDk }) {
             alignItems: "center",
             gap: 7,
             padding: "6px 10px",
-            background: t.input,
+            background: "var(--input)",
             borderRadius: 8,
-            border: `1px solid ${t.border}`,
+            border: "1px solid var(--border)",
           }}
         >
-          <Icon name="search" size={13} color={t.text3} strokeWidth={2} style={{ flexShrink: 0 }} />
+          <Icon name="search" size={13} color="var(--text-3)" strokeWidth={2} style={{ flexShrink: 0 }} />
           <input
             ref={searchRef}
             value={search}
@@ -510,13 +510,13 @@ export default function Sidebar({ toggleDk }) {
               border: "none",
               background: "transparent",
               outline: "none",
-              color: t.text,
+              color: "var(--text)",
               fontSize: 12.5,
             }}
           />
           {search && (
-            <button onClick={() => setSearch("")} style={{ background: "none", border: "none", color: t.text3, cursor: "pointer", display: "flex", alignItems: "center", padding: 0 }}>
-              <Icon name="x" size={12} color={t.text3} strokeWidth={2} />
+            <button onClick={() => setSearch("")} style={{ background: "none", border: "none", color: "var(--text-3)", cursor: "pointer", display: "flex", alignItems: "center", padding: 0 }}>
+              <Icon name="x" size={12} color="var(--text-3)" strokeWidth={2} />
             </button>
           )}
         </div>
@@ -538,16 +538,16 @@ export default function Sidebar({ toggleDk }) {
                 minHeight: 40,
                 borderRadius: 7,
                 marginBottom: 1,
-                background: act ? t.accentBg : "transparent",
+                background: act ? "var(--accent-soft)" : "transparent",
                 border: "none",
-                color: act ? t.accent : t.text2,
+                color: act ? "var(--accent)" : "var(--text-2)",
                 fontSize: 14,
                 fontWeight: act ? 600 : 400,
                 transition: "all .12s",
               }}
             >
               <span style={{ width: 18, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.85 }}>
-                <Icon name={n.icon} size={17} color={act ? t.accent : t.text2} strokeWidth={act ? 2.25 : 1.75} />
+                <Icon name={n.icon} size={17} color={act ? "var(--accent)" : "var(--text-2)"} strokeWidth={act ? 2.25 : 1.75} />
               </span>
               {n.label}
               {n.count > 0 && (
@@ -556,8 +556,8 @@ export default function Sidebar({ toggleDk }) {
                   style={{
                     marginLeft: "auto",
                     fontSize: 12,
-                    color: t.text3,
-                    background: t.input,
+                    color: "var(--text-3)",
+                    background: "var(--input)",
                     padding: "1px 6px",
                     borderRadius: 8,
                   }}
@@ -571,18 +571,18 @@ export default function Sidebar({ toggleDk }) {
 
         {/* Mini calendar */}
         <div style={{ marginTop: 10 }}>
-          <MiniCalendar t={t} tasks={tasks} setPage={setPage} />
+          <MiniCalendar tasks={tasks} setPage={setPage} />
         </div>
 
         {active.length > 0 && (
-          <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${t.border}` }}>
+          <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
             <div
               style={{
                 fontSize: 12,
                 fontWeight: 700,
                 textTransform: "uppercase",
                 letterSpacing: ".08em",
-                color: t.text3,
+                color: "var(--text-3)",
                 padding: "0 10px",
                 marginBottom: 6,
               }}
@@ -593,7 +593,7 @@ export default function Sidebar({ toggleDk }) {
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleProjectDragEnd}>
               <SortableContext items={active.map((p) => p.id)} strategy={verticalListSortingStrategy}>
                 {active.map((p) => (
-                  <SortableProjectItem key={p.id} p={p} tasks={tasks} t={t} openProject={openProject} />
+                  <SortableProjectItem key={p.id} p={p} tasks={tasks} openProject={openProject} />
                 ))}
               </SortableContext>
             </DndContext>
@@ -601,19 +601,19 @@ export default function Sidebar({ toggleDk }) {
         )}
       </nav>
 
-      <div style={{ padding: "10px 12px", borderTop: `1px solid ${t.border}`, display: "flex", flexDirection: "column", gap: 6 }}>
+      <div style={{ padding: "10px 12px", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: 6 }}>
         {/* Theme toggle */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ fontSize: 12.5, color: t.text2, display: "flex", alignItems: "center", gap: 8 }}>
-            <Icon name={dk ? "moon" : "sun"} size={14} color={t.text2} strokeWidth={1.75} />
+          <div style={{ fontSize: 12.5, color: "var(--text-2)", display: "flex", alignItems: "center", gap: 8 }}>
+            <Icon name={dk ? "moon" : "sun"} size={14} color="var(--text-2)" strokeWidth={1.75} />
             {dk ? "Tmavý" : "Světlý"}
           </div>
           <button
             onClick={toggleDk}
-            style={{ width: 44, height: 24, borderRadius: 999, border: `1px solid ${t.border}`, background: dk ? t.accentBg : t.input, position: "relative", padding: 0 }}
+            style={{ width: 44, height: 24, borderRadius: 999, border: "1px solid var(--border)", background: dk ? "var(--accent-soft)" : "var(--input)", position: "relative", padding: 0 }}
             aria-label="Toggle theme"
           >
-            <span style={{ position: "absolute", top: 2, left: dk ? 22 : 2, width: 20, height: 20, borderRadius: "50%", background: dk ? t.accent : t.card, transition: "left .15s ease", boxShadow: t.shadow }} />
+            <span style={{ position: "absolute", top: 2, left: dk ? 22 : 2, width: 20, height: 20, borderRadius: "50%", background: dk ? "var(--accent)" : "var(--surface)", transition: "left .15s ease", boxShadow: "var(--shadow-sm)" }} />
           </button>
         </div>
         <a
@@ -625,14 +625,14 @@ export default function Sidebar({ toggleDk }) {
             textDecoration: "none", borderRadius: 8, padding: "5px 4px",
             transition: "background .15s",
           }}
-          onMouseEnter={e => { e.currentTarget.style.background = t.input; }}
+          onMouseEnter={e => { e.currentTarget.style.background = "var(--input)"; }}
           onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
           title="Autor: Michal Zich · zichmichal.cz"
         >
           <MZLogo size={24} />
           <div style={{ lineHeight: 1.3 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: t.text2 }}>Michal Zich</div>
-            <div style={{ fontSize: 12, color: t.text3 }}>v{APP_VERSION}</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>Michal Zich</div>
+            <div style={{ fontSize: 12, color: "var(--text-3)" }}>v{APP_VERSION}</div>
           </div>
         </a>
       </div>
