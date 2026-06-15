@@ -84,7 +84,7 @@ self.addEventListener('push', (event) => {
       icon: '/icon-192.png',
       badge: '/icon-192.png',
       tag: data.tag ?? 'mt-push',
-      data: { url: '/' },
+      data: { url: data.data?.url ?? '/' },
     }),
   )
 })
@@ -99,7 +99,7 @@ self.addEventListener('notificationclick', (event) => {
           return
         }
       }
-      return self.clients.openWindow('/')
+      return self.clients.openWindow(event.notification.data?.url ?? '/')
     }),
   )
 })
