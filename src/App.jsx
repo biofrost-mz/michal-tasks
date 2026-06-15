@@ -426,7 +426,7 @@ function AppShell() {
   return (
     <>
       <style>{`
-        :root{--bottom-nav-height:58px}
+        :root{--bottom-nav-content-height:58px;--bottom-nav-height:calc(var(--bottom-nav-content-height) + env(safe-area-inset-bottom, 0px))}
         *{margin:0;padding:0;box-sizing:border-box}
         html,body,#root{width:100%;min-height:100dvh;margin:0;padding:0}
         html{height:100%;overscroll-behavior-x:none;overflow-x:hidden}
@@ -450,7 +450,7 @@ function AppShell() {
         .su{animation:slideUp .28s cubic-bezier(.32,1,.4,1)}
         .pop{animation:pop .2s ease-out}
         .page-enter{animation:pageIn .18s cubic-bezier(.4,0,.2,1)}
-        .mobile-nav-bar{height:var(--bottom-nav-height);min-height:var(--bottom-nav-height);padding-bottom:0;margin-bottom:0}
+        .mobile-nav-bar{height:var(--bottom-nav-height);min-height:var(--bottom-nav-height);padding-bottom:env(safe-area-inset-bottom, 0px);margin-bottom:0}
       `}</style>
 
       <SplashScreen visible={!splashDone} />

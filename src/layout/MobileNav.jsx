@@ -227,7 +227,8 @@ export default function MobileNav({ toggleDk }) {
           background: "var(--bg-2)", borderTop: "1px solid var(--border)",
           display: "flex", alignItems: "stretch",
           height: "var(--bottom-nav-height)", minHeight: "var(--bottom-nav-height)",
-          paddingBottom: 0, marginBottom: 0,
+          paddingBottom: "env(safe-area-inset-bottom, 0px)", marginBottom: 0,
+          boxSizing: "border-box",
           boxShadow: "0 -4px 20px #0002",
         }}
       >
