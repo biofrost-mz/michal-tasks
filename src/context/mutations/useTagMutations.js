@@ -15,7 +15,8 @@ export function useTagMutations({
   reportError,
 }) {
   const addTag = useCallback((tag) => {
-    const tg = { id: uuid4(), name: (tag?.name || "").trim() || "tag", color: tag?.color || "#6366f1" };
+    const now = Date.now();
+    const tg = { id: uuid4(), name: (tag?.name || "").trim() || "tag", color: tag?.color || "#6366f1", createdAt: now, updatedAt: now };
     if (!userId) {
       setTags((p) => [...p, tg]);
       return tg;
@@ -32,7 +33,7 @@ export function useTagMutations({
 
   const updateTag = useCallback((id, u) => {
     const prevTag = tags.find((x) => x.id === id) ?? null;
-    setTags((p) => p.map((x) => (x.id === id ? { ...x, ...u } : x)));
+    setTags((p) => p.map((x) => (x.id === id ? { ...x, ...u, updatedAt: Date.now() } : x)));
 
     const payload = {};
     if (u.name !== undefined) payload.name = u.name;

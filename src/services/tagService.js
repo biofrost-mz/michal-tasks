@@ -1,10 +1,13 @@
 import { supabase } from "../supabase.js";
 
 export function normalizeTag(tg) {
+  const createdAt = tg.created_at ? new Date(tg.created_at).getTime() : Date.now();
   return {
     id: tg.id,
     name: tg.name,
     color: tg.color || "#6366f1",
+    createdAt,
+    updatedAt: tg.updated_at ? new Date(tg.updated_at).getTime() : createdAt,
   };
 }
 

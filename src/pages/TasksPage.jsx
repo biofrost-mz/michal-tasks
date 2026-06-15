@@ -27,6 +27,44 @@ const STATUS_LABELS = {
   done: "Hotovo",
 };
 
+const DATE_FILTER_OPTIONS = [
+  ["all", "Vše"],
+  ["today", "Dnes"],
+  ["soon", "Blížící se"],
+  ["week", "Tento týden"],
+  ["overdue", "Po termínu"],
+  ["no-date", "Bez termínu"],
+];
+
+const PRIORITY_FILTER_OPTIONS = [
+  ["all", "Vše"],
+  ["high", "Vysoká"],
+  ["medium", "Střední"],
+  ["low", "Nízká"],
+];
+
+const SORT_OPTIONS = [
+  ["default", "Výchozí pořadí"],
+  ["newest", "Nejnovější úpravy"],
+];
+
+function lastChangedStamp(item) {
+  return item?.updatedAt ?? item?.createdAt ?? 0;
+}
+
+function mobileFilterButtonStyle(active, color = "var(--accent)") {
+  return {
+    padding: "8px 14px",
+    borderRadius: 20,
+    fontSize: 13,
+    fontWeight: 600,
+    border: `1.5px solid ${active ? color : "var(--border-soft)"}`,
+    background: active ? (color === "var(--accent)" ? "var(--accent-soft)" : `${color}18`) : "transparent",
+    color: active ? color : "var(--text-2)",
+    cursor: "pointer",
+    minHeight: 40,
+  };
+}
 
 function statusColor(statusClass) {
   if (statusClass === "active") return "var(--accent)";
@@ -121,6 +159,7 @@ export default function TasksPage() {
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [tagFilter, setTagFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("default");
 
   const today = useMemo(() => startOfToday(), []);
   const todayKey = useMemo(() => formatDateKey(today), [today]);
@@ -136,6 +175,19 @@ export default function TasksPage() {
   }, [today]);
   const projectsById = useMemo(() => new Map(projects.map((p) => [p.id, p])), [projects]);
   const tagsById = useMemo(() => new Map(tags.map((tg) => [tg.id, tg])), [tags]);
+  const recentProjects = useMemo(
+    () => [...projects]
+      .filter((p) => p.status !== "deleted")
+      .sort((a, b) => lastChangedStamp(b) - lastChangedStamp(a))
+      .slice(0, 5),
+    [projects]
+  );
+  const recentTags = useMemo(
+    () => [...tags]
+      .sort((a, b) => lastChangedStamp(b) - lastChangedStamp(a))
+      .slice(0, 5),
+    [tags]
+  );
 
   const mappedTasks = useMemo(
     () => tasks.map((t) => mapTaskForAtlas(t, projectsById, tagsById, today)),
@@ -150,6 +202,7 @@ export default function TasksPage() {
     if (dashFilter.projectId) setProjectFilter(dashFilter.projectId);
     if (dashFilter.tagId) setTagFilter(dashFilter.tagId);
     if (dashFilter.date) setDateFilter(dashFilter.date);
+    if (dashFilter.sortBy) setSortBy(dashFilter.sortBy);
     setDashFilter(null);
   }, [dashFilter, setDashFilter]);
 
@@ -182,6 +235,8 @@ export default function TasksPage() {
       list = list.filter((t) => t.dueDate && t.dueDate >= todayKey && t.dueDate <= weekEndKey);
     } else if (dateFilter === "overdue") {
       list = list.filter((t) => t.dueDate && t.dueDate < todayKey && t.status !== "done");
+    } else if (dateFilter === "no-date") {
+      list = list.filter((t) => !t.dueDate);
     }
 
     return list;
@@ -197,8 +252,26 @@ export default function TasksPage() {
       list = list.filter((t) => t.status === realStatus);
     }
 
+    if (sortBy === "newest") {
+      list = [...list].sort((a, b) => {
+        const byUpdated = (b.updatedAt || 0) - (a.updatedAt || 0);
+        if (byUpdated) return byUpdated;
+        return (b.createdAt || 0) - (a.createdAt || 0);
+      });
+    }
+
     return list;
-  }, [baseFiltered, statusFilter]);
+  }, [baseFiltered, statusFilter, sortBy]);
+
+  const activeFilterCount = [priorityFilter, tagFilter, projectFilter, dateFilter].filter((f) => f !== "all").length + (sortBy !== "default" ? 1 : 0);
+  const hasActiveFilters = activeFilterCount > 0;
+  const resetFilters = useCallback(() => {
+    setPriorityFilter("all");
+    setTagFilter("all");
+    setProjectFilter("all");
+    setDateFilter("all");
+    setSortBy("default");
+  }, []);
 
   const doneCount = mappedTasks.filter((t) => t.status === "done").length;
   const activeCount = mappedTasks.length - doneCount;
@@ -349,6 +422,14 @@ export default function TasksPage() {
               <option value="soon">Blížící se termín</option>
               <option value="week">Tento týden</option>
               <option value="overdue">Po termínu</option>
+              <option value="no-date">Bez termínu</option>
+            </select>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              style={{ background: "var(--surface)", color: "var(--text-2)", border: "1px solid var(--border-soft)", borderRadius: 999, padding: "7px 12px", fontSize: 12.5 }}
+            >
+              {SORT_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
             </select>
             <select
               value={priorityFilter}
@@ -383,27 +464,24 @@ export default function TasksPage() {
         {!isMobile && <span className="chip">{filtered.length} položek</span>}
 
         {/* Mobilní filtr tlačítko */}
-        {isMobile && (() => {
-          const activeFilters = [priorityFilter, tagFilter, projectFilter, dateFilter].filter((f) => f !== "all").length;
-          return (
-            <span
-              className={`chip ${activeFilters > 0 ? "active" : ""}`}
-              onClick={() => setFilterDrawerOpen(true)}
-              style={{ marginLeft: "auto", flexShrink: 0 }}
-            >
-              <span style={{ fontSize: 13 }}>⚙</span>
-              Filtrovat
-              {activeFilters > 0 && <span className="chip-count">{activeFilters}</span>}
-            </span>
-          );
-        })()}
+        {isMobile && (
+          <span
+            className={`chip ${hasActiveFilters ? "active" : ""}`}
+            onClick={() => setFilterDrawerOpen(true)}
+            style={{ marginLeft: "auto", flexShrink: 0 }}
+          >
+            <span style={{ fontSize: 13 }}>⚙</span>
+            Filtrovat
+            {hasActiveFilters && <span className="chip-count">{activeFilterCount}</span>}
+          </span>
+        )}
       </div>
 
       {/* Mobilní filter drawer */}
       {isMobile && filterDrawerOpen && (
         <div
           onClick={() => setFilterDrawerOpen(false)}
-          style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(6px)" }}
+          style={{ position: "fixed", inset: 0, zIndex: 1200, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(6px)", overscrollBehavior: "contain" }}
         >
           <div
             className="su"
@@ -412,17 +490,17 @@ export default function TasksPage() {
               position: "fixed", bottom: 0, left: 0, right: 0,
               background: "var(--surface)",
               borderRadius: "20px 20px 0 0",
-              padding: "20px 20px calc(20px + env(safe-area-inset-bottom, 0px))",
+              maxHeight: "calc(100dvh - 64px - env(safe-area-inset-top, 0px))",
               boxShadow: "0 -8px 40px rgba(0,0,0,0.4)",
-              display: "flex", flexDirection: "column", gap: 20,
+              display: "flex", flexDirection: "column", overflow: "hidden",
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "16px 20px 12px", borderBottom: "1px solid var(--border-soft)" }}>
               <span style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>Filtry</span>
               <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                {[priorityFilter, tagFilter, projectFilter, dateFilter].some((f) => f !== "all") && (
+                {hasActiveFilters && (
                   <button
-                    onClick={() => { setPriorityFilter("all"); setTagFilter("all"); setProjectFilter("all"); setDateFilter("all"); }}
+                    onClick={resetFilters}
                     style={{ fontSize: 12, color: "var(--accent)", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}
                   >
                     Resetovat
@@ -437,128 +515,154 @@ export default function TasksPage() {
               </div>
             </div>
 
-            {/* Datum */}
-            <div>
-              <SectionLabel style={{ marginBottom: 10 }}>
-                Termín
-              </SectionLabel>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {[["all","Vše"], ["today","Dnes"], ["soon","Blížící se"], ["week","Tento týden"], ["overdue","Po termínu"]].map(([v, label]) => (
-                  <button
-                    key={v}
-                    onClick={() => setDateFilter(v)}
-                    style={{
-                      padding: "8px 14px", borderRadius: 20, fontSize: 13, fontWeight: 600,
-                      border: `1.5px solid ${dateFilter === v ? "var(--accent)" : "var(--border-soft)"}`,
-                      background: dateFilter === v ? "var(--accent-soft)" : "transparent",
-                      color: dateFilter === v ? "var(--accent)" : "var(--text-2)",
-                      cursor: "pointer", minHeight: 40,
-                    }}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Priorita */}
-            <div>
-              <SectionLabel style={{ marginBottom: 10 }}>
-                Priorita
-              </SectionLabel>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {[["all","Vše"], ["high","Vysoká"], ["medium","Střední"], ["low","Nízká"]].map(([v, label]) => (
-                  <button
-                    key={v}
-                    onClick={() => setPriorityFilter(v)}
-                    style={{
-                      padding: "8px 14px", borderRadius: 20, fontSize: 13, fontWeight: 600,
-                      border: `1.5px solid ${priorityFilter === v ? "var(--accent)" : "var(--border-soft)"}`,
-                      background: priorityFilter === v ? "var(--accent-soft)" : "transparent",
-                      color: priorityFilter === v ? "var(--accent)" : "var(--text-2)",
-                      cursor: "pointer", minHeight: 40,
-                    }}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Projekt */}
-            {projects.length > 0 && (
+            <div style={{ overflowY: "auto", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain", minHeight: 0, padding: "16px 20px 18px", display: "flex", flexDirection: "column", gap: 18 }}>
               <div>
                 <SectionLabel style={{ marginBottom: 10 }}>
-                  Projekt
+                  Řazení
                 </SectionLabel>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  {[{ id: "all", name: "Vše" }, { id: "inbox", name: "Inbox" }, ...projects].map((p) => (
+                  {SORT_OPTIONS.map(([v, label]) => (
                     <button
-                      key={p.id}
-                      onClick={() => setProjectFilter(p.id)}
-                      style={{
-                        padding: "8px 14px", borderRadius: 20, fontSize: 13, fontWeight: 600,
-                        border: `1.5px solid ${projectFilter === p.id ? "var(--accent)" : "var(--border-soft)"}`,
-                        background: projectFilter === p.id ? "var(--accent-soft)" : "transparent",
-                        color: projectFilter === p.id ? "var(--accent)" : "var(--text-2)",
-                        cursor: "pointer", minHeight: 40,
-                      }}
+                      key={v}
+                      onClick={() => setSortBy(v)}
+                      style={mobileFilterButtonStyle(sortBy === v)}
                     >
-                      {p.name}
+                      {label}
                     </button>
                   ))}
                 </div>
               </div>
-            )}
 
-            {/* Tagy */}
-            {tags.length > 0 && (
               <div>
                 <SectionLabel style={{ marginBottom: 10 }}>
-                  Tag
+                  Termín
                 </SectionLabel>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <button
-                    onClick={() => setTagFilter("all")}
-                    style={{
-                      padding: "8px 14px", borderRadius: 20, fontSize: 13, fontWeight: 600,
-                      border: `1.5px solid ${tagFilter === "all" ? "var(--accent)" : "var(--border-soft)"}`,
-                      background: tagFilter === "all" ? "var(--accent-soft)" : "transparent",
-                      color: tagFilter === "all" ? "var(--accent)" : "var(--text-2)",
-                      cursor: "pointer", minHeight: 40,
-                    }}
-                  >
-                    Vše
-                  </button>
-                  {tags.map((tg) => (
+                  {DATE_FILTER_OPTIONS.map(([v, label]) => (
                     <button
-                      key={tg.id}
-                      onClick={() => setTagFilter(tg.id)}
-                      style={{
-                        padding: "8px 14px", borderRadius: 20, fontSize: 13, fontWeight: 600,
-                        border: `1.5px solid ${tagFilter === tg.id ? tg.color : "var(--border-soft)"}`,
-                        background: tagFilter === tg.id ? tg.color + "18" : "transparent",
-                        color: tagFilter === tg.id ? tg.color : "var(--text-2)",
-                        cursor: "pointer", minHeight: 40,
-                      }}
+                      key={v}
+                      onClick={() => setDateFilter(v)}
+                      style={mobileFilterButtonStyle(dateFilter === v)}
                     >
-                      {tg.name}
+                      {label}
                     </button>
                   ))}
                 </div>
               </div>
-            )}
 
-            <button
-              onClick={() => setFilterDrawerOpen(false)}
-              style={{
-                padding: "13px", borderRadius: 12, fontSize: 14, fontWeight: 700,
-                border: "none", background: "var(--accent)", color: "#fff",
-                cursor: "pointer", marginTop: 4,
-              }}
-            >
-              Zobrazit {filtered.length} úkolů
-            </button>
+              <div>
+                <SectionLabel style={{ marginBottom: 10 }}>
+                  Priorita
+                </SectionLabel>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {PRIORITY_FILTER_OPTIONS.map(([v, label]) => (
+                    <button
+                      key={v}
+                      onClick={() => setPriorityFilter(v)}
+                      style={mobileFilterButtonStyle(priorityFilter === v)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {recentProjects.length > 0 && (
+                <div>
+                  <SectionLabel style={{ marginBottom: 10 }}>
+                    Naposledy upravené projekty
+                  </SectionLabel>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    {recentProjects.map((p) => (
+                      <button
+                        key={p.id}
+                        onClick={() => setProjectFilter(p.id)}
+                        style={mobileFilterButtonStyle(projectFilter === p.id)}
+                      >
+                        {p.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {recentTags.length > 0 && (
+                <div>
+                  <SectionLabel style={{ marginBottom: 10 }}>
+                    Naposledy upravené tagy
+                  </SectionLabel>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    {recentTags.map((tg) => (
+                      <button
+                        key={tg.id}
+                        onClick={() => setTagFilter(tg.id)}
+                        style={mobileFilterButtonStyle(tagFilter === tg.id, tg.color)}
+                      >
+                        {tg.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {projects.length > 0 && (
+                <div>
+                  <SectionLabel style={{ marginBottom: 10 }}>
+                    Projekt
+                  </SectionLabel>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    {[{ id: "all", name: "Vše" }, { id: "inbox", name: "Inbox" }, ...projects].map((p) => (
+                      <button
+                        key={p.id}
+                        onClick={() => setProjectFilter(p.id)}
+                        style={mobileFilterButtonStyle(projectFilter === p.id)}
+                      >
+                        {p.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {tags.length > 0 && (
+                <div>
+                  <SectionLabel style={{ marginBottom: 10 }}>
+                    Tag
+                  </SectionLabel>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <button
+                      onClick={() => setTagFilter("all")}
+                      style={mobileFilterButtonStyle(tagFilter === "all")}
+                    >
+                      Vše
+                    </button>
+                    {tags.map((tg) => (
+                      <button
+                        key={tg.id}
+                        onClick={() => setTagFilter(tg.id)}
+                        style={mobileFilterButtonStyle(tagFilter === tg.id, tg.color)}
+                      >
+                        {tg.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div style={{ flexShrink: 0, padding: "12px 20px calc(12px + env(safe-area-inset-bottom, 0px))", borderTop: "1px solid var(--border-soft)", background: "var(--surface)" }}>
+              <button
+                onClick={() => setFilterDrawerOpen(false)}
+                style={{
+                  width: "100%",
+                  padding: "13px", borderRadius: 12, fontSize: 14, fontWeight: 700,
+                  border: "none", background: "var(--accent)", color: "#fff",
+                  cursor: "pointer",
+                }}
+              >
+                Zobrazit {filtered.length} úkolů
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -34,7 +34,9 @@ export function mapTaskForAtlas(task, projectsById, tagsById, today) {
     desc: task.description || "",
     statusClass: STATUS_TO_CLASS[task.status] || "todo",
     status: task.status,
-    priority: task.priority || "medium",
+    priority: task.priority ?? null,
+    createdAt: task.createdAt ?? null,
+    updatedAt: task.updatedAt ?? task.createdAt ?? null,
     due: formatShortDue(task.dueDate),
     dueDate: task.dueDate ?? null,
     overdue,
@@ -64,7 +66,7 @@ export function TagPill({ name }) {
 }
 
 export function PrioChip({ priority }) {
-  if (!priority || priority === "medium") return null;
+  if (!priority) return null;
   const m = PRIORITY_META[priority];
   if (!m) return null;
   return <span className="prio" style={{ "--prio-color": m.color }}>{m.glyph} {m.label}</span>;
