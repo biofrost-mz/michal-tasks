@@ -7,6 +7,7 @@ import { PrioChip, TagPill } from '../components/atlas/AtlasTaskCard.jsx'
 import EmptyState from '../components/EmptyState.jsx'
 import { triggerConfettiBurst } from '../utils.js'
 import { useConfirm } from '../components/Confirm.jsx'
+import { SectionLabel } from "../components/ui/index.js"
 
 const PRIORITY_CONFIG = {
   low:    { label: "Nízká",   color: "#22c55e", bg: "#22c55e18" },
@@ -221,9 +222,9 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
         <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
           {/* Title Field */}
           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-            <label style={{ fontSize: "11px", color: "var(--text-3)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            <SectionLabel>
               Název
-            </label>
+            </SectionLabel>
             <input
               autoFocus
               className="detail-input"
@@ -236,9 +237,9 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
 
           {/* Description Field */}
           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-            <label style={{ fontSize: "11px", color: "var(--text-3)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            <SectionLabel>
               Popis
-            </label>
+            </SectionLabel>
             <textarea
               className="detail-input"
               value={editDesc}
@@ -253,9 +254,9 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
           <div style={isMobile ? { display: "flex", flexDirection: "column", gap: "14px" } : { display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "20px" }}>
             {/* Priority Column */}
             <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-              <label style={{ fontSize: "11px", color: "var(--text-3)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+              <SectionLabel>
                 Priorita
-              </label>
+              </SectionLabel>
               <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
                 {Object.entries(PRIORITY_CONFIG).map(([key, cfg]) => (
                   <button
@@ -281,9 +282,9 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
 
             {/* Due Date Column */}
             <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-              <label style={{ fontSize: "11px", color: "var(--text-3)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+              <SectionLabel>
                 Termín splnění
-              </label>
+              </SectionLabel>
               <input
                 type="date"
                 className="detail-input"
@@ -297,9 +298,9 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
 
           {/* Tags Field */}
           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-            <label style={{ fontSize: "11px", color: "var(--text-3)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            <SectionLabel>
               Tagy
-            </label>
+            </SectionLabel>
             <input
               className="detail-input"
               value={editTags}
