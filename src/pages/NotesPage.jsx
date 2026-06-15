@@ -1242,9 +1242,9 @@ function NotePropertiesPanel({ note, onClose, isMobile, onExportMD, projects, ta
           {sh("Akce")}
           <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
             <MiniItem left={<><PinIcon size={11} filled={note.pinned} color="#f59e0b" /> {note.pinned?"Odepnout":"Připnout poznámku"}</>} right="⌥P" onClick={()=>updateNote(note.id,{pinned:!note.pinned})} />
-            <MiniItem t={t} left="🧠 Vytáhnout úkoly z textu" right="AI" onClick={runAIExtract} />
+            <MiniItem left="🧠 Vytáhnout úkoly z textu" right="AI" onClick={runAIExtract} />
             <MiniItem left={note.archived?"🗄️ Obnovit z archivu":"🗄️ Archivovat poznámku"} right="" onClick={()=>updateNote(note.id,{archived:!note.archived})} />
-            <MiniItem t={t} left="📤 Export jako .md" right=".md" onClick={onExportMD} />
+            <MiniItem left="📤 Export jako .md" right=".md" onClick={onExportMD} />
           </div>
         </div>
 
