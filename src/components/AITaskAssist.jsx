@@ -4,6 +4,7 @@ import { useToast } from './Toast.jsx'
 import Icon from './Icon.jsx'
 import { supabase } from '../supabase.js'
 import { getAiErrorMessage, parseAiJsonResult } from '../utils/aiErrors.js'
+import { SectionLabel } from "./ui/index.js";
 
 const ACTIONS = [
   { id: "optimize",    icon: "zap",          label: "Optimalizovat", desc: "Optimalizuj název, projekt, tagy a podúkoly najednou" },
@@ -340,9 +341,9 @@ function ResultView({ action, result, t }) {
   if (action === "optimize" && result) {
     return (
       <div>
-        <div style={{ fontSize: 12, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 10 }}>
+        <SectionLabel style={{ marginBottom: 10 }}>
           Návrh optimalizace
-        </div>
+        </SectionLabel>
         <OptimizeRow icon="edit-2" label="Název" t={t}>
           <span style={{ fontSize: 13, color: t.text, fontWeight: 600 }}>{result.optimizedTitle}</span>
         </OptimizeRow>
@@ -385,9 +386,9 @@ function ResultView({ action, result, t }) {
   if (action === "subtasks" && Array.isArray(result)) {
     return (
       <div>
-        <div style={{ fontSize: 12, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 6 }}>
+        <SectionLabel style={{ marginBottom: 6 }}>
           Navržené podúkoly
-        </div>
+        </SectionLabel>
         {result.map((s, i) => (
           <div key={i} style={{ display: "flex", alignItems: "center", gap: 7, padding: "3px 0", fontSize: 13, color: t.text }}>
             <div style={{ width: 6, height: 6, borderRadius: "50%", background: t.accent, flexShrink: 0 }} />
@@ -401,9 +402,9 @@ function ResultView({ action, result, t }) {
   if (action === "tags" && Array.isArray(result)) {
     return (
       <div>
-        <div style={{ fontSize: 12, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 6 }}>
+        <SectionLabel style={{ marginBottom: 6 }}>
           Navržené tagy
-        </div>
+        </SectionLabel>
         <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
           {result.map((tag, i) => (
             <span key={i} style={{ fontSize: 12, fontWeight: 600, padding: "3px 10px", borderRadius: 6, background: t.accentBg, color: t.accent }}>
@@ -418,9 +419,9 @@ function ResultView({ action, result, t }) {
   if (action === "description" && typeof result === "string") {
     return (
       <div>
-        <div style={{ fontSize: 12, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 6 }}>
+        <SectionLabel style={{ marginBottom: 6 }}>
           Navržený popis
-        </div>
+        </SectionLabel>
         <div style={{ fontSize: 13, color: t.text, lineHeight: 1.5 }}>{result}</div>
       </div>
     );
@@ -430,9 +431,9 @@ function ResultView({ action, result, t }) {
     const color = PRIORITY_COLORS[result.priority] ?? t.accent;
     return (
       <div>
-        <div style={{ fontSize: 12, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 6 }}>
+        <SectionLabel style={{ marginBottom: 6 }}>
           Navržená priorita
-        </div>
+        </SectionLabel>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 14, fontWeight: 800, color, background: color + "18", padding: "4px 12px", borderRadius: 7 }}>
             {PRIORITY_LABELS[result.priority] ?? result.priority}
