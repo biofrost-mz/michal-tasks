@@ -5,14 +5,14 @@ import { startOfToday } from '../utils.js'
 import { PRIORITIES } from '../constants.js'
 import { formatDateKey } from '../locale.js'
 
-function ReminderSection({ label, color, items, icon, theme, projects, onOpenTask }) {
+function ReminderSection({ label, color, items, icon, projects, onOpenTask }) {
   if (!items.length) return null;
   return (
     <div style={{ marginBottom: 12 }}>
       <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".06em", color, marginBottom: 6, display: "flex", alignItems: "center", gap: 5 }}>
         <Icon name={icon} size={10} color={color} strokeWidth={2.5} />
         {label}
-        <span style={{ fontWeight: 500, color: theme.text3, background: theme.input, borderRadius: 6, padding: "0px 5px", fontSize: 12 }}>{items.length}</span>
+        <span style={{ fontWeight: 500, color: "var(--text-3)", background: "var(--input)", borderRadius: 6, padding: "0px 5px", fontSize: 12 }}>{items.length}</span>
       </div>
       {items.map((task) => {
         const proj = projects.find((p) => p.id === task.projectId);
@@ -27,17 +27,17 @@ function ReminderSection({ label, color, items, icon, theme, projects, onOpenTas
               border: "1px solid transparent",
               transition: "background .1s",
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = theme.card; e.currentTarget.style.borderColor = theme.border; }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--surface)"; e.currentTarget.style.borderColor = "var(--border)"; }}
             onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "transparent"; }}
           >
             <div style={{ width: 6, height: 6, borderRadius: "50%", background: color, flexShrink: 0, marginTop: 5 }} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 500, color: theme.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {task.title || "Bez názvu"}
               </div>
               <div style={{ display: "flex", gap: 5, marginTop: 2, alignItems: "center" }}>
                 {proj && (
-                  <span style={{ fontSize: 12, color: theme.text3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <span style={{ fontSize: 12, color: "var(--text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {proj.name}
                   </span>
                 )}
@@ -48,7 +48,7 @@ function ReminderSection({ label, color, items, icon, theme, projects, onOpenTas
                 )}
               </div>
             </div>
-            <Icon name="chevron-right" size={12} color={theme.text3} strokeWidth={2} style={{ flexShrink: 0, marginTop: 3 }} />
+            <Icon name="chevron-right" size={12} color="var(--text-3)" strokeWidth={2} style={{ flexShrink: 0, marginTop: 3 }} />
           </div>
         );
       })}
@@ -57,7 +57,7 @@ function ReminderSection({ label, color, items, icon, theme, projects, onOpenTas
 }
 
 export default function NotificationBell({ compact = false, variant = null }) {
-  const { t, tasks, projects, setTaskDetail } = useApp();
+  const { tasks, projects, setTaskDetail } = useApp();
   const [open, setOpen] = useState(false);
   const [fixedPos, setFixedPos] = useState({ top: 0, right: 0 });
   const ref = useRef(null);
@@ -152,10 +152,10 @@ export default function NotificationBell({ compact = false, variant = null }) {
                 </div>
               ) : (
                 <>
-                  <ReminderSection label="Prošlé termíny" color="#ef4444" items={overdue} icon="alert-circle" theme={t} projects={projects} onOpenTask={openTask} />
-                  <ReminderSection label="Dnes" color="#f59e0b" items={dueToday} icon="clock" theme={t} projects={projects} onOpenTask={openTask} />
-                  <ReminderSection label="Zítra" color="#3b82f6" items={dueTomorrow} icon="calendar" theme={t} projects={projects} onOpenTask={openTask} />
-                  <ReminderSection label="Tento týden" color="var(--text-3)" items={dueWeek} icon="calendar" theme={t} projects={projects} onOpenTask={openTask} />
+                  <ReminderSection label="Prošlé termíny" color="#ef4444" items={overdue} icon="alert-circle" projects={projects} onOpenTask={openTask} />
+                  <ReminderSection label="Dnes" color="#f59e0b" items={dueToday} icon="clock" projects={projects} onOpenTask={openTask} />
+                  <ReminderSection label="Zítra" color="#3b82f6" items={dueTomorrow} icon="calendar" projects={projects} onOpenTask={openTask} />
+                  <ReminderSection label="Tento týden" color="var(--text-3)" items={dueWeek} icon="calendar" projects={projects} onOpenTask={openTask} />
                 </>
               )}
             </div>
@@ -183,17 +183,17 @@ export default function NotificationBell({ compact = false, variant = null }) {
           gap: compact ? (urgentCount > 0 ? 6 : 0) : 9,
           padding: compact ? "5px 8px" : "9px 10px",
           borderRadius: 8,
-          border: compact ? `1px solid ${urgentCount > 0 ? "#f59e0b50" : t.border}` : "none",
-          background: open ? t.accentBg : compact ? (urgentCount > 0 ? "#f59e0b10" : t.input) : "transparent",
-          color: open ? t.accent : urgentCount > 0 ? "#f59e0b" : t.text2,
+          border: compact ? `1px solid ${urgentCount > 0 ? "#f59e0b50" : "var(--border)"}` : "none",
+          background: open ? "var(--accent-soft)" : compact ? (urgentCount > 0 ? "#f59e0b10" : "var(--input)") : "transparent",
+          color: open ? "var(--accent)" : urgentCount > 0 ? "#f59e0b" : "var(--text-2)",
           fontSize: 13, fontWeight: open ? 600 : urgentCount > 0 ? 600 : 400,
           width: compact ? "auto" : "100%",
           cursor: "pointer", transition: "all .12s",
         }}
       >
-        <Icon name="bell" size={16} color={open ? t.accent : urgentCount > 0 ? "#f59e0b" : t.text3} strokeWidth={open ? 2.25 : 1.75} />
+        <Icon name="bell" size={16} color={open ? "var(--accent)" : urgentCount > 0 ? "#f59e0b" : "var(--text-3)"} strokeWidth={open ? 2.25 : 1.75} />
         {compact && urgentCount > 0 && (
-          <span style={{ fontSize: 12, fontWeight: 700, color: urgentCount > 0 ? "#f59e0b" : t.text2 }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: urgentCount > 0 ? "#f59e0b" : "var(--text-2)" }}>
             {urgentCount}
           </span>
         )}
@@ -222,46 +222,46 @@ export default function NotificationBell({ compact = false, variant = null }) {
             right: compact ? fixedPos.right : "auto",
             left: compact ? "auto" : "calc(100% + 8px)",
             width: 320,
-            background: t.bg2,
-            border: `1px solid ${t.border}`,
+            background: "var(--bg-2)",
+            border: "1px solid var(--border)",
             borderRadius: 14,
-            boxShadow: t.shadow,
+            boxShadow: "var(--shadow-sm)",
             zIndex: 500,
             overflow: "hidden",
           }}
         >
           {/* Header */}
-          <div style={{ padding: "14px 16px 10px", borderBottom: `1px solid ${t.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: t.text, display: "flex", alignItems: "center", gap: 7 }}>
-              <Icon name="bell" size={14} color={t.accent} strokeWidth={2} />
+          <div style={{ padding: "14px 16px 10px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", display: "flex", alignItems: "center", gap: 7 }}>
+              <Icon name="bell" size={14} color="var(--accent)" strokeWidth={2} />
               Připomínky
             </div>
-            <button onClick={() => setOpen(false)} style={{ background: "none", border: "none", color: t.text3, cursor: "pointer", padding: 2, display: "flex" }}>
-              <Icon name="x" size={14} color={t.text3} strokeWidth={2} />
+            <button onClick={() => setOpen(false)} style={{ background: "none", border: "none", color: "var(--text-3)", cursor: "pointer", padding: 2, display: "flex" }}>
+              <Icon name="x" size={14} color="var(--text-3)" strokeWidth={2} />
             </button>
           </div>
 
           {/* Body */}
           <div style={{ padding: "12px 8px", maxHeight: 420, overflowY: "auto" }}>
             {isEmpty ? (
-              <div style={{ textAlign: "center", padding: "28px 0", color: t.text3 }}>
+              <div style={{ textAlign: "center", padding: "28px 0", color: "var(--text-3)" }}>
                 <div style={{ opacity: 0.2, display: "flex", justifyContent: "center", marginBottom: 10 }}>
-                  <Icon name="check-circle" size={36} color={t.text} strokeWidth={0.75} />
+                  <Icon name="check-circle" size={36} color="var(--text)" strokeWidth={0.75} />
                 </div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: t.text2, marginBottom: 4 }}>Vše v pořádku</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-2)", marginBottom: 4 }}>Vše v pořádku</div>
                 <div style={{ fontSize: 12 }}>Žádné blížící se ani prošlé termíny.</div>
               </div>
             ) : (
               <>
-                <ReminderSection label="Prošlé termíny" color="#ef4444" items={overdue} icon="alert-circle" theme={t} projects={projects} onOpenTask={openTask} />
-                <ReminderSection label="Dnes" color="#f59e0b" items={dueToday} icon="clock" theme={t} projects={projects} onOpenTask={openTask} />
-                <ReminderSection label="Zítra" color="#3b82f6" items={dueTomorrow} icon="calendar" theme={t} projects={projects} onOpenTask={openTask} />
+                <ReminderSection label="Prošlé termíny" color="#ef4444" items={overdue} icon="alert-circle" projects={projects} onOpenTask={openTask} />
+                <ReminderSection label="Dnes" color="#f59e0b" items={dueToday} icon="clock" projects={projects} onOpenTask={openTask} />
+                <ReminderSection label="Zítra" color="#3b82f6" items={dueTomorrow} icon="calendar" projects={projects} onOpenTask={openTask} />
               </>
             )}
           </div>
 
           {!isEmpty && (
-            <div style={{ padding: "8px 16px 12px", borderTop: `1px solid ${t.border}`, fontSize: 12, color: t.text3 }}>
+            <div style={{ padding: "8px 16px 12px", borderTop: "1px solid var(--border)", fontSize: 12, color: "var(--text-3)" }}>
               Celkem {urgentCount + dueTomorrow.length + dueWeek.length} blížících se termínů · Kliknutím otevřeš detail
             </div>
           )}

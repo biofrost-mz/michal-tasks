@@ -26,7 +26,7 @@ function showAiError(toast, error, data, context = "AI akce") {
 }
 
 export default function AITaskAssist({ task, onTitleChange }) {
-  const { t, tags, projects, updateTask, activeWorkspaceId, addTag } = useApp();
+  const { tags, projects, updateTask, activeWorkspaceId, addTag } = useApp();
   const toast = useToast();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(null);
@@ -242,10 +242,10 @@ export default function AITaskAssist({ task, onTitleChange }) {
         }}
       >
         <span style={{ fontSize: 14 }}>✨</span>
-        <span style={{ fontSize: 12, fontWeight: 700, color: open ? "var(--accent)" : t.text2, flex: 1, textAlign: "left" }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: open ? "var(--accent)" : "var(--text-2)", flex: 1, textAlign: "left" }}>
           AI asistent
         </span>
-        <Icon name={open ? "chevron-up" : "chevron-down"} size={13} color={t.text3} strokeWidth={2} />
+        <Icon name={open ? "chevron-up" : "chevron-down"} size={13} color="var(--text-3)" strokeWidth={2} />
       </button>
 
       {open && (
@@ -262,7 +262,7 @@ export default function AITaskAssist({ task, onTitleChange }) {
                   padding: "6px 12px", borderRadius: 7, fontSize: 12, fontWeight: 600,
                   border: `1px solid ${activeAction === a.id ? "var(--accent-2)" : "var(--border-soft)"}`,
                   background: activeAction === a.id ? "var(--accent-soft)" : "var(--bg-2)",
-                  color: activeAction === a.id ? "var(--accent)" : t.text2,
+                  color: activeAction === a.id ? "var(--accent)" : "var(--text-2)",
                   cursor: loading ? "wait" : "pointer",
                   opacity: loading && loading !== a.id ? 0.5 : 1,
                   transition: "all .12s",
@@ -277,14 +277,14 @@ export default function AITaskAssist({ task, onTitleChange }) {
             ))}
           </div>
 
-          {notice && <AiNotice notice={notice} t={t} />}
+          {notice && <AiNotice notice={notice} />}
 
           {result !== null && (
             <div className="fi" style={{
               background: "var(--bg-2)", border: "1px solid var(--border-soft)",
               borderRadius: 10, padding: "10px 12px",
             }}>
-              <ResultView action={activeAction} result={result} t={t} />
+              <ResultView action={activeAction} result={result} />
               <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
                 <button
                   onClick={apply}
@@ -300,7 +300,7 @@ export default function AITaskAssist({ task, onTitleChange }) {
                   style={{
                     padding: "7px 12px", borderRadius: 7,
                     border: "1px solid var(--border-soft)", background: "transparent",
-                    color: t.text2, fontSize: 12, cursor: "pointer",
+                    color: "var(--text-2)", fontSize: 12, cursor: "pointer",
                   }}
                 >
                   Zahodit
@@ -314,7 +314,7 @@ export default function AITaskAssist({ task, onTitleChange }) {
   );
 }
 
-function AiNotice({ notice, t }) {
+function AiNotice({ notice }) {
   const isError = notice.severity === "error";
   const isWarning = notice.severity === "warning";
   const color = isError ? "var(--red)" : isWarning ? "var(--orange)" : "var(--accent)";
@@ -326,7 +326,7 @@ function AiNotice({ notice, t }) {
       borderRadius: 9,
       border: `1px solid ${color}33`,
       background: bg,
-      color: t.text2,
+      color: "var(--text-2)",
       marginBottom: 10,
       fontSize: 12,
       lineHeight: 1.45,
@@ -337,43 +337,43 @@ function AiNotice({ notice, t }) {
   );
 }
 
-function ResultView({ action, result, t }) {
+function ResultView({ action, result }) {
   if (action === "optimize" && result) {
     return (
       <div>
         <SectionLabel style={{ marginBottom: 10 }}>
           Návrh optimalizace
         </SectionLabel>
-        <OptimizeRow icon="edit-2" label="Název" t={t}>
-          <span style={{ fontSize: 13, color: t.text, fontWeight: 600 }}>{result.optimizedTitle}</span>
+        <OptimizeRow icon="edit-2" label="Název">
+          <span style={{ fontSize: 13, color: "var(--text)", fontWeight: 600 }}>{result.optimizedTitle}</span>
         </OptimizeRow>
-        <OptimizeRow icon="folder" label="Projekt" t={t}>
+        <OptimizeRow icon="folder" label="Projekt">
           {result.suggestedProject
-            ? <span style={{ fontSize: 13, color: t.accent }}>{result.suggestedProject}</span>
-            : <span style={{ fontSize: 12, color: t.text3, fontStyle: "italic" }}>Žádný</span>}
+            ? <span style={{ fontSize: 13, color: "var(--accent)" }}>{result.suggestedProject}</span>
+            : <span style={{ fontSize: 12, color: "var(--text-3)", fontStyle: "italic" }}>Žádný</span>}
         </OptimizeRow>
-        <OptimizeRow icon="tag" label="Tagy" t={t}>
+        <OptimizeRow icon="tag" label="Tagy">
           {result.suggestedTags?.length > 0
             ? <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                 {result.suggestedTags.map((tag, i) => (
-                  <span key={i} style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 5, background: t.accentBg, color: t.accent }}>
+                  <span key={i} style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 5, background: "var(--accent-soft)", color: "var(--accent)" }}>
                     #{tag}
                   </span>
                 ))}
               </div>
-            : <span style={{ fontSize: 12, color: t.text3, fontStyle: "italic" }}>Žádné</span>}
+            : <span style={{ fontSize: 12, color: "var(--text-3)", fontStyle: "italic" }}>Žádné</span>}
         </OptimizeRow>
-        <OptimizeRow icon="clock" label="Odhad" t={t}>
-          <span style={{ fontSize: 13, color: t.text2 }}>
+        <OptimizeRow icon="clock" label="Odhad">
+          <span style={{ fontSize: 13, color: "var(--text-2)" }}>
             {result.timeEstimate}
-            <span style={{ fontSize: 11, color: t.text3, marginLeft: 6 }}>(jen informace)</span>
+            <span style={{ fontSize: 11, color: "var(--text-3)", marginLeft: 6 }}>(jen informace)</span>
           </span>
         </OptimizeRow>
-        <OptimizeRow icon="list" label="Podúkoly" t={t}>
+        <OptimizeRow icon="list" label="Podúkoly">
           <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
             {result.subtasks?.map((s, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: t.text }}>
-                <div style={{ width: 5, height: 5, borderRadius: "50%", background: t.accent, flexShrink: 0 }} />
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text)" }}>
+                <div style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--accent)", flexShrink: 0 }} />
                 {s}
               </div>
             ))}
@@ -390,8 +390,8 @@ function ResultView({ action, result, t }) {
           Navržené podúkoly
         </SectionLabel>
         {result.map((s, i) => (
-          <div key={i} style={{ display: "flex", alignItems: "center", gap: 7, padding: "3px 0", fontSize: 13, color: t.text }}>
-            <div style={{ width: 6, height: 6, borderRadius: "50%", background: t.accent, flexShrink: 0 }} />
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: 7, padding: "3px 0", fontSize: 13, color: "var(--text)" }}>
+            <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)", flexShrink: 0 }} />
             {String(s)}
           </div>
         ))}
@@ -407,7 +407,7 @@ function ResultView({ action, result, t }) {
         </SectionLabel>
         <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
           {result.map((tag, i) => (
-            <span key={i} style={{ fontSize: 12, fontWeight: 600, padding: "3px 10px", borderRadius: 6, background: t.accentBg, color: t.accent }}>
+            <span key={i} style={{ fontSize: 12, fontWeight: 600, padding: "3px 10px", borderRadius: 6, background: "var(--accent-soft)", color: "var(--accent)" }}>
               # {String(tag)}
             </span>
           ))}
@@ -422,13 +422,13 @@ function ResultView({ action, result, t }) {
         <SectionLabel style={{ marginBottom: 6 }}>
           Navržený popis
         </SectionLabel>
-        <div style={{ fontSize: 13, color: t.text, lineHeight: 1.5 }}>{result}</div>
+        <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.5 }}>{result}</div>
       </div>
     );
   }
 
   if (action === "priority" && result?.priority) {
-    const color = PRIORITY_COLORS[result.priority] ?? t.accent;
+    const color = PRIORITY_COLORS[result.priority] ?? "var(--accent)";
     return (
       <div>
         <SectionLabel style={{ marginBottom: 6 }}>
@@ -438,25 +438,25 @@ function ResultView({ action, result, t }) {
           <span style={{ fontSize: 14, fontWeight: 800, color, background: color + "18", padding: "4px 12px", borderRadius: 7 }}>
             {PRIORITY_LABELS[result.priority] ?? result.priority}
           </span>
-          {result.reason && <span style={{ fontSize: 12, color: t.text2, fontStyle: "italic" }}>{result.reason}</span>}
+          {result.reason && <span style={{ fontSize: 12, color: "var(--text-2)", fontStyle: "italic" }}>{result.reason}</span>}
         </div>
       </div>
     );
   }
 
   return (
-    <div style={{ fontSize: 13, color: t.text, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>
+    <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>
       {typeof result === "string" ? result : JSON.stringify(result, null, 2)}
     </div>
   );
 }
 
-function OptimizeRow({ icon, label, children, t }) {
+function OptimizeRow({ icon, label, children }) {
   return (
-    <div style={{ display: "flex", gap: 8, padding: "5px 0", borderBottom: `1px solid ${t.border}20`, alignItems: "flex-start" }}>
+    <div style={{ display: "flex", gap: 8, padding: "5px 0", borderBottom: "1px solid var(--border)", alignItems: "flex-start" }}>
       <div style={{ width: 70, flexShrink: 0, display: "flex", alignItems: "center", gap: 5, paddingTop: 1 }}>
-        <Icon name={icon} size={10} color={t.text3} strokeWidth={2} />
-        <span style={{ fontSize: 11, color: t.text3, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".05em" }}>{label}</span>
+        <Icon name={icon} size={10} color="var(--text-3)" strokeWidth={2} />
+        <span style={{ fontSize: 11, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: ".05em" }}>{label}</span>
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>{children}</div>
     </div>

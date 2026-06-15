@@ -477,7 +477,7 @@ const SWIPE_HINT_KEY = "qt:swipe-hint-shown";
 const PRIORITY_ORDER = { high: 0, medium: 1, low: 2, "": 3, null: 3 };
 
 export default function QuickTodosPage() {
-  const { t, isMobile, quickTodos, addQuickTodo, archiveQuickTodo, restoreQuickTodo, deleteQuickTodo, clearArchivedQuickTodos, loaded } = useApp();
+  const { isMobile, quickTodos, addQuickTodo, archiveQuickTodo, restoreQuickTodo, deleteQuickTodo, clearArchivedQuickTodos, loaded } = useApp();
   const confirm = useConfirm();
   const [input, setInput] = useState("");
   const [expanded, setExpanded] = useState(false);
@@ -596,8 +596,8 @@ export default function QuickTodosPage() {
           display: "flex", flexDirection: "column", gap: 10,
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <Icon name="flag" size={13} color={t.text3} strokeWidth={2} />
-            <span style={{ fontSize: 13, color: t.text3, width: 56 }}>Priorita</span>
+            <Icon name="flag" size={13} color="var(--text-3)" strokeWidth={2} />
+            <span style={{ fontSize: 13, color: "var(--text-3)", width: 56 }}>Priorita</span>
             <div style={{ display: "flex", gap: 6 }}>
               {Object.entries(PRIORITY_CONFIG).map(([key, cfg]) => (
                 <button
@@ -612,8 +612,8 @@ export default function QuickTodosPage() {
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <Icon name="calendar" size={13} color={t.text3} strokeWidth={2} />
-            <span style={{ fontSize: 13, color: t.text3, width: 56 }}>Datum</span>
+            <Icon name="calendar" size={13} color="var(--text-3)" strokeWidth={2} />
+            <span style={{ fontSize: 13, color: "var(--text-3)", width: 56 }}>Datum</span>
             <input
               type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)}
               className="detail-input" style={{ maxWidth: 180 }}
@@ -622,8 +622,8 @@ export default function QuickTodosPage() {
             />
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <Icon name="tag" size={13} color={t.text3} strokeWidth={2} />
-            <span style={{ fontSize: 13, color: t.text3, width: 56 }}>Tagy</span>
+            <Icon name="tag" size={13} color="var(--text-3)" strokeWidth={2} />
+            <span style={{ fontSize: 13, color: "var(--text-3)", width: 56 }}>Tagy</span>
             <input
               value={tagsRaw} onChange={(e) => setTagsRaw(e.target.value)}
               placeholder="nakup, práce, osobní…"
@@ -631,8 +631,8 @@ export default function QuickTodosPage() {
             />
           </div>
           <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-            <Icon name="align-left" size={13} color={t.text3} strokeWidth={2} style={{ marginTop: 6 }} />
-            <span style={{ fontSize: 13, color: t.text3, width: 56, paddingTop: 6 }}>Popisek</span>
+            <Icon name="align-left" size={13} color="var(--text-3)" strokeWidth={2} style={{ marginTop: 6 }} />
+            <span style={{ fontSize: 13, color: "var(--text-3)", width: 56, paddingTop: 6 }}>Popisek</span>
             <textarea
               value={description} onChange={(e) => setDescription(e.target.value)}
               placeholder="Krátká poznámka…" rows={2}
@@ -726,9 +726,9 @@ export default function QuickTodosPage() {
       {!loaded ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {[...Array(5)].map((_, i) => {
-            const skVars = { "--sk-base": t.bg2 || "#e8e8ed", "--sk-hl": t.card || "#f5f5f7" };
+            const skVars = { "--sk-base": "var(--bg-2)", "--sk-hl": "var(--surface)" };
             return (
-              <div key={i} style={{ padding: "11px 14px", borderRadius: 10, border: `1px solid ${t.border}`, background: t.card, display: "flex", alignItems: "center", gap: 12, ...skVars }}>
+              <div key={i} style={{ padding: "11px 14px", borderRadius: 10, border: "1px solid var(--border)", background: "var(--surface)", display: "flex", alignItems: "center", gap: 12, ...skVars }}>
                 <div className="skeleton" style={{ width: 18, height: 18, borderRadius: "50%" }} />
                 <div className="skeleton" style={{ height: 13, width: `${55 + (i * 7) % 30}%`, borderRadius: 6 }} />
               </div>

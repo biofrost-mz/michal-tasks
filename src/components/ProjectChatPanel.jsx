@@ -29,7 +29,7 @@ function saveMessages(projectId, messages) {
 }
 
 export default function ProjectChatPanel({ project, tasks, notes, onClose }) {
-  const { t, isMobile, activeWorkspaceId, userId } = useApp();
+  const { isMobile, activeWorkspaceId, userId } = useApp();
   const toast = useToast();
   const [messages, setMessages] = useState(() => loadMessages(project.id));
 
@@ -148,13 +148,13 @@ export default function ProjectChatPanel({ project, tasks, notes, onClose }) {
   const panelStyle = isMobile
     ? {
         position: "fixed", inset: 0, zIndex: 300,
-        background: t.bg, display: "flex", flexDirection: "column",
+        background: "var(--bg)", display: "flex", flexDirection: "column",
         paddingTop: "env(safe-area-inset-top, 0px)",
       }
     : {
         position: "fixed", top: 0, right: 0, bottom: 0,
         width: 360, zIndex: 200,
-        background: t.bg2, borderLeft: `1px solid ${t.border}`,
+        background: "var(--bg-2)", borderLeft: "1px solid var(--border)",
         display: "flex", flexDirection: "column",
         boxShadow: "-4px 0 24px rgba(0,0,0,.15)",
         animation: "slideRight .2s ease",
@@ -173,20 +173,20 @@ export default function ProjectChatPanel({ project, tasks, notes, onClose }) {
         {/* Header */}
         <div style={{
           display: "flex", alignItems: "center", gap: 8,
-          padding: "14px 16px", borderBottom: `1px solid ${t.border}`,
+          padding: "14px 16px", borderBottom: "1px solid var(--border)",
           flexShrink: 0,
         }}>
           {isMobile && (
             <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, marginRight: 2, display: "flex" }}>
-              <Icon name="chevron-left" size={18} color={t.text2} strokeWidth={2} />
+              <Icon name="chevron-left" size={18} color="var(--text-2)" strokeWidth={2} />
             </button>
           )}
           <span style={{ fontSize: 14 }}>💬</span>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: t.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               Chat — {project.name}
             </div>
-            <div style={{ fontSize: 11, color: t.text3 }}>Gemini 2.0 Flash · {tasks.length} úkolů</div>
+            <div style={{ fontSize: 11, color: "var(--text-3)" }}>Gemini 2.0 Flash · {tasks.length} úkolů</div>
           </div>
           {messages.length > 0 && (
             <button
@@ -194,12 +194,12 @@ export default function ProjectChatPanel({ project, tasks, notes, onClose }) {
               title="Smazat historii"
               style={{ background: "none", border: "none", cursor: "pointer", padding: 4, display: "flex" }}
             >
-              <Icon name="trash-2" size={14} color={t.text3} strokeWidth={2} />
+              <Icon name="trash-2" size={14} color="var(--text-3)" strokeWidth={2} />
             </button>
           )}
           {!isMobile && (
             <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, display: "flex" }}>
-              <Icon name="x" size={16} color={t.text2} strokeWidth={2} />
+              <Icon name="x" size={16} color="var(--text-2)" strokeWidth={2} />
             </button>
           )}
         </div>
@@ -209,10 +209,10 @@ export default function ProjectChatPanel({ project, tasks, notes, onClose }) {
           {messages.length === 0 && (
             <div className="fi" style={{ alignItems: "center", paddingTop: 20 }}>
               <div style={{ fontSize: 28, marginBottom: 8, textAlign: "center" }}>💬</div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: t.text, marginBottom: 4, textAlign: "center" }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 4, textAlign: "center" }}>
                 Chat s projektem
               </div>
-              <div style={{ fontSize: 12, color: t.text3, marginBottom: 20, textAlign: "center" }}>
+              <div style={{ fontSize: 12, color: "var(--text-3)", marginBottom: 20, textAlign: "center" }}>
                 Ptej se na cokoli ohledně tohoto projektu
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%" }}>
@@ -222,8 +222,8 @@ export default function ProjectChatPanel({ project, tasks, notes, onClose }) {
                     onClick={() => send(s)}
                     style={{
                       padding: "8px 12px", borderRadius: 8, fontSize: 12.5,
-                      border: `1px solid ${t.border}`, background: t.input,
-                      color: t.text2, cursor: "pointer", textAlign: "left",
+                      border: "1px solid var(--border)", background: "var(--input)",
+                      color: "var(--text-2)", cursor: "pointer", textAlign: "left",
                       transition: "all .12s",
                     }}
                   >
@@ -247,8 +247,8 @@ export default function ProjectChatPanel({ project, tasks, notes, onClose }) {
                   maxWidth: isMobile ? "90%" : "85%",
                   padding: "8px 12px",
                   borderRadius: m.role === "user" ? "12px 12px 4px 12px" : "12px 12px 12px 4px",
-                  background: m.role === "user" ? t.accent : t.input,
-                  color: m.role === "user" ? "#fff" : t.text,
+                  background: m.role === "user" ? "var(--accent)" : "var(--input)",
+                  color: m.role === "user" ? "#fff" : "var(--text)",
                   fontSize: 13,
                   lineHeight: 1.5,
                   whiteSpace: "pre-wrap",
@@ -264,7 +264,7 @@ export default function ProjectChatPanel({ project, tasks, notes, onClose }) {
             <div style={{ display: "flex", justifyContent: "flex-start" }}>
               <div style={{
                 padding: "8px 14px", borderRadius: "12px 12px 12px 4px",
-                background: t.input, color: t.text3, fontSize: 18, letterSpacing: 3,
+                background: "var(--input)", color: "var(--text-3)", fontSize: 18, letterSpacing: 3,
               }}>
                 <span style={{ animation: "pulse 1.2s ease infinite" }}>···</span>
               </div>
@@ -277,7 +277,7 @@ export default function ProjectChatPanel({ project, tasks, notes, onClose }) {
         {/* Input */}
         <div style={{
           padding: `10px 12px calc(10px + env(safe-area-inset-bottom, 0px))`,
-          borderTop: `1px solid ${t.border}`,
+          borderTop: "1px solid var(--border)",
           display: "flex", gap: 8, flexShrink: 0, alignItems: "flex-end",
         }}>
           <textarea
@@ -290,8 +290,8 @@ export default function ProjectChatPanel({ project, tasks, notes, onClose }) {
             disabled={loading}
             style={{
               flex: 1, padding: "8px 12px", borderRadius: 8,
-              border: `1px solid ${t.border}`, background: t.input,
-              color: t.text, fontSize: 13, outline: "none", resize: "none",
+              border: "1px solid var(--border)", background: "var(--input)",
+              color: "var(--text)", fontSize: 13, outline: "none", resize: "none",
               maxHeight: 100, overflowY: "auto", lineHeight: 1.5,
               opacity: loading ? 0.6 : 1,
             }}
@@ -302,7 +302,7 @@ export default function ProjectChatPanel({ project, tasks, notes, onClose }) {
             style={{
               width: isMobile ? 42 : 36, height: isMobile ? 42 : 36,
               borderRadius: 10, border: "none",
-              background: input.trim() && !loading ? t.accent : t.border,
+              background: input.trim() && !loading ? "var(--accent)" : "var(--border)",
               color: "#fff", cursor: input.trim() && !loading ? "pointer" : "default",
               display: "flex", alignItems: "center", justifyContent: "center",
               flexShrink: 0, transition: "background .15s",

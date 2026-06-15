@@ -42,11 +42,11 @@ function getDailyPlanError(error, data = {}) {
 /* ─────────────────────────────────────────────
    Skeleton loader — pulsující řádky
 ───────────────────────────────────────────── */
-function PlanSkeleton({ t }) {
+function PlanSkeleton() {
   const line = (w, mb = 8) => (
     <div style={{
       height: 14, width: w, borderRadius: 6,
-      background: `linear-gradient(90deg, ${t.border} 25%, ${t.borderH} 50%, ${t.border} 75%)`,
+      background: "linear-gradient(90deg, var(--border) 25%, var(--border-h) 50%, var(--border) 75%)",
       backgroundSize: "200% 100%",
       animation: "shimmer 1.4s infinite",
       marginBottom: mb,
@@ -71,7 +71,7 @@ function PlanSkeleton({ t }) {
    AIDailyPlan
 ───────────────────────────────────────────── */
 export default function AIDailyPlan() {
-  const { t, userId, activeWorkspaceId, tasks } = useApp();
+  const { userId, activeWorkspaceId, tasks } = useApp();
 
   const [plan, setPlan] = useState(null);       // string | null
   const [generatedAt, setGeneratedAt] = useState(null);
@@ -132,8 +132,8 @@ export default function AIDailyPlan() {
   return (
     <div style={{
       borderRadius: 14,
-      border: `1px solid ${t.border}`,
-      background: t.card,
+      border: "1px solid var(--border)",
+      background: "var(--surface)",
       overflow: "hidden",
     }}>
       {/* Header */}
@@ -146,7 +146,7 @@ export default function AIDailyPlan() {
           background: open
             ? `linear-gradient(135deg, var(--accent-soft), transparent)`
             : "transparent",
-          borderBottom: open ? `1px solid ${t.border}` : "none",
+          borderBottom: open ? "1px solid var(--border)" : "none",
           transition: "background .15s",
         }}
       >
@@ -160,7 +160,7 @@ export default function AIDailyPlan() {
         </div>
 
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 13.5, fontWeight: 700, color: t.text, display: "flex", alignItems: "center", gap: 6 }}>
+          <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text)", display: "flex", alignItems: "center", gap: 6 }}>
             AI Denní plán
             <span style={{
               fontSize: 9.5, fontWeight: 700, padding: "1px 6px", borderRadius: 4,
@@ -168,7 +168,7 @@ export default function AIDailyPlan() {
               color: "var(--bg)", letterSpacing: ".04em",
             }}>AI</span>
           </div>
-          <div style={{ fontSize: 12, color: t.text3, marginTop: 1 }}>
+          <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 1 }}>
             {loading ? "Přemýšlím…" : plan ? `Vygenerováno v ${timeLabel}` : "Co dnes udělat jako první?"}
           </div>
         </div>
@@ -180,18 +180,18 @@ export default function AIDailyPlan() {
               title="Obnovit plán"
               style={{
                 display: "flex", alignItems: "center", gap: 4,
-                padding: "4px 9px", borderRadius: 6, border: `1px solid ${t.border}`,
-                background: t.input, color: t.text3, fontSize: 12, cursor: "pointer",
+                padding: "4px 9px", borderRadius: 6, border: "1px solid var(--border)",
+                background: "var(--input)", color: "var(--text-3)", fontSize: 12, cursor: "pointer",
                 fontWeight: 500,
               }}
             >
-              <Icon name="refresh-cw" size={11} color={t.text3} strokeWidth={2} />
+              <Icon name="refresh-cw" size={11} color="var(--text-3)" strokeWidth={2} />
               Obnovit
             </button>
           )}
           <Icon
             name={open ? "chevron-up" : "chevron-down"}
-            size={15} color={t.text3} strokeWidth={2}
+            size={15} color="var(--text-3)" strokeWidth={2}
           />
         </div>
       </div>
@@ -210,9 +210,9 @@ export default function AIDailyPlan() {
               <div style={{ fontSize: 13, color: error.severity === "warning" ? "#f59e0b" : "#ef4444", fontWeight: 700, marginBottom: 4 }}>
                 {error.title || "Chyba AI"}
               </div>
-              <div style={{ fontSize: 12, color: t.text2, lineHeight: 1.5 }}>{error.message}</div>
+              <div style={{ fontSize: 12, color: "var(--text-2)", lineHeight: 1.5 }}>{error.message}</div>
               {error.raw && (
-                <details style={{ marginTop: 8, color: t.text3, fontSize: 11.5 }}>
+                <details style={{ marginTop: 8, color: "var(--text-3)", fontSize: 11.5 }}>
                   <summary style={{ cursor: "pointer" }}>Technický detail</summary>
                   <pre style={{ whiteSpace: "pre-wrap", wordBreak: "break-word", marginTop: 6, fontFamily: "var(--mono)", fontSize: 11 }}>
                     {error.raw}
@@ -223,20 +223,20 @@ export default function AIDailyPlan() {
           )}
 
           {/* Loading skeleton */}
-          {loading && <PlanSkeleton t={t} />}
+          {loading && <PlanSkeleton />}
 
           {/* Plan content */}
           {plan && !loading && (
             <div
               dangerouslySetInnerHTML={{ __html: sanitizeHtml(renderMarkdown(plan)) }}
-              style={{ fontSize: 13.5, lineHeight: 1.75, color: t.text }}
+              style={{ fontSize: 13.5, lineHeight: 1.75, color: "var(--text)" }}
             />
           )}
 
           {/* Empty / CTA */}
           {!plan && !loading && !error && (
             <div style={{ textAlign: "center", padding: "10px 0 4px" }}>
-              <div style={{ fontSize: 13, color: t.text3, marginBottom: 14 }}>
+              <div style={{ fontSize: 13, color: "var(--text-3)", marginBottom: 14 }}>
                 {activeTasks.length > 0
                   ? `Mám ${activeTasks.length} aktivních úkolů. AI je projde a navrhne, na co se soustředit.`
                   : "Nemáš žádné aktivní úkoly — nejdřív je přidej."}
@@ -249,8 +249,8 @@ export default function AIDailyPlan() {
                   padding: "10px 22px", borderRadius: 10, border: "none",
                   background: activeTasks.length > 0
                     ? "linear-gradient(135deg, var(--accent), var(--accent-2))"
-                    : t.input,
-                  color: activeTasks.length > 0 ? "var(--bg)" : t.text3,
+                    : "var(--input)",
+                  color: activeTasks.length > 0 ? "var(--bg)" : "var(--text-3)",
                   fontSize: 13.5, fontWeight: 600, cursor: activeTasks.length > 0 ? "pointer" : "default",
                 }}
               >
