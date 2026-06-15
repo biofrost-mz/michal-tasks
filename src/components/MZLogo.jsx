@@ -3,7 +3,7 @@ import React from 'react'
 export default function MZLogo({ size = 32, style = {}, alt = "Zentero" }) {
   return (
     <img
-      src="/brand-logo.png"
+      src="/icon-zentero.png"
       alt={alt}
       width={size}
       height={size}

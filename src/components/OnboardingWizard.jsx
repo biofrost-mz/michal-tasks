@@ -101,22 +101,30 @@ export default function OnboardingWizard() {
     if (active?.name) setWsName(active.name);
   }, [workspaces, activeWorkspaceId]);
 
+  const close = useCallback(() => {
+    localStorage.setItem(LS_KEY, "1");
+    window.dispatchEvent(new Event("mt3:onboarding_done"));
+    if (!userId) return;
+    void (async () => {
+      const { data: profileRow, error } = await supabase
+        .from("user_profiles")
+        .select("*")
+        .eq("id", userId)
+        .maybeSingle();
+      if (error || !Object.prototype.hasOwnProperty.call(profileRow ?? {}, "onboarded_at")) return;
+      await supabase
+        .from("user_profiles")
+        .update({ onboarded_at: new Date().toISOString() })
+        .eq("id", userId);
+    })();
+  }, [userId]);
+
   // Escape key closes/skips wizard
   useEffect(() => {
     const handler = (e) => { if (e.key === "Escape") close(); };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [close]);
-
-  const close = useCallback(() => {
-    localStorage.setItem(LS_KEY, "1");
-    window.dispatchEvent(new Event("mt3:onboarding_done"));
-    supabase
-      .from("user_profiles")
-      .update({ onboarded_at: new Date().toISOString() })
-      .eq("id", userId)
-      .then(() => {});
-  }, [userId]);
 
   async function handleStep1Continue() {
     setDk(theme === "dark");

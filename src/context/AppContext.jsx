@@ -100,6 +100,10 @@ function resolveThemeMode(mode) {
   return mode === "system" ? systemPrefersDark() : mode !== "light";
 }
 
+function hasOwn(object, key) {
+  return Object.prototype.hasOwnProperty.call(object ?? {}, key);
+}
+
 // Storage adapter: optional window.storage -> localStorage
 const storage = {
   async get(key) {
@@ -424,12 +428,13 @@ export function AppProvider({ children }) {
           { onConflict: "id", ignoreDuplicates: false }
         );
         if (cancelled) return;
-        const { data: profileRow } = await supabase
+        const { data: profileRow, error: profileError } = await supabase
           .from("user_profiles")
-          .select("onboarded_at")
+          .select("*")
           .eq("id", userId)
-          .single();
-        if (!cancelled && profileRow?.onboarded_at) {
+          .maybeSingle();
+        if (profileError) console.warn("profile onboarding state:", profileError.message);
+        if (!cancelled && hasOwn(profileRow, "onboarded_at") && profileRow.onboarded_at) {
           localStorage.setItem("mt3:onboarding_done", "1");
           window.dispatchEvent(new Event("mt3:onboarding_done"));
         }
