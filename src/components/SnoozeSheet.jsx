@@ -11,7 +11,7 @@ const OPTIONS = [
 ];
 
 export default function SnoozeSheet({ taskId, onClose }) {
-  const { t, updateTask } = useApp();
+  const { updateTask } = useApp();
 
   const snooze = (days) => {
     const d = new Date(startOfToday().getTime() + days * 86400000);
@@ -33,18 +33,18 @@ export default function SnoozeSheet({ taskId, onClose }) {
         className="su"
         style={{
           position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 250,
-          background: t.bg2,
+          background: "var(--bg-2)",
           borderRadius: "16px 16px 0 0",
           paddingBottom: "calc(20px + env(safe-area-inset-bottom, 0px))",
           boxShadow: "0 -8px 32px rgba(0,0,0,0.22)",
         }}
       >
         <div style={{
-          width: 40, height: 4, borderRadius: 2, background: t.border,
+          width: 40, height: 4, borderRadius: 2, background: "var(--border)",
           margin: "12px auto 0",
         }} />
         <div style={{ padding: "16px 16px 4px" }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: t.text2, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: 12 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-2)", letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: 12 }}>
             Odložit úkol
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -55,9 +55,9 @@ export default function SnoozeSheet({ taskId, onClose }) {
                 style={{
                   padding: "14px 16px",
                   borderRadius: 12,
-                  border: `1px solid ${t.border}`,
-                  background: t.card,
-                  color: t.text,
+                  border: "1px solid var(--border)",
+                  background: "var(--surface)",
+                  color: "var(--text)",
                   fontSize: 15,
                   fontWeight: 500,
                   textAlign: "left",

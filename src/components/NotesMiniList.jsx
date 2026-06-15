@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext.jsx'
 import Icon from './Icon.jsx'
 
 export default function NotesMiniList({ taskId, projectId }) {
-  const { t, notes, addNote, openNote } = useApp();
+  const { notes, addNote, openNote } = useApp();
   const relevant = notes.filter((n) =>
     (taskId && n.primaryTaskId === taskId) ||
     (projectId && n.primaryProjectId === projectId)
@@ -17,7 +17,7 @@ export default function NotesMiniList({ taskId, projectId }) {
   return (
     <div>
       {relevant.length === 0 && (
-        <div style={{ color: t.text3, fontSize: 12, fontStyle: "italic", marginBottom: 8 }}>Zatím žádné poznámky</div>
+        <div style={{ color: "var(--text-3)", fontSize: 12, fontStyle: "italic", marginBottom: 8 }}>Zatím žádné poznámky</div>
       )}
       {relevant.map((n) => (
         <div
@@ -29,12 +29,12 @@ export default function NotesMiniList({ taskId, projectId }) {
         >
           <div style={{ fontSize: 12.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-              {n.pinned && <Icon name="pin" size={10} color={t.accent} strokeWidth={2} />}
-              {n.title || <em style={{ fontWeight: 400, color: t.text3 }}>Bez názvu</em>}
+              {n.pinned && <Icon name="pin" size={10} color="var(--accent)" strokeWidth={2} />}
+              {n.title || <em style={{ fontWeight: 400, color: "var(--text-3)" }}>Bez názvu</em>}
             </span>
           </div>
           {n.content && (
-            <div style={{ fontSize: 12, color: t.text3, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {n.content.split("\n")[0]}
             </div>
           )}
@@ -42,9 +42,9 @@ export default function NotesMiniList({ taskId, projectId }) {
       ))}
       <button
         onClick={handleAdd}
-        style={{ width: "100%", padding: "6px 12px", borderRadius: 8, border: "1px dashed var(--border-soft)", background: "transparent", color: t.text3, fontSize: 12, marginTop: 2 }}
+        style={{ width: "100%", padding: "6px 12px", borderRadius: 8, border: "1px dashed var(--border-soft)", background: "transparent", color: "var(--text-3)", fontSize: 12, marginTop: 2 }}
         onMouseEnter={(e) => (e.currentTarget.style.color = "var(--accent)")}
-        onMouseLeave={(e) => (e.currentTarget.style.color = t.text3)}
+        onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-3)")}
       >
         + Přidat poznámku
       </button>

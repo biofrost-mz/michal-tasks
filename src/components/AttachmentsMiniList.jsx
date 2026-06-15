@@ -24,7 +24,7 @@ const BLOCKED_EXT = /\.(exe|bat|cmd|sh|ps1|js|jsx|ts|tsx|html|htm|php|py|rb|pl|j
 const SIGNED_URL_EXPIRY_SECS = 3600; // 1 hour
 
 export default function AttachmentsMiniList({ taskId, projectId }) {
-  const { t, attachments, uploadAttachment, deleteAttachment } = useApp();
+  const { attachments, uploadAttachment, deleteAttachment } = useApp();
   const toast = useToast();
   const confirm = useConfirm();
   const [uploading, setUploading] = useState(false);
@@ -127,13 +127,13 @@ export default function AttachmentsMiniList({ taskId, projectId }) {
           border: `1px dashed ${dragOver ? "var(--accent-2)" : "var(--border-soft)"}`,
           borderRadius: 8, padding: "9px 14px", cursor: "pointer",
           display: "flex", alignItems: "center", gap: 8,
-          color: dragOver ? "var(--accent)" : t.text2, fontSize: 12,
+          color: dragOver ? "var(--accent)" : "var(--text-2)", fontSize: 12,
           marginBottom: relevant.length ? 10 : 0,
           transition: "border-color .15s, color .15s",
           background: dragOver ? "var(--accent-soft)" : "transparent",
         }}
       >
-        <Icon name="upload" size={13} color={dragOver ? "var(--accent)" : t.text3} strokeWidth={2} />
+        <Icon name="upload" size={13} color={dragOver ? "var(--accent)" : "var(--text-3)"} strokeWidth={2} />
         {uploading ? "Nahrávám…" : "Přidat soubor nebo obrázek"}
         <input
           ref={fileRef} type="file" style={{ display: "none" }}
@@ -151,30 +151,30 @@ export default function AttachmentsMiniList({ taskId, projectId }) {
                 </a>
               ) : (
                 <div style={{ width: 38, height: 38, borderRadius: 5, background: "var(--surface)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <Icon name="file" size={16} color={t.text3} strokeWidth={1.5} />
+                  <Icon name="file" size={16} color="var(--text-3)" strokeWidth={1.5} />
                 </div>
               )}
               <div style={{ flex: 1, minWidth: 0 }}>
                 {url ? (
                   <a href={url} target="_blank" rel="noreferrer"
-                    style={{ color: t.text, fontSize: 12, fontWeight: 500, textDecoration: "none", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    style={{ color: "var(--text)", fontSize: 12, fontWeight: 500, textDecoration: "none", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {att.name}
                   </a>
                 ) : (
-                  <span style={{ color: t.text, fontSize: 12, fontWeight: 500, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{att.name}</span>
+                  <span style={{ color: "var(--text)", fontSize: 12, fontWeight: 500, display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{att.name}</span>
                 )}
-                <div style={{ fontSize: 12, color: t.text3 }}>{fmtSize(att.size)}</div>
+                <div style={{ fontSize: 12, color: "var(--text-3)" }}>{fmtSize(att.size)}</div>
               </div>
               {url && (
-                <a href={url} target="_blank" rel="noreferrer" style={{ color: t.text3, padding: 4, display: "flex", alignItems: "center" }}>
-                  <Icon name="external-link" size={12} color={t.text3} strokeWidth={2} />
+                <a href={url} target="_blank" rel="noreferrer" style={{ color: "var(--text-3)", padding: 4, display: "flex", alignItems: "center" }}>
+                  <Icon name="external-link" size={12} color="var(--text-3)" strokeWidth={2} />
                 </a>
               )}
               <button
                 onClick={() => handleDelete(att)}
-                style={{ background: "none", border: "none", color: t.text3, padding: 4, cursor: "pointer", borderRadius: 4, display: "flex", alignItems: "center" }}
+                style={{ background: "none", border: "none", color: "var(--text-3)", padding: 4, cursor: "pointer", borderRadius: 4, display: "flex", alignItems: "center" }}
               >
-                <Icon name="trash" size={12} color={t.text3} strokeWidth={2} />
+                <Icon name="trash" size={12} color="var(--text-3)" strokeWidth={2} />
               </button>
             </div>
           );

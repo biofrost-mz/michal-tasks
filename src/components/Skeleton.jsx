@@ -18,15 +18,14 @@ export function SkeletonLine({ width = "100%", height = 14 }) {
 }
 
 export function SkeletonCard() {
-  const { t } = useApp();
   const skVars = useSkVars();
   return (
     <div
       style={{
         padding: "12px 14px",
         borderRadius: 12,
-        border: `1px solid ${t.border}`,
-        background: t.card,
+        border: "1px solid var(--border)",
+        background: "var(--surface)",
         display: "flex",
         alignItems: "center",
         gap: 12,
