@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useEffect, useRef, useState } from "react";
+import React, { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useApp, AppProvider } from "./context/AppContext.jsx";
 import Icon from "./components/Icon.jsx";
 import { ToastProvider, useToast } from "./components/Toast.jsx";
@@ -13,7 +13,10 @@ import CommandPalette from "./components/CommandPalette.jsx";
 import ShortcutHelper from "./components/ShortcutHelper.jsx";
 import SplashScreen from "./components/SplashScreen.jsx";
 import { applyDocumentMetadata } from "./appMeta.js";
+import { useEdgeSwipe } from "./hooks/useEdgeSwipe.js";
 import "./styles/atlas-shell.css";
+
+const PRIMARY_PAGES = ["dashboard", "quick-todos", "tasks", "projects"];
 
 const DashboardPage = lazy(() => import("./pages/DashboardPage.jsx"));
 const TasksPage = lazy(() => import("./pages/TasksPage.jsx"));
@@ -283,6 +286,28 @@ function usePullToRefresh(enabled, onRefresh) {
 
 function AppShell() {
   const { dk, setDk, isMobile, page, setPage, taskDetail, cmdOpen, setCmdOpen, isSystemAdmin, loaded, tasks, setTaskDetail, refetchAll } = useApp();
+
+  const handleSwipeLeft = useCallback(() => {
+    if (!isMobile) return;
+    const idx = PRIMARY_PAGES.indexOf(page);
+    if (idx === -1 || idx === PRIMARY_PAGES.length - 1) return;
+    navigator.vibrate?.([10]);
+    setPage(PRIMARY_PAGES[idx + 1]);
+  }, [isMobile, page, setPage]);
+
+  const handleSwipeRight = useCallback(() => {
+    if (!isMobile) return;
+    const idx = PRIMARY_PAGES.indexOf(page);
+    if (idx === -1 || idx === 0) return;
+    navigator.vibrate?.([10]);
+    setPage(PRIMARY_PAGES[idx - 1]);
+  }, [isMobile, page, setPage]);
+
+  const edgeSwipeHandlers = useEdgeSwipe({
+    onSwipeLeft: handleSwipeLeft,
+    onSwipeRight: handleSwipeRight,
+  });
+
   const [collapsed, setCollapsed] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [onboardingDone, setOnboardingDone] = useState(
@@ -495,7 +520,10 @@ function AppShell() {
               </span>
             </div>
           )}
-          <main style={isMobile ? { flex: 1, minWidth: 0, width: "100%", overflow: "visible", position: "relative", paddingBottom: "calc(58px + env(safe-area-inset-bottom, 0px))", overscrollBehaviorY: "auto", WebkitOverflowScrolling: "touch" } : undefined}>
+          <main
+            {...edgeSwipeHandlers}
+            style={isMobile ? { flex: 1, minWidth: 0, width: "100%", overflow: "visible", position: "relative", paddingBottom: "calc(58px + env(safe-area-inset-bottom, 0px))", overscrollBehaviorY: "auto", WebkitOverflowScrolling: "touch" } : undefined}
+          >
             <PageTransition pageKey={page}>
               <Suspense fallback={<PageLoader />}>
                 {page === "dashboard" && <PageErrorBoundary label="Přehled"><DashboardPage /></PageErrorBoundary>}
