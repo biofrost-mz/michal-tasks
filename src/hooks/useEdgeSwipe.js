@@ -1,4 +1,4 @@
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useEffect } from "react";
 
 const EDGE_THRESHOLD = 30;
 const SWIPE_THRESHOLD = 80;
@@ -14,6 +14,11 @@ export function useEdgeSwipe({
   const activeRef = useRef(false);
   const axisRef = useRef(null);
   const pointerIdRef = useRef(null);
+  const onSwipeLeftRef = useRef(onSwipeLeft);
+  const onSwipeRightRef = useRef(onSwipeRight);
+
+  useEffect(() => { onSwipeLeftRef.current = onSwipeLeft; }, [onSwipeLeft]);
+  useEffect(() => { onSwipeRightRef.current = onSwipeRight; }, [onSwipeRight]);
 
   const reset = useCallback(() => {
     activeRef.current = false;
@@ -53,11 +58,11 @@ export function useEdgeSwipe({
     if (startXRef.current == null) { reset(); return; }
     if (axisRef.current === "x") {
       const dx = e.clientX - startXRef.current;
-      if (dx <= -swipeThreshold && onSwipeLeft) onSwipeLeft();
-      else if (dx >= swipeThreshold && onSwipeRight) onSwipeRight();
+      if (dx <= -swipeThreshold) onSwipeLeftRef.current?.();
+      else if (dx >= swipeThreshold) onSwipeRightRef.current?.();
     }
     reset();
-  }, [swipeThreshold, onSwipeLeft, onSwipeRight, reset]);
+  }, [swipeThreshold, reset]);
 
   return {
     onPointerDown,

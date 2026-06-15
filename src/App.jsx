@@ -304,8 +304,8 @@ function AppShell() {
   }, [isMobile, page, setPage]);
 
   const edgeSwipeHandlers = useEdgeSwipe({
-    onSwipeLeft: handleSwipeLeft,
-    onSwipeRight: handleSwipeRight,
+    onSwipeLeft: isMobile ? handleSwipeLeft : undefined,
+    onSwipeRight: isMobile ? handleSwipeRight : undefined,
   });
 
   const [collapsed, setCollapsed] = useState(false);
