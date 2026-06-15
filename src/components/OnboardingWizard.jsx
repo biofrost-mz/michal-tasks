@@ -4,6 +4,7 @@ import { useApp } from "../context/AppContext.jsx";
 import { useToast } from "./Toast.jsx";
 import Icon from "./Icon.jsx";
 import { supabase } from "../supabase.js";
+import { SectionLabel } from "./ui/index.js";
 
 export const LS_KEY = "mt3:onboarding_done";
 
@@ -158,12 +159,6 @@ export default function OnboardingWizard() {
 
   const bodyStyle = { padding: "24px 28px 28px" };
 
-  const labelStyle = {
-    display: "block", fontSize: 11, fontWeight: 700,
-    textTransform: "uppercase", letterSpacing: ".06em",
-    color: "var(--text-2, #94a3b8)", marginBottom: 7,
-  };
-
   const inputStyle = {
     width: "100%", padding: "11px 14px", borderRadius: 10,
     background: "var(--surface-2, rgba(255,255,255,0.06))",
@@ -205,21 +200,19 @@ export default function OnboardingWizard() {
           <CloseBtn />
           <Progress step={1} />
           <div style={bodyStyle}>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".08em", color: "var(--text-3, #64748b)", marginBottom: 6 }}>
-              Krok 1 ze 3
-            </div>
+            <SectionLabel style={{ marginBottom: 6 }}>Krok 1 ze 3</SectionLabel>
             <h2 style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 850 }}>Vítej v Zentero! 👋</h2>
             <p style={{ margin: "0 0 22px", fontSize: 13.5, color: "var(--text-3, #64748b)" }}>
               Nastavme appku za 2 minuty — začneme s tvým pracovním prostorem.
             </p>
 
             <div style={{ marginBottom: 18 }}>
-              <label style={labelStyle}>Název workspace</label>
+              <SectionLabel style={{ marginBottom: 7 }}>Název workspace</SectionLabel>
               <input value={wsName} onChange={(e) => setWsName(e.target.value)} style={inputStyle} />
             </div>
 
             <div style={{ marginBottom: 24 }}>
-              <label style={labelStyle}>Vzhled</label>
+              <SectionLabel style={{ marginBottom: 7 }}>Vzhled</SectionLabel>
               <div style={{ display: "flex", gap: 10 }}>
                 {[{ id: "dark", icon: "🌙", label: "Tmavý" }, { id: "light", icon: "☀️", label: "Světlý" }].map((opt) => (
                   <button
@@ -259,9 +252,7 @@ export default function OnboardingWizard() {
           <CloseBtn />
           <Progress step={2} />
           <div style={bodyStyle}>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".08em", color: "var(--text-3, #64748b)", marginBottom: 6 }}>
-              Krok 2 ze 3
-            </div>
+            <SectionLabel style={{ marginBottom: 6 }}>Krok 2 ze 3</SectionLabel>
             <h2 style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 850 }}>Upozornění 🔔</h2>
             <p style={{ margin: "0 0 18px", fontSize: 13.5, color: "var(--text-3, #64748b)" }}>
               Chceš vědět o termínech a denním souhrnu? Kdykoli to změníš v nastavení.
