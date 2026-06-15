@@ -4,6 +4,7 @@ import { useToast } from './Toast.jsx'
 import Icon from './Icon.jsx'
 import MZLogo from './MZLogo.jsx'
 import { supabase } from '../supabase.js'
+import { SectionLabel } from "./ui/index.js";
 
 /* Decorative mock card shown in the brand panel */
 function MockTaskCard() {
@@ -538,9 +539,9 @@ export default function AuthGate({ children }) {
 
               <form onSubmit={handleUpdatePassword} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
                 <div>
-                  <label style={{ display: "block", fontSize: "11px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.08em", color: "#9ca3af", marginBottom: "8px" }}>
+                  <SectionLabel style={{ marginBottom: 8 }}>
                     Nové heslo
-                  </label>
+                  </SectionLabel>
                   <div style={{ position: "relative" }}>
                     <input
                       type={showPw ? "text" : "password"}
@@ -789,9 +790,9 @@ export default function AuthGate({ children }) {
                   /* Magic Link Form */
                   <form onSubmit={e => { e.preventDefault(); sendMagicLink(); }} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
                     <div>
-                      <label style={{ display: "block", fontSize: "11px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.08em", color: "#9ca3af", marginBottom: "8px" }}>
+                      <SectionLabel style={{ marginBottom: 8 }}>
                         E-mailová adresa
-                      </label>
+                      </SectionLabel>
                       <input
                         type="email"
                         placeholder="jmeno@domena.cz"
@@ -858,9 +859,9 @@ export default function AuthGate({ children }) {
 
                   {signMode === "signup" && (
                     <div>
-                      <label style={{ display: "block", fontSize: "11px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.08em", color: "#9ca3af", marginBottom: "8px" }}>
+                      <SectionLabel style={{ marginBottom: 8 }}>
                         Jméno a Příjmení
-                      </label>
+                      </SectionLabel>
                       <input
                         type="text"
                         placeholder="Michal Zich"
@@ -881,9 +882,9 @@ export default function AuthGate({ children }) {
                   )}
 
                   <div>
-                    <label style={{ display: "block", fontSize: "11px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.08em", color: "#9ca3af", marginBottom: "8px" }}>
+                    <SectionLabel style={{ marginBottom: 8 }}>
                       E-mailová adresa
-                    </label>
+                    </SectionLabel>
                     <input
                       type="email"
                       placeholder="jmeno@domena.cz"
@@ -904,14 +905,14 @@ export default function AuthGate({ children }) {
 
                   <div>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
-                      <label style={{ display: "block", fontSize: "11px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.08em", color: "#9ca3af" }}>
+                      <SectionLabel>
                         Heslo
-                      </label>
+                      </SectionLabel>
                       {signMode === "signin" && (
                         <button
                           type="button"
                           onClick={handleForgotPassword}
-                          style={{ background: "none", border: "none", color: "#fbbf24", fontSize: "11px", cursor: "pointer", padding: "0" }}
+                          style={{ background: "none", border: "none", color: "var(--accent)", fontSize: "11px", cursor: "pointer", padding: "0" }}
                           onMouseEnter={e => e.currentTarget.style.textDecoration = "underline"}
                           onMouseLeave={e => e.currentTarget.style.textDecoration = "none"}
                         >
@@ -960,9 +961,9 @@ export default function AuthGate({ children }) {
                   {signMode === "signup" && (
                     <>
                       <div>
-                        <label style={{ display: "block", fontSize: "11px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.08em", color: "#9ca3af", marginBottom: "8px" }}>
+                        <SectionLabel style={{ marginBottom: 8 }}>
                           Potvrzení hesla
-                        </label>
+                        </SectionLabel>
                         <input
                           type={showPw ? "text" : "password"}
                           placeholder="••••••••"
