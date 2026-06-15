@@ -8,6 +8,7 @@ import {
   CLASS_TO_STATUS,
 } from "../components/atlas/AtlasTaskCard.jsx";
 import { STATUSES } from "../constants.js";
+import { SectionLabel } from "../components/ui/index.js";
 import { startOfToday, triggerConfettiBurst } from "../utils.js";
 import QuickAdd from "../components/QuickAdd.jsx";
 import EmptyState from "../components/EmptyState.jsx";
@@ -438,9 +439,9 @@ export default function TasksPage() {
 
             {/* Datum */}
             <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, fontFamily: "var(--font-mono)" }}>
+              <SectionLabel style={{ marginBottom: 10 }}>
                 Termín
-              </div>
+              </SectionLabel>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {[["all","Vše"], ["today","Dnes"], ["soon","Blížící se"], ["week","Tento týden"], ["overdue","Po termínu"]].map(([v, label]) => (
                   <button
@@ -462,9 +463,9 @@ export default function TasksPage() {
 
             {/* Priorita */}
             <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, fontFamily: "var(--font-mono)" }}>
+              <SectionLabel style={{ marginBottom: 10 }}>
                 Priorita
-              </div>
+              </SectionLabel>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {[["all","Vše"], ["high","Vysoká"], ["medium","Střední"], ["low","Nízká"]].map(([v, label]) => (
                   <button
@@ -487,9 +488,9 @@ export default function TasksPage() {
             {/* Projekt */}
             {projects.length > 0 && (
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, fontFamily: "var(--font-mono)" }}>
+                <SectionLabel style={{ marginBottom: 10 }}>
                   Projekt
-                </div>
+                </SectionLabel>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   {[{ id: "all", name: "Vše" }, { id: "inbox", name: "Inbox" }, ...projects].map((p) => (
                     <button
@@ -513,9 +514,9 @@ export default function TasksPage() {
             {/* Tagy */}
             {tags.length > 0 && (
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10, fontFamily: "var(--font-mono)" }}>
+                <SectionLabel style={{ marginBottom: 10 }}>
                   Tag
-                </div>
+                </SectionLabel>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <button
                     onClick={() => setTagFilter("all")}
