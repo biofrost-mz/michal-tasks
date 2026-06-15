@@ -364,7 +364,7 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
             text-overflow:ellipsis;
             white-space:nowrap;
           }
-          .ws-settings-layout{grid-template-columns:1fr;gap:12px;}
+          .ws-settings-layout{grid-template-columns:minmax(0,1fr);gap:12px;}
           .ws-settings-tabs{
             position:sticky;
             top:0;
