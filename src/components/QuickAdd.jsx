@@ -8,7 +8,7 @@ import { supabase } from '../supabase.js'
 import { SectionLabel } from "./ui/index.js";
 
 export default function QuickAdd({ defaultProjectId = null }) {
-  const { t, dk, addTask, projects, tags, addProject, addTag, setTaskDetail, isMobile } = useApp();
+  const { dk, addTask, projects, tags, addProject, addTag, setTaskDetail, isMobile } = useApp();
   const toast = useToast();
 
   const [val, setVal] = useState("");
@@ -291,11 +291,11 @@ export default function QuickAdd({ defaultProjectId = null }) {
       {/* Inline QuickAdd input bar */}
       <div
         style={{
-          background: t.card,
-          border: `1px solid ${t.border}`,
+          background: "var(--surface)",
+          border: "1px solid var(--border)",
           borderRadius: 12,
           overflow: "hidden",
-          boxShadow: t.shadow,
+          boxShadow: "var(--shadow-sm)",
           display: "flex",
           alignItems: "center",
           gap: 0,
@@ -303,7 +303,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
         }}
         className="quickadd-container"
       >
-        <div style={{ display: "flex", alignItems: "center", padding: "0 14px", color: t.text3 }}>
+        <div style={{ display: "flex", alignItems: "center", padding: "0 14px", color: "var(--text-3)" }}>
           <span style={{ fontSize: 20, fontWeight: 300 }}>+</span>
         </div>
 
@@ -318,7 +318,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
             border: "none",
             background: "transparent",
             outline: "none",
-            color: t.text,
+            color: "var(--text)",
             fontSize: 14,
             padding: "13px 0",
           }}
@@ -331,8 +331,8 @@ export default function QuickAdd({ defaultProjectId = null }) {
             padding: "0 20px",
             border: "none",
             height: "44px",
-            background: val.trim() ? t.accent : "transparent",
-            color: val.trim() ? "#fff" : t.text3,
+            background: val.trim() ? "var(--accent)" : "transparent",
+            color: val.trim() ? "#fff" : "var(--text-3)",
             fontSize: 13,
             fontWeight: 600,
             transition: "all .15s",
@@ -366,7 +366,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
           <div
             className="pop modal-dialog"
             style={{
-              background: t.card,
+              background: "var(--surface)",
               border: `1px solid ${dk ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.08)"}`,
               borderRadius: isMobile ? 24 : 16,
               boxShadow: isMobile
@@ -388,7 +388,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
           >
             {/* Modal Header */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, color: t.accent, fontWeight: 600, fontSize: 13, fontFamily: "var(--font-mono)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--accent)", fontWeight: 600, fontSize: 13, fontFamily: "var(--font-mono)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
                 <Icon name="check-square" size={14} color="currentColor" strokeWidth={2.5} />
                 Nový úkol
               </div>
@@ -397,7 +397,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
                 style={{
                   background: "none",
                   border: "none",
-                  color: t.text3,
+                  color: "var(--text-3)",
                   cursor: "pointer",
                   padding: 4,
                   display: "flex",
@@ -423,16 +423,16 @@ export default function QuickAdd({ defaultProjectId = null }) {
                   fontWeight: 600,
                   padding: isMobile ? "11px 12px" : "12px 14px",
                   borderRadius: 10,
-                  border: `1.5px solid ${t.border}`,
-                  background: t.input,
-                  color: t.text,
+                  border: "1.5px solid var(--border)",
+                  background: "var(--input)",
+                  color: "var(--text)",
                   width: "100%",
                   outline: "none",
                   boxShadow: dk ? "inset 0 1px 2px rgba(0,0,0,0.2)" : "inset 0 1px 2px rgba(0,0,0,0.03)",
                   transition: "border-color .15s"
                 }}
-                onFocus={(e) => e.target.style.borderColor = t.accent}
-                onBlur={(e) => e.target.style.borderColor = t.border}
+                onFocus={(e) => e.target.style.borderColor = "var(--accent)"}
+                onBlur={(e) => e.target.style.borderColor = "var(--border)"}
               />
             </div>
 
@@ -442,15 +442,15 @@ export default function QuickAdd({ defaultProjectId = null }) {
                 type="button"
                 onClick={() => setShowAiDraft(!showAiDraft)}
                 style={{
-                  background: showAiDraft ? t.accentBg : "transparent",
-                  border: `1.5px dashed ${showAiDraft ? t.accent : t.border}`,
+                  background: showAiDraft ? "var(--accent-soft)" : "transparent",
+                  border: `1.5px dashed ${showAiDraft ? "var(--accent)" : "var(--border)"}`,
                   borderRadius: 10,
                   padding: "10px 14px",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   gap: 8,
-                  color: showAiDraft ? t.accent : t.text2,
+                  color: showAiDraft ? "var(--accent)" : "var(--text-2)",
                   fontSize: 13,
                   fontWeight: 600,
                   cursor: "pointer",
@@ -466,8 +466,8 @@ export default function QuickAdd({ defaultProjectId = null }) {
               {showAiDraft && (
                 <div
                   style={{
-                    background: t.bg2,
-                    border: `1px solid ${t.border}`,
+                    background: "var(--bg-2)",
+                    border: "1px solid var(--border)",
                     borderRadius: 12,
                     padding: "14px",
                     display: "flex",
@@ -490,9 +490,9 @@ export default function QuickAdd({ defaultProjectId = null }) {
                       fontSize: 13,
                       padding: "10px 12px",
                       borderRadius: 8,
-                      border: `1.5px solid ${t.border}`,
-                      background: t.input,
-                      color: t.text,
+                      border: "1.5px solid var(--border)",
+                      background: "var(--input)",
+                      color: "var(--text)",
                       width: "100%",
                       outline: "none",
                       resize: "vertical",
@@ -500,13 +500,13 @@ export default function QuickAdd({ defaultProjectId = null }) {
                       boxShadow: dk ? "inset 0 1px 2px rgba(0,0,0,0.2)" : "inset 0 1px 2px rgba(0,0,0,0.03)",
                       transition: "border-color .15s"
                     }}
-                    onFocus={(e) => e.target.style.borderColor = t.accent}
-                    onBlur={(e) => e.target.style.borderColor = t.border}
+                    onFocus={(e) => e.target.style.borderColor = "var(--accent)"}
+                    onBlur={(e) => e.target.style.borderColor = "var(--border)"}
                   />
 
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
                     {/* Length toggler */}
-                    <div style={{ display: "flex", gap: 4, background: t.border, padding: 3, borderRadius: 8 }}>
+                    <div style={{ display: "flex", gap: 4, background: "var(--border)", padding: 3, borderRadius: 8 }}>
                       <button
                         type="button"
                         onClick={() => setAiLength("short")}
@@ -516,8 +516,8 @@ export default function QuickAdd({ defaultProjectId = null }) {
                           fontSize: 11.5,
                           fontWeight: 600,
                           border: "none",
-                          background: aiLength === "short" ? t.card : "transparent",
-                          color: aiLength === "short" ? t.text : t.text3,
+                          background: aiLength === "short" ? "var(--surface)" : "transparent",
+                          color: aiLength === "short" ? "var(--text)" : "var(--text-3)",
                           cursor: "pointer",
                           transition: "all .12s"
                         }}
@@ -533,8 +533,8 @@ export default function QuickAdd({ defaultProjectId = null }) {
                           fontSize: 11.5,
                           fontWeight: 600,
                           border: "none",
-                          background: aiLength === "long" ? t.card : "transparent",
-                          color: aiLength === "long" ? t.text : t.text3,
+                          background: aiLength === "long" ? "var(--surface)" : "transparent",
+                          color: aiLength === "long" ? "var(--text)" : "var(--text-3)",
                           cursor: "pointer",
                           transition: "all .12s"
                         }}
@@ -554,10 +554,10 @@ export default function QuickAdd({ defaultProjectId = null }) {
                         fontSize: 12.5,
                         fontWeight: 700,
                         border: "none",
-                        background: t.accent,
+                        background: "var(--accent)",
                         color: "#fff",
                         cursor: aiLoading ? "not-allowed" : "pointer",
-                        boxShadow: `0 4px 10px ${t.accentGlow}`,
+                        boxShadow: "0 4px 10px var(--accent-glow)",
                         display: "flex",
                         alignItems: "center",
                         gap: 6,
@@ -592,7 +592,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
                   <button
                     type="button"
                     onClick={() => setDescription(" ")}
-                    style={{ background: "none", border: "none", color: t.accent, fontSize: 11, fontWeight: 600, cursor: "pointer" }}
+                    style={{ background: "none", border: "none", color: "var(--accent)", fontSize: 11, fontWeight: 600, cursor: "pointer" }}
                   >
                     + Přidat popis
                   </button>
@@ -608,9 +608,9 @@ export default function QuickAdd({ defaultProjectId = null }) {
                     fontSize: 13,
                     padding: "10px 12px",
                     borderRadius: 10,
-                    border: `1.5px solid ${t.border}`,
-                    background: t.input,
-                    color: t.text,
+                    border: "1.5px solid var(--border)",
+                    background: "var(--input)",
+                    color: "var(--text)",
                     width: "100%",
                     outline: "none",
                     resize: "vertical",
@@ -618,8 +618,8 @@ export default function QuickAdd({ defaultProjectId = null }) {
                     boxShadow: dk ? "inset 0 1px 2px rgba(0,0,0,0.2)" : "inset 0 1px 2px rgba(0,0,0,0.03)",
                     transition: "border-color .15s"
                   }}
-                  onFocus={(e) => e.target.style.borderColor = t.accent}
-                  onBlur={(e) => e.target.style.borderColor = t.border}
+                  onFocus={(e) => e.target.style.borderColor = "var(--accent)"}
+                  onBlur={(e) => e.target.style.borderColor = "var(--border)"}
                 />
               )}
             </div>
@@ -649,9 +649,9 @@ export default function QuickAdd({ defaultProjectId = null }) {
                           borderRadius: 8,
                           fontSize: 12.5,
                           fontWeight: 600,
-                          border: `1.5px solid ${isActive ? v.color : t.border}`,
+                          border: `1.5px solid ${isActive ? v.color : "var(--border)"}`,
                           background: isActive ? v.bg : "transparent",
-                          color: isActive ? v.color : t.text2,
+                          color: isActive ? v.color : "var(--text-2)",
                           display: "flex",
                           alignItems: "center",
                           gap: 6,
@@ -690,9 +690,9 @@ export default function QuickAdd({ defaultProjectId = null }) {
                       borderRadius: 8,
                       fontSize: 12.5,
                       fontWeight: 600,
-                      border: `1.5px solid ${priority === null ? t.text3 : t.border}`,
+                      border: `1.5px solid ${priority === null ? "var(--text-3)" : "var(--border)"}`,
                       background: priority === null ? (dk ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)") : "transparent",
-                      color: priority === null ? t.text : t.text2,
+                      color: priority === null ? "var(--text)" : "var(--text-2)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: isMobile ? "center" : undefined,
@@ -717,9 +717,9 @@ export default function QuickAdd({ defaultProjectId = null }) {
                           borderRadius: 8,
                           fontSize: 12.5,
                           fontWeight: 600,
-                          border: `1.5px solid ${isActive ? v.color : t.border}`,
+                          border: `1.5px solid ${isActive ? v.color : "var(--border)"}`,
                           background: isActive ? v.bg : "transparent",
-                          color: isActive ? v.color : t.text2,
+                          color: isActive ? v.color : "var(--text-2)",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: isMobile ? "center" : undefined,
@@ -739,7 +739,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
             </div>
 
             {/* SECTION 2: Projekt & Termín */}
-            <div style={{ borderTop: `1px solid ${t.border}`, paddingTop: 16, display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ borderTop: "1px solid var(--border)", paddingTop: 16, display: "flex", flexDirection: "column", gap: 14 }}>
               {/* Project Line */}
               <div>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
@@ -749,7 +749,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
                   {!newProjOpen && (
                     <button
                       onClick={() => setNewProjOpen(true)}
-                      style={{ background: "none", border: "none", color: t.accent, fontSize: 11, fontWeight: 600, display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}
+                      style={{ background: "none", border: "none", color: "var(--accent)", fontSize: 11, fontWeight: 600, display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}
                     >
                       <Icon name="plus" size={10} color="currentColor" strokeWidth={2.5} /> Nový projekt
                     </button>
@@ -764,8 +764,8 @@ export default function QuickAdd({ defaultProjectId = null }) {
                       display: "flex",
                       alignItems: "center",
                       gap: 8,
-                      background: t.bg2,
-                      border: `1px solid ${t.border}`,
+                      background: "var(--bg-2)",
+                      border: "1px solid var(--border)",
                       padding: "6px 10px",
                       borderRadius: 8,
                       marginBottom: 8,
@@ -783,7 +783,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
                         border: "none",
                         outline: "none",
                         fontSize: 12.5,
-                        color: t.text
+                        color: "var(--text)"
                       }}
                     />
                     <input
@@ -800,10 +800,10 @@ export default function QuickAdd({ defaultProjectId = null }) {
                         cursor: "pointer"
                       }}
                     />
-                    <button type="submit" style={{ padding: "4px 10px", borderRadius: 5, border: "none", background: t.accent, color: "#fff", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+                    <button type="submit" style={{ padding: "4px 10px", borderRadius: 5, border: "none", background: "var(--accent)", color: "#fff", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
                       Vytvořit
                     </button>
-                    <button type="button" onClick={() => setNewProjOpen(false)} style={{ padding: "4px 8px", borderRadius: 5, border: `1px solid ${t.border}`, background: "transparent", color: t.text2, fontSize: 11, cursor: "pointer" }}>
+                    <button type="button" onClick={() => setNewProjOpen(false)} style={{ padding: "4px 8px", borderRadius: 5, border: "1px solid var(--border)", background: "transparent", color: "var(--text-2)", fontSize: 11, cursor: "pointer" }}>
                       Zrušit
                     </button>
                   </form>
@@ -821,9 +821,9 @@ export default function QuickAdd({ defaultProjectId = null }) {
                           borderRadius: 8,
                           fontSize: 12,
                           fontWeight: 500,
-                          border: `1.5px solid ${isActive ? t.accent : t.border}`,
-                          background: isActive ? t.accentBg : "transparent",
-                          color: isActive ? t.accent : t.text2,
+                          border: `1.5px solid ${isActive ? "var(--accent)" : "var(--border)"}`,
+                          background: isActive ? "var(--accent-soft)" : "transparent",
+                          color: isActive ? "var(--accent)" : "var(--text-2)",
                           cursor: "pointer",
                           transition: "all .12s"
                         }}
@@ -846,9 +846,9 @@ export default function QuickAdd({ defaultProjectId = null }) {
                         borderRadius: 8,
                         fontSize: 12,
                         fontWeight: 500,
-                        border: `1.5px solid ${!quickProjects.map(x=>x.id).includes(projectId) ? t.accent : t.border}`,
-                        background: !quickProjects.map(x=>x.id).includes(projectId) ? t.accentBg : t.input,
-                        color: !quickProjects.map(x=>x.id).includes(projectId) ? t.accent : t.text2,
+                        border: `1.5px solid ${!quickProjects.map(x=>x.id).includes(projectId) ? "var(--accent)" : "var(--border)"}`,
+                        background: !quickProjects.map(x=>x.id).includes(projectId) ? "var(--accent-soft)" : "var(--input)",
+                        color: !quickProjects.map(x=>x.id).includes(projectId) ? "var(--accent)" : "var(--text-2)",
                         outline: "none",
                         cursor: "pointer"
                       }}
@@ -881,9 +881,9 @@ export default function QuickAdd({ defaultProjectId = null }) {
                     style={{
                       padding: "6px 12px",
                       borderRadius: 8,
-                      border: `1.5px solid ${dueDate ? t.accent : t.border}`,
-                      background: dueDate ? t.accentBg : t.input,
-                      color: dueDate ? t.accent : t.text,
+                      border: `1.5px solid ${dueDate ? "var(--accent)" : "var(--border)"}`,
+                      background: dueDate ? "var(--accent-soft)" : "var(--input)",
+                      color: dueDate ? "var(--accent)" : "var(--text)",
                       fontSize: 12,
                       outline: "none",
                       fontWeight: 500,
@@ -892,7 +892,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
                   />
                   <button
                     onClick={() => setRelativeDate(0)}
-                    style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, border: `1.5px solid ${t.border}`, background: "transparent", color: t.text2, cursor: "pointer", transition: "background .12s" }}
+                    style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, border: "1.5px solid var(--border)", background: "transparent", color: "var(--text-2)", cursor: "pointer", transition: "background .12s" }}
                     onMouseEnter={(e) => e.currentTarget.style.background = dk ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)"}
                     onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
                   >
@@ -900,7 +900,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
                   </button>
                   <button
                     onClick={() => setRelativeDate(1)}
-                    style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, border: `1.5px solid ${t.border}`, background: "transparent", color: t.text2, cursor: "pointer", transition: "background .12s" }}
+                    style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, border: "1.5px solid var(--border)", background: "transparent", color: "var(--text-2)", cursor: "pointer", transition: "background .12s" }}
                     onMouseEnter={(e) => e.currentTarget.style.background = dk ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)"}
                     onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
                   >
@@ -909,7 +909,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
                   {dueDate && (
                     <button
                       onClick={() => setDueDate("")}
-                      style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, border: "none", background: "transparent", color: t.red, cursor: "pointer" }}
+                      style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, border: "none", background: "transparent", color: "#ef4444", cursor: "pointer" }}
                     >
                       Smazat
                     </button>
@@ -926,7 +926,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
                   {!newTagOpen && (
                     <button
                       onClick={() => setNewTagOpen(true)}
-                      style={{ background: "none", border: "none", color: t.accent, fontSize: 11, fontWeight: 600, display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}
+                      style={{ background: "none", border: "none", color: "var(--accent)", fontSize: 11, fontWeight: 600, display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}
                     >
                       <Icon name="plus" size={10} color="currentColor" strokeWidth={2.5} /> Nový tag
                     </button>
@@ -941,8 +941,8 @@ export default function QuickAdd({ defaultProjectId = null }) {
                       display: "flex",
                       alignItems: "center",
                       gap: 8,
-                      background: t.bg2,
-                      border: `1px solid ${t.border}`,
+                      background: "var(--bg-2)",
+                      border: "1px solid var(--border)",
                       padding: "6px 10px",
                       borderRadius: 8,
                       marginBottom: 8,
@@ -960,7 +960,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
                         border: "none",
                         outline: "none",
                         fontSize: 12.5,
-                        color: t.text
+                        color: "var(--text)"
                       }}
                     />
                     <input
@@ -977,10 +977,10 @@ export default function QuickAdd({ defaultProjectId = null }) {
                         cursor: "pointer"
                       }}
                     />
-                    <button type="submit" style={{ padding: "4px 10px", borderRadius: 5, border: "none", background: t.accent, color: "#fff", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+                    <button type="submit" style={{ padding: "4px 10px", borderRadius: 5, border: "none", background: "var(--accent)", color: "#fff", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
                       Vytvořit
                     </button>
-                    <button type="button" onClick={() => setNewTagOpen(false)} style={{ padding: "4px 8px", borderRadius: 5, border: `1px solid ${t.border}`, background: "transparent", color: t.text2, fontSize: 11, cursor: "pointer" }}>
+                    <button type="button" onClick={() => setNewTagOpen(false)} style={{ padding: "4px 8px", borderRadius: 5, border: "1px solid var(--border)", background: "transparent", color: "var(--text-2)", fontSize: 11, cursor: "pointer" }}>
                       Zrušit
                     </button>
                   </form>
@@ -998,9 +998,9 @@ export default function QuickAdd({ defaultProjectId = null }) {
                           borderRadius: 8,
                           fontSize: 12,
                           fontWeight: 600,
-                          border: `1.5px solid ${active ? tg.color : t.border}`,
+                          border: `1.5px solid ${active ? tg.color : "var(--border)"}`,
                           background: active ? tg.color + "18" : "transparent",
-                          color: active ? tg.color : t.text2,
+                          color: active ? tg.color : "var(--text-2)",
                           cursor: "pointer",
                           transition: "all .12s"
                         }}
@@ -1023,9 +1023,9 @@ export default function QuickAdd({ defaultProjectId = null }) {
                         borderRadius: 8,
                         fontSize: 12,
                         fontWeight: 500,
-                        border: `1.5px solid ${tagIds.some(id => !quickTags.map(x=>x.id).includes(id)) ? t.accent : t.border}`,
-                        background: tagIds.some(id => !quickTags.map(x=>x.id).includes(id)) ? t.accentBg : t.input,
-                        color: tagIds.some(id => !quickTags.map(x=>x.id).includes(id)) ? t.accent : t.text2,
+                        border: `1.5px solid ${tagIds.some(id => !quickTags.map(x=>x.id).includes(id)) ? "var(--accent)" : "var(--border)"}`,
+                        background: tagIds.some(id => !quickTags.map(x=>x.id).includes(id)) ? "var(--accent-soft)" : "var(--input)",
+                        color: tagIds.some(id => !quickTags.map(x=>x.id).includes(id)) ? "var(--accent)" : "var(--text-2)",
                         outline: "none",
                         cursor: "pointer"
                       }}
@@ -1051,7 +1051,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
                 flexDirection: isMobile ? "column" : "row",
                 alignItems: isMobile ? "stretch" : "center",
                 justifyContent: "space-between",
-                borderTop: `1px solid ${t.border}`,
+                borderTop: "1px solid var(--border)",
                 paddingTop: 16,
                 marginTop: 6,
                 gap: isMobile ? 10 : 0,
@@ -1067,10 +1067,10 @@ export default function QuickAdd({ defaultProjectId = null }) {
                   fontSize: 14,
                   fontWeight: 700,
                   border: "none",
-                  background: t.accent,
+                  background: "var(--accent)",
                   color: "#fff",
                   cursor: "pointer",
-                  boxShadow: `0 4px 14px ${t.accentGlow}`,
+                  boxShadow: "0 4px 14px var(--accent-glow)",
                   display: isMobile ? "block" : "none",
                   width: "100%",
                 }}
@@ -1086,9 +1086,9 @@ export default function QuickAdd({ defaultProjectId = null }) {
                   borderRadius: 10,
                   fontSize: 12.5,
                   fontWeight: 600,
-                  border: `1.5px solid ${t.border}`,
+                  border: "1.5px solid var(--border)",
                   background: "transparent",
-                  color: t.text2,
+                  color: "var(--text-2)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: isMobile ? "center" : undefined,
@@ -1114,7 +1114,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
                       fontWeight: 600,
                       border: "none",
                       background: "transparent",
-                      color: t.text3,
+                      color: "var(--text-3)",
                       cursor: "pointer",
                       transition: "color .12s"
                     }}
@@ -1130,10 +1130,10 @@ export default function QuickAdd({ defaultProjectId = null }) {
                       fontSize: 13,
                       fontWeight: 600,
                       border: "none",
-                      background: t.accent,
+                      background: "var(--accent)",
                       color: "#fff",
                       cursor: "pointer",
-                      boxShadow: `0 4px 14px ${t.accentGlow}`,
+                      boxShadow: "0 4px 14px var(--accent-glow)",
                       transition: "all .15s"
                     }}
                     onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-1px)"}

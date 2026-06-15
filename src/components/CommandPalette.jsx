@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext.jsx'
 import Icon from './Icon.jsx'
 
 export default function CommandPalette({ onClose }) {
-  const { t, tasks, projects, tags, notes, addNote, setPage, setTaskDetail, openProject, openNote, isMobile, setSearch, setDashFilter } = useApp();
+  const { tasks, projects, tags, notes, addNote, setPage, setTaskDetail, openProject, openNote, isMobile, setSearch, setDashFilter } = useApp();
   const [query, setQuery] = useState("");
   const [cursor, setCursor] = useState(0);
   // Filter chips: "status" | "priority" | "project" | null
@@ -178,8 +178,8 @@ export default function CommandPalette({ onClose }) {
     { k: "low",    label: "Nízká",  color: "#22c55e" },
   ];
   const projectChips = [
-    { k: "inbox", label: "Inbox", color: t.text3 },
-    ...projects.filter((p) => p.status === "active").slice(0, 3).map((p) => ({ k: p.id, label: p.name, color: t.accent })),
+    { k: "inbox", label: "Inbox", color: "var(--text-3)" },
+    ...projects.filter((p) => p.status === "active").slice(0, 3).map((p) => ({ k: p.id, label: p.name, color: "var(--accent)" })),
   ];
 
   const chipCategories = [
@@ -223,36 +223,36 @@ export default function CommandPalette({ onClose }) {
       >
         {isMobile && (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", paddingTop: 8, paddingBottom: 2, paddingRight: 10 }}>
-            <button onClick={onClose} style={{ background: "none", border: "none", color: t.text3, cursor: "pointer", display: "flex", alignItems: "center", padding: 4 }}>
-              <Icon name="x" size={18} color={t.text3} strokeWidth={2} />
+            <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--text-3)", cursor: "pointer", display: "flex", alignItems: "center", padding: 4 }}>
+              <Icon name="x" size={18} color="var(--text-3)" strokeWidth={2} />
             </button>
           </div>
         )}
 
         {/* Search input */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", borderBottom: `1px solid ${t.border}` }}>
-          <Icon name="search" size={15} color={t.text3} strokeWidth={2} />
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", borderBottom: "1px solid var(--border)" }}>
+          <Icon name="search" size={15} color="var(--text-3)" strokeWidth={2} />
           <input
             ref={inputRef}
             value={query}
             onChange={(e) => { setQuery(e.target.value); setCursor(0); }}
             onKeyDown={handleKey}
             placeholder="Hledat úkoly, projekty, tagy, poznámky…"
-            style={{ flex: 1, border: "none", background: "transparent", outline: "none", color: t.text, fontSize: 15 }}
+            style={{ flex: 1, border: "none", background: "transparent", outline: "none", color: "var(--text)", fontSize: 15 }}
           />
           {query && (
-            <button onClick={() => setQuery("")} style={{ background: "none", border: "none", color: t.text3, cursor: "pointer", display: "flex", alignItems: "center", padding: 2 }}>
-              <Icon name="x" size={13} color={t.text3} strokeWidth={2} />
+            <button onClick={() => setQuery("")} style={{ background: "none", border: "none", color: "var(--text-3)", cursor: "pointer", display: "flex", alignItems: "center", padding: 2 }}>
+              <Icon name="x" size={13} color="var(--text-3)" strokeWidth={2} />
             </button>
           )}
-          {!isMobile && <kbd style={{ fontSize: 12, color: t.text3, background: t.input, border: `1px solid ${t.border}`, borderRadius: 4, padding: "2px 6px" }}>Esc</kbd>}
+          {!isMobile && <kbd style={{ fontSize: 12, color: "var(--text-3)", background: "var(--input)", border: "1px solid var(--border)", borderRadius: 4, padding: "2px 6px" }}>Esc</kbd>}
         </div>
 
         {/* Filter chips */}
-        <div style={{ padding: "8px 14px 6px", borderBottom: `1px solid ${t.border}`, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <div style={{ padding: "8px 14px 6px", borderBottom: "1px solid var(--border)", display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           {chipCategories.map(({ label, chips, type }) => (
             <div key={type} style={{ display: "flex", gap: 4, alignItems: "center" }}>
-              <span style={{ fontSize: 12, color: t.text3, fontWeight: 600, marginRight: 2 }}>{label}:</span>
+              <span style={{ fontSize: 12, color: "var(--text-3)", fontWeight: 600, marginRight: 2 }}>{label}:</span>
               {chips.map((chip) => {
                 const isActive = activeChip === type && chipValue === chip.k;
                 return (
@@ -265,9 +265,9 @@ export default function CommandPalette({ onClose }) {
                     style={{
                       padding: "3px 9px",
                       borderRadius: 20,
-                      border: `1px solid ${isActive ? chip.color : t.border}`,
+                      border: `1px solid ${isActive ? chip.color : "var(--border)"}`,
                       background: isActive ? chip.color + "20" : "transparent",
-                      color: isActive ? chip.color : t.text3,
+                      color: isActive ? chip.color : "var(--text-3)",
                       fontSize: 12,
                       fontWeight: isActive ? 700 : 400,
                       cursor: "pointer",
@@ -284,9 +284,9 @@ export default function CommandPalette({ onClose }) {
           {(activeChip || chipValue) && (
             <button
               onClick={() => { setActiveChip(null); setChipValue(null); }}
-              style={{ padding: "3px 8px", borderRadius: 20, border: `1px solid ${t.border}`, background: "transparent", color: t.text3, fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
+              style={{ padding: "3px 8px", borderRadius: 20, border: "1px solid var(--border)", background: "transparent", color: "var(--text-3)", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
             >
-              <Icon name="x" size={10} color={t.text3} strokeWidth={2} />
+              <Icon name="x" size={10} color="var(--text-3)" strokeWidth={2} />
               Reset
             </button>
           )}
@@ -294,13 +294,13 @@ export default function CommandPalette({ onClose }) {
 
         <div style={{ maxHeight: isMobile ? "52svh" : 340, overflowY: "auto", padding: "8px 0" }}>
           {items.length === 0 ? (
-            <div style={{ padding: "28px 20px", textAlign: "center", color: t.text3, fontSize: 13 }}>
+            <div style={{ padding: "28px 20px", textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
               Nic nenalezeno
             </div>
           ) : (
             groups.map((group) => (
               <div key={group}>
-                <div style={{ padding: "6px 16px 2px", fontSize: 12, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                <div style={{ padding: "6px 16px 2px", fontSize: 12, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
                   {group}
                 </div>
                 {items
@@ -316,8 +316,8 @@ export default function CommandPalette({ onClose }) {
                         style={{
                           width: "100%", display: "flex", alignItems: "center", gap: 10,
                           padding: "8px 16px", border: "none", textAlign: "left", minHeight: 40,
-                          background: isActive ? t.accentBg : "transparent",
-                          borderLeft: isActive ? `2px solid ${t.accent}` : "2px solid transparent",
+                          background: isActive ? "var(--accent-soft)" : "transparent",
+                          borderLeft: isActive ? "2px solid var(--accent)" : "2px solid transparent",
                           cursor: "pointer",
                         }}
                       >
@@ -325,12 +325,12 @@ export default function CommandPalette({ onClose }) {
                           {item.tagColor ? (
                             <span style={{ width: 10, height: 10, borderRadius: "50%", background: item.tagColor, display: "block" }} />
                           ) : (
-                            <Icon name={item.icon} size={14} color={isActive ? t.accent : t.text2} strokeWidth={1.75} />
+                            <Icon name={item.icon} size={14} color={isActive ? "var(--accent)" : "var(--text-2)"} strokeWidth={1.75} />
                           )}
                         </span>
-                        <span style={{ flex: 1, fontSize: 13.5, color: isActive ? t.accent : t.text, fontWeight: isActive ? 500 : 400 }}>{item.label}</span>
-                        {item.meta && !item.tagColor && <span style={{ fontSize: 12, color: t.text3 }}>{item.meta}</span>}
-                        {isActive && <kbd style={{ fontSize: 12, color: t.text3, background: t.input, border: `1px solid ${t.border}`, borderRadius: 4, padding: "1px 5px" }}>↵</kbd>}
+                        <span style={{ flex: 1, fontSize: 13.5, color: isActive ? "var(--accent)" : "var(--text)", fontWeight: isActive ? 500 : 400 }}>{item.label}</span>
+                        {item.meta && !item.tagColor && <span style={{ fontSize: 12, color: "var(--text-3)" }}>{item.meta}</span>}
+                        {isActive && <kbd style={{ fontSize: 12, color: "var(--text-3)", background: "var(--input)", border: "1px solid var(--border)", borderRadius: 4, padding: "1px 5px" }}>↵</kbd>}
                       </button>
                     );
                   })}
@@ -340,10 +340,10 @@ export default function CommandPalette({ onClose }) {
         </div>
 
         {!isMobile && (
-        <div style={{ padding: "8px 16px", borderTop: `1px solid ${t.border}`, display: "flex", gap: 14, fontSize: 12, color: t.text3 }}>
-          <span><kbd style={{ background: t.input, border: `1px solid ${t.border}`, borderRadius: 3, padding: "1px 4px" }}>↑↓</kbd> navigace</span>
-          <span><kbd style={{ background: t.input, border: `1px solid ${t.border}`, borderRadius: 3, padding: "1px 4px" }}>↵</kbd> otevřít</span>
-          <span><kbd style={{ background: t.input, border: `1px solid ${t.border}`, borderRadius: 3, padding: "1px 4px" }}>Esc</kbd> zavřít</span>
+        <div style={{ padding: "8px 16px", borderTop: "1px solid var(--border)", display: "flex", gap: 14, fontSize: 12, color: "var(--text-3)" }}>
+          <span><kbd style={{ background: "var(--input)", border: "1px solid var(--border)", borderRadius: 3, padding: "1px 4px" }}>↑↓</kbd> navigace</span>
+          <span><kbd style={{ background: "var(--input)", border: "1px solid var(--border)", borderRadius: 3, padding: "1px 4px" }}>↵</kbd> otevřít</span>
+          <span><kbd style={{ background: "var(--input)", border: "1px solid var(--border)", borderRadius: 3, padding: "1px 4px" }}>Esc</kbd> zavřít</span>
         </div>
         )}
         {isMobile && <div style={{ height: "env(safe-area-inset-bottom, 0px)" }} />}

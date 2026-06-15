@@ -7,7 +7,7 @@ import { WorkspaceSwitcher } from './Sidebar.jsx'
 import { formatDateKey } from '../locale.js'
 
 export default function MobileNav({ toggleDk }) {
-  const { t, dk, page, setPage, tasks, projects, quickTodos, setCmdOpen, setTaskDetail, userEmail, workspaceMembers, userId, logout } = useApp();
+  const { dk, page, setPage, tasks, projects, quickTodos, setCmdOpen, setTaskDetail, userEmail, workspaceMembers, userId, logout } = useApp();
   const confirm = useConfirm();
   const [moreOpen, setMoreOpen] = useState(false);
 
@@ -61,7 +61,7 @@ export default function MobileNav({ toggleDk }) {
             className="su"
             style={{
               position: "fixed", inset: 0, zIndex: 196,
-              background: t.bg2,
+              background: "var(--bg-2)",
               overflowY: "auto",
               paddingBottom: "env(safe-area-inset-bottom,0px)",
             }}
@@ -71,15 +71,15 @@ export default function MobileNav({ toggleDk }) {
               position: "sticky", top: 0, zIndex: 1,
               display: "flex", alignItems: "center", justifyContent: "space-between",
               padding: "calc(16px + env(safe-area-inset-top, 0px)) 16px 12px",
-              background: t.bg2,
-              borderBottom: `1px solid ${t.border}`,
+              background: "var(--bg-2)",
+              borderBottom: "1px solid var(--border)",
             }}>
-              <span style={{ fontSize: 16, fontWeight: 700, color: t.text }}>Více</span>
+              <span style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>Více</span>
               <button
                 onClick={() => setMoreOpen(false)}
-                style={{ background: t.input, border: `1px solid ${t.border}`, color: t.text2, borderRadius: 8, width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+                style={{ background: "var(--input)", border: "1px solid var(--border)", color: "var(--text-2)", borderRadius: 8, width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
               >
-                <Icon name="x" size={16} color={t.text2} strokeWidth={2} />
+                <Icon name="x" size={16} color="var(--text-2)" strokeWidth={2} />
               </button>
             </div>
             <div style={{ padding: "12px 16px 80px" }}>
@@ -89,13 +89,13 @@ export default function MobileNav({ toggleDk }) {
               onClick={() => { setCmdOpen(true); setMoreOpen(false); }}
               style={{
                 width: "100%", display: "flex", alignItems: "center", gap: 12,
-                padding: "12px 14px", borderRadius: 10, border: `1px solid ${t.border}`,
-                background: t.input, color: t.text2, fontSize: 14, marginBottom: 8,
+                padding: "12px 14px", borderRadius: 10, border: "1px solid var(--border)",
+                background: "var(--input)", color: "var(--text-2)", fontSize: 14, marginBottom: 8,
               }}
             >
-              <Icon name="search" size={16} color={t.text3} />
+              <Icon name="search" size={16} color="var(--text-3)" />
               <span>Hledat… (⌘K)</span>
-              <kbd style={{ marginLeft: "auto", fontSize: 12, color: t.text3, background: t.bg2, border: `1px solid ${t.border}`, borderRadius: 4, padding: "2px 6px" }}>⌘K</kbd>
+              <kbd style={{ marginLeft: "auto", fontSize: 12, color: "var(--text-3)", background: "var(--bg-2)", border: "1px solid var(--border)", borderRadius: 4, padding: "2px 6px" }}>⌘K</kbd>
             </button>
 
             {/* More nav items */}
@@ -105,10 +105,10 @@ export default function MobileNav({ toggleDk }) {
                 return (
                   <button key={n.id} onClick={() => handleNav(n.id)} style={{
                     flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
-                    padding: "12px 8px", borderRadius: 10, border: `1px solid ${act ? t.accent + "50" : t.border}`,
-                    background: act ? t.accentBg : t.card, color: act ? t.accent : t.text2,
+                    padding: "12px 8px", borderRadius: 10, border: act ? "1px solid rgba(var(--accent-rgb),0.31)" : "1px solid var(--border)",
+                    background: act ? "var(--accent-soft)" : "var(--surface)", color: act ? "var(--accent)" : "var(--text-2)",
                   }}>
-                    <Icon name={n.icon} size={20} color={act ? t.accent : t.text2} strokeWidth={act ? 2.25 : 1.75} />
+                    <Icon name={n.icon} size={20} color={act ? "var(--accent)" : "var(--text-2)"} strokeWidth={act ? 2.25 : 1.75} />
                     <span style={{ fontSize: 12, fontWeight: act ? 600 : 400 }}>{n.label}</span>
                   </button>
                 );
@@ -125,21 +125,21 @@ export default function MobileNav({ toggleDk }) {
               onClick={() => handleNav("workspace-settings")}
               style={{
                 width: "100%", display: "flex", alignItems: "center", gap: 12,
-                padding: "10px 14px", borderRadius: 10, border: `1px solid ${t.border}`,
-                background: t.card, color: t.text2, fontSize: 13, marginBottom: 8,
+                padding: "10px 14px", borderRadius: 10, border: "1px solid var(--border)",
+                background: "var(--surface)", color: "var(--text-2)", fontSize: 13, marginBottom: 8,
                 textAlign: "left",
               }}
             >
-              <Icon name="settings" size={16} color={t.text3} strokeWidth={1.75} />
+              <Icon name="settings" size={16} color="var(--text-3)" strokeWidth={1.75} />
               <span>Nastavení</span>
             </button>
 
             {/* Reminders inline panel */}
             {(overdue.length > 0 || dueToday.length > 0 || dueTomorrow.length > 0) && (
-              <div style={{ marginBottom: 8, borderRadius: 10, border: `1px solid ${t.border}`, background: t.card, overflow: "hidden" }}>
+              <div style={{ marginBottom: 8, borderRadius: 10, border: "1px solid var(--border)", background: "var(--surface)", overflow: "hidden" }}>
                 <div style={{ padding: "10px 14px 6px", display: "flex", alignItems: "center", gap: 8 }}>
-                  <Icon name="bell" size={14} color={urgentCount > 0 ? "#f59e0b" : t.text3} strokeWidth={2} />
-                  <span style={{ fontSize: 13, fontWeight: 600, color: t.text }}>Připomínky</span>
+                  <Icon name="bell" size={14} color={urgentCount > 0 ? "#f59e0b" : "var(--text-3)"} strokeWidth={2} />
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Připomínky</span>
                   {urgentCount > 0 && <span style={{ fontSize: 12, fontWeight: 700, background: "#ef4444", color: "#fff", borderRadius: 8, padding: "1px 6px" }}>{urgentCount}</span>}
                 </div>
                 <div style={{ padding: "2px 8px 8px", display: "flex", flexDirection: "column", gap: 2 }}>
@@ -160,14 +160,14 @@ export default function MobileNav({ toggleDk }) {
                           cursor: "pointer", textAlign: "left",
                           minHeight: 44,
                         }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = t.input; }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = "var(--input)"; }}
                         onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
                       >
                         <div style={{ width: 6, height: 6, borderRadius: "50%", background: color, flexShrink: 0 }} />
-                        <span style={{ flex: 1, fontSize: 13, color: t.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        <span style={{ flex: 1, fontSize: 13, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {task.title || "Bez názvu"}
                         </span>
-                        {proj && <span style={{ fontSize: 12, color: t.text3, flexShrink: 0 }}>{proj.name}</span>}
+                        {proj && <span style={{ fontSize: 12, color: "var(--text-3)", flexShrink: 0 }}>{proj.name}</span>}
                       </button>
                     );
                   })}
@@ -176,25 +176,25 @@ export default function MobileNav({ toggleDk }) {
             )}
 
             {/* Dark mode toggle */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: 10, background: t.card, border: `1px solid ${t.border}`, marginBottom: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: 10, background: "var(--surface)", border: "1px solid var(--border)", marginBottom: 8 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <Icon name={dk ? "moon" : "sun"} size={16} color={t.text2} strokeWidth={1.75} />
-                <span style={{ fontSize: 13, color: t.text2 }}>{dk ? "Tmavý režim" : "Světlý režim"}</span>
+                <Icon name={dk ? "moon" : "sun"} size={16} color="var(--text-2)" strokeWidth={1.75} />
+                <span style={{ fontSize: 13, color: "var(--text-2)" }}>{dk ? "Tmavý režim" : "Světlý režim"}</span>
               </div>
               <button onClick={toggleDk} style={{
-                width: 44, height: 24, borderRadius: 999, border: `1px solid ${t.border}`,
-                background: dk ? t.accentBg : t.input, position: "relative", padding: 0, flexShrink: 0,
+                width: 44, height: 24, borderRadius: 999, border: "1px solid var(--border)",
+                background: dk ? "var(--accent-soft)" : "var(--input)", position: "relative", padding: 0, flexShrink: 0,
               }}>
                 <span style={{
                   position: "absolute", top: 2, left: dk ? 22 : 2, width: 20, height: 20,
-                  borderRadius: "50%", background: dk ? t.accent : t.card,
-                  transition: "left .15s ease", boxShadow: t.shadow,
+                  borderRadius: "50%", background: dk ? "var(--accent)" : "var(--surface)",
+                  transition: "left .15s ease", boxShadow: "var(--shadow-sm)",
                 }} />
               </button>
             </div>
 
             {/* Account row */}
-            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 10, background: t.card, border: `1px solid ${t.border}` }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 10, background: "var(--surface)", border: "1px solid var(--border)" }}>
               <div style={{
                 width: 34, height: 34, borderRadius: "50%", flexShrink: 0,
                 background: "linear-gradient(135deg,#3b82f6,#8b5cf6)",
@@ -202,16 +202,16 @@ export default function MobileNav({ toggleDk }) {
                 color: "#fff", fontSize: 13, fontWeight: 700,
               }}>{initials}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: t.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{displayName}</div>
-                <div style={{ fontSize: 12, color: t.text3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{userEmail}</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{displayName}</div>
+                <div style={{ fontSize: 12, color: "var(--text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{userEmail}</div>
               </div>
               <button onClick={() => handleNav("user-profile")} style={{
-                padding: "6px 12px", borderRadius: 8, border: `1px solid ${t.border}`,
-                background: t.input, color: t.text2, fontSize: 12, fontWeight: 500,
+                padding: "6px 12px", borderRadius: 8, border: "1px solid var(--border)",
+                background: "var(--input)", color: "var(--text-2)", fontSize: 12, fontWeight: 500,
               }}>Nastavení</button>
               <button onClick={handleLogout} style={{
-                padding: "6px 10px", borderRadius: 8, border: `1px solid ${t.border}`,
-                background: t.input, color: t.text3, fontSize: 12,
+                padding: "6px 10px", borderRadius: 8, border: "1px solid var(--border)",
+                background: "var(--input)", color: "var(--text-3)", fontSize: 12,
               }}>Odhlásit</button>
             </div>
             </div>{/* end inner padding div */}
@@ -224,7 +224,7 @@ export default function MobileNav({ toggleDk }) {
         className="mobile-nav-bar"
         style={{
           position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 200,
-          background: t.bg2, borderTop: `1px solid ${t.border}`,
+          background: "var(--bg-2)", borderTop: "1px solid var(--border)",
           display: "flex", alignItems: "stretch",
           boxShadow: "0 -4px 20px #0002",
         }}
@@ -239,19 +239,19 @@ export default function MobileNav({ toggleDk }) {
                 flex: 1, display: "flex", flexDirection: "column", alignItems: "center",
                 justifyContent: "center", gap: 3, padding: "6px 4px 3px",
                 border: "none", background: "transparent",
-                color: act ? t.accent : t.text3,
+                color: act ? "var(--accent)" : "var(--text-3)",
                 position: "relative",
               }}
             >
               {n.count > 0 && (
                 <span style={{
                   position: "absolute", top: 6, right: "50%", transform: "translateX(10px)",
-                  minWidth: 16, height: 16, borderRadius: 8, background: t.accent,
+                  minWidth: 16, height: 16, borderRadius: 8, background: "var(--accent)",
                   color: "#fff", fontSize: 9, fontWeight: 700, display: "flex",
                   alignItems: "center", justifyContent: "center", padding: "0 3px",
                 }}>{n.count > 99 ? "99+" : n.count}</span>
               )}
-              <Icon name={n.icon} size={24} color={act ? t.accent : t.text3} strokeWidth={act ? 2.25 : 1.75} />
+              <Icon name={n.icon} size={24} color={act ? "var(--accent)" : "var(--text-3)"} strokeWidth={act ? 2.25 : 1.75} />
               <span style={{ fontSize: 12, fontWeight: act ? 600 : 400, letterSpacing: "0.01em" }}>{n.label}</span>
             </button>
           );
@@ -264,7 +264,7 @@ export default function MobileNav({ toggleDk }) {
             flex: 1, display: "flex", flexDirection: "column", alignItems: "center",
             justifyContent: "center", gap: 3, padding: "6px 4px 3px",
             border: "none", background: "transparent",
-            color: moreOpen ? t.accent : t.text3,
+            color: moreOpen ? "var(--accent)" : "var(--text-3)",
             position: "relative",
           }}
         >
@@ -276,7 +276,7 @@ export default function MobileNav({ toggleDk }) {
               alignItems: "center", justifyContent: "center", padding: "0 3px",
             }}>{urgentCount > 99 ? "99+" : urgentCount}</span>
           )}
-          <Icon name="more-horizontal" size={24} color={moreOpen ? t.accent : t.text3} strokeWidth={moreOpen ? 2.25 : 1.75} />
+          <Icon name="more-horizontal" size={24} color={moreOpen ? "var(--accent)" : "var(--text-3)"} strokeWidth={moreOpen ? 2.25 : 1.75} />
           <span style={{ fontSize: 12, fontWeight: moreOpen ? 600 : 400 }}>Více</span>
         </button>
       </nav>
