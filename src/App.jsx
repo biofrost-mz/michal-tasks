@@ -215,8 +215,13 @@ function PageLoader() {
   );
 }
 
-const PTR_THRESHOLD = 64;
-const PTR_MAX = 96;
+const PTR_THRESHOLD = 110;
+const PTR_MAX = 140;
+const PTR_INDICATOR_MIN = 40;
+
+function getScrollTop() {
+  return document.scrollingElement?.scrollTop ?? window.scrollY ?? 0;
+}
 
 function usePullToRefresh(enabled, onRefresh) {
   const [pullY, setPullY] = useState(0);
@@ -225,6 +230,7 @@ function usePullToRefresh(enabled, onRefresh) {
   const pullingRef = useRef(false);
   const pullYRef = useRef(0);
   const refreshingRef = useRef(false);
+  const canPullRef = useRef(false);
   const onRefreshRef = useRef(onRefresh);
   useEffect(() => {
     onRefreshRef.current = onRefresh;
@@ -233,30 +239,46 @@ function usePullToRefresh(enabled, onRefresh) {
   useEffect(() => {
     if (!enabled) return;
 
-    const onTouchStart = (e) => {
-      if (window.scrollY > 0) return;
-      startYRef.current = e.touches[0].clientY;
+    const reset = () => {
+      startYRef.current = null;
       pullingRef.current = false;
+      pullYRef.current = 0;
+      canPullRef.current = false;
+      setPullY(0);
+    };
+
+    const onTouchStart = (e) => {
+      canPullRef.current = getScrollTop() <= 0;
+      pullingRef.current = false;
+      pullYRef.current = 0;
+      if (!canPullRef.current) { startYRef.current = null; return; }
+      startYRef.current = e.touches[0].clientY;
     };
 
     const onTouchMove = (e) => {
-      if (startYRef.current == null) return;
+      if (!canPullRef.current || startYRef.current == null) return;
+
+      // If the page scrolled down during the gesture, cancel pull-to-refresh
+      if (getScrollTop() > 0) { reset(); return; }
+
       const dy = e.touches[0].clientY - startYRef.current;
-      if (dy <= 0) { startYRef.current = null; return; }
+      if (dy <= 0) { reset(); return; }
+
       pullingRef.current = true;
       const clamped = Math.min(dy, PTR_MAX);
       pullYRef.current = clamped;
-      setPullY(clamped);
+      // Show indicator only after PTR_INDICATOR_MIN to avoid triggering on short scrolls
+      setPullY(clamped > PTR_INDICATOR_MIN ? clamped : 0);
     };
 
     const onTouchEnd = () => {
-      if (!pullingRef.current) { startYRef.current = null; return; }
+      if (!canPullRef.current || !pullingRef.current) { reset(); return; }
       if (pullYRef.current >= PTR_THRESHOLD && !refreshingRef.current) {
         navigator.vibrate?.([15, 20]);
         refreshingRef.current = true;
         setRefreshing(true);
-        setPullY(PTR_THRESHOLD * 0.6);
-        pullYRef.current = PTR_THRESHOLD * 0.6;
+        setPullY(PTR_THRESHOLD * 0.5);
+        pullYRef.current = PTR_THRESHOLD * 0.5;
         Promise.resolve(onRefreshRef.current?.()).finally(() => {
           refreshingRef.current = false;
           setRefreshing(false);
@@ -269,6 +291,7 @@ function usePullToRefresh(enabled, onRefresh) {
       }
       startYRef.current = null;
       pullingRef.current = false;
+      canPullRef.current = false;
     };
 
     window.addEventListener("touchstart", onTouchStart, { passive: true });
@@ -429,7 +452,7 @@ function AppShell() {
         :root{--bottom-nav-content-height:58px;--bottom-nav-height:calc(var(--bottom-nav-content-height) + env(safe-area-inset-bottom, 0px))}
         *{margin:0;padding:0;box-sizing:border-box}
         html,body,#root{width:100%;min-height:100dvh;margin:0;padding:0}
-        html{height:100%;overscroll-behavior-x:none;overflow-x:hidden}
+        html{overscroll-behavior-x:none;overflow-x:hidden}
         body,#root{min-height:100dvh}
         body{overflow-x:hidden}
         input,textarea,select{-webkit-appearance:none;border-radius:0}

@@ -49,7 +49,7 @@ export default function SwipeTaskCard({
     rightProgress,
     leftProgress,
     hasSwipedRef,
-    handlers,
+    bindRef,
   } = useSwipeGesture({
     onSwipeRight: handleSwipeRight,
     onSwipeLeft: handleSwipeLeft,
@@ -113,14 +113,14 @@ export default function SwipeTaskCard({
           </div>
         </div>
 
-        {/* Card */}
+        {/* Card — native swipe listeners via bindRef, React handlers for long-press */}
         <div
-          ref={cardRef}
+          ref={(el) => {
+            cardRef.current = el;
+            bindRef(el);
+          }}
           className={`swipe-card ${hintActive ? "swipe-hint-nudge" : ""}`}
-          {...handlers}
           onPointerDown={(e) => {
-            handlers.onPointerDown(e);
-            // Long-press detection
             longPressStartRef.current = { x: e.clientX, y: e.clientY };
             longPressTimerRef.current = setTimeout(() => {
               navigator.vibrate?.([15, 20]);
@@ -129,8 +129,6 @@ export default function SwipeTaskCard({
             }, LONG_PRESS_MS);
           }}
           onPointerMove={(e) => {
-            handlers.onPointerMove(e);
-            // Cancel long-press if moved too far
             if (longPressStartRef.current) {
               const dx = Math.abs(e.clientX - longPressStartRef.current.x);
               const dy = Math.abs(e.clientY - longPressStartRef.current.y);
@@ -140,15 +138,13 @@ export default function SwipeTaskCard({
               }
             }
           }}
-          onPointerUp={(e) => {
+          onPointerUp={() => {
             clearTimeout(longPressTimerRef.current);
             longPressStartRef.current = null;
-            handlers.onPointerUp(e);
           }}
-          onPointerCancel={(e) => {
+          onPointerCancel={() => {
             clearTimeout(longPressTimerRef.current);
             longPressStartRef.current = null;
-            handlers.onPointerCancel(e);
           }}
           onClick={(e) => {
             if (hasSwipedRef.current) return;

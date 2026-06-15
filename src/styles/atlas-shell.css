@@ -2041,7 +2041,7 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
     max-width: 100%;
     min-width: 0;
     margin: 0;
-    padding: 16px 14px var(--bottom-nav-height, 58px);
+    padding: 16px 14px;
     overflow-x: hidden;
   }
   .content > * {
