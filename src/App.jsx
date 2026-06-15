@@ -426,9 +426,11 @@ function AppShell() {
   return (
     <>
       <style>{`
+        :root{--bottom-nav-height:58px}
         *{margin:0;padding:0;box-sizing:border-box}
-        html,body,#root{width:100%;height:100%}
-        html{overscroll-behavior-x:none;overflow-x:hidden}
+        html,body,#root{width:100%;min-height:100dvh;margin:0;padding:0}
+        html{height:100%;overscroll-behavior-x:none;overflow-x:hidden}
+        body,#root{min-height:100dvh}
         body{overflow-x:hidden}
         input,textarea,select{-webkit-appearance:none;border-radius:0}
         @media(max-width:767px){input,textarea,select{font-size:16px !important}}
@@ -448,7 +450,7 @@ function AppShell() {
         .su{animation:slideUp .28s cubic-bezier(.32,1,.4,1)}
         .pop{animation:pop .2s ease-out}
         .page-enter{animation:pageIn .18s cubic-bezier(.4,0,.2,1)}
-        .mobile-nav-bar{padding-bottom:env(safe-area-inset-bottom,0px)}
+        .mobile-nav-bar{height:var(--bottom-nav-height);min-height:var(--bottom-nav-height);padding-bottom:0;margin-bottom:0}
       `}</style>
 
       <SplashScreen visible={!splashDone} />
@@ -472,7 +474,7 @@ function AppShell() {
         </svg>
       </button>
 
-      <div className={!isMobile ? `app ${collapsed ? "collapsed" : ""}` : undefined} style={isMobile ? { display: "flex", width: "100%", minHeight: "100svh", overflowX: "hidden" } : undefined}>
+      <div className={!isMobile ? `app ${collapsed ? "collapsed" : ""}` : undefined} style={isMobile ? { display: "flex", width: "100%", minHeight: "100dvh", overflowX: "hidden" } : undefined}>
         {!isMobile && <AtlasSidebar collapsed={collapsed} setCollapsed={setCollapsed} />}
         <div className={!isMobile ? "main" : undefined} style={isMobile ? { flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "visible" } : undefined}>
           {!isMobile && <AtlasTopBar />}
@@ -522,7 +524,7 @@ function AppShell() {
           )}
           <main
             {...edgeSwipeHandlers}
-            style={isMobile ? { flex: 1, minWidth: 0, width: "100%", overflow: "visible", position: "relative", paddingBottom: "calc(58px + env(safe-area-inset-bottom, 0px))", overscrollBehaviorY: "auto", WebkitOverflowScrolling: "touch" } : undefined}
+            style={isMobile ? { flex: 1, minWidth: 0, width: "100%", overflow: "visible", position: "relative", paddingBottom: "var(--bottom-nav-height)", overscrollBehaviorY: "auto", WebkitOverflowScrolling: "touch" } : undefined}
           >
             <PageTransition pageKey={page}>
               <Suspense fallback={<PageLoader />}>
