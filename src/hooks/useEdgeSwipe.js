@@ -42,11 +42,15 @@ export function useEdgeSwipe({
     const dy = Math.abs(e.clientY - startYRef.current);
     if (axisRef.current == null && (dx >= 6 || dy >= 6)) {
       axisRef.current = dx >= dy ? "x" : "y";
+      if (axisRef.current === "x") {
+        try { e.currentTarget.setPointerCapture?.(e.pointerId); } catch {}
+      }
     }
   }, []);
 
   const onPointerUp = useCallback((e) => {
     if (!activeRef.current || pointerIdRef.current !== e.pointerId) return;
+    if (startXRef.current == null) { reset(); return; }
     if (axisRef.current === "x") {
       const dx = e.clientX - startXRef.current;
       if (dx <= -swipeThreshold && onSwipeLeft) onSwipeLeft();
