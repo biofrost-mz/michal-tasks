@@ -5,6 +5,7 @@ import { useToast } from './Toast.jsx'
 import Icon from './Icon.jsx'
 import { STATUSES, PRIORITIES } from '../constants.js'
 import { supabase } from '../supabase.js'
+import { SectionLabel } from "./ui/index.js";
 
 export default function QuickAdd({ defaultProjectId = null }) {
   const { t, dk, addTask, projects, tags, addProject, addTag, setTaskDetail, isMobile } = useApp();
@@ -476,9 +477,9 @@ export default function QuickAdd({ defaultProjectId = null }) {
                     boxShadow: "inset 0 1px 2px rgba(0,0,0,0.02)"
                   }}
                 >
-                  <div style={{ fontSize: 11, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "var(--font-mono)" }}>
+                  <SectionLabel>
                     Napište, co je potřeba udělat (AI navrhne parametry)
-                  </div>
+                  </SectionLabel>
 
                   <textarea
                     value={aiInputText}
@@ -584,9 +585,9 @@ export default function QuickAdd({ defaultProjectId = null }) {
             {/* Description Input */}
             <div style={{ display: "flex", flexDirection: "column" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "var(--font-mono)" }}>
+                <SectionLabel>
                   Popis úkolu (volitelný)
-                </div>
+                </SectionLabel>
                 {!description && (
                   <button
                     type="button"
@@ -627,9 +628,9 @@ export default function QuickAdd({ defaultProjectId = null }) {
             <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? 12 : 20 }}>
               {/* Status Section */}
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6, fontFamily: "var(--font-mono)" }}>
+                <SectionLabel style={{ marginBottom: 6 }}>
                   Status
-                </div>
+                </SectionLabel>
                 <div style={{
                   display: isMobile ? "grid" : "flex",
                   gridTemplateColumns: isMobile ? "repeat(2, minmax(0, 1fr))" : undefined,
@@ -672,9 +673,9 @@ export default function QuickAdd({ defaultProjectId = null }) {
 
               {/* Priority Section */}
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6, fontFamily: "var(--font-mono)" }}>
+                <SectionLabel style={{ marginBottom: 6 }}>
                   Priorita
-                </div>
+                </SectionLabel>
                 <div style={{
                   display: isMobile ? "grid" : "flex",
                   gridTemplateColumns: isMobile ? "repeat(2, minmax(0, 1fr))" : undefined,
@@ -742,9 +743,9 @@ export default function QuickAdd({ defaultProjectId = null }) {
               {/* Project Line */}
               <div>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "var(--font-mono)" }}>
+                  <SectionLabel>
                     Projekt
-                  </div>
+                  </SectionLabel>
                   {!newProjOpen && (
                     <button
                       onClick={() => setNewProjOpen(true)}
@@ -867,9 +868,9 @@ export default function QuickAdd({ defaultProjectId = null }) {
 
               {/* Termín / Due Date */}
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6, fontFamily: "var(--font-mono)" }}>
+                <SectionLabel style={{ marginBottom: 6 }}>
                   Termín
-                </div>
+                </SectionLabel>
                 <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                   <input
                     type="date"
@@ -919,9 +920,9 @@ export default function QuickAdd({ defaultProjectId = null }) {
               {/* Tagy / Tags */}
               <div>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: t.text3, textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "var(--font-mono)" }}>
+                  <SectionLabel>
                     Tagy
-                  </div>
+                  </SectionLabel>
                   {!newTagOpen && (
                     <button
                       onClick={() => setNewTagOpen(true)}
