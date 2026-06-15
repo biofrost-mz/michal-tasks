@@ -1,5 +1,5 @@
 // src/components/OnboardingWizard.jsx
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useApp } from "../context/AppContext.jsx";
 import { useToast } from "./Toast.jsx";
 import Icon from "./Icon.jsx";
@@ -105,12 +105,17 @@ export default function OnboardingWizard() {
     const handler = (e) => { if (e.key === "Escape") close(); };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, []);
+  }, [close]);
 
-  function close() {
+  const close = useCallback(() => {
     localStorage.setItem(LS_KEY, "1");
     window.dispatchEvent(new Event("mt3:onboarding_done"));
-  }
+    supabase
+      .from("user_profiles")
+      .update({ onboarded_at: new Date().toISOString() })
+      .eq("id", userId)
+      .then(() => {});
+  }, [userId]);
 
   async function handleStep1Continue() {
     setDk(theme === "dark");

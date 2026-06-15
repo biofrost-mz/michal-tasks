@@ -424,6 +424,16 @@ export function AppProvider({ children }) {
           { onConflict: "id", ignoreDuplicates: false }
         );
         if (cancelled) return;
+        const { data: profileRow } = await supabase
+          .from("user_profiles")
+          .select("onboarded_at")
+          .eq("id", userId)
+          .single();
+        if (!cancelled && profileRow?.onboarded_at) {
+          localStorage.setItem("mt3:onboarding_done", "1");
+          window.dispatchEvent(new Event("mt3:onboarding_done"));
+        }
+        if (cancelled) return;
         const personalWsId = await workspaceService.ensurePersonalWorkspace(userId);
         if (cancelled) return;
         const wsList = await workspaceService.fetchWorkspaces(userId);
