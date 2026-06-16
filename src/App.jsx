@@ -215,9 +215,9 @@ function PageLoader() {
   );
 }
 
-const PTR_THRESHOLD = 110;
-const PTR_MAX = 140;
-const PTR_INDICATOR_MIN = 40;
+const PTR_THRESHOLD = 160;
+const PTR_MAX = 200;
+const PTR_INDICATOR_MIN = 65;
 
 function getScrollTop() {
   return document.scrollingElement?.scrollTop ?? window.scrollY ?? 0;
@@ -478,7 +478,7 @@ function AppShell() {
         .su{animation:slideUp .28s cubic-bezier(.32,1,.4,1)}
         .pop{animation:pop .2s ease-out}
         .page-enter{animation:pageIn .18s cubic-bezier(.4,0,.2,1)}
-        .mobile-nav-bar{height:var(--bottom-nav-height);min-height:var(--bottom-nav-height);padding-bottom:env(safe-area-inset-bottom, 0px);margin-bottom:0}
+        .mobile-nav-bar{height:var(--bottom-nav-content-height);min-height:var(--bottom-nav-content-height);padding-bottom:0;margin-bottom:0;bottom:env(safe-area-inset-bottom,0px)}
       `}</style>
 
       <SplashScreen visible={!splashDone} />
@@ -552,7 +552,7 @@ function AppShell() {
           )}
           <main
             {...edgeSwipeHandlers}
-            style={isMobile ? { flex: 1, minWidth: 0, width: "100%", overflow: "visible", position: "relative", paddingBottom: "var(--bottom-nav-height)", overscrollBehaviorY: "auto", WebkitOverflowScrolling: "touch" } : undefined}
+            style={isMobile ? { flex: 1, minWidth: 0, width: "100%", overflow: "visible", position: "relative", paddingBottom: "calc(var(--bottom-nav-content-height) + env(safe-area-inset-bottom, 0px))", overscrollBehaviorY: "auto", WebkitOverflowScrolling: "touch" } : undefined}
           >
             <PageTransition pageKey={page}>
               <Suspense fallback={<PageLoader />}>

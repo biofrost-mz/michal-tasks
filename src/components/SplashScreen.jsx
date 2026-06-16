@@ -32,8 +32,6 @@ export default function SplashScreen({ visible }) {
     >
       <div className="splash-content">
         <div className="splash-logo-wrap">
-          <div className="splash-pulse" />
-          <div className="splash-pulse" />
           <img
             src="/icon-zentero.svg"
             alt="Zentero"

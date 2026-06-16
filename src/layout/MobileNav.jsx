@@ -223,11 +223,11 @@ export default function MobileNav({ toggleDk }) {
       <nav
         className="mobile-nav-bar"
         style={{
-          position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 200,
+          position: "fixed", bottom: "env(safe-area-inset-bottom, 0px)", left: 0, right: 0, zIndex: 200,
           background: "var(--bg-2)", borderTop: "1px solid var(--border)",
           display: "flex", alignItems: "stretch",
-          height: "var(--bottom-nav-height)", minHeight: "var(--bottom-nav-height)",
-          paddingBottom: "env(safe-area-inset-bottom, 0px)", marginBottom: 0,
+          height: "var(--bottom-nav-content-height)", minHeight: "var(--bottom-nav-content-height)",
+          paddingBottom: 0, marginBottom: 0,
           boxSizing: "border-box",
           boxShadow: "0 -4px 20px #0002",
         }}

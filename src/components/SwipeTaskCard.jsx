@@ -118,47 +118,51 @@ export default function SwipeTaskCard({
           </div>
         </div>
 
-        {/* Card — swipe handlers (React synthetic) composed with long-press detection */}
+        {/* Card — visual-only transform container; handlers live on .tcard (actual touch target) */}
         <div
-          ref={cardRef}
           className={`swipe-card ${hintActive ? "swipe-hint-nudge" : ""}`}
-          onPointerDown={(e) => {
-            handlers.onPointerDown(e);
-            longPressStartRef.current = { x: e.clientX, y: e.clientY };
-            longPressTimerRef.current = setTimeout(() => {
-              navigator.vibrate?.([15, 20]);
-              setContextOpen(true);
-              longPressStartRef.current = null;
-            }, LONG_PRESS_MS);
-          }}
-          onPointerMove={(e) => {
-            handlers.onPointerMove(e);
-            if (longPressStartRef.current) {
-              const dx = Math.abs(e.clientX - longPressStartRef.current.x);
-              const dy = Math.abs(e.clientY - longPressStartRef.current.y);
-              if (dx > LONG_PRESS_MOVE_LIMIT || dy > LONG_PRESS_MOVE_LIMIT) {
-                clearLongPress();
-              }
-            }
-          }}
-          onPointerUp={(e) => {
-            clearLongPress();
-            handlers.onPointerUp(e);
-          }}
-          onPointerCancel={(e) => {
-            clearLongPress();
-            handlers.onPointerCancel(e);
-          }}
-          onLostPointerCapture={(e) => handlers.onLostPointerCapture(e)}
-          onClick={(e) => {
-            if (hasSwipedRef.current) return;
-            if (Math.abs(offsetX) > 5) return;
-            onClick?.(e);
-          }}
-          onMouseEnter={onMouseEnter}
-          style={focused ? { outline: "1px solid var(--accent)", outlineOffset: -1 } : undefined}
+          style={{ pointerEvents: "none" }}
         >
-          {children}
+          {React.cloneElement(children, {
+            ref: cardRef,
+            onPointerDown: (e) => {
+              handlers.onPointerDown(e);
+              longPressStartRef.current = { x: e.clientX, y: e.clientY };
+              longPressTimerRef.current = setTimeout(() => {
+                navigator.vibrate?.([15, 20]);
+                setContextOpen(true);
+                longPressStartRef.current = null;
+              }, LONG_PRESS_MS);
+            },
+            onPointerMove: (e) => {
+              handlers.onPointerMove(e);
+              if (longPressStartRef.current) {
+                const dx = Math.abs(e.clientX - longPressStartRef.current.x);
+                const dy = Math.abs(e.clientY - longPressStartRef.current.y);
+                if (dx > LONG_PRESS_MOVE_LIMIT || dy > LONG_PRESS_MOVE_LIMIT) {
+                  clearLongPress();
+                }
+              }
+            },
+            onPointerUp: (e) => {
+              clearLongPress();
+              handlers.onPointerUp(e);
+            },
+            onPointerCancel: (e) => {
+              clearLongPress();
+              handlers.onPointerCancel(e);
+            },
+            onLostPointerCapture: (e) => handlers.onLostPointerCapture(e),
+            onClick: (e) => {
+              if (hasSwipedRef.current) return;
+              if (Math.abs(offsetX) > 5) return;
+              onClick?.(e);
+            },
+            onMouseEnter,
+            style: focused
+              ? { ...children.props.style, outline: "1px solid var(--accent)", outlineOffset: -1 }
+              : children.props.style,
+          })}
         </div>
       </div>
 
