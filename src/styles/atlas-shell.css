@@ -3393,6 +3393,9 @@ body, p, li, td, th {
   transition: transform .32s cubic-bezier(.34,1.56,.64,1), opacity .18s ease;
   will-change: transform;
 }
+/* iOS reserves horizontal panning for JS only when the actual touch target
+   (the .tcard the finger lands on, passed in as children) also opts in. */
+.swipe-card .tcard { touch-action: pan-y; }
 .swipe-card:hover,
 .swipe-card:active {
   transform: translateX(var(--drag-x));

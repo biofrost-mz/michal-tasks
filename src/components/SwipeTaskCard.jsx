@@ -49,11 +49,16 @@ export default function SwipeTaskCard({
     rightProgress,
     leftProgress,
     hasSwipedRef,
-    bindRef,
+    handlers,
   } = useSwipeGesture({
     onSwipeRight: handleSwipeRight,
     onSwipeLeft: handleSwipeLeft,
   });
+
+  const clearLongPress = () => {
+    clearTimeout(longPressTimerRef.current);
+    longPressStartRef.current = null;
+  };
 
   const scaleR = 0.72 + rightProgress * 0.28 + (pastRightThreshold ? 0.04 : 0);
   const scaleL = 0.72 + leftProgress * 0.28 + (pastLeftThreshold ? 0.04 : 0);
@@ -113,14 +118,12 @@ export default function SwipeTaskCard({
           </div>
         </div>
 
-        {/* Card — native swipe listeners via bindRef, React handlers for long-press */}
+        {/* Card — swipe handlers (React synthetic) composed with long-press detection */}
         <div
-          ref={(el) => {
-            cardRef.current = el;
-            bindRef(el);
-          }}
+          ref={cardRef}
           className={`swipe-card ${hintActive ? "swipe-hint-nudge" : ""}`}
           onPointerDown={(e) => {
+            handlers.onPointerDown(e);
             longPressStartRef.current = { x: e.clientX, y: e.clientY };
             longPressTimerRef.current = setTimeout(() => {
               navigator.vibrate?.([15, 20]);
@@ -129,23 +132,24 @@ export default function SwipeTaskCard({
             }, LONG_PRESS_MS);
           }}
           onPointerMove={(e) => {
+            handlers.onPointerMove(e);
             if (longPressStartRef.current) {
               const dx = Math.abs(e.clientX - longPressStartRef.current.x);
               const dy = Math.abs(e.clientY - longPressStartRef.current.y);
               if (dx > LONG_PRESS_MOVE_LIMIT || dy > LONG_PRESS_MOVE_LIMIT) {
-                clearTimeout(longPressTimerRef.current);
-                longPressStartRef.current = null;
+                clearLongPress();
               }
             }
           }}
-          onPointerUp={() => {
-            clearTimeout(longPressTimerRef.current);
-            longPressStartRef.current = null;
+          onPointerUp={(e) => {
+            clearLongPress();
+            handlers.onPointerUp(e);
           }}
-          onPointerCancel={() => {
-            clearTimeout(longPressTimerRef.current);
-            longPressStartRef.current = null;
+          onPointerCancel={(e) => {
+            clearLongPress();
+            handlers.onPointerCancel(e);
           }}
+          onLostPointerCapture={(e) => handlers.onLostPointerCapture(e)}
           onClick={(e) => {
             if (hasSwipedRef.current) return;
             if (Math.abs(offsetX) > 5) return;
