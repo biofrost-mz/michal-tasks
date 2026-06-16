@@ -369,6 +369,11 @@ function AppShell() {
   }, [page]);
 
   useEffect(() => {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.content = dk ? '#0e1118' : '#ffffff';
+  }, [dk]);
+
+  useEffect(() => {
     if (!loaded) return;
     const params = new URLSearchParams(window.location.search);
     const taskId = params.get("task");

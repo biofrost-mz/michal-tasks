@@ -2020,6 +2020,9 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
 #root { min-height: 100dvh; }
 
 @media (max-width: 767px) {
+  html, body {
+    background: var(--bg-2);
+  }
   html, body, #root {
     min-height: 100dvh;
     margin: 0;
@@ -3396,6 +3399,10 @@ body, p, li, td, th {
 /* iOS reserves horizontal panning for JS only when the actual touch target
    (the .tcard the finger lands on, passed in as children) also opts in. */
 .swipe-card .tcard { touch-action: pan-y; }
+.swipe-card .tcard:hover,
+.swipe-card .tcard:active {
+  transform: none;
+}
 .swipe-card:hover,
 .swipe-card:active {
   transform: translateX(var(--drag-x));
