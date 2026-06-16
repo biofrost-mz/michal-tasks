@@ -25,6 +25,7 @@ export default function SwipeTaskCard({
   const cardRef = useRef(null);
   const longPressTimerRef = useRef(null);
   const longPressStartRef = useRef(null);
+  const longPressDidFireRef = useRef(false);
 
   const handleSwipeRight = () => {
     if (task.status === "done") return;
@@ -58,6 +59,7 @@ export default function SwipeTaskCard({
   const clearLongPress = () => {
     clearTimeout(longPressTimerRef.current);
     longPressStartRef.current = null;
+    longPressDidFireRef.current = false;
   };
 
   const scaleR = 0.72 + rightProgress * 0.28 + (pastRightThreshold ? 0.04 : 0);
@@ -132,6 +134,7 @@ export default function SwipeTaskCard({
             longPressStartRef.current = { x: e.clientX, y: e.clientY };
             longPressTimerRef.current = setTimeout(() => {
               navigator.vibrate?.([15, 20]);
+              longPressDidFireRef.current = true;
               setContextOpen(true);
               longPressStartRef.current = null;
             }, LONG_PRESS_MS);
@@ -156,6 +159,7 @@ export default function SwipeTaskCard({
           },
           onLostPointerCapture: (e) => handlers.onLostPointerCapture(e),
           onClick: (e) => {
+            if (longPressDidFireRef.current) { longPressDidFireRef.current = false; return; }
             if (hasSwipedRef.current) return;
             if (Math.abs(offsetX) > 5) return;
             onClick?.(e);
