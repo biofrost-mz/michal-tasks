@@ -379,6 +379,7 @@ export default function DashboardPage() {
     setTasksPageFilter,
     userId,
     workspaceMembers,
+    activeWorkspaceId,
   } = useApp();
 
   // Jméno přihlášeného uživatele pro pozdrav (ne natvrdo)
@@ -395,6 +396,33 @@ export default function DashboardPage() {
   const [expandedSections, setExpandedSections] = useState({});
   const [hoveredDay, setHoveredDay] = useState(null);
   const [showAiTasks, setShowAiTasks] = useState(!isMobile);
+  const [activeModel, setActiveModel] = useState(() => {
+    if (!userId || !activeWorkspaceId) return "Gemini 1.5 Flash";
+    const today = new Date().toISOString().slice(0, 10);
+    const key = `ai-plan:${userId}:${activeWorkspaceId}:${today}`;
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed?.activeModel) {
+          return parsed.activeModel;
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to load cached plan model:", e);
+    }
+    return "Gemini 1.5 Flash";
+  });
+
+  useEffect(() => {
+    const handleUpdate = (e) => {
+      if (e.detail?.activeModel) {
+        setActiveModel(e.detail.activeModel);
+      }
+    };
+    window.addEventListener("zentero:daily_plan_updated", handleUpdate);
+    return () => window.removeEventListener("zentero:daily_plan_updated", handleUpdate);
+  }, []);
 
   const groupBy = "status";
   const [sortBy, setSortBy] = useState("default"); // "default", "dueDate", "priority", "title"
@@ -761,7 +789,7 @@ export default function DashboardPage() {
                   : <>Mám pro tebe <span className="num">{aiSuggestions.length}</span> {aiSuggestions.length === 1 ? "návrh" : aiSuggestions.length <= 4 ? "návrhy" : "návrhů"}, jak začít dnešní den.</>}
               </div>
               <div className="ai-text-sub">
-                {activeTasks.length} aktivních · {overdue.length} po termínu · streak {streak.current} dní · Gemini 2.0
+                {activeTasks.length} aktivních · {overdue.length} po termínu · streak {streak.current} dní · {activeModel}
               </div>
             </div>
             <div style={{ gridColumn: isMobile ? "1 / -1" : "auto", display: "flex", flexDirection: isMobile ? "column" : "row", gap: 8, width: isMobile ? "100%" : "auto" }}>

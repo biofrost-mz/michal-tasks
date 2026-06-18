@@ -1066,7 +1066,7 @@ export default function AuthGate({ children }) {
         zIndex: 1,
       }}>
         <a
-          href="https://zichmicha.cz"
+          href="https://zichmichal.cz"
           target="_blank"
           rel="noopener noreferrer"
           style={{
@@ -1082,7 +1082,7 @@ export default function AuthGate({ children }) {
           onMouseLeave={e => e.currentTarget.style.opacity = "1"}
         >
           <MZLogo size={18} />
-          <span style={{ fontWeight: "500" }}>Vytvořil Michal Zich · zichmicha.cz</span>
+          <span style={{ fontWeight: "500" }}>Vytvořil Michal Zich · zichmichal.cz</span>
         </a>
       </footer>
     </div>

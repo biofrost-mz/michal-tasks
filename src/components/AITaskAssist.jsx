@@ -4,7 +4,8 @@ import { useToast } from './Toast.jsx'
 import Icon from './Icon.jsx'
 import { supabase } from '../supabase.js'
 import { getAiErrorMessage, parseAiJsonResult } from '../utils/aiErrors.js'
-import { SectionLabel } from "./ui/index.js";
+import { SectionLabel } from "./ui/index.js"
+import { renderMarkdown, sanitizeHtml } from '../utils.js'
 
 const ACTIONS = [
   { id: "optimize",    icon: "zap",          label: "Optimalizovat", desc: "Optimalizuj název, projekt, tagy a podúkoly najednou" },
@@ -33,6 +34,7 @@ export default function AITaskAssist({ task, onTitleChange }) {
   const [result, setResult] = useState(null);
   const [activeAction, setActiveAction] = useState(null);
   const [notice, setNotice] = useState(null);
+  const [activeModel, setActiveModel] = useState(null);
 
   const availableTags = tags.map((tg) => tg.name);
   const availableProjects = projects.map((p) => p.name);
@@ -62,6 +64,7 @@ export default function AITaskAssist({ task, onTitleChange }) {
         }
 
         setResult(data.result);
+        setActiveModel(data?.meta?.model || "Gemini 1.5 Flash");
         setNotice({ type: "success", severity: "info", title: "AI návrh připraven", message: "Zkontroluj návrh a potvrď použití." });
       } else {
         const { data, error } = await supabase.functions.invoke("ai-task-assist", {
@@ -112,6 +115,7 @@ export default function AITaskAssist({ task, onTitleChange }) {
           setResult(raw);
         }
 
+        setActiveModel(data?.meta?.model || "Gemini 1.5 Flash");
         setNotice({ type: "success", severity: "info", title: "AI návrh připraven", message: "Zkontroluj návrh a potvrď použití." });
       }
     } catch (e) {
@@ -285,6 +289,12 @@ export default function AITaskAssist({ task, onTitleChange }) {
               borderRadius: 10, padding: "10px 12px",
             }}>
               <ResultView action={activeAction} result={result} />
+              {activeModel && (
+                <div style={{ fontSize: 10.5, color: "var(--text-3)", marginTop: 8, display: "flex", alignItems: "center", gap: 4, justifyContent: "flex-end" }}>
+                  <span>🤖</span>
+                  <span>Model: {activeModel}</span>
+                </div>
+              )}
               <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
                 <button
                   onClick={apply}
@@ -422,7 +432,10 @@ function ResultView({ action, result }) {
         <SectionLabel style={{ marginBottom: 6 }}>
           Navržený popis
         </SectionLabel>
-        <div style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.5 }}>{result}</div>
+        <div
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(renderMarkdown(result)) }}
+          style={{ fontSize: 13, color: "var(--text)", lineHeight: 1.5 }}
+        />
       </div>
     );
   }

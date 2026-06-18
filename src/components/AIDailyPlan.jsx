@@ -23,9 +23,9 @@ function loadCachedPlan(userId, workspaceId) {
   }
 }
 
-function savePlanToCache(userId, workspaceId, plan, generatedAt) {
+function savePlanToCache(userId, workspaceId, plan, generatedAt, activeModel) {
   try {
-    localStorage.setItem(getCacheKey(userId, workspaceId), JSON.stringify({ plan, generatedAt }));
+    localStorage.setItem(getCacheKey(userId, workspaceId), JSON.stringify({ plan, generatedAt, activeModel }));
   } catch { /* ignore storage errors */ }
 }
 
@@ -75,9 +75,20 @@ export default function AIDailyPlan() {
 
   const [plan, setPlan] = useState(null);       // string | null
   const [generatedAt, setGeneratedAt] = useState(null);
+  const [activeModel, setActiveModel] = useState("Gemini 1.5 Flash");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [open, setOpen] = useState(true);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback((e) => {
+    e.stopPropagation();
+    if (!plan) return;
+    navigator.clipboard.writeText(plan).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }, [plan]);
 
   const activeTasks = tasks.filter((x) => x.status !== "done");
 
@@ -88,6 +99,10 @@ export default function AIDailyPlan() {
     if (cached) {
       setPlan(cached.plan);
       setGeneratedAt(cached.generatedAt);
+      if (cached.activeModel) {
+        setActiveModel(cached.activeModel);
+        window.dispatchEvent(new CustomEvent("zentero:daily_plan_updated", { detail: { activeModel: cached.activeModel } }));
+      }
     }
   }, [userId, activeWorkspaceId]);
 
@@ -117,7 +132,10 @@ export default function AIDailyPlan() {
 
       setPlan(data.plan);
       setGeneratedAt(data.generatedAt);
-      savePlanToCache(userId, activeWorkspaceId, data.plan, data.generatedAt);
+      const model = data.meta?.model || "Gemini 1.5 Flash";
+      setActiveModel(model);
+      savePlanToCache(userId, activeWorkspaceId, data.plan, data.generatedAt, model);
+      window.dispatchEvent(new CustomEvent("zentero:daily_plan_updated", { detail: { activeModel: model } }));
     } catch (e) {
       setError(getDailyPlanError(e));
     } finally {
@@ -169,25 +187,40 @@ export default function AIDailyPlan() {
             }}>AI</span>
           </div>
           <div style={{ fontSize: 12, color: "var(--text-3)", marginTop: 1 }}>
-            {loading ? "Přemýšlím…" : plan ? `Vygenerováno v ${timeLabel}` : "Co dnes udělat jako první?"}
+            {loading ? "Přemýšlím…" : plan ? `Vygenerováno v ${timeLabel} pomocí ${activeModel}` : "Co dnes udělat jako první?"}
           </div>
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           {plan && !loading && (
-            <button
-              onClick={(e) => { e.stopPropagation(); generate(); }}
-              title="Obnovit plán"
-              style={{
-                display: "flex", alignItems: "center", gap: 4,
-                padding: "4px 9px", borderRadius: 6, border: "1px solid var(--border)",
-                background: "var(--input)", color: "var(--text-3)", fontSize: 12, cursor: "pointer",
-                fontWeight: 500,
-              }}
-            >
-              <Icon name="refresh-cw" size={11} color="var(--text-3)" strokeWidth={2} />
-              Obnovit
-            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <button
+                onClick={handleCopy}
+                title="Kopírovat plán jako Markdown"
+                style={{
+                  display: "flex", alignItems: "center", gap: 4,
+                  padding: "4px 9px", borderRadius: 6, border: "1px solid var(--border)",
+                  background: "var(--input)", color: copied ? "var(--accent)" : "var(--text-3)", fontSize: 12, cursor: "pointer",
+                  fontWeight: 500, transition: "color .2s",
+                }}
+              >
+                <Icon name={copied ? "check" : "copy"} size={11} color={copied ? "var(--accent)" : "var(--text-3)"} strokeWidth={1.8} />
+                {copied ? "Zkopírováno" : "Kopírovat"}
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); generate(); }}
+                title="Obnovit plán"
+                style={{
+                  display: "flex", alignItems: "center", gap: 4,
+                  padding: "4px 9px", borderRadius: 6, border: "1px solid var(--border)",
+                  background: "var(--input)", color: "var(--text-3)", fontSize: 12, cursor: "pointer",
+                  fontWeight: 500,
+                }}
+              >
+                <Icon name="refresh-cw" size={11} color="var(--text-3)" strokeWidth={2} />
+                Obnovit
+              </button>
+            </div>
           )}
           <Icon
             name={open ? "chevron-up" : "chevron-down"}

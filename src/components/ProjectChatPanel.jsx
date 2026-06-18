@@ -4,6 +4,7 @@ import { useToast } from './Toast.jsx'
 import Icon from './Icon.jsx'
 import { supabase } from '../supabase.js'
 import { fetchProjectChat, insertProjectChat, clearProjectChat } from '../services/projectChatService.js'
+import { renderMarkdown, sanitizeHtml } from '../utils.js'
 
 const CHAT_STORAGE_KEY = (projectId) => `mt3:chat:${projectId}`;
 const MAX_MESSAGES = 50;
@@ -32,6 +33,9 @@ export default function ProjectChatPanel({ project, tasks, notes, onClose }) {
   const { isMobile, activeWorkspaceId, userId } = useApp();
   const toast = useToast();
   const [messages, setMessages] = useState(() => loadMessages(project.id));
+  const [activeModel, setActiveModel] = useState(() => {
+    return localStorage.getItem(`mt3:chat-model:${project.id}`) || "Gemini 1.5 Flash";
+  });
 
   // Uloží zprávu do DB (sdílená historie). Tiše ignoruje chyby —
   // bez migrace / offline zůstává jen localStorage níže.
@@ -114,6 +118,11 @@ export default function ProjectChatPanel({ project, tasks, notes, onClose }) {
         return;
       }
 
+      if (data?.meta?.model) {
+        setActiveModel(data.meta.model);
+        localStorage.setItem(`mt3:chat-model:${project.id}`, data.meta.model);
+      }
+
       const aiMsg = { role: "assistant", content: data.reply, ts: Date.now() };
       const withReply = [...next, aiMsg];
       setMessages(withReply);
@@ -186,7 +195,7 @@ export default function ProjectChatPanel({ project, tasks, notes, onClose }) {
             <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               Chat — {project.name}
             </div>
-            <div style={{ fontSize: 11, color: "var(--text-3)" }}>Gemini 2.0 Flash · {tasks.length} úkolů</div>
+            <div style={{ fontSize: 11, color: "var(--text-3)" }}>{activeModel} · {tasks.length} úkolů</div>
           </div>
           {messages.length > 0 && (
             <button
@@ -251,12 +260,14 @@ export default function ProjectChatPanel({ project, tasks, notes, onClose }) {
                   color: m.role === "user" ? "#fff" : "var(--text)",
                   fontSize: 13,
                   lineHeight: 1.5,
-                  whiteSpace: "pre-wrap",
+                  whiteSpace: m.role === "user" ? "pre-wrap" : "normal",
                   wordBreak: "break-word",
                 }}
-              >
-                {m.content}
-              </div>
+                {...(m.role === "assistant"
+                  ? { dangerouslySetInnerHTML: { __html: sanitizeHtml(renderMarkdown(m.content)) } }
+                  : { children: m.content }
+                )}
+              />
             </div>
           ))}
 

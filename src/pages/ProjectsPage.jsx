@@ -910,6 +910,7 @@ function AIProjectGeneratorModal({ onClose }) {
   const [projectColor, setProjectColor] = useState("#3b82f6");
   const [tasksList, setTasksList] = useState([]);
   const [expandedTasks, setExpandedTasks] = useState({});
+  const [activeModel, setActiveModel] = useState("Gemini 1.5 Flash");
 
   // Loading text sequence
   useEffect(() => {
@@ -956,6 +957,7 @@ function AIProjectGeneratorModal({ onClose }) {
           selected: true, // defaults to checked
         }))
       );
+      setActiveModel(data.meta?.model || "Gemini 1.5 Flash");
       setStep("preview");
     } catch (err) {
       console.error(err);
@@ -1653,7 +1655,7 @@ function AIProjectGeneratorModal({ onClose }) {
               <div className="ai-preview-main">
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
                   <h3 style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", margin: 0 }}>Navržený plán úkolů ({tasksList.filter((t) => t.selected).length})</h3>
-                  <span style={{ fontSize: 12, color: "var(--text-3)" }}>Vyberte úkoly k vytvoření</span>
+                  <span style={{ fontSize: 12, color: "var(--text-3)" }}>Generováno pomocí {activeModel}</span>
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 12, maxHeight: "50vh", overflowY: "auto", paddingRight: "4px" }}>
