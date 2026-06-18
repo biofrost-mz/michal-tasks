@@ -319,7 +319,7 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
         @media(max-width:767px){
           .workspace-settings-page{
             width:100%;
-            padding:14px 14px calc(88px + max(6px, env(safe-area-inset-bottom, 0px)))!important;
+            padding:14px 14px calc(88px + max(6px, var(--safe-area-inset-bottom, 0px)))!important;
             max-width:none!important;
             overflow-x:clip;
           }
@@ -900,13 +900,13 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
         <>
           <div
             onClick={() => setPendingAction(null)}
-            style={{ position: 'fixed', inset: 0, zIndex: 249, background: 'rgba(0,0,0,0.45)' }}
+            style={{ position: 'fixed', inset: 0, zIndex: 99998, background: 'rgba(0,0,0,0.45)' }}
           />
           <div
             style={{
-              position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 250,
+              position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 99999,
               background: 'var(--bg-2)', borderRadius: '16px 16px 0 0',
-              paddingBottom: 'calc(20px + env(safe-area-inset-bottom, 0px))',
+              paddingBottom: 'calc(20px + var(--safe-area-inset-bottom, 0px))',
               boxShadow: 'var(--shadow-lg)',
             }}
           >

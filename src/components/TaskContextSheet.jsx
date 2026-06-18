@@ -15,11 +15,11 @@ export default function TaskContextSheet({ task, onClose, onEdit }) {
     const otherProjects = projects.filter((p) => p.status !== "deleted" && p.id !== task.projectId);
     return (
       <>
-        <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 249, background: "rgba(0,0,0,0.45)" }} />
+        <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 99998, background: "rgba(0,0,0,0.45)" }} />
         <div className="su" style={{
-          position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 250,
+          position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 99999,
           background: "var(--bg-2)", borderRadius: "16px 16px 0 0",
-          paddingBottom: "calc(20px + env(safe-area-inset-bottom, 0px))",
+          paddingBottom: "calc(20px + var(--safe-area-inset-bottom, 0px))",
           boxShadow: "0 -8px 32px rgba(0,0,0,0.22)",
           maxHeight: "70vh", overflow: "hidden", display: "flex", flexDirection: "column",
         }}>
@@ -58,11 +58,11 @@ export default function TaskContextSheet({ task, onClose, onEdit }) {
 
   return (
     <>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 249, background: "rgba(0,0,0,0.45)" }} />
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 99998, background: "rgba(0,0,0,0.45)" }} />
       <div className="su" style={{
-        position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 250,
+        position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 99999,
         background: "var(--bg-2)", borderRadius: "16px 16px 0 0",
-        paddingBottom: "calc(20px + env(safe-area-inset-bottom, 0px))",
+        paddingBottom: "calc(20px + var(--safe-area-inset-bottom, 0px))",
         boxShadow: "0 -8px 32px rgba(0,0,0,0.22)",
       }}>
         <div style={{ width: 40, height: 4, borderRadius: 2, background: "var(--border)", margin: "12px auto 0" }} />

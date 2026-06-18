@@ -276,7 +276,7 @@ export default function ProjectChatPanel({ project, tasks, notes, onClose }) {
 
         {/* Input */}
         <div style={{
-          padding: `10px 12px calc(10px + env(safe-area-inset-bottom, 0px))`,
+          padding: `10px 12px calc(10px + var(--safe-area-inset-bottom, 0px))`,
           borderTop: "1px solid var(--border)",
           display: "flex", gap: 8, flexShrink: 0, alignItems: "flex-end",
         }}>

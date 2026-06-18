@@ -132,7 +132,7 @@ function AppUpdatePrompt() {
       style={{
         position: "fixed",
         left: "50%",
-        bottom: "calc(84px + env(safe-area-inset-bottom, 0px))",
+        bottom: "calc(84px + var(--safe-area-inset-bottom, 0px))",
         transform: "translateX(-50%)",
         zIndex: 99998,
         display: "flex",
@@ -347,6 +347,15 @@ function AppShell() {
   }, []);
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const isStandalone = window.navigator.standalone || window.matchMedia("(display-mode: standalone)").matches;
+      if (isStandalone) {
+        document.documentElement.classList.add("pwa-standalone");
+      }
+    }
+  }, []);
+
+  useEffect(() => {
     if (loaded && minTimePassed) setSplashDone(true);
   }, [loaded, minTimePassed]);
 
@@ -460,7 +469,22 @@ function AppShell() {
   return (
     <>
       <style>{`
-        :root{--bottom-nav-content-height:58px;--bottom-nav-height:calc(var(--bottom-nav-content-height) + env(safe-area-inset-bottom, 0px))}
+        :root {
+          --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+          --bottom-nav-content-height: 58px;
+          --bottom-nav-safe-padding: var(--safe-area-inset-bottom);
+          --bottom-nav-height: calc(var(--bottom-nav-content-height) + var(--bottom-nav-safe-padding));
+        }
+        @media (display-mode: standalone) {
+          :root {
+            --safe-area-inset-bottom: 0px !important;
+            --bottom-nav-safe-padding: 0px !important;
+          }
+        }
+        html.pwa-standalone, :root.pwa-standalone, .pwa-standalone {
+          --safe-area-inset-bottom: 0px !important;
+          --bottom-nav-safe-padding: 0px !important;
+        }
         *{margin:0;padding:0;box-sizing:border-box}
         html,body,#root{width:100%;min-height:100dvh;margin:0;padding:0}
         html{overscroll-behavior-x:none;overflow-x:hidden}
@@ -468,6 +492,7 @@ function AppShell() {
         body{overflow-x:hidden}
         @media(max-width:767px){
           html,body,#root{height:100dvh;overflow:hidden;position:fixed;width:100%}
+          .overlay { padding: 0 !important; }
         }
         input,textarea,select{-webkit-appearance:none;border-radius:0}
         @media(max-width:767px){input,textarea,select{font-size:16px !important}}
@@ -487,7 +512,7 @@ function AppShell() {
         .su{animation:slideUp .28s cubic-bezier(.32,1,.4,1)}
         .pop{animation:pop .2s ease-out}
         .page-enter{animation:pageIn .18s cubic-bezier(.4,0,.2,1)}
-        .mobile-nav-bar{height:calc(58px + env(safe-area-inset-bottom,0px));min-height:calc(58px + env(safe-area-inset-bottom,0px));padding-bottom:env(safe-area-inset-bottom,0px);margin-bottom:0;bottom:0}
+        .mobile-nav-bar{height:var(--bottom-nav-height);min-height:var(--bottom-nav-height);padding-bottom:var(--bottom-nav-safe-padding);margin-bottom:0;bottom:0}
       `}</style>
 
       <SplashScreen visible={!splashDone} />
@@ -567,7 +592,7 @@ function AppShell() {
           )}
           <main
             {...edgeSwipeHandlers}
-            style={isMobile ? { flex: 1, minWidth: 0, width: "100%", overflowY: "auto", position: "relative", paddingBottom: "calc(58px + env(safe-area-inset-bottom, 0px))", overscrollBehaviorY: "auto", WebkitOverflowScrolling: "touch" } : undefined}
+            style={isMobile ? { flex: 1, minWidth: 0, width: "100%", overflowY: "auto", position: "relative", paddingBottom: "var(--bottom-nav-height)", overscrollBehaviorY: "auto", WebkitOverflowScrolling: "touch" } : undefined}
           >
             <PageTransition pageKey={page}>
               <Suspense fallback={<PageLoader />}>

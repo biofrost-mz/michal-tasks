@@ -650,7 +650,7 @@ export default function TasksPage() {
               )}
             </div>
 
-            <div style={{ flexShrink: 0, padding: "12px 20px calc(12px + env(safe-area-inset-bottom, 0px))", borderTop: "1px solid var(--border-soft)", background: "var(--surface)" }}>
+            <div style={{ flexShrink: 0, padding: "12px 20px calc(12px + var(--safe-area-inset-bottom, 0px))", borderTop: "1px solid var(--border-soft)", background: "var(--surface)" }}>
               <button
                 onClick={() => setFilterDrawerOpen(false)}
                 style={{

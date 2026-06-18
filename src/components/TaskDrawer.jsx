@@ -395,7 +395,7 @@ export default function TaskDrawer() {
   const projectObj = projects.find((p) => p.id === task.projectId);
 
   return (
-    <div className="overlay" onClick={closeDrawer}>
+    <div className="overlay" onClick={closeDrawer} style={{ zIndex: 9999 }}>
       <div
         className="detail"
         ref={dialogRef}
@@ -415,7 +415,9 @@ export default function TaskDrawer() {
           right: 0,
           width: "100%",
           maxWidth: "100%",
-          paddingTop: "env(safe-area-inset-top, 0px)",
+          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
         } : undefined}
       >
         {/* Mobile drag handle */}
@@ -425,8 +427,12 @@ export default function TaskDrawer() {
             onTouchMove={onDragMove}
             onTouchEnd={onDragEnd}
             style={{
-              display: "flex", justifyContent: "center", padding: "10px 0 4px",
+              display: "flex", justifyContent: "center",
+              paddingTop: "calc(10px + env(safe-area-inset-top, 0px))",
+              paddingBottom: "4px",
               cursor: "grab", touchAction: "none",
+              background: "var(--bg-2)",
+              flexShrink: 0,
             }}
           >
             <div style={{ width: 40, height: 4, borderRadius: 2, background: "var(--border-soft)" }} />
@@ -434,7 +440,7 @@ export default function TaskDrawer() {
         )}
 
         {/* ── Header ── */}
-        <div className="detail-top">
+        <div className="detail-top" style={isMobile ? { background: "var(--bg-2)", flexShrink: 0 } : undefined}>
           <div className="detail-top-l">Detail úkolu · #{taskNumber}</div>
           <div className="row">
             <button
@@ -455,7 +461,7 @@ export default function TaskDrawer() {
         </div>
 
         {/* ── Body ── */}
-        <div className="detail-body">
+        <div className="detail-body" style={isMobile ? { flex: 1, overflowY: "auto", paddingBottom: "calc(80px + var(--safe-area-inset-bottom, 0px))" } : undefined}>
 
           {/* Star + Project pill + Priority + Due (top row) */}
           <div className="row">

@@ -66,7 +66,7 @@ export default function MobileNav({ toggleDk }) {
               position: "fixed", inset: 0, zIndex: 196,
               background: "var(--bg-2)",
               overflowY: "auto",
-              paddingBottom: "env(safe-area-inset-bottom,0px)",
+              paddingBottom: "var(--safe-area-inset-bottom,0px)",
             }}
           >
             {/* Header */}
@@ -229,9 +229,9 @@ export default function MobileNav({ toggleDk }) {
           position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 200,
           background: "var(--bg-2)", borderTop: "1px solid var(--border)",
           display: "flex", alignItems: "stretch",
-          height: "calc(58px + env(safe-area-inset-bottom, 0px))",
-          minHeight: "calc(58px + env(safe-area-inset-bottom, 0px))",
-          paddingBottom: "env(safe-area-inset-bottom, 0px)", marginBottom: 0,
+          height: "var(--bottom-nav-height)",
+          minHeight: "var(--bottom-nav-height)",
+          paddingBottom: "var(--bottom-nav-safe-padding)", marginBottom: 0,
           boxSizing: "border-box",
           boxShadow: "0 -4px 20px #0002",
         }}

@@ -346,7 +346,7 @@ export default function CommandPalette({ onClose }) {
           <span><kbd style={{ background: "var(--input)", border: "1px solid var(--border)", borderRadius: 3, padding: "1px 4px" }}>Esc</kbd> zavřít</span>
         </div>
         )}
-        {isMobile && <div style={{ height: "env(safe-area-inset-bottom, 0px)" }} />}
+        {isMobile && <div style={{ height: "var(--safe-area-inset-bottom, 0px)" }} />}
       </div>
     </div>
   );

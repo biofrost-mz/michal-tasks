@@ -25,17 +25,17 @@ export default function SnoozeSheet({ taskId, onClose }) {
       <div
         onClick={onClose}
         style={{
-          position: "fixed", inset: 0, zIndex: 249,
+          position: "fixed", inset: 0, zIndex: 99998,
           background: "rgba(0,0,0,0.45)",
         }}
       />
       <div
         className="su"
         style={{
-          position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 250,
+          position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 99999,
           background: "var(--bg-2)",
           borderRadius: "16px 16px 0 0",
-          paddingBottom: "calc(20px + env(safe-area-inset-bottom, 0px))",
+          paddingBottom: "calc(20px + var(--safe-area-inset-bottom, 0px))",
           boxShadow: "0 -8px 32px rgba(0,0,0,0.22)",
         }}
       >

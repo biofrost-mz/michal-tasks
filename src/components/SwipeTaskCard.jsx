@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Icon from "./Icon.jsx";
 import SnoozeSheet from "./SnoozeSheet.jsx";
 import TaskContextSheet from "./TaskContextSheet.jsx";
@@ -171,19 +172,21 @@ export default function SwipeTaskCard({
         })}
       </div>
 
-      {snoozeOpen && (
+      {snoozeOpen && createPortal(
         <SnoozeSheet
           taskId={task.id}
           onClose={() => setSnoozeOpen(false)}
-        />
+        />,
+        document.body
       )}
 
-      {contextOpen && (
+      {contextOpen && createPortal(
         <TaskContextSheet
           task={task}
           onClose={() => setContextOpen(false)}
           onEdit={() => onClick?.()}
-        />
+        />,
+        document.body
       )}
     </>
   );
