@@ -395,7 +395,7 @@ export default function TaskDrawer() {
   const projectObj = projects.find((p) => p.id === task.projectId);
 
   return (
-    <div className="overlay" onClick={closeDrawer} style={{ zIndex: 9999 }}>
+    <div className="overlay" onClick={closeDrawer} style={{ zIndex: 9999, padding: isMobile ? 0 : undefined }}>
       <div
         className="detail"
         ref={dialogRef}

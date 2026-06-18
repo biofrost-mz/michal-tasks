@@ -177,7 +177,7 @@ export default function SwipeTaskCard({
           taskId={task.id}
           onClose={() => setSnoozeOpen(false)}
         />,
-        document.body
+        document.getElementById("root") || document.body
       )}
 
       {contextOpen && createPortal(
@@ -186,7 +186,7 @@ export default function SwipeTaskCard({
           onClose={() => setContextOpen(false)}
           onEdit={() => onClick?.()}
         />,
-        document.body
+        document.getElementById("root") || document.body
       )}
     </>
   );

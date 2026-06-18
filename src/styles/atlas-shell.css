@@ -2024,13 +2024,14 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
     background: var(--bg-2);
   }
   html, body, #root {
-    height: 100dvh;
-    min-height: 100dvh;
+    height: 100% !important;
+    min-height: 100% !important;
     margin: 0;
     padding: 0;
     max-width: 100%;
     overflow: hidden;
     position: fixed;
+    inset: 0;
     width: 100%;
   }
   .app {

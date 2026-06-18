@@ -486,12 +486,12 @@ function AppShell() {
           --bottom-nav-safe-padding: 0px !important;
         }
         *{margin:0;padding:0;box-sizing:border-box}
-        html,body,#root{width:100%;min-height:100dvh;margin:0;padding:0}
+        html,body,#root{width:100%;min-height:100%;margin:0;padding:0}
         html{overscroll-behavior-x:none;overflow-x:hidden}
-        body,#root{min-height:100dvh}
+        body,#root{min-height:100%}
         body{overflow-x:hidden}
         @media(max-width:767px){
-          html,body,#root{height:100dvh;overflow:hidden;position:fixed;width:100%}
+          html,body,#root{height:100% !important;min-height:100% !important;overflow:hidden;position:fixed;inset:0;width:100%}
           .overlay { padding: 0 !important; }
         }
         input,textarea,select{-webkit-appearance:none;border-radius:0}
@@ -536,7 +536,7 @@ function AppShell() {
         </svg>
       </button>
 
-      <div className={!isMobile ? `app ${collapsed ? "collapsed" : ""}` : undefined} style={isMobile ? { display: "flex", flexDirection: "column", width: "100%", height: "100dvh", overflow: "hidden", position: "relative" } : undefined}>
+      <div className={!isMobile ? `app ${collapsed ? "collapsed" : ""}` : undefined} style={isMobile ? { display: "flex", flexDirection: "column", width: "100%", height: "100%", overflow: "hidden", position: "absolute", top: 0, left: 0, right: 0, bottom: 0 } : undefined}>
         {!isMobile && <AtlasSidebar collapsed={collapsed} setCollapsed={setCollapsed} />}
         <div className={!isMobile ? "main" : undefined} style={isMobile ? { flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden", height: "100%" } : undefined}>
           {!isMobile && <AtlasTopBar />}
