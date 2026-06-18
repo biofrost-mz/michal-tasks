@@ -472,18 +472,26 @@ function AppShell() {
         :root {
           --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
           --bottom-nav-content-height: 58px;
-          --bottom-nav-safe-padding: var(--safe-area-inset-bottom);
+          --bottom-nav-safe-padding: 8px; /* Tight compact padding on mobile instead of huge iOS 34px */
           --bottom-nav-height: calc(var(--bottom-nav-content-height) + var(--bottom-nav-safe-padding));
         }
         @media (display-mode: standalone) {
           :root {
             --safe-area-inset-bottom: 0px !important;
-            --bottom-nav-safe-padding: 0px !important;
+            --bottom-nav-safe-padding: 0px !important; /* Zero margin/padding on standalone PWA to put it as low as possible */
+          }
+          html, body, #root {
+            height: 100% !important;
+            min-height: 100% !important;
           }
         }
         html.pwa-standalone, :root.pwa-standalone, .pwa-standalone {
           --safe-area-inset-bottom: 0px !important;
           --bottom-nav-safe-padding: 0px !important;
+        }
+        html.pwa-standalone, html.pwa-standalone body, html.pwa-standalone #root {
+          height: 100% !important;
+          min-height: 100% !important;
         }
         *{margin:0;padding:0;box-sizing:border-box}
         html,body,#root{width:100%;min-height:100%;margin:0;padding:0}
@@ -492,7 +500,14 @@ function AppShell() {
         body{overflow-x:hidden}
         @media(max-width:767px){
           html,body,#root{height:100% !important;min-height:100% !important;overflow:hidden;position:fixed;inset:0;width:100%}
-          .overlay { padding: 0 !important; }
+          .overlay { padding: 0 !important; display: block !important; background: var(--bg-2) !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+        }
+        .mobile-app-container, .mobile-main-container {
+          height: 100% !important;
+        }
+        html.pwa-standalone .mobile-app-container,
+        html.pwa-standalone .mobile-main-container {
+          height: 100% !important;
         }
         input,textarea,select{-webkit-appearance:none;border-radius:0}
         @media(max-width:767px){input,textarea,select{font-size:16px !important}}
@@ -512,7 +527,7 @@ function AppShell() {
         .su{animation:slideUp .28s cubic-bezier(.32,1,.4,1)}
         .pop{animation:pop .2s ease-out}
         .page-enter{animation:pageIn .18s cubic-bezier(.4,0,.2,1)}
-        .mobile-nav-bar{height:var(--bottom-nav-height);min-height:var(--bottom-nav-height);padding-bottom:var(--bottom-nav-safe-padding);margin-bottom:0;bottom:0}
+        .mobile-nav-bar{position:absolute !important;height:var(--bottom-nav-height);min-height:var(--bottom-nav-height);padding-bottom:var(--bottom-nav-safe-padding);margin-bottom:0;bottom:0}
       `}</style>
 
       <SplashScreen visible={!splashDone} />
@@ -536,9 +551,9 @@ function AppShell() {
         </svg>
       </button>
 
-      <div className={!isMobile ? `app ${collapsed ? "collapsed" : ""}` : undefined} style={isMobile ? { display: "flex", flexDirection: "column", width: "100%", height: "100%", overflow: "hidden", position: "absolute", top: 0, left: 0, right: 0, bottom: 0 } : undefined}>
+      <div className={isMobile ? "mobile-app-container" : `app ${collapsed ? "collapsed" : ""}`} style={isMobile ? { display: "flex", flexDirection: "column", width: "100%", height: "100%", overflow: "hidden", position: "absolute", top: 0, left: 0, right: 0, bottom: 0 } : undefined}>
         {!isMobile && <AtlasSidebar collapsed={collapsed} setCollapsed={setCollapsed} />}
-        <div className={!isMobile ? "main" : undefined} style={isMobile ? { flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden", height: "100%" } : undefined}>
+        <div className={isMobile ? "mobile-main-container" : (!isMobile ? "main" : undefined)} style={isMobile ? { flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden", height: "100%" } : undefined}>
           {!isMobile && <AtlasTopBar />}
           {isMobile && (() => {
             const now = new Date();

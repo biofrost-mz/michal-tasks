@@ -1146,7 +1146,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
             </div>
           </div>
         </div>
-      , document.body)}
+      , document.getElementById("root") || document.body)}
     </>
   );
 }

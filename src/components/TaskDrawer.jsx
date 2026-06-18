@@ -395,7 +395,20 @@ export default function TaskDrawer() {
   const projectObj = projects.find((p) => p.id === task.projectId);
 
   return (
-    <div className="overlay" onClick={closeDrawer} style={{ zIndex: 9999, padding: isMobile ? 0 : undefined }}>
+    <div
+      className="overlay"
+      onClick={closeDrawer}
+      style={isMobile ? {
+        zIndex: 9999,
+        padding: 0,
+        position: "fixed",
+        inset: 0,
+        background: "var(--bg-2)",
+        display: "block",
+        backdropFilter: "none",
+        WebkitBackdropFilter: "none",
+      } : { zIndex: 9999 }}
+    >
       <div
         className="detail"
         ref={dialogRef}
@@ -415,9 +428,15 @@ export default function TaskDrawer() {
           right: 0,
           width: "100%",
           maxWidth: "100%",
+          height: "100%",
+          maxHeight: "100%",
           overflow: "hidden",
           display: "flex",
           flexDirection: "column",
+          background: "var(--bg-2)",
+          border: "none",
+          boxShadow: "none",
+          margin: 0,
         } : undefined}
       >
         {/* Mobile drag handle */}

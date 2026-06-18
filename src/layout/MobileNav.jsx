@@ -226,7 +226,7 @@ export default function MobileNav({ toggleDk }) {
       <nav
         className="mobile-nav-bar"
         style={{
-          position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 200,
+          position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 200,
           background: "var(--bg-2)", borderTop: "1px solid var(--border)",
           display: "flex", alignItems: "stretch",
           height: "var(--bottom-nav-height)",
