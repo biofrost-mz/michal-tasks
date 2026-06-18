@@ -528,7 +528,15 @@ export default function Sidebar({ toggleDk }) {
           return (
             <button
               key={n.id}
-              onClick={() => setPage(n.id)}
+              onClick={() => {
+                const isCurrentlyActive = n.id === "projects" ? (page === "projects" || page === "project-detail") : page === n.id;
+                if (isCurrentlyActive) {
+                  const scrollEl = document.querySelector(window.innerWidth < 768 ? "main" : ".main");
+                  scrollEl?.scrollTo({ top: 0, behavior: "smooth" });
+                } else {
+                  setPage(n.id);
+                }
+              }}
               style={{
                 width: "100%",
                 display: "flex",

@@ -234,6 +234,27 @@ function isSystemAdminEmail(email) {
   return allowed.includes(email.toLowerCase());
 }
 
+function parseHash() {
+  if (typeof window === "undefined") return { page: null, selProject: null };
+  const hash = window.location.hash || "";
+  if (!hash || hash === "#") {
+    return { page: null, selProject: null };
+  }
+  
+  const hashContent = hash.substring(1); // remove '#'
+  const [routePart, queryPart] = hashContent.split("?");
+  
+  const page = routePart || null;
+  let selProject = null;
+  
+  if (queryPart) {
+    const params = new URLSearchParams(queryPart);
+    selProject = params.get("id") || null;
+  }
+  
+  return { page, selProject };
+}
+
 /* ─────────────────────────────────────────────
    AppProvider
 ───────────────────────────────────────────── */
@@ -247,10 +268,16 @@ export function AppProvider({ children }) {
   const [uiSettings, setUiSettings] = useState(DEFAULT_UI_SETTINGS);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [dk, setDkRaw] = useState(true);
-  const [page, setPage] = useState("dashboard");
+  const [page, setPage] = useState(() => {
+    const parsed = parseHash();
+    return parsed.page || "dashboard";
+  });
   const [timelineOffsetDays, setTimelineOffsetDays] = useState(0);
   const isMobile = useIsMobile();
-  const [selProject, setSelProject] = useState(null);
+  const [selProject, setSelProject] = useState(() => {
+    const parsed = parseHash();
+    return parsed.selProject;
+  });
 
   const [projects, setProjects] = useState([]);
   const [deletedProjects, setDeletedProjects] = useState([]);
@@ -360,10 +387,46 @@ export function AppProvider({ children }) {
       const s = normalizeUiSettings(await load(SK.SETTINGS, DEFAULT_UI_SETTINGS));
       setUiSettings(s);
       setDkRaw(resolveThemeMode(s.themeMode));
-      if (s.defaultPage !== "dashboard") setPage(s.defaultPage);
+      if (s.defaultPage !== "dashboard") {
+        const parsed = parseHash();
+        if (!parsed.page) {
+          setPage(s.defaultPage);
+        }
+      }
       setSettingsLoaded(true);
     })();
   }, []);
+
+  // Hash Router: Listen to hashchange (e.g. browser back/forward)
+  useEffect(() => {
+    const handleHashChange = () => {
+      const { page: newPage, selProject: newSelProject } = parseHash();
+      if (newPage) {
+        setPage(newPage);
+      } else {
+        setPage("dashboard");
+      }
+      setSelProject(newSelProject);
+    };
+
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
+
+  // Hash Router: Sync state changes back to hash
+  useEffect(() => {
+    const currentParsed = parseHash();
+    if (currentParsed.page === page && currentParsed.selProject === selProject) {
+      return;
+    }
+
+    let newHash = `#${page}`;
+    if (page === "project-detail" && selProject) {
+      newHash += `?id=${selProject}`;
+    }
+
+    window.location.hash = newHash;
+  }, [page, selProject]);
 
   // Sync theme class + CSS tokens to document.documentElement
   useEffect(() => {

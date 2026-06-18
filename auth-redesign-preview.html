@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zentero — Přihlášení (preview)</title>
+  <style>
+    /* ─────────────────────────────────────
+       Reset
+    ───────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display",
+                   "Segoe UI", system-ui, sans-serif;
+      background: #070a12;
+      color: #fff;
+      min-height: 100vh;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ─────────────────────────────────────
+       CSS custom properties
+    ───────────────────────────────────── */
+    :root {
+      --mouse-x: 50%;
+      --mouse-y: 50%;
+      --amber:       #f5a524;
+      --amber-dim:   rgba(245,165,36,0.10);
+      --bg:          #070a12;
+      --surface:     rgba(255,255,255,0.025);
+      --border:      rgba(255,255,255,0.07);
+      --text:        #ffffff;
+      --text-2:      #9ca3af;
+      --text-3:      #6b7280;
+    }
+
+    /* ─────────────────────────────────────
+       Background system
+    ───────────────────────────────────── */
+    .bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    /* Static soft ambient glows */
+    .bg-blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(0px);
+    }
+    .bg-blob-1 {
+      width: 820px; height: 680px;
+      top: -240px; left: -160px;
+      background: radial-gradient(ellipse, rgba(245,165,36,0.065) 0%, transparent 68%);
+      animation: drift1 20s ease-in-out infinite alternate;
+    }
+    .bg-blob-2 {
+      width: 700px; height: 700px;
+      bottom: -200px; right: -120px;
+      background: radial-gradient(ellipse, rgba(99,102,241,0.07) 0%, transparent 65%);
+      animation: drift2 24s ease-in-out infinite alternate;
+    }
+    .bg-blob-3 {
+      width: 480px; height: 480px;
+      top: 38%; right: 22%;
+      background: radial-gradient(ellipse, rgba(59,130,246,0.045) 0%, transparent 65%);
+      animation: drift3 28s ease-in-out infinite alternate;
+    }
+
+    @keyframes drift1 {
+      from { transform: translate(0,0) scale(1); }
+      to   { transform: translate(70px,45px) scale(1.12); }
+    }
+    @keyframes drift2 {
+      from { transform: translate(0,0) scale(1); }
+      to   { transform: translate(-55px,-50px) scale(1.1); }
+    }
+    @keyframes drift3 {
+      from { transform: translate(0,0); }
+      to   { transform: translate(40px,-35px); }
+    }
+
+    /* Mouse-follow glow — updated via JS */
+    .bg-mouse {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(
+        580px circle at var(--mouse-x) var(--mouse-y),
+        rgba(245,165,36,0.12) 0%,
+        rgba(245,165,36,0.045) 38%,
+        transparent 62%
+      );
+    }
+
+    /* Very subtle gradient bands for depth */
+    .bg-bands {
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(155deg, rgba(245,165,36,0.018) 0%, transparent 38%),
+        linear-gradient(335deg, rgba(99,102,241,0.022) 0%, transparent 40%);
+    }
+
+    /* Grain noise texture */
+    .bg-grain {
+      position: absolute;
+      inset: 0;
+      opacity: 0.028;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 180px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .bg-blob-1, .bg-blob-2, .bg-blob-3 { animation: none; }
+    }
+
+    /* ─────────────────────────────────────
+       Page layout
+    ───────────────────────────────────── */
+    .page {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 32px;
+    }
+
+    .main-grid {
+      width: 100%;
+      max-width: 1040px;
+      display: grid;
+      grid-template-columns: 1fr 1.1fr;
+      gap: 72px;
+      align-items: center;
+    }
+
+    /* ─────────────────────────────────────
+       LEFT PANEL
+    ───────────────────────────────────── */
+    .left {
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Logo */
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      margin-bottom: 60px;
+      cursor: pointer;
+      width: fit-content;
+      text-decoration: none;
+      color: inherit;
+    }
+    .logo-img {
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+      object-fit: cover;
+      box-shadow: 0 4px 14px rgba(245,165,36,0.38);
+      transition: transform 0.3s cubic-bezier(0.175,0.885,0.32,1.275),
+                  box-shadow 0.3s ease;
+      flex-shrink: 0;
+      display: block;
+    }
+    /* Fallback when PNG isn't available — shows amber "Z" mark */
+    .logo-mark-fallback {
+      display: none; /* shown by JS if image fails */
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+      background: linear-gradient(135deg, #f5a524 0%, #d97706 100%);
+      box-shadow: 0 4px 14px rgba(245,165,36,0.38);
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: 900;
+      color: #000;
+      letter-spacing: -1px;
+      transition: transform 0.3s cubic-bezier(0.175,0.885,0.32,1.275),
+                  box-shadow 0.3s ease;
+      flex-shrink: 0;
+    }
+    .logo-wordmark {
+      font-size: 19px;
+      font-weight: 800;
+      letter-spacing: 1.4px;
+      text-transform: uppercase;
+      color: #fff;
+      transition: color 0.3s ease;
+    }
+    .logo:hover .logo-img,
+    .logo:hover .logo-mark-fallback {
+      transform: rotate(8deg) scale(1.08);
+      box-shadow: 0 8px 26px rgba(245,165,36,0.58);
+    }
+    .logo:hover .logo-wordmark { color: #f5a524; }
+
+    /* Eyebrow label */
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(245,165,36,0.75);
+      margin-bottom: 20px;
+    }
+    .eyebrow::before {
+      content: '';
+      width: 22px;
+      height: 1px;
+      background: rgba(245,165,36,0.5);
+      flex-shrink: 0;
+    }
+
+    /* Hero headline */
+    h1.hero {
+      font-size: 54px;
+      font-weight: 800;
+      line-height: 1.06;
+      letter-spacing: -2px;
+      color: #fff;
+      margin: 0 0 22px;
+    }
+    h1.hero em {
+      font-style: normal;
+      background: linear-gradient(135deg, #f5a524 0%, #d48306 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* Hero sub text */
+    .hero-sub {
+      font-size: 16px;
+      line-height: 1.68;
+      color: #9ca3af;
+      margin: 0 0 52px;
+      max-width: 360px;
+      font-weight: 400;
+    }
+
+    /* Benefits */
+    .benefits {
+      display: flex;
+      flex-direction: column;
+      gap: 13px;
+      margin-bottom: 56px;
+    }
+    .benefit {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .benefit-dot {
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: rgba(245,165,36,0.6);
+      flex-shrink: 0;
+    }
+    .benefit span {
+      font-size: 14px;
+      color: #d1d5db;
+      font-weight: 430;
+      letter-spacing: 0.01em;
+    }
+
+    /* ── Command Preview Card ── */
+    .cmd-card {
+      position: relative;
+      background: rgba(255,255,255,0.022);
+      border: 1px solid rgba(255,255,255,0.068);
+      border-radius: 16px;
+      padding: 18px 22px 20px;
+      max-width: 380px;
+      overflow: hidden;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      transition: border-color 0.3s ease, background 0.3s ease;
+    }
+    .cmd-card::before {
+      /* top-left amber glow accent */
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 200px; height: 120px;
+      background: radial-gradient(ellipse at 0 0, rgba(245,165,36,0.06) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .cmd-card:hover {
+      border-color: rgba(245,165,36,0.13);
+      background: rgba(255,255,255,0.032);
+    }
+
+    .cmd-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .cmd-amber-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: rgba(245,165,36,0.55);
+      flex-shrink: 0;
+    }
+    .cmd-label {
+      font-size: 10.5px;
+      font-weight: 600;
+      color: rgba(245,165,36,0.6);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      flex: 1;
+    }
+    /* Live pulse indicator */
+    .cmd-pulse {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 6px rgba(34,197,94,0.5);
+      flex-shrink: 0;
+      animation: pulse 2.6s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.45; transform: scale(0.75); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .cmd-pulse { animation: none; }
+    }
+
+    .cmd-divider {
+      height: 1px;
+      background: rgba(255,255,255,0.055);
+      margin-bottom: 14px;
+    }
+
+    .cmd-lines {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+    .cmd-line {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+    }
+    .cmd-key {
+      font-size: 11px;
+      font-weight: 500;
+      color: rgba(245,165,36,0.45);
+      font-family: "SF Mono", "Fira Mono", "Menlo", monospace;
+      min-width: 82px;
+      flex-shrink: 0;
+      letter-spacing: 0.01em;
+    }
+    .cmd-val {
+      font-size: 13px;
+      color: #e2e8f0;
+      font-weight: 400;
+      line-height: 1.4;
+    }
+
+    /* ─────────────────────────────────────
+       RIGHT PANEL — Glass login card
+       (preserved, minimal changes)
+    ───────────────────────────────────── */
+    .right {
+      background: rgba(8,8,8,0.68);
+      backdrop-filter: blur(32px);
+      -webkit-backdrop-filter: blur(32px);
+      border: 1.5px solid rgba(251,191,36,0.3);
+      border-radius: 24px;
+      padding: 48px;
+      box-shadow:
+        0 40px 80px -20px rgba(0,0,0,0.9),
+        0 0 40px rgba(251,191,36,0.05);
+      display: flex;
+      flex-direction: column;
+      transition:
+        transform 0.4s cubic-bezier(0.16,1,0.3,1),
+        border-color 0.4s ease,
+        box-shadow 0.4s ease;
+    }
+    .right:hover {
+      transform: translateY(-5px);
+      border-color: rgba(251,191,36,0.55);
+      box-shadow:
+        0 50px 100px -20px rgba(0,0,0,0.95),
+        0 0 50px rgba(251,191,36,0.12);
+    }
+
+    /* Card title */
+    .rp-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: #fff;
+      margin: 0 0 6px;
+    }
+    .rp-sub {
+      font-size: 13.5px;
+      color: #9ca3af;
+      margin: 0 0 28px;
+    }
+
+    /* Auth mode switcher */
+    .auth-tabs {
+      display: flex;
+      background: rgba(255,255,255,0.04);
+      border-radius: 12px;
+      padding: 4px;
+      margin-bottom: 28px;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    .auth-tab {
+      flex: 1;
+      padding: 9px 0;
+      border-radius: 8px;
+      border: none;
+      background: transparent;
+      color: #9ca3af;
+      font-size: 13px;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+    .auth-tab.active {
+      background: rgba(251,191,36,0.11);
+      color: #fbbf24;
+      font-weight: 700;
+    }
+    .auth-tab:hover:not(.active) { color: #fff; background: rgba(255,255,255,0.02); }
+
+    /* Sign in / sign up tabs inside password form */
+    .sign-tabs {
+      display: flex;
+      gap: 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      margin-bottom: 20px;
+    }
+    .sign-tab {
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: #9ca3af;
+      font-size: 13px;
+      font-family: inherit;
+      cursor: pointer;
+      padding: 0 4px 8px;
+      margin-bottom: -1px;
+      transition: all 0.2s ease;
+    }
+    .sign-tab.active {
+      color: #fbbf24;
+      font-weight: 700;
+      border-bottom-color: #fbbf24;
+    }
+
+    /* Form fields */
+    .form-fields { display: flex; flex-direction: column; gap: 20px; }
+    .field        { display: flex; flex-direction: column; gap: 8px; }
+    .field-label  {
+      font-size: 10.5px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #9ca3af;
+    }
+    .field-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .field-input {
+      width: 100%;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 12px;
+      padding: 12px 16px;
+      color: #fff;
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      transition: all 0.25s ease;
+    }
+    .field-input:focus {
+      border-color: #fbbf24;
+      background: rgba(255,255,255,0.07);
+    }
+    .field-input::placeholder { color: rgba(255,255,255,0.18); }
+    .input-wrap { position: relative; }
+    .input-wrap .field-input { padding-right: 44px; }
+
+    .pw-toggle {
+      position: absolute;
+      right: 12px; top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #9ca3af;
+      display: flex;
+      align-items: center;
+      padding: 4px;
+    }
+
+    /* Forgot password */
+    .forgot {
+      background: none;
+      border: none;
+      color: #f5a524;
+      font-size: 11px;
+      font-family: inherit;
+      cursor: pointer;
+    }
+    .forgot:hover { text-decoration: underline; }
+
+    /* Primary button */
+    .btn-primary {
+      width: 100%;
+      background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%);
+      color: #000;
+      font-weight: 700;
+      border-radius: 12px;
+      padding: 16px;
+      border: none;
+      font-size: 15px;
+      font-family: inherit;
+      cursor: pointer;
+      transition:
+        transform 0.3s cubic-bezier(0.34,1.56,0.64,1),
+        box-shadow 0.3s ease;
+      box-shadow: 0 10px 20px rgba(251,191,36,0.14);
+    }
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 14px 28px rgba(251,191,36,0.26);
+    }
+    .btn-primary:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Toggle sign-in / sign-up line */
+    .toggle-line {
+      text-align: center;
+      margin-top: 24px;
+      font-size: 13.5px;
+      color: #6b7280;
+    }
+    .toggle-btn {
+      background: none;
+      border: none;
+      color: #fff;
+      font-weight: 600;
+      font-family: inherit;
+      font-size: inherit;
+      cursor: pointer;
+    }
+    .toggle-btn:hover { color: #fbbf24; }
+
+    /* Password checklist */
+    .pw-rules {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      margin-top: -10px;
+    }
+    .pw-rule {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 12px;
+      color: #9ca3af;
+    }
+
+    /* ─────────────────────────────────────
+       Footer
+    ───────────────────────────────────── */
+    footer {
+      margin-top: 40px;
+      z-index: 1;
+    }
+    .footer-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+      color: #4b5563;
+      font-size: 12px;
+      font-weight: 500;
+      transition: color 0.2s ease;
+    }
+    .footer-link:hover { color: #9ca3af; }
+    .footer-logo {
+      width: 18px; height: 18px;
+      border-radius: 5px;
+      object-fit: cover;
+      opacity: 0.55;
+    }
+    .footer-logo-fallback {
+      display: none;
+      width: 18px; height: 18px;
+      border-radius: 5px;
+      background: linear-gradient(135deg,#f5a524,#d97706);
+      opacity: 0.55;
+      align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 900; color: #000;
+    }
+
+    /* ─────────────────────────────────────
+       Responsive
+    ───────────────────────────────────── */
+    @media (max-width: 820px) {
+      .main-grid {
+        grid-template-columns: 1fr;
+        gap: 32px;
+      }
+      .page { padding: 28px 18px; justify-content: flex-start; }
+      h1.hero { font-size: 38px; letter-spacing: -1.5px; }
+      .hero-sub { margin-bottom: 36px; font-size: 15px; }
+      .benefits { margin-bottom: 36px; }
+      .cmd-card { display: none; }
+      .right { padding: 28px 22px; }
+      .logo { margin-bottom: 36px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════
+     Background layers
+════════════════════════════════════════ -->
+<div class="bg">
+  <div class="bg-blob bg-blob-1"></div>
+  <div class="bg-blob bg-blob-2"></div>
+  <div class="bg-blob bg-blob-3"></div>
+  <div class="bg-bands"></div>
+  <div class="bg-mouse" id="bgMouse"></div>
+  <div class="bg-grain"></div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     Page
+════════════════════════════════════════ -->
+<div class="page">
+  <div class="main-grid">
+
+    <!-- ────────────────────────
+         LEFT PANEL
+    ──────────────────────── -->
+    <div class="left">
+
+      <!-- Logo -->
+      <a href="https://zichmichal.cz" target="_blank" rel="noopener" class="logo">
+        <img
+          src="./public/icon-zentero.png"
+          alt="Zentero"
+          class="logo-img"
+          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+        />
+        <span class="logo-mark-fallback">Z</span>
+        <span class="logo-wordmark">ZENTERO</span>
+      </a>
+
+      <!-- Eyebrow -->
+      <div class="eyebrow">Produktivní workspace</div>
+
+      <!-- Headline -->
+      <h1 class="hero">Pracovní den<br>bez <em>šumu.</em></h1>
+
+      <!-- Sub text -->
+      <p class="hero-sub">
+        Zentero ti pomůže vidět, co je opravdu důležité — a nechat zbytek stranou.
+      </p>
+
+      <!-- Benefits (3 minimalist lines) -->
+      <div class="benefits">
+        <div class="benefit">
+          <div class="benefit-dot"></div>
+          <span>Priority bez dohadů</span>
+        </div>
+        <div class="benefit">
+          <div class="benefit-dot"></div>
+          <span>Klid na hlubokou práci</span>
+        </div>
+        <div class="benefit">
+          <div class="benefit-dot"></div>
+          <span>Jeden pracovní prostor</span>
+        </div>
+      </div>
+
+      <!-- Command Preview Card -->
+      <div class="cmd-card">
+        <div class="cmd-header">
+          <div class="cmd-amber-dot"></div>
+          <span class="cmd-label">Zentero navrhlo dnešní pořadí</span>
+          <div class="cmd-pulse"></div>
+        </div>
+        <div class="cmd-divider"></div>
+        <div class="cmd-lines">
+          <div class="cmd-line">
+            <span class="cmd-key">Priorita ·</span>
+            <span class="cmd-val">Dokončit rozpracované</span>
+          </div>
+          <div class="cmd-line">
+            <span class="cmd-key">Fokus ·</span>
+            <span class="cmd-val">90 minut bez přepínání</span>
+          </div>
+          <div class="cmd-line">
+            <span class="cmd-key">Dnes ·</span>
+            <span class="cmd-val">Prostor pro hlubokou práci</span>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /left -->
+
+    <!-- ────────────────────────
+         RIGHT PANEL — login
+    ──────────────────────── -->
+    <div class="right">
+
+      <h2 class="rp-title" id="rpTitle">👋 Vítejte zpět</h2>
+      <p class="rp-sub" id="rpSub">Pokračujte tam, kde jste včera skončili.</p>
+
+      <!-- Auth mode switcher: Magic link / Password -->
+      <div class="auth-tabs">
+        <button class="auth-tab" id="tabMagic" onclick="setAuthMode('magic')">🪄 Magic link</button>
+        <button class="auth-tab active" id="tabPassword" onclick="setAuthMode('password')">🔑 Přihlášení</button>
+      </div>
+
+      <!-- ── Magic link form ── -->
+      <div id="formMagic" style="display:none;">
+        <div class="form-fields">
+          <div class="field">
+            <label class="field-label">E-mailová adresa</label>
+            <input class="field-input" type="email" placeholder="jmeno@domena.cz" />
+          </div>
+          <button class="btn-primary">Poslat přihlašovací odkaz</button>
+        </div>
+      </div>
+
+      <!-- ── Password form ── -->
+      <div id="formPassword">
+
+        <!-- Signin / Signup tabs -->
+        <div class="sign-tabs">
+          <button class="sign-tab active" id="tabSignin" onclick="setSignMode('signin')">Přihlásit se</button>
+          <button class="sign-tab" id="tabSignup" onclick="setSignMode('signup')">Registrovat</button>
+        </div>
+
+        <div class="form-fields" id="pwFormFields">
+
+          <!-- Full name (signup only) -->
+          <div class="field" id="fieldName" style="display:none;">
+            <label class="field-label">Jméno a příjmení</label>
+            <input class="field-input" type="text" placeholder="Michal Zich" />
+          </div>
+
+          <!-- Email -->
+          <div class="field">
+            <label class="field-label">E-mailová adresa</label>
+            <input class="field-input" type="email" placeholder="jmeno@domena.cz" />
+          </div>
+
+          <!-- Password -->
+          <div class="field">
+            <div class="field-row">
+              <label class="field-label">Heslo</label>
+              <button class="forgot" id="forgotBtn">Zapomněli jste?</button>
+            </div>
+            <div class="input-wrap">
+              <input class="field-input" type="password" placeholder="••••••••" id="pwInput" />
+              <button class="pw-toggle" onclick="togglePw(this)" type="button">
+                <!-- eye icon -->
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Confirm password (signup only) -->
+          <div class="field" id="fieldConfirm" style="display:none;">
+            <label class="field-label">Potvrzení hesla</label>
+            <input class="field-input" type="password" placeholder="••••••••" />
+          </div>
+
+          <!-- Password rules (signup only) -->
+          <div class="pw-rules" id="pwRules" style="display:none;">
+            <div class="pw-rule"><span>•</span><span>alespoň 10 znaků</span></div>
+            <div class="pw-rule"><span>•</span><span>malé i velké písmeno</span></div>
+            <div class="pw-rule"><span>•</span><span>číslo nebo symbol</span></div>
+          </div>
+
+          <!-- Submit -->
+          <button class="btn-primary" id="btnSubmit">Přihlásit se do Zentero</button>
+
+        </div>
+      </div>
+
+      <!-- Toggle signup / signin -->
+      <div class="toggle-line" id="toggleLine">
+        Ještě nemáte účet?
+        <button class="toggle-btn" onclick="setSignMode('signup'); setAuthMode('password')">Vytvořit zdarma</button>
+      </div>
+
+    </div><!-- /right -->
+
+  </div><!-- /main-grid -->
+
+  <!-- Footer -->
+  <footer>
+    <a href="https://zichmichal.cz" target="_blank" rel="noopener noreferrer" class="footer-link">
+      <img
+        src="./public/icon-zentero.png"
+        alt=""
+        class="footer-logo"
+        onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+      />
+      <span class="footer-logo-fallback">Z</span>
+      <span>Vytvořil Michal Zich · zichmichal.cz</span>
+    </a>
+  </footer>
+
+</div><!-- /page -->
+
+<!-- ═══════════════════════════════════════
+     JS — mouse tracking + UI interactions
+════════════════════════════════════════ -->
+<script>
+  /* ── Mouse-follow background glow ── */
+  const bgMouse = document.getElementById('bgMouse');
+  const root = document.documentElement;
+  const prefersReduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (!prefersReduced) {
+    let rafId = null;
+    document.addEventListener('pointermove', (e) => {
+      if (rafId) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        const x = (e.clientX / innerWidth)  * 100;
+        const y = (e.clientY / innerHeight) * 100;
+        root.style.setProperty('--mouse-x', x + '%');
+        root.style.setProperty('--mouse-y', y + '%');
+        bgMouse.style.background = `radial-gradient(
+          580px circle at ${x}% ${y}%,
+          rgba(245,165,36,0.12) 0%,
+          rgba(245,165,36,0.045) 38%,
+          transparent 62%
+        )`;
+      });
+    });
+  }
+
+  /* ── Auth mode: magic / password ── */
+  let currentAuthMode = 'password';
+  let currentSignMode = 'signin';
+
+  function setAuthMode(mode) {
+    currentAuthMode = mode;
+    document.getElementById('tabMagic').classList.toggle('active', mode === 'magic');
+    document.getElementById('tabPassword').classList.toggle('active', mode === 'password');
+    document.getElementById('formMagic').style.display = mode === 'magic' ? 'block' : 'none';
+    document.getElementById('formPassword').style.display = mode === 'password' ? 'block' : 'none';
+
+    if (mode === 'magic') {
+      document.getElementById('rpTitle').textContent = '🪄 Přihlásit se odkazem';
+      document.getElementById('rpSub').textContent = 'Zašleme vám bezpečný odkaz na e-mail.';
+      document.getElementById('toggleLine').innerHTML =
+        'Raději heslem? <button class="toggle-btn" onclick="setAuthMode(\'password\')">Přihlásit se</button>';
+    } else {
+      setSignMode('signin'); /* reset to signin when switching back */
+    }
+  }
+
+  /* ── Sign mode: signin / signup ── */
+  function setSignMode(mode) {
+    currentSignMode = mode;
+    document.getElementById('tabSignin').classList.toggle('active', mode === 'signin');
+    document.getElementById('tabSignup').classList.toggle('active', mode === 'signup');
+    document.getElementById('fieldName').style.display    = mode === 'signup' ? 'flex' : 'none';
+    document.getElementById('fieldConfirm').style.display = mode === 'signup' ? 'flex' : 'none';
+    document.getElementById('pwRules').style.display      = mode === 'signup' ? 'flex' : 'none';
+    document.getElementById('forgotBtn').style.display    = mode === 'signin' ? 'inline' : 'none';
+    document.getElementById('btnSubmit').textContent =
+      mode === 'signup' ? 'Registrovat se do Zentero' : 'Přihlásit se do Zentero';
+
+    if (mode === 'signup') {
+      document.getElementById('rpTitle').textContent = '✨ Vytvořit účet zdarma';
+      document.getElementById('rpSub').textContent   = 'Začněte pracovat chytřeji ještě dnes.';
+      document.getElementById('toggleLine').innerHTML =
+        'Již máte účet? <button class="toggle-btn" onclick="setSignMode(\'signin\')">Přihlásit se</button>';
+    } else {
+      document.getElementById('rpTitle').textContent = '👋 Vítejte zpět';
+      document.getElementById('rpSub').textContent   = 'Pokračujte tam, kde jste včera skončili.';
+      document.getElementById('toggleLine').innerHTML =
+        'Ještě nemáte účet? <button class="toggle-btn" onclick="setSignMode(\'signup\')">Vytvořit zdarma</button>';
+    }
+  }
+
+  /* ── Password show/hide toggle ── */
+  const eyeOpen = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+  const eyeOff  = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
+
+  function togglePw(btn) {
+    const input = btn.previousElementSibling;
+    const hide = input.type === 'password';
+    input.type = hide ? 'text' : 'password';
+    btn.innerHTML = hide ? eyeOff : eyeOpen;
+  }
+</script>
+</body>
+</html>

@@ -220,7 +220,7 @@ const PTR_MAX = 270;
 const PTR_INDICATOR_MIN = 80;
 
 function getScrollTop() {
-  return document.scrollingElement?.scrollTop ?? window.scrollY ?? 0;
+  return document.querySelector("main")?.scrollTop ?? document.scrollingElement?.scrollTop ?? window.scrollY ?? 0;
 }
 
 function usePullToRefresh(enabled, onRefresh) {
@@ -368,6 +368,10 @@ function AppShell() {
 
   useEffect(() => {
     applyDocumentMetadata(page);
+    const scrollEl = document.querySelector(window.innerWidth < 768 ? "main" : ".main");
+    if (scrollEl) {
+      scrollEl.scrollTop = 0;
+    }
   }, [page]);
 
   useEffect(() => {
@@ -462,6 +466,9 @@ function AppShell() {
         html{overscroll-behavior-x:none;overflow-x:hidden}
         body,#root{min-height:100dvh}
         body{overflow-x:hidden}
+        @media(max-width:767px){
+          html,body,#root{height:100dvh;overflow:hidden;position:fixed;width:100%}
+        }
         input,textarea,select{-webkit-appearance:none;border-radius:0}
         @media(max-width:767px){input,textarea,select{font-size:16px !important}}
         button{cursor:pointer}
@@ -504,9 +511,9 @@ function AppShell() {
         </svg>
       </button>
 
-      <div className={!isMobile ? `app ${collapsed ? "collapsed" : ""}` : undefined} style={isMobile ? { display: "flex", width: "100%", minHeight: "100dvh", overflowX: "hidden" } : undefined}>
+      <div className={!isMobile ? `app ${collapsed ? "collapsed" : ""}` : undefined} style={isMobile ? { display: "flex", flexDirection: "column", width: "100%", height: "100dvh", overflow: "hidden", position: "relative" } : undefined}>
         {!isMobile && <AtlasSidebar collapsed={collapsed} setCollapsed={setCollapsed} />}
-        <div className={!isMobile ? "main" : undefined} style={isMobile ? { flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "visible" } : undefined}>
+        <div className={!isMobile ? "main" : undefined} style={isMobile ? { flex: 1, minWidth: 0, display: "flex", flexDirection: "column", overflow: "hidden", height: "100%" } : undefined}>
           {!isMobile && <AtlasTopBar />}
           {isMobile && (() => {
             const now = new Date();
@@ -514,7 +521,13 @@ function AppShell() {
             const months = ["ledna", "února", "března", "dubna", "května", "června", "července", "srpna", "září", "října", "listopadu", "prosince"];
             const dayLabel = `${days[now.getDay()]} ${now.getDate()}. ${months[now.getMonth()]}`;
             return (
-              <div className="mob-topbar" onClick={() => { setPage("dashboard"); document.querySelector("main")?.scrollTo({ top: 0, behavior: "smooth" }); }}>
+              <div className="mob-topbar" onClick={() => {
+                if (page === "dashboard") {
+                  document.querySelector("main")?.scrollTo({ top: 0, behavior: "smooth" });
+                } else {
+                  setPage("dashboard");
+                }
+              }}>
                 <span className="mob-topbar-brand">Zen<span>tero</span></span>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <span style={{ fontSize: 12, color: "var(--text-3)", fontFamily: "var(--font-ui)", fontWeight: 500 }}>{dayLabel}</span>
@@ -554,7 +567,7 @@ function AppShell() {
           )}
           <main
             {...edgeSwipeHandlers}
-            style={isMobile ? { flex: 1, minWidth: 0, width: "100%", overflow: "visible", position: "relative", paddingBottom: "calc(58px + env(safe-area-inset-bottom, 0px))", overscrollBehaviorY: "auto", WebkitOverflowScrolling: "touch" } : undefined}
+            style={isMobile ? { flex: 1, minWidth: 0, width: "100%", overflowY: "auto", position: "relative", paddingBottom: "calc(58px + env(safe-area-inset-bottom, 0px))", overscrollBehaviorY: "auto", WebkitOverflowScrolling: "touch" } : undefined}
           >
             <PageTransition pageKey={page}>
               <Suspense fallback={<PageLoader />}>

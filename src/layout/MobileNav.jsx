@@ -39,12 +39,15 @@ export default function MobileNav({ toggleDk }) {
   const initials = displayName.slice(0, 2).toUpperCase();
 
   const handleNav = (id) => {
-    setPage(id);
+    const isCurrentlyActive = id === "projects" ? (page === "projects" || page === "project-detail") : page === id;
+    if (isCurrentlyActive) {
+      const scrollEl = document.querySelector(window.innerWidth < 768 ? "main" : ".main");
+      scrollEl?.scrollTo({ top: 0, behavior: "smooth" });
+    } else {
+      setPage(id);
+    }
     setMoreOpen(false);
     setTaskDetail(null);
-    if (id === "dashboard") {
-      document.querySelector("main")?.scrollTo({ top: 0, behavior: "smooth" });
-    }
   };
 
   const handleLogout = async () => {

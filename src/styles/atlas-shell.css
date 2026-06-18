@@ -2024,11 +2024,14 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
     background: var(--bg-2);
   }
   html, body, #root {
+    height: 100dvh;
     min-height: 100dvh;
     margin: 0;
     padding: 0;
     max-width: 100%;
-    overflow-x: hidden;
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
   }
   .app {
     display: block;
@@ -3392,35 +3395,25 @@ body, p, li, td, th {
   z-index: 2;
   touch-action: pan-y;
   cursor: grab;
-  transform: translateX(var(--drag-x));
-  transition: transform .32s cubic-bezier(.34,1.56,.64,1), opacity .18s ease;
+  transform: translateX(var(--drag-x)) !important;
+  transition: transform .32s cubic-bezier(.34,1.56,.64,1), opacity .18s ease !important;
   will-change: transform;
 }
-/* iOS reserves horizontal panning for JS only when the actual touch target
-   (the .tcard the finger lands on, passed in as children) also opts in. */
-.swipe-card .tcard { touch-action: pan-y; }
-.swipe-card .tcard:hover,
-.swipe-card .tcard:active {
-  transform: none;
-}
+.swipe-card.tcard { touch-action: pan-y; }
 .swipe-card:hover,
-.swipe-card:active {
-  transform: translateX(var(--drag-x));
+.swipe-card:active,
+.swipe-card.tcard:hover,
+.swipe-card.tcard:active {
+  transform: translateX(var(--drag-x)) !important;
 }
 .swipe-shell.is-swiping .swipe-card {
   cursor: grabbing;
-  transition: none;
-}
-.swipe-shell.is-swiping .swipe-bg-right,
-.swipe-shell.is-swiping .swipe-bg-left,
-.swipe-shell.is-swiping .swipe-action-right,
-.swipe-shell.is-swiping .swipe-action-left {
-  transition: none;
+  transition: none !important;
 }
 .swipe-shell.is-exiting .swipe-card {
   opacity: 0;
-  transform: translateX(var(--drag-x)) scale(.95);
-  transition: transform .28s cubic-bezier(.4,0,.2,1), opacity .2s ease;
+  transform: translateX(var(--drag-x)) scale(.95) !important;
+  transition: transform .28s cubic-bezier(.4,0,.2,1), opacity .2s ease !important;
 }
 
 /* Swipe hint nudge animation */

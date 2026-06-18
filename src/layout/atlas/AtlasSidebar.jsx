@@ -207,7 +207,14 @@ export default function AtlasSidebar({ collapsed, setCollapsed }) {
         <Icon name="chevron-right" size={12} color="currentColor" strokeWidth={2} />
       </button>
 
-      <div className="sb-brand" onClick={() => setPage("dashboard")} style={{ cursor: "pointer" }}>
+      <div className="sb-brand" onClick={() => {
+        if (page === "dashboard") {
+          const scrollEl = document.querySelector(window.innerWidth < 768 ? "main" : ".main");
+          scrollEl?.scrollTo({ top: 0, behavior: "smooth" });
+        } else {
+          setPage("dashboard");
+        }
+      }} style={{ cursor: "pointer" }}>
         <MZLogo size={32} style={{ boxShadow: "0 0 16px var(--accent-glow)" }} />
         <div className="sb-brand-text">
           <div className="sb-brand-name">Zentero</div>
@@ -252,8 +259,14 @@ export default function AtlasSidebar({ collapsed, setCollapsed }) {
               key={n.id}
               className={`sb-nav-item ${active ? "active" : ""}`}
               onClick={() => {
-                setPage(n.id);
-                if (n.id !== "project-detail") setSelProject?.(null);
+                const isCurrentlyActive = n.id === "projects" ? isProjectsActive : page === n.id;
+                if (isCurrentlyActive) {
+                  const scrollEl = document.querySelector(window.innerWidth < 768 ? "main" : ".main");
+                  scrollEl?.scrollTo({ top: 0, behavior: "smooth" });
+                } else {
+                  setPage(n.id);
+                  if (n.id !== "project-detail") setSelProject?.(null);
+                }
               }}
               title={n.label}
             >
