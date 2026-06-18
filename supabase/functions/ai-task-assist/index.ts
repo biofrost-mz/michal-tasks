@@ -202,58 +202,64 @@ Vrať POUZE JSON objekt s následující strukturou (nic jiného, žádné markd
 }`;
 
     } else {
-      return new Response(JSON.stringify({ error: "Unknown action" }), { status: 200, headers: CORS });
+      return new Response(JSON.stringify({ error: "Unknown action" }), { status: 400, headers: { ...CORS, "Content-Type": "application/json" } });
     }
 
     let raw = "";
     let success = false;
     let errorDetails = "";
+    let selectedModel = "";
 
     const apiKey = Deno.env.get("GOOGLE_GENERATIVE_AI_API_KEY");
     if (apiKey) {
-      try {
-        console.log(`ai-task-assist: Pokouším se volat Google Gemini API (gemini-2.5-flash) pro akci "${action}"...`);
-        const isJsonAction = ["subtasks", "tags", "priority", "note_extract_tasks", "draft_task"].includes(action);
-        
-        const geminiResp = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              model: "gemini-2.5-flash",
-              contents: [{ role: "user", parts: [{ text: aiPrompt }] }],
-              systemInstruction: {
-                parts: [{ text: SYSTEM }]
-              },
-              generationConfig: {
-                temperature: 0.4,
-                maxOutputTokens: 8192,
-                ...(isJsonAction ? { responseMimeType: "application/json" } : {}),
-              },
-            }),
-          }
-        );
+      const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+      const isJsonAction = ["subtasks", "tags", "priority", "note_extract_tasks", "draft_task"].includes(action);
+      
+      for (const modelName of modelsToTry) {
+        try {
+          console.log(`ai-task-assist: Pokouším se volat Google Gemini API (${modelName}) pro akci "${action}"...`);
+          const geminiResp = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                model: modelName,
+                contents: [{ role: "user", parts: [{ text: aiPrompt }] }],
+                systemInstruction: {
+                  parts: [{ text: SYSTEM }]
+                },
+                generationConfig: {
+                  temperature: 0.4,
+                  maxOutputTokens: 8192,
+                  ...(isJsonAction ? { responseMimeType: "application/json" } : {}),
+                },
+              }),
+            }
+          );
 
-        if (geminiResp.ok) {
-          const geminiData = await geminiResp.json();
-          const geminiText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-          if (geminiText) {
-            raw = geminiText;
-            success = true;
-            console.log(`ai-task-assist: Google Gemini API úspěšně dokončil akci "${action}".`);
+          if (geminiResp.ok) {
+            const geminiData = await geminiResp.json();
+            const geminiText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+            if (geminiText) {
+              raw = geminiText;
+              success = true;
+              selectedModel = modelName;
+              console.log(`ai-task-assist: Google Gemini API (${modelName}) úspěšně dokončil akci "${action}".`);
+              break;
+            } else {
+              console.warn(`ai-task-assist: Gemini (${modelName}) vrátil prázdnou odpověď.`);
+              errorDetails += `[Gemini ${modelName}: prázdná odpověď] `;
+            }
           } else {
-            console.warn("ai-task-assist: Gemini vrátil prázdnou odpověď.");
-            errorDetails += "[Gemini: prázdná odpověď] ";
+            const errText = await geminiResp.text();
+            console.warn(`ai-task-assist: Gemini (${modelName}) API vrátil chybu: ${geminiResp.status} ${errText.slice(0, 300)}`);
+            errorDetails += `[Gemini ${modelName} chybný status ${geminiResp.status}: ${errText.slice(0, 150)}] `;
           }
-        } else {
-          const errText = await geminiResp.text();
-          console.warn(`ai-task-assist: Gemini API vrátil chybu: ${geminiResp.status} ${errText.slice(0, 300)}`);
-          errorDetails += `[Gemini chybný status ${geminiResp.status}: ${errText.slice(0, 150)}] `;
+        } catch (geminiError: any) {
+          console.warn(`ai-task-assist: Selhalo volání Google Gemini API (${modelName}):`, geminiError);
+          errorDetails += `[Gemini ${modelName} výjimka: ${geminiError?.message || String(geminiError)}] `;
         }
-      } catch (geminiError: any) {
-        console.warn("ai-task-assist: Selhalo volání Google Gemini API:", geminiError);
-        errorDetails += `[Gemini výjimka: ${geminiError?.message || String(geminiError)}] `;
       }
     } else {
       console.warn("ai-task-assist: Chybí GOOGLE_GENERATIVE_AI_API_KEY, zkouším rovnou zálohu (Claude).");
@@ -267,7 +273,7 @@ Vrať POUZE JSON objekt s následující strukturou (nic jiného, žádné markd
         console.error("ai-task-assist: Chybí GOOGLE_GENERATIVE_AI_API_KEY i ANTHROPIC_API_KEY");
         return new Response(
           JSON.stringify({ error: `AI není dostupné. Detaily chyb: ${errorDetails} + [Claude: chybí API klíč]` }),
-          { status: 200, headers: CORS }
+          { status: 502, headers: { ...CORS, "Content-Type": "application/json" } }
         );
       }
 
@@ -282,7 +288,7 @@ Vrať POUZE JSON objekt s následující strukturou (nic jiného, žádné markd
           },
           body: JSON.stringify({
             model: "claude-3-5-haiku-20241022",
-            max_tokens: 600,
+            max_tokens: 1024,
             system: SYSTEM,
             messages: [{ role: "user", content: aiPrompt }],
           }),
@@ -294,19 +300,31 @@ Vrať POUZE JSON objekt s následující strukturou (nic jiného, žádné markd
           errorDetails += `[Claude chybný status ${resp.status}: ${err.slice(0, 150)}]`;
           return new Response(
             JSON.stringify({ error: `AI není dostupné. Detaily chyb: ${errorDetails}` }),
-            { status: 200, headers: CORS }
+            { status: 502, headers: { ...CORS, "Content-Type": "application/json" } }
           );
         }
 
         const data = await resp.json();
-        raw = data.content?.[0]?.text?.trim() ?? "";
-        console.log("ai-task-assist: Anthropic Claude úspěšně vrátil záložní odpověď.");
+        const claudeText = data.content?.[0]?.text?.trim() ?? "";
+        if (claudeText) {
+          raw = claudeText;
+          success = true;
+          selectedModel = "Claude 3.5 Haiku";
+          console.log("ai-task-assist: Anthropic Claude úspěšně vrátil záložní odpověď.");
+        } else {
+          console.warn("ai-task-assist: Claude vrátil prázdnou odpověď.");
+          errorDetails += "[Claude: prázdná odpověď]";
+          return new Response(
+            JSON.stringify({ error: `AI není dostupné. Detaily chyb: ${errorDetails}` }),
+            { status: 502, headers: { ...CORS, "Content-Type": "application/json" } }
+          );
+        }
       } catch (claudeError: any) {
         console.error("ai-task-assist: Claude API výjimka:", claudeError);
         errorDetails += `[Claude výjimka: ${claudeError?.message || String(claudeError)}]`;
         return new Response(
           JSON.stringify({ error: `AI není dostupné. Detaily chyb: ${errorDetails}` }),
-          { status: 200, headers: CORS }
+          { status: 502, headers: { ...CORS, "Content-Type": "application/json" } }
         );
       }
     }
@@ -315,7 +333,7 @@ Vrať POUZE JSON objekt s následující strukturou (nic jiného, žádné markd
       JSON.stringify({
         result: raw,
         meta: {
-          model: success ? "Gemini 2.5 Flash" : "Claude 3.5 Haiku",
+          model: selectedModel || (success ? "Gemini" : "Claude"),
         }
       }),
       { headers: { ...CORS, "Content-Type": "application/json" } }

@@ -68,7 +68,7 @@ serve(async (req) => {
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 200, headers: CORS });
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...CORS, "Content-Type": "application/json" } });
     }
     const userClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -77,20 +77,20 @@ serve(async (req) => {
     );
     const { data: { user }, error: authErr } = await userClient.auth.getUser();
     if (authErr || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 200, headers: CORS });
+      return new Response(JSON.stringify({ error: `Unauthorized: ${authErr?.message || "User not found"}` }), { status: 401, headers: { ...CORS, "Content-Type": "application/json" } });
     }
 
     if (!checkRateLimit(user.id)) {
       return new Response(
         JSON.stringify({ error: `Limit překročen — max ${RATE_LIMIT_MAX} generování projektů za hodinu.` }),
-        { status: 200, headers: { ...CORS, "Retry-After": "3600" } }
+        { status: 429, headers: { ...CORS, "Content-Type": "application/json", "Retry-After": "3600" } }
       );
     }
 
     const { userPrompt, availableTags } = await req.json();
 
     if (!userPrompt?.trim()) {
-      return new Response(JSON.stringify({ error: "userPrompt je povinný." }), { status: 200, headers: CORS });
+      return new Response(JSON.stringify({ error: "userPrompt je povinný." }), { status: 400, headers: { ...CORS, "Content-Type": "application/json" } });
     }
 
     const tagList = Array.isArray(availableTags) && availableTags.length > 0
@@ -139,48 +139,54 @@ Pravidla pro tvorbu a výstup projektu:
     let success = false;
     let errorDetails = "";
     let geminiDebugInfo: any = null;
+    let selectedModel = "";
 
     const apiKey = Deno.env.get("GOOGLE_GENERATIVE_AI_API_KEY");
     if (apiKey) {
-      try {
-        console.log("ai-project-planner: Volám Google Gemini API (gemini-2.5-pro)...");
-        const geminiResp = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${apiKey}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              contents: [{ role: "user", parts: [{ text: prompt }] }],
-              generationConfig: {
-                responseMimeType: "application/json",
-                responseSchema: GEMINI_RESPONSE_SCHEMA,
-                temperature: 0.6,
-                maxOutputTokens: 8192,
-              },
-            }),
-          }
-        );
+      const modelsToTry = ["gemini-2.5-pro", "gemini-2.0-pro", "gemini-1.5-pro"];
+      for (const modelName of modelsToTry) {
+        try {
+          console.log(`ai-project-planner: Volám Google Gemini API (${modelName})...`);
+          const geminiResp = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                contents: [{ role: "user", parts: [{ text: prompt }] }],
+                generationConfig: {
+                  responseMimeType: "application/json",
+                  responseSchema: GEMINI_RESPONSE_SCHEMA,
+                  temperature: 0.6,
+                  maxOutputTokens: 8192,
+                },
+              }),
+            }
+          );
 
-        if (geminiResp.ok) {
-          const geminiData = await geminiResp.json();
-          geminiDebugInfo = geminiData;
-          const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (text) {
-            rawText = text;
-            success = true;
-            console.log("ai-project-planner: Google Gemini API úspěšně vrátil odpověď.");
+          if (geminiResp.ok) {
+            const geminiData = await geminiResp.json();
+            geminiDebugInfo = geminiData;
+            const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (text) {
+              rawText = text;
+              success = true;
+              selectedModel = modelName;
+              console.log(`ai-project-planner: Google Gemini API (${modelName}) úspěšně vrátil odpověď.`);
+              break;
+            } else {
+              console.warn(`ai-project-planner: Gemini (${modelName}) vrátil prázdnou odpověď.`);
+              errorDetails += `[Gemini ${modelName}: prázdná odpověď] `;
+            }
           } else {
-            console.warn("ai-project-planner: Gemini vrátil prázdnou odpověď.");
-            errorDetails += "[Gemini: prázdná odpověď] ";
+            const errText = await geminiResp.text();
+            console.warn(`ai-project-planner: Gemini (${modelName}) API vrátil chybu: ${geminiResp.status} ${errText.slice(0, 300)}`);
+            errorDetails += `[Gemini ${modelName} chybný status ${geminiResp.status}: ${errText.slice(0, 150)}] `;
           }
-        } else {
-          const errText = await geminiResp.text();
-          console.warn(`ai-project-planner: Gemini API vrátil chybu: ${geminiResp.status} ${errText.slice(0, 300)}`);
-          errorDetails += `[Gemini chybný status ${geminiResp.status}: ${errText.slice(0, 150)}] `;
+        } catch (e: any) {
+          console.warn(`ai-project-planner: Selhalo volání Google Gemini API (${modelName}):`, e);
+          errorDetails += `[Gemini ${modelName} výjimka: ${e?.message || String(e)}] `;
         }
-      } catch (e: any) {
-        console.warn("ai-project-planner: Selhalo volání Google Gemini API:", e);
-        errorDetails += `[Gemini výjimka: ${e?.message || String(e)}] `;
       }
     } else {
       console.warn("ai-project-planner: Chybí GOOGLE_GENERATIVE_AI_API_KEY, zkouším rovnou zálohu (Claude).");
@@ -194,7 +200,7 @@ Pravidla pro tvorbu a výstup projektu:
         console.error("ai-project-planner: Chybí GOOGLE_GENERATIVE_AI_API_KEY i ANTHROPIC_API_KEY");
         return new Response(
           JSON.stringify({ error: `AI není dostupné. Detaily chyb: ${errorDetails} + [Claude: chybí API klíč]` }),
-          { status: 200, headers: CORS }
+          { status: 502, headers: { ...CORS, "Content-Type": "application/json" } }
         );
       }
 
@@ -242,19 +248,21 @@ Vrať výsledek jako JSON objekt s touto strukturou:
           errorDetails += `[Claude chybný status ${claudeResp.status}: ${errText.slice(0, 150)}]`;
           return new Response(
             JSON.stringify({ error: `AI služba nedostupná. Detaily chyb: ${errorDetails}` }),
-            { status: 200, headers: CORS }
+            { status: 502, headers: { ...CORS, "Content-Type": "application/json" } }
           );
         }
 
         const claudeData = await claudeResp.json();
         rawText = claudeData.content?.[0]?.text?.trim() ?? "";
+        success = true;
+        selectedModel = "Claude 3.5 Sonnet";
         console.log("ai-project-planner: Anthropic Claude úspěšně vrátil záložní odpověď.");
       } catch (claudeError: any) {
         console.error("ai-project-planner: Claude API výjimka:", claudeError);
         errorDetails += `[Claude výjimka: ${claudeError?.message || String(claudeError)}]`;
         return new Response(
           JSON.stringify({ error: `AI služba nedostupná. Detaily chyb: ${errorDetails}` }),
-          { status: 200, headers: CORS }
+          { status: 502, headers: { ...CORS, "Content-Type": "application/json" } }
         );
       }
     }
@@ -278,7 +286,7 @@ Vrať výsledek jako JSON objekt s touto strukturou:
           parseError: parseErr?.message || String(parseErr),
           geminiDebugInfo: geminiDebugInfo
         }),
-        { status: 200, headers: CORS }
+        { status: 502, headers: { ...CORS, "Content-Type": "application/json" } }
       );
     }
 
@@ -293,7 +301,7 @@ Vrať výsledek jako JSON objekt s touto strukturou:
           validationErrors: validated.error.flatten(),
           geminiDebugInfo: geminiDebugInfo
         }),
-        { status: 200, headers: CORS }
+        { status: 502, headers: { ...CORS, "Content-Type": "application/json" } }
       );
     }
 
@@ -301,7 +309,7 @@ Vrať výsledek jako JSON objekt s touto strukturou:
       JSON.stringify({
         result: validated.data,
         meta: {
-          model: success ? "Gemini 2.5 Pro" : "Claude 3.5 Sonnet",
+          model: selectedModel || (success ? "Gemini" : "Claude"),
         }
       }),
       { headers: { ...CORS, "Content-Type": "application/json" } }
@@ -310,7 +318,7 @@ Vrať výsledek jako JSON objekt s touto strukturou:
     console.error("ai-project-planner: unhandled error:", e);
     return new Response(
       JSON.stringify({ error: `Interní chyba serveru: ${e?.message || String(e)}` }),
-      { status: 200, headers: CORS }
+      { status: 500, headers: { ...CORS, "Content-Type": "application/json" } }
     );
   }
 });

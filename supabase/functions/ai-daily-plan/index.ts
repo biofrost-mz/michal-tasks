@@ -50,7 +50,7 @@ serve(async (req) => {
     const authHeader = req.headers.get("authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -62,7 +62,7 @@ serve(async (req) => {
     if (authErr || !user) {
       console.error("ai-daily-plan auth error:", authErr);
       return new Response(JSON.stringify({ error: `Invalid token: ${authErr?.message || "User not found"}` }), {
-        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -74,7 +74,7 @@ serve(async (req) => {
       if (!workspaceId) throw new Error("Missing workspaceId");
     } catch {
       return new Response(JSON.stringify({ error: "workspaceId required" }), {
-        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -87,14 +87,14 @@ serve(async (req) => {
       .eq("user_id", user.id);
     if (!count) {
       return new Response(JSON.stringify({ error: "Not a workspace member" }), {
-        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     if (!checkRateLimit(user.id)) {
       return new Response(
         JSON.stringify({ error: `Rate limit exceeded — max ${RATE_LIMIT_MAX} daily plans per hour.` }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "3600" } }
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "3600" } }
       );
     }
 
@@ -195,48 +195,54 @@ Buď maximálně konkrétní — uváděj skutečné názvy úkolů z mého sezn
     let plan = "";
     let success = false;
     let errorDetails = "";
+    let selectedModel = "";
 
     const apiKey = Deno.env.get("GOOGLE_GENERATIVE_AI_API_KEY");
     if (apiKey) {
-      try {
-        console.log("ai-daily-plan: Pokouším se volat Google Gemini API (gemini-2.5-pro)...");
-        const geminiResp = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${apiKey}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              contents: [{ role: "user", parts: [{ text: userPrompt }] }],
-              systemInstruction: {
-                parts: [{ text: systemPrompt }]
-              },
-              generationConfig: {
-                temperature: 0.7,
-                maxOutputTokens: 8192,
-              },
-            }),
-          }
-        );
+      const modelsToTry = ["gemini-2.5-pro", "gemini-2.0-pro", "gemini-1.5-pro"];
+      for (const modelName of modelsToTry) {
+        try {
+          console.log(`ai-daily-plan: Pokouším se volat Google Gemini API (${modelName})...`);
+          const geminiResp = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+                systemInstruction: {
+                  parts: [{ text: systemPrompt }]
+                },
+                generationConfig: {
+                  temperature: 0.7,
+                  maxOutputTokens: 8192,
+                },
+              }),
+            }
+          );
 
-        if (geminiResp.ok) {
-          const geminiData = await geminiResp.json();
-          const geminiText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-          if (geminiText) {
-            plan = geminiText;
-            success = true;
-            console.log("ai-daily-plan: Google Gemini API úspěšně vrátil odpověď.");
+          if (geminiResp.ok) {
+            const geminiData = await geminiResp.json();
+            const geminiText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+            if (geminiText) {
+              plan = geminiText;
+              success = true;
+              selectedModel = modelName;
+              console.log(`ai-daily-plan: Google Gemini API (${modelName}) úspěšně vrátil odpověď.`);
+              break;
+            } else {
+              console.warn(`ai-daily-plan: Gemini (${modelName}) vrátil prázdnou odpověď.`);
+              errorDetails += `[Gemini ${modelName}: prázdná odpověď] `;
+            }
           } else {
-            console.warn("ai-daily-plan: Gemini vrátil prázdnou odpověď.");
-            errorDetails += "[Gemini: prázdná odpověď] ";
+            const errText = await geminiResp.text();
+            console.warn(`ai-daily-plan: Gemini (${modelName}) API vrátil chybu: ${geminiResp.status} ${errText.slice(0, 300)}`);
+            errorDetails += `[Gemini ${modelName} chybný status ${geminiResp.status}: ${errText.slice(0, 150)}] `;
           }
-        } else {
-          const errText = await geminiResp.text();
-          console.warn(`ai-daily-plan: Gemini API vrátil chybu: ${geminiResp.status} ${errText.slice(0, 300)}`);
-          errorDetails += `[Gemini chybný status ${geminiResp.status}: ${errText.slice(0, 150)}] `;
+        } catch (geminiError: any) {
+          console.warn(`ai-daily-plan: Selhalo volání Google Gemini API (${modelName}):`, geminiError);
+          errorDetails += `[Gemini ${modelName} výjimka: ${geminiError?.message || String(geminiError)}] `;
         }
-      } catch (geminiError: any) {
-        console.warn("ai-daily-plan: Selhalo volání Google Gemini API:", geminiError);
-        errorDetails += `[Gemini výjimka: ${geminiError?.message || String(geminiError)}] `;
       }
     } else {
       console.warn("ai-daily-plan: Chybí GOOGLE_GENERATIVE_AI_API_KEY, zkouším rovnou zálohu (Claude).");
@@ -250,7 +256,7 @@ Buď maximálně konkrétní — uváděj skutečné názvy úkolů z mého sezn
         console.error("ai-daily-plan: Chybí GOOGLE_GENERATIVE_AI_API_KEY i ANTHROPIC_API_KEY");
         return new Response(
           JSON.stringify({ error: `AI není dostupné. Detaily chyb: ${errorDetails} + [Claude: chybí API klíč]` }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
@@ -277,19 +283,21 @@ Buď maximálně konkrétní — uváděj skutečné názvy úkolů z mého sezn
           errorDetails += `[Claude chybný status ${claudeRes.status}: ${errText.slice(0, 150)}]`;
           return new Response(
             JSON.stringify({ error: `AI není dostupné. Detaily chyb: ${errorDetails}` }),
-            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
 
         const claudeData = await claudeRes.json();
         plan = claudeData.content?.[0]?.text ?? "";
+        success = true;
+        selectedModel = "Claude 3.5 Sonnet";
         console.log("ai-daily-plan: Anthropic Claude úspěšně vrátil záložní odpověď.");
       } catch (claudeError: any) {
         console.error("ai-daily-plan: Claude API výjimka:", claudeError);
         errorDetails += `[Claude výjimka: ${claudeError?.message || String(claudeError)}]`;
         return new Response(
           JSON.stringify({ error: `AI není dostupné. Detaily chyb: ${errorDetails}` }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
     }
@@ -299,7 +307,7 @@ Buď maximálně konkrétní — uváděj skutečné názvy úkolů z mého sezn
         plan,
         generatedAt: new Date().toISOString(),
         meta: {
-          model: success ? "Gemini 2.5 Pro" : "Claude 3.5 Sonnet",
+          model: selectedModel || (success ? "Gemini" : "Claude"),
         }
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -308,7 +316,7 @@ Buď maximálně konkrétní — uváděj skutečné názvy úkolů z mého sezn
     console.error("ai-daily-plan: unhandled error:", globalErr);
     return new Response(
       JSON.stringify({ error: `Interní chyba serveru: ${globalErr?.message || String(globalErr)}` }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });

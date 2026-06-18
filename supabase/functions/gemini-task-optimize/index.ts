@@ -53,7 +53,7 @@ serve(async (req) => {
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 200, headers: CORS });
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...CORS, "Content-Type": "application/json" } });
     }
     const userClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -62,20 +62,20 @@ serve(async (req) => {
     );
     const { data: { user }, error: authErr } = await userClient.auth.getUser();
     if (authErr || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 200, headers: CORS });
+      return new Response(JSON.stringify({ error: `Unauthorized: ${authErr?.message || "User not found"}` }), { status: 401, headers: { ...CORS, "Content-Type": "application/json" } });
     }
 
     if (!checkRateLimit(user.id)) {
       return new Response(
         JSON.stringify({ error: `Rate limit exceeded — max ${RATE_LIMIT_MAX} optimalizací za hodinu.` }),
-        { status: 200, headers: { ...CORS, "Retry-After": "3600" } }
+        { status: 429, headers: { ...CORS, "Content-Type": "application/json", "Retry-After": "3600" } }
       );
     }
 
     const { currentTitle, currentDescription, availableProjects, availableTags } = await req.json();
 
     if (!currentTitle?.trim()) {
-      return new Response(JSON.stringify({ error: "currentTitle je povinný." }), { status: 200, headers: CORS });
+      return new Response(JSON.stringify({ error: "currentTitle je povinný." }), { status: 400, headers: { ...CORS, "Content-Type": "application/json" } });
     }
 
     const projectList = Array.isArray(availableProjects) && availableProjects.length > 0
@@ -126,7 +126,7 @@ Pravidla pro optimalizaci (všechny výstupy vygeneruj výhradně v bezchybné �
 4. **timeEstimate (Časový odhad):**
    - Odhadni čistý čas potřebný pro vykonání celého úkolu.
    - **Bojuj s plánovacím optimismem (Planning Fallacy):** Lidé mají tendenci čas podhodnocovat. Přidej rozumný časový pufr (cca 20-30 %) pro nečekané komplikace, otestování a začištění.
-   - Hodnota musí být striktně vybrána z tohoto výčtu: "15 min", "30 min", "1 hod", "2 hod", "půl dne", "celý den".
+   - Hodnota must být striktně vybrána z tohoto výčtu: "15 min", "30 min", "1 hod", "2 hod", "půl dne", "celý den".
      - Drobná korektura, rychlý e-mail -> "15 min" / "30 min"
      - Běžná soustředěná práce -> "1 hod" / "2 hod"
      - Komplexní blok úkolů, hluboká práce -> "půl dne"
@@ -143,47 +143,53 @@ Pravidla pro optimalizaci (všechny výstupy vygeneruj výhradně v bezchybné �
     let rawText = "";
     let success = false;
     let errorDetails = "";
+    let selectedModel = "";
 
     const apiKey = Deno.env.get("GOOGLE_GENERATIVE_AI_API_KEY");
     if (apiKey) {
-      try {
-        console.log("gemini-task-optimize: Pokouším se volat Google Gemini API (gemini-2.5-flash)...");
-        const geminiResp = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              contents: [{ role: "user", parts: [{ text: prompt }] }],
-              generationConfig: {
-                responseMimeType: "application/json",
-                responseSchema: GEMINI_RESPONSE_SCHEMA,
-                temperature: 0.4,
-                maxOutputTokens: 8192,
-              },
-            }),
-          }
-        );
+      const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+      for (const modelName of modelsToTry) {
+        try {
+          console.log(`gemini-task-optimize: Pokouším se volat Google Gemini API (${modelName})...`);
+          const geminiResp = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                contents: [{ role: "user", parts: [{ text: prompt }] }],
+                generationConfig: {
+                  responseMimeType: "application/json",
+                  responseSchema: GEMINI_RESPONSE_SCHEMA,
+                  temperature: 0.4,
+                  maxOutputTokens: 8192,
+                },
+              }),
+            }
+          );
 
-        if (geminiResp.ok) {
-          const geminiData = await geminiResp.json();
-          const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (text) {
-            rawText = text;
-            success = true;
-            console.log("gemini-task-optimize: Google Gemini API úspěšně vrátil odpověď.");
+          if (geminiResp.ok) {
+            const geminiData = await geminiResp.json();
+            const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (text) {
+              rawText = text;
+              success = true;
+              selectedModel = modelName;
+              console.log(`gemini-task-optimize: Google Gemini API (${modelName}) úspěšně vrátil odpověď.`);
+              break;
+            } else {
+              console.warn(`gemini-task-optimize: Gemini (${modelName}) vrátil prázdnou odpověď.`);
+              errorDetails += `[Gemini ${modelName}: prázdná odpověď] `;
+            }
           } else {
-            console.warn("gemini-task-optimize: Gemini vrátil prázdnou odpověď.");
-            errorDetails += "[Gemini: prázdná odpověď] ";
+            const errText = await geminiResp.text();
+            console.warn(`gemini-task-optimize: Gemini (${modelName}) API vrátil chybu: ${geminiResp.status} ${errText.slice(0, 300)}`);
+            errorDetails += `[Gemini ${modelName} chybný status ${geminiResp.status}: ${errText.slice(0, 150)}] `;
           }
-        } else {
-          const errText = await geminiResp.text();
-          console.warn(`gemini-task-optimize: Gemini API vrátil chybu: ${geminiResp.status} ${errText.slice(0, 300)}`);
-          errorDetails += `[Gemini chybný status ${geminiResp.status}: ${errText.slice(0, 150)}] `;
+        } catch (e: any) {
+          console.warn(`gemini-task-optimize: Selhalo volání Google Gemini API (${modelName}):`, e);
+          errorDetails += `[Gemini ${modelName} výjimka: ${e?.message || String(e)}] `;
         }
-      } catch (e: any) {
-        console.warn("gemini-task-optimize: Selhalo volání Google Gemini API:", e);
-        errorDetails += `[Gemini výjimka: ${e?.message || String(e)}] `;
       }
     } else {
       console.warn("gemini-task-optimize: Chybí GOOGLE_GENERATIVE_AI_API_KEY, zkouším rovnou zálohu (Claude).");
@@ -197,7 +203,7 @@ Pravidla pro optimalizaci (všechny výstupy vygeneruj výhradně v bezchybné �
         console.error("gemini-task-optimize: Chybí GOOGLE_GENERATIVE_AI_API_KEY i ANTHROPIC_API_KEY");
         return new Response(
           JSON.stringify({ error: `AI není dostupné. Detaily chyb: ${errorDetails} + [Claude: chybí API klíč]` }),
-          { status: 200, headers: CORS }
+          { status: 502, headers: { ...CORS, "Content-Type": "application/json" } }
         );
       }
 
@@ -237,19 +243,21 @@ Vrať výsledek jako JSON objekt s touto strukturou:
           errorDetails += `[Claude chybný status ${claudeResp.status}: ${errText.slice(0, 150)}]`;
           return new Response(
             JSON.stringify({ error: `AI služba nedostupná. Detaily chyb: ${errorDetails}` }),
-            { status: 200, headers: CORS }
+            { status: 502, headers: { ...CORS, "Content-Type": "application/json" } }
           );
         }
 
         const claudeData = await claudeResp.json();
         rawText = claudeData.content?.[0]?.text?.trim() ?? "";
+        success = true;
+        selectedModel = "Claude 3.5 Haiku";
         console.log("gemini-task-optimize: Anthropic Claude úspěšně vrátil záložní odpověď.");
       } catch (claudeError: any) {
         console.error("gemini-task-optimize: Claude API výjimka:", claudeError);
         errorDetails += `[Claude výjimka: ${claudeError?.message || String(claudeError)}]`;
         return new Response(
           JSON.stringify({ error: `AI služba nedostupná. Detaily chyb: ${errorDetails}` }),
-          { status: 200, headers: CORS }
+          { status: 502, headers: { ...CORS, "Content-Type": "application/json" } }
         );
       }
     }
@@ -266,8 +274,8 @@ Vrať výsledek jako JSON objekt s touto strukturou:
     } catch (parseErr: any) {
       console.error("gemini-task-optimize: JSON parse error:", cleanedText);
       return new Response(
-        JSON.stringify({ error: `AI vrátila neplatný JSON formát. Text: "${cleanedText}". Detaily chyb: ${errorDetails}` }),
-        { status: 200, headers: CORS }
+        JSON.stringify({ error: `AI vrátila neplatný JSON formát. Detaily chyb: ${errorDetails}` }),
+        { status: 502, headers: { ...CORS, "Content-Type": "application/json" } }
       );
     }
 
@@ -277,7 +285,7 @@ Vrať výsledek jako JSON objekt s touto strukturou:
       console.error("gemini-task-optimize: raw parsed data:", JSON.stringify(parsed));
       return new Response(
         JSON.stringify({ error: `AI vrátila neočekávanou strukturu dat. Detaily chyb: ${errorDetails}` }),
-        { status: 200, headers: CORS }
+        { status: 502, headers: { ...CORS, "Content-Type": "application/json" } }
       );
     }
 
@@ -285,7 +293,7 @@ Vrať výsledek jako JSON objekt s touto strukturou:
       JSON.stringify({
         result: validated.data,
         meta: {
-          model: success ? "Gemini 2.5 Flash" : "Claude 3.5 Haiku",
+          model: selectedModel || (success ? "Gemini" : "Claude"),
         }
       }),
       { headers: { ...CORS, "Content-Type": "application/json" } }
@@ -294,7 +302,7 @@ Vrať výsledek jako JSON objekt s touto strukturou:
     console.error("gemini-task-optimize: unhandled error:", e);
     return new Response(
       JSON.stringify({ error: `Interní chyba serveru: ${e?.message || String(e)}` }),
-      { status: 200, headers: CORS }
+      { status: 500, headers: { ...CORS, "Content-Type": "application/json" } }
     );
   }
 });
