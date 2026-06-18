@@ -226,7 +226,7 @@ export default function MobileNav({ toggleDk }) {
       <nav
         className="mobile-nav-bar"
         style={{
-          position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 200,
+          position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 200,
           background: "var(--bg-2)", borderTop: "1px solid var(--border)",
           display: "flex", alignItems: "stretch",
           height: "var(--bottom-nav-height)",
@@ -244,7 +244,7 @@ export default function MobileNav({ toggleDk }) {
               onClick={() => handleNav(n.id)}
               style={{
                 flex: 1, display: "flex", flexDirection: "column", alignItems: "center",
-                justifyContent: "center", gap: 3, padding: "6px 4px 3px",
+                justifyContent: "center", gap: 2, padding: "2px 2px 1px",
                 border: "none", background: "transparent",
                 color: act ? "var(--accent)" : "var(--text-3)",
                 position: "relative",
@@ -252,14 +252,14 @@ export default function MobileNav({ toggleDk }) {
             >
               {n.count > 0 && (
                 <span style={{
-                  position: "absolute", top: 6, right: "50%", transform: "translateX(10px)",
+                  position: "absolute", top: 2, right: "50%", transform: "translateX(10px)",
                   minWidth: 16, height: 16, borderRadius: 8, background: "var(--accent)",
                   color: "#fff", fontSize: 9, fontWeight: 700, display: "flex",
                   alignItems: "center", justifyContent: "center", padding: "0 3px",
                 }}>{n.count > 99 ? "99+" : n.count}</span>
               )}
-              <Icon name={n.icon} size={24} color={act ? "var(--accent)" : "var(--text-3)"} strokeWidth={act ? 2.25 : 1.75} />
-              <span style={{ fontSize: 12, fontWeight: act ? 600 : 400, letterSpacing: "0.01em" }}>{n.label}</span>
+              <Icon name={n.icon} size={22} color={act ? "var(--accent)" : "var(--text-3)"} strokeWidth={act ? 2.25 : 1.75} />
+              <span style={{ fontSize: 10, fontWeight: act ? 600 : 400, letterSpacing: "0.01em" }}>{n.label}</span>
             </button>
           );
         })}
@@ -269,7 +269,7 @@ export default function MobileNav({ toggleDk }) {
           onClick={() => setMoreOpen((v) => !v)}
           style={{
             flex: 1, display: "flex", flexDirection: "column", alignItems: "center",
-            justifyContent: "center", gap: 3, padding: "6px 4px 3px",
+            justifyContent: "center", gap: 2, padding: "2px 2px 1px",
             border: "none", background: "transparent",
             color: moreOpen ? "var(--accent)" : "var(--text-3)",
             position: "relative",
@@ -277,14 +277,14 @@ export default function MobileNav({ toggleDk }) {
         >
           {urgentCount > 0 && (
             <span style={{
-              position: "absolute", top: 6, right: "50%", transform: "translateX(10px)",
+              position: "absolute", top: 2, right: "50%", transform: "translateX(10px)",
               minWidth: 16, height: 16, borderRadius: 8, background: "#ef4444",
               color: "#fff", fontSize: 9, fontWeight: 700, display: "flex",
               alignItems: "center", justifyContent: "center", padding: "0 3px",
             }}>{urgentCount > 99 ? "99+" : urgentCount}</span>
           )}
-          <Icon name="more-horizontal" size={24} color={moreOpen ? "var(--accent)" : "var(--text-3)"} strokeWidth={moreOpen ? 2.25 : 1.75} />
-          <span style={{ fontSize: 12, fontWeight: moreOpen ? 600 : 400 }}>Více</span>
+          <Icon name="more-horizontal" size={22} color={moreOpen ? "var(--accent)" : "var(--text-3)"} strokeWidth={moreOpen ? 2.25 : 1.75} />
+          <span style={{ fontSize: 10, fontWeight: moreOpen ? 600 : 400 }}>Více</span>
         </button>
       </nav>
     </>

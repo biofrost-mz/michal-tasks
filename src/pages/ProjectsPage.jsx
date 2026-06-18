@@ -910,7 +910,7 @@ function AIProjectGeneratorModal({ onClose }) {
   const [projectColor, setProjectColor] = useState("#3b82f6");
   const [tasksList, setTasksList] = useState([]);
   const [expandedTasks, setExpandedTasks] = useState({});
-  const [activeModel, setActiveModel] = useState("Gemini 1.5 Flash");
+  const [activeModel, setActiveModel] = useState("Gemini 2.5 Pro");
 
   // Loading text sequence
   useEffect(() => {
@@ -957,7 +957,7 @@ function AIProjectGeneratorModal({ onClose }) {
           selected: true, // defaults to checked
         }))
       );
-      setActiveModel(data.meta?.model || "Gemini 1.5 Flash");
+      setActiveModel(data.meta?.model || "Gemini 2.5 Pro");
       setStep("preview");
     } catch (err) {
       console.error(err);

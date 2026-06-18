@@ -64,7 +64,7 @@ export default function AITaskAssist({ task, onTitleChange }) {
         }
 
         setResult(data.result);
-        setActiveModel(data?.meta?.model || "Gemini 1.5 Flash");
+        setActiveModel(data?.meta?.model || "Gemini 3.5 Flash");
         setNotice({ type: "success", severity: "info", title: "AI návrh připraven", message: "Zkontroluj návrh a potvrď použití." });
       } else {
         const { data, error } = await supabase.functions.invoke("ai-task-assist", {
@@ -115,7 +115,7 @@ export default function AITaskAssist({ task, onTitleChange }) {
           setResult(raw);
         }
 
-        setActiveModel(data?.meta?.model || "Gemini 1.5 Flash");
+        setActiveModel(data?.meta?.model || "Gemini 3.5 Flash");
         setNotice({ type: "success", severity: "info", title: "AI návrh připraven", message: "Zkontroluj návrh a potvrď použití." });
       }
     } catch (e) {

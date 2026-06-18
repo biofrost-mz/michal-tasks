@@ -75,7 +75,7 @@ export default function AIDailyPlan() {
 
   const [plan, setPlan] = useState(null);       // string | null
   const [generatedAt, setGeneratedAt] = useState(null);
-  const [activeModel, setActiveModel] = useState("Gemini 1.5 Flash");
+  const [activeModel, setActiveModel] = useState("Gemini 2.5 Pro");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [open, setOpen] = useState(true);
@@ -132,7 +132,7 @@ export default function AIDailyPlan() {
 
       setPlan(data.plan);
       setGeneratedAt(data.generatedAt);
-      const model = data.meta?.model || "Gemini 1.5 Flash";
+      const model = data.meta?.model || "Gemini 2.5 Pro";
       setActiveModel(model);
       savePlanToCache(userId, activeWorkspaceId, data.plan, data.generatedAt, model);
       window.dispatchEvent(new CustomEvent("zentero:daily_plan_updated", { detail: { activeModel: model } }));

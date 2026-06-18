@@ -352,6 +352,19 @@ function AppShell() {
       if (isStandalone) {
         document.documentElement.classList.add("pwa-standalone");
       }
+      // Migrate any stale cached 'Gemini 1.5 Flash' to 'Gemini 3.5 Flash' in localStorage
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && (key.startsWith("mt3:chat-model:") || key.startsWith("mt:chat-model:"))) {
+            if (localStorage.getItem(key) === "Gemini 1.5 Flash") {
+              localStorage.setItem(key, "Gemini 3.5 Flash");
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to migrate chat model localStorage:", e);
+      }
     }
   }, []);
 
@@ -471,7 +484,7 @@ function AppShell() {
       <style>{`
         :root {
           --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
-          --bottom-nav-content-height: 58px;
+          --bottom-nav-content-height: 44px;
           --bottom-nav-safe-padding: 8px; /* Tight compact padding on mobile instead of huge iOS 34px */
           --bottom-nav-height: calc(var(--bottom-nav-content-height) + var(--bottom-nav-safe-padding));
         }
@@ -527,7 +540,7 @@ function AppShell() {
         .su{animation:slideUp .28s cubic-bezier(.32,1,.4,1)}
         .pop{animation:pop .2s ease-out}
         .page-enter{animation:pageIn .18s cubic-bezier(.4,0,.2,1)}
-        .mobile-nav-bar{position:absolute !important;height:var(--bottom-nav-height);min-height:var(--bottom-nav-height);padding-bottom:var(--bottom-nav-safe-padding);margin-bottom:0;bottom:0}
+        .mobile-nav-bar{position:fixed !important;height:var(--bottom-nav-height);min-height:var(--bottom-nav-height);padding-bottom:var(--bottom-nav-safe-padding);margin-bottom:0;bottom:0;left:0;right:0}
       `}</style>
 
       <SplashScreen visible={!splashDone} />

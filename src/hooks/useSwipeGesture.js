@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 
-const DEFAULT_THRESHOLD = 92;
+const DEFAULT_THRESHOLD = 35;
 const DEFAULT_MAX = 132;
 
 /**
@@ -57,8 +57,8 @@ export function useSwipeGesture({
     const absY = Math.abs(diffY);
 
     if (swipeAxisRef.current == null) {
-      if (absX < 6 && absY < 6) return;
-      if (absY > absX) {
+      if (absX < 3 && absY < 3) return;
+      if (absY > absX * 4.0) {
         swipeAxisRef.current = "ignored";
         setSwiping(false);
         return;

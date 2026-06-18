@@ -2210,7 +2210,7 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   /* --- FAB (floating action button) --- */
   .fab {
     position: fixed;
-    bottom: calc(var(--bottom-nav-height, 58px) + 12px);
+    bottom: calc(var(--bottom-nav-height, 50px) + 12px);
     right: 16px;
     width: 46px;
     height: 46px;

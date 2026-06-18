@@ -16,7 +16,7 @@ const PRIORITY_CONFIG = {
 };
 
 const MAX_SWIPE = 132;
-const COMPLETE_THRESHOLD = 92;
+const COMPLETE_THRESHOLD = 35;
 
 function openNativeDatePicker(input) {
   try {
@@ -127,8 +127,8 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
     const absY = Math.abs(diffY);
 
     if (swipeAxisRef.current == null) {
-      if (absX < 6 && absY < 6) return;
-      if (absY > absX || diff >= 0) {
+      if (absX < 3 && absY < 3) return;
+      if (absY > absX * 4.0 || diff >= 0) {
         swipeAxisRef.current = "ignored";
         setSwiping(false);
         return;

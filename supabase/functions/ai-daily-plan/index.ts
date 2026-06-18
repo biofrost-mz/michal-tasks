@@ -199,9 +199,9 @@ Buď maximálně konkrétní — uváděj skutečné názvy úkolů z mého sezn
     const apiKey = Deno.env.get("GOOGLE_GENERATIVE_AI_API_KEY");
     if (apiKey) {
       try {
-        console.log("ai-daily-plan: Pokouším se volat Google Gemini API (gemini-1.5-flash)...");
+        console.log("ai-daily-plan: Pokouším se volat Google Gemini API (gemini-2.5-pro)...");
         const geminiResp = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${apiKey}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -299,7 +299,7 @@ Buď maximálně konkrétní — uváděj skutečné názvy úkolů z mého sezn
         plan,
         generatedAt: new Date().toISOString(),
         meta: {
-          model: success ? "Gemini 1.5 Flash" : "Claude 3.5 Sonnet",
+          model: success ? "Gemini 2.5 Pro" : "Claude 3.5 Sonnet",
         }
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }

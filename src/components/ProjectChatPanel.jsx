@@ -34,7 +34,7 @@ export default function ProjectChatPanel({ project, tasks, notes, onClose }) {
   const toast = useToast();
   const [messages, setMessages] = useState(() => loadMessages(project.id));
   const [activeModel, setActiveModel] = useState(() => {
-    return localStorage.getItem(`mt3:chat-model:${project.id}`) || "Gemini 1.5 Flash";
+    return localStorage.getItem(`mt3:chat-model:${project.id}`) || "Gemini 3.5 Flash";
   });
 
   // Uloží zprávu do DB (sdílená historie). Tiše ignoruje chyby —

@@ -397,7 +397,7 @@ export default function DashboardPage() {
   const [hoveredDay, setHoveredDay] = useState(null);
   const [showAiTasks, setShowAiTasks] = useState(!isMobile);
   const [activeModel, setActiveModel] = useState(() => {
-    if (!userId || !activeWorkspaceId) return "Gemini 1.5 Flash";
+    if (!userId || !activeWorkspaceId) return "Gemini 2.5 Pro";
     const today = new Date().toISOString().slice(0, 10);
     const key = `ai-plan:${userId}:${activeWorkspaceId}:${today}`;
     try {
@@ -411,7 +411,7 @@ export default function DashboardPage() {
     } catch (e) {
       console.warn("Failed to load cached plan model:", e);
     }
-    return "Gemini 1.5 Flash";
+    return "Gemini 2.5 Pro";
   });
 
   useEffect(() => {

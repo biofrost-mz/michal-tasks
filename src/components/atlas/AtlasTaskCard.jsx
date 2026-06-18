@@ -99,23 +99,45 @@ export default function AtlasTaskCard({ task, onOpen, onStatusChange, onStar, pr
   const [swiping, setSwiping] = useState(false);
   const [exiting, setExiting] = useState(false);
   const startXRef = useRef(null);
-  const THRESHOLD = 80;
+  const startYRef = useRef(null);
+  const swipeAxisRef = useRef(null); // null | "x" | "ignored"
+  const THRESHOLD = 56;
 
   const onTouchStart = useCallback((e) => {
     startXRef.current = e.touches[0].clientX;
-    setSwiping(true);
+    startYRef.current = e.touches[0].clientY;
+    swipeAxisRef.current = null;
+    setSwiping(false);
   }, []);
 
   const onTouchMove = useCallback((e) => {
-    if (startXRef.current === null) return;
+    if (startXRef.current === null || startYRef.current === null) return;
+    if (swipeAxisRef.current === "ignored") return;
+
     const dx = e.touches[0].clientX - startXRef.current;
-    if (dx > 0) { setOffsetX(0); return; } // only swipe left
+    const dy = e.touches[0].clientY - startYRef.current;
+    const absX = Math.abs(dx);
+    const absY = Math.abs(dy);
+
+    if (swipeAxisRef.current === null) {
+      if (absX < 6 && absY < 6) return;
+      if (absY > absX * 1.5 || dx > 0) {
+        swipeAxisRef.current = "ignored";
+        setOffsetX(0);
+        setSwiping(false);
+        return;
+      }
+      swipeAxisRef.current = "x";
+      setSwiping(true);
+    }
+
+    if (swipeAxisRef.current !== "x") return;
     setOffsetX(Math.max(dx, -160));
   }, []);
 
   const onTouchEnd = useCallback(() => {
     setSwiping(false);
-    if (offsetX < -THRESHOLD) {
+    if (swipeAxisRef.current === "x" && offsetX < -THRESHOLD) {
       setExiting(true);
       if (navigator.vibrate) navigator.vibrate(10);
       setTimeout(() => onStatusChange(task.id, "done"), 260);
@@ -123,6 +145,8 @@ export default function AtlasTaskCard({ task, onOpen, onStatusChange, onStar, pr
       setOffsetX(0);
     }
     startXRef.current = null;
+    startYRef.current = null;
+    swipeAxisRef.current = null;
   }, [offsetX, task.id, onStatusChange]);
 
   const bgOpacity = Math.min(Math.abs(offsetX) / THRESHOLD, 1);
