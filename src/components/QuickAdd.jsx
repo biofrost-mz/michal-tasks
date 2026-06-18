@@ -8,7 +8,7 @@ import { supabase } from '../supabase.js'
 import { SectionLabel } from "./ui/index.js";
 
 export default function QuickAdd({ defaultProjectId = null }) {
-  const { dk, addTask, projects, tags, addProject, addTag, setTaskDetail, isMobile } = useApp();
+  const { dk, addTask, projects, tags, addProject, addTag, setTaskDetail, isMobile, tasks, updateTask } = useApp();
   const toast = useToast();
 
   const [val, setVal] = useState("");
@@ -29,6 +29,8 @@ export default function QuickAdd({ defaultProjectId = null }) {
   const [aiLength, setAiLength] = useState("short"); // "short" or "long"
   const [aiLoading, setAiLoading] = useState(false);
   const [description, setDescription] = useState(""); // Description state for manual preview and edit
+  const [aiSuggestedTasks, setAiSuggestedTasks] = useState(null);
+  const [aiExplanation, setAiExplanation] = useState("");
 
   // Inline additions inside modal
   const [newProjOpen, setNewProjOpen] = useState(false);
@@ -55,6 +57,8 @@ export default function QuickAdd({ defaultProjectId = null }) {
     setAiLoading(false);
     setNewProjOpen(false);
     setNewTagOpen(false);
+    setAiSuggestedTasks(null);
+    setAiExplanation("");
     setModalOpen(true);
     setVal("");
   }, [defaultProjectId, val]);
@@ -117,6 +121,9 @@ export default function QuickAdd({ defaultProjectId = null }) {
       const todayDate = new Date().toISOString().slice(0, 10);
       const availableProjects = projects.map(p => p.name);
       const availableTags = tags.map(t => t.name);
+      const existingTasks = (tasks || [])
+        .filter(t => t.status !== "done" && t.status !== "deleted")
+        .map(t => ({ id: t.id, title: t.title }));
 
       const { data, error } = await supabase.functions.invoke("ai-task-assist", {
         body: {
@@ -126,6 +133,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
           todayDate,
           availableProjects,
           availableTags,
+          existingTasks,
         }
       });
 
@@ -155,41 +163,68 @@ export default function QuickAdd({ defaultProjectId = null }) {
       const cleaned = raw.replace(/^```[a-z]*\n?/i, "").replace(/```$/, "").trim();
       const parsed = JSON.parse(cleaned);
 
-      if (parsed.title) setModalTitle(parsed.title);
-      if (parsed.description) setDescription(parsed.description);
-      
-      if (parsed.suggestedProject) {
-        const matchedProj = projects.find(
-          (p) => p.name.toLowerCase() === parsed.suggestedProject.toLowerCase()
-        );
-        if (matchedProj) {
-          setProjectId(matchedProj.id);
-        }
+      let suggestedTasksArray = [];
+      if (Array.isArray(parsed.tasks)) {
+        suggestedTasksArray = parsed.tasks;
+      } else if (parsed.title) {
+        suggestedTasksArray = [{
+          title: parsed.title,
+          description: parsed.description || "",
+          suggestedProject: parsed.suggestedProject || "",
+          suggestedTags: parsed.suggestedTags || [],
+          priority: parsed.priority || null,
+          dueDate: parsed.dueDate || "",
+          duplicateOfTaskId: parsed.duplicateOfTaskId || "",
+          duplicateOfTaskTitle: parsed.duplicateOfTaskTitle || "",
+        }];
       }
 
-      if (Array.isArray(parsed.suggestedTags)) {
-        const matchedTagIds = [];
-        parsed.suggestedTags.forEach((name) => {
-          const matchedTag = tags.find(
-            (t) => t.name.toLowerCase() === name.toLowerCase()
+      if (suggestedTasksArray.length === 0) {
+        toast("AI nevrátilo žádné platné úkoly k vytvoření.", "error");
+        return;
+      }
+
+      const mappedTasks = suggestedTasksArray.map(rawTask => {
+        let matchedProjectId = null;
+        if (rawTask.suggestedProject) {
+          const matchedProj = projects.find(
+            (p) => p.name.toLowerCase() === rawTask.suggestedProject.toLowerCase()
           );
-          if (matchedTag) {
-            matchedTagIds.push(matchedTag.id);
+          if (matchedProj) {
+            matchedProjectId = matchedProj.id;
           }
-        });
-        setTagIds((prev) => {
-          const merged = [...prev, ...matchedTagIds];
-          return [...new Set(merged)];
-        });
-      }
+        }
 
-      if (parsed.priority && ["high", "medium", "low"].includes(parsed.priority)) {
-        setPriority(parsed.priority);
-      }
+        const matchedTagIds = [];
+        if (Array.isArray(rawTask.suggestedTags)) {
+          rawTask.suggestedTags.forEach((name) => {
+            const matchedTag = tags.find(
+              (t) => t.name.toLowerCase() === name.toLowerCase()
+            );
+            if (matchedTag) {
+              matchedTagIds.push(matchedTag.id);
+            }
+          });
+        }
 
-      if (parsed.dueDate) {
-        setDueDate(parsed.dueDate);
-      }
+        return {
+          id: Math.random().toString(36).substring(2, 9),
+          title: rawTask.title || "",
+          description: rawTask.description || "",
+          projectId: matchedProjectId,
+          suggestedProjectName: rawTask.suggestedProject || "",
+          tagIds: matchedTagIds,
+          priority: ["high", "medium", "low"].includes(rawTask.priority) ? rawTask.priority : null,
+          dueDate: rawTask.dueDate || "",
+          duplicateOfTaskId: rawTask.duplicateOfTaskId || "",
+          duplicateOfTaskTitle: rawTask.duplicateOfTaskTitle || "",
+          selected: true,
+          action: rawTask.duplicateOfTaskId ? "merge" : "create" // "create" | "merge" | "skip"
+        };
+      });
+
+      setAiSuggestedTasks(mappedTasks);
+      setAiExplanation(parsed.explanation || "");
 
       toast("Návrh vytvořen ✨", "success");
     } catch (err) {
@@ -198,6 +233,87 @@ export default function QuickAdd({ defaultProjectId = null }) {
     } finally {
       setAiLoading(false);
     }
+  };
+
+  // Saves multiple parsed AI tasks or merges them with existing ones
+  const handleSaveMultipleAiTasks = () => {
+    const selectedTasks = (aiSuggestedTasks || []).filter(t => t.selected);
+    if (selectedTasks.length === 0) {
+      toast("Vyber alespoň jeden úkol k uložení", "error");
+      return;
+    }
+
+    let createdCount = 0;
+    let mergedCount = 0;
+
+    selectedTasks.forEach(t => {
+      if (t.action === "merge" && t.duplicateOfTaskId) {
+        // Find existing task
+        const existing = tasks.find(ex => ex.id === t.duplicateOfTaskId);
+        if (existing) {
+          const currentDesc = existing.description || "";
+          const addedDesc = t.description ? `\n\n**Doplnění z AI návrhu:**\n${t.description}` : "";
+          const mergedDesc = currentDesc ? `${currentDesc}${addedDesc}` : t.description;
+          
+          // Merge tag IDs
+          const mergedTagIds = [...new Set([...(existing.tagIds || []), ...t.tagIds])];
+          
+          updateTask(t.duplicateOfTaskId, {
+            description: mergedDesc,
+            tagIds: mergedTagIds
+          }, { silent: true });
+          mergedCount++;
+        } else {
+          // Fallback to create if existing task not found
+          addTask({
+            title: t.title,
+            description: t.description,
+            status: "todo",
+            priority: t.priority,
+            projectId: t.projectId,
+            dueDate: t.dueDate || null,
+            tagIds: t.tagIds
+          });
+          createdCount++;
+        }
+      } else if (t.action !== "skip") {
+        addTask({
+          title: t.title,
+          description: t.description,
+          status: "todo",
+          priority: t.priority,
+          projectId: t.projectId,
+          dueDate: t.dueDate || null,
+          tagIds: t.tagIds
+        });
+        createdCount++;
+      }
+    });
+
+    navigator.vibrate?.([20, 30, 60]);
+    setModalOpen(false);
+
+    let msg = "";
+    if (createdCount > 0 && mergedCount > 0) {
+      msg = `Vytvořeno ${createdCount} úkolů, sloučeno ${mergedCount} úkolů ✨`;
+    } else if (createdCount > 0) {
+      msg = createdCount === 1 ? "Úkol vytvořen ✨" : `Vytvořeno ${createdCount} úkolů ✨`;
+    } else if (mergedCount > 0) {
+      msg = mergedCount === 1 ? "Úkol sloučen ✨" : `Sloučeno ${mergedCount} úkolů ✨`;
+    } else {
+      msg = "Úkoly uloženy ✨";
+    }
+    toast(msg, "success");
+    setAiSuggestedTasks(null);
+    setAiExplanation("");
+  };
+
+  // Helper to update a single suggested task in the state array
+  const updateSuggestedTask = (taskId, fields) => {
+    setAiSuggestedTasks(prev => {
+      if (!prev) return null;
+      return prev.map(t => t.id === taskId ? { ...t, ...fields } : t);
+    });
   };
 
   // Saves the task and closes modal
@@ -389,8 +505,8 @@ export default function QuickAdd({ defaultProjectId = null }) {
             {/* Modal Header */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--accent)", fontWeight: 600, fontSize: 13, fontFamily: "var(--font-mono)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
-                <Icon name="check-square" size={14} color="currentColor" strokeWidth={2.5} />
-                Nový úkol
+                <Icon name={aiSuggestedTasks ? "sparkles" : "check-square"} size={14} color="currentColor" strokeWidth={2.5} />
+                {aiSuggestedTasks ? "AI Návrh úkolů ✨" : "Nový úkol"}
               </div>
               <button
                 onClick={() => setModalOpen(false)}
@@ -411,315 +527,583 @@ export default function QuickAdd({ defaultProjectId = null }) {
               </button>
             </div>
 
-            {/* Task Title Input */}
-            <div style={{ display: "flex", flexDirection: "column" }}>
-              <input
-                autoFocus={!isMobile}
-                value={modalTitle}
-                onChange={(e) => setModalTitle(e.target.value)}
-                placeholder="Co je třeba udělat?"
-                style={{
-                  fontSize: isMobile ? 16 : 17,
-                  fontWeight: 600,
-                  padding: isMobile ? "11px 12px" : "12px 14px",
-                  borderRadius: 10,
-                  border: "1.5px solid var(--border)",
-                  background: "var(--input)",
-                  color: "var(--text)",
-                  width: "100%",
-                  outline: "none",
-                  boxShadow: dk ? "inset 0 1px 2px rgba(0,0,0,0.2)" : "inset 0 1px 2px rgba(0,0,0,0.03)",
-                  transition: "border-color .15s"
-                }}
-                onFocus={(e) => e.target.style.borderColor = "var(--accent)"}
-                onBlur={(e) => e.target.style.borderColor = "var(--border)"}
-              />
-            </div>
-
-            {/* AI Draft Section */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <button
-                type="button"
-                onClick={() => setShowAiDraft(!showAiDraft)}
-                style={{
-                  background: showAiDraft ? "var(--accent-soft)" : "transparent",
-                  border: `1.5px dashed ${showAiDraft ? "var(--accent)" : "var(--border)"}`,
-                  borderRadius: 10,
-                  padding: "10px 14px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
-                  color: showAiDraft ? "var(--accent)" : "var(--text-2)",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  width: "100%",
-                  transition: "all 0.15s ease",
-                  outline: "none",
-                }}
-              >
-                <Icon name="zap" size={14} color="currentColor" strokeWidth={2} />
-                {showAiDraft ? "Zavřít AI návrh" : "Návrh pomocí AI ✨"}
-              </button>
-
-              {showAiDraft && (
-                <div
-                  style={{
-                    background: "var(--bg-2)",
-                    border: "1px solid var(--border)",
-                    borderRadius: 12,
-                    padding: "14px",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 12,
-                    animation: "fadeIn .2s ease-out",
-                    boxShadow: "inset 0 1px 2px rgba(0,0,0,0.02)"
-                  }}
-                >
-                  <SectionLabel>
-                    Napište, co je potřeba udělat (AI navrhne parametry)
-                  </SectionLabel>
-
-                  <textarea
-                    value={aiInputText}
-                    onChange={(e) => setAiInputText(e.target.value)}
-                    placeholder="Napiš např.: Do zítra musím naprogramovat novou komponentu pro web, dej to do projektu Web a označ jako vysoká priorita..."
-                    rows={3}
+            {aiSuggestedTasks ? (
+              /* ================= AI SUGGESTIONS REVIEW PANEL ================= */
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                {/* AI Explanation Banner */}
+                {aiExplanation && (
+                  <div
                     style={{
+                      background: dk ? "rgba(139, 92, 246, 0.12)" : "rgba(139, 92, 246, 0.08)",
+                      border: `1px solid ${dk ? "rgba(139, 92, 246, 0.25)" : "rgba(139, 92, 246, 0.18)"}`,
+                      padding: "12px 14px",
+                      borderRadius: 12,
+                      color: dk ? "#c084fc" : "#6d28d9",
                       fontSize: 13,
-                      padding: "10px 12px",
-                      borderRadius: 8,
+                      lineHeight: "1.4",
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: 10,
+                      boxShadow: "0 4px 12px rgba(139, 92, 246, 0.04)",
+                      animation: "fadeIn .2s ease-out"
+                    }}
+                  >
+                    <Icon name="sparkles" size={16} color="currentColor" strokeWidth={2.2} style={{ flexShrink: 0, marginTop: 1 }} />
+                    <div>
+                      <strong style={{ display: "block", marginBottom: 2, fontWeight: 600 }}>AI Analýza zadání</strong>
+                      {aiExplanation}
+                    </div>
+                  </div>
+                )}
+
+                {/* Suggested Tasks Cards */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  {aiSuggestedTasks.map((t) => {
+                    const isSelected = t.selected && t.action !== "skip";
+                    const hasDuplicate = !!t.duplicateOfTaskId;
+                    return (
+                      <div
+                        key={t.id}
+                        style={{
+                          background: "var(--surface)",
+                          border: `1.5px solid ${t.selected ? (dk ? "rgba(139, 92, 246, 0.3)" : "rgba(139, 92, 246, 0.2)") : "var(--border)"}`,
+                          borderRadius: 14,
+                          padding: 14,
+                          opacity: t.selected ? 1 : 0.55,
+                          transition: "all 0.2s ease-out",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 10,
+                          boxShadow: t.selected ? "0 4px 16px rgba(139, 92, 246, 0.03)" : "none"
+                        }}
+                      >
+                        {/* Card Header (Checkbox + Title Input) */}
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <button
+                            type="button"
+                            onClick={() => updateSuggestedTask(t.id, { selected: !t.selected })}
+                            style={{
+                              background: t.selected ? "var(--accent)" : "transparent",
+                              border: `1.5px solid ${t.selected ? "var(--accent)" : "var(--text-3)"}`,
+                              borderRadius: 6,
+                              width: 20,
+                              height: 20,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              color: "#fff",
+                              cursor: "pointer",
+                              padding: 0,
+                              flexShrink: 0
+                            }}
+                          >
+                            {t.selected && <Icon name="check" size={12} color="#fff" strokeWidth={3} />}
+                          </button>
+
+                          <input
+                            value={t.title}
+                            onChange={(e) => updateSuggestedTask(t.id, { title: e.target.value })}
+                            disabled={!t.selected}
+                            placeholder="Název úkolu…"
+                            style={{
+                              fontSize: 14,
+                              fontWeight: 600,
+                              border: "none",
+                              background: "transparent",
+                              color: "var(--text)",
+                              width: "100%",
+                              outline: "none",
+                              padding: "2px 0"
+                            }}
+                          />
+                        </div>
+
+                        {/* Card Body (Editable fields) */}
+                        {t.selected && (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingLeft: 30, animation: "fadeIn .15s ease-out" }}>
+                            {/* Description */}
+                            <textarea
+                              value={t.description}
+                              onChange={(e) => updateSuggestedTask(t.id, { description: e.target.value })}
+                              placeholder="Popis úkolu (volitelný)"
+                              rows={2}
+                              style={{
+                                fontSize: 12.5,
+                                padding: "6px 10px",
+                                borderRadius: 8,
+                                border: "1.5px solid var(--border)",
+                                background: "var(--input)",
+                                color: "var(--text)",
+                                width: "100%",
+                                outline: "none",
+                                resize: "vertical",
+                                fontFamily: "inherit"
+                              }}
+                            />
+
+                            {/* Dropdowns row */}
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                              {/* Project dropdown */}
+                              <div>
+                                <label style={{ fontSize: 10, fontWeight: 600, color: "var(--text-3)", display: "block", marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.02em" }}>Projekt</label>
+                                <select
+                                  value={t.projectId || ""}
+                                  onChange={(e) => updateSuggestedTask(t.id, { projectId: e.target.value ? e.target.value : null })}
+                                  style={{
+                                    width: "100%",
+                                    padding: "5px 8px",
+                                    borderRadius: 6,
+                                    fontSize: 12,
+                                    border: "1px solid var(--border)",
+                                    background: "var(--input)",
+                                    color: "var(--text-2)",
+                                    outline: "none",
+                                    cursor: "pointer"
+                                  }}
+                                >
+                                  <option value="">Inbox</option>
+                                  {projects
+                                    .filter(p => p.status === "active")
+                                    .map(p => (
+                                      <option key={p.id} value={p.id}>{p.name}</option>
+                                    ))
+                                  }
+                                </select>
+                              </div>
+
+                              {/* Priority dropdown */}
+                              <div>
+                                <label style={{ fontSize: 10, fontWeight: 600, color: "var(--text-3)", display: "block", marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.02em" }}>Priorita</label>
+                                <select
+                                  value={t.priority || ""}
+                                  onChange={(e) => updateSuggestedTask(t.id, { priority: e.target.value ? e.target.value : null })}
+                                  style={{
+                                    width: "100%",
+                                    padding: "5px 8px",
+                                    borderRadius: 6,
+                                    fontSize: 12,
+                                    border: "1px solid var(--border)",
+                                    background: "var(--input)",
+                                    color: "var(--text-2)",
+                                    outline: "none",
+                                    cursor: "pointer"
+                                  }}
+                                >
+                                  <option value="">Žádná</option>
+                                  <option value="low">Nízká 🟢</option>
+                                  <option value="medium">Střední 🟡</option>
+                                  <option value="high">Vysoká 🔴</option>
+                                </select>
+                              </div>
+                            </div>
+
+                            {/* Due Date row */}
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 2 }}>
+                              <span style={{ fontSize: 11.5, color: "var(--text-3)" }}>Termín splnění:</span>
+                              <input
+                                type="date"
+                                value={t.dueDate || ""}
+                                onChange={(e) => updateSuggestedTask(t.id, { dueDate: e.target.value })}
+                                style={{
+                                  padding: "4px 8px",
+                                  borderRadius: 6,
+                                  border: "1px solid var(--border)",
+                                  background: "var(--input)",
+                                  color: "var(--text)",
+                                  fontSize: 12,
+                                  outline: "none",
+                                  cursor: "pointer"
+                                }}
+                              />
+                            </div>
+
+                            {/* Duplicate Warning & Choices */}
+                            {hasDuplicate && (
+                              <div
+                                style={{
+                                  background: dk ? "rgba(245, 158, 11, 0.1)" : "rgba(245, 158, 11, 0.05)",
+                                  border: `1px solid ${dk ? "rgba(245, 158, 11, 0.22)" : "rgba(245, 158, 11, 0.15)"}`,
+                                  borderRadius: 10,
+                                  padding: "10px",
+                                  marginTop: 4,
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  gap: 6
+                                }}
+                              >
+                                <div style={{ display: "flex", alignItems: "center", gap: 6, color: dk ? "#fbbf24" : "#b45309", fontSize: 11.5, fontWeight: 600 }}>
+                                  <Icon name="alert-triangle" size={13} color="currentColor" />
+                                  <span>Nalezen podobný otevřený úkol:</span>
+                                </div>
+                                <div style={{ fontSize: 11, color: "var(--text-2)", paddingLeft: 19, fontStyle: "italic", marginBottom: 2 }}>
+                                  "{t.duplicateOfTaskTitle}"
+                                </div>
+
+                                <div style={{ display: "flex", gap: 4, background: "var(--border)", padding: 2, borderRadius: 8 }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => updateSuggestedTask(t.id, { action: "merge" })}
+                                    style={{
+                                      flex: 1,
+                                      padding: "5px 4px",
+                                      borderRadius: 6,
+                                      fontSize: 10.5,
+                                      fontWeight: 700,
+                                      border: "none",
+                                      background: t.action === "merge" ? "var(--surface)" : "transparent",
+                                      color: t.action === "merge" ? (dk ? "#fbbf24" : "#b45309") : "var(--text-3)",
+                                      cursor: "pointer",
+                                      transition: "all .12s",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      gap: 3
+                                    }}
+                                  >
+                                    <Icon name="git-merge" size={10} color="currentColor" />
+                                    Sloučit
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => updateSuggestedTask(t.id, { action: "create" })}
+                                    style={{
+                                      flex: 1,
+                                      padding: "5px 4px",
+                                      borderRadius: 6,
+                                      fontSize: 10.5,
+                                      fontWeight: 700,
+                                      border: "none",
+                                      background: t.action === "create" ? "var(--surface)" : "transparent",
+                                      color: t.action === "create" ? "var(--accent)" : "var(--text-3)",
+                                      cursor: "pointer",
+                                      transition: "all .12s",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      gap: 3
+                                    }}
+                                  >
+                                    <Icon name="plus" size={10} color="currentColor" />
+                                    Nový
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => updateSuggestedTask(t.id, { action: "skip" })}
+                                    style={{
+                                      flex: 1,
+                                      padding: "5px 4px",
+                                      borderRadius: 6,
+                                      fontSize: 10.5,
+                                      fontWeight: 700,
+                                      border: "none",
+                                      background: t.action === "skip" ? "var(--surface)" : "transparent",
+                                      color: t.action === "skip" ? "var(--text-3)" : "var(--text-3)",
+                                      cursor: "pointer",
+                                      transition: "all .12s",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      gap: 3
+                                    }}
+                                  >
+                                    <Icon name="x" size={10} color="currentColor" />
+                                    Přeskočit
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              /* ================= STANDARD MANUAL INPUTS ================= */
+              <>
+                {/* Task Title Input */}
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  <input
+                    autoFocus={!isMobile}
+                    value={modalTitle}
+                    onChange={(e) => setModalTitle(e.target.value)}
+                    placeholder="Co je třeba udělat?"
+                    style={{
+                      fontSize: isMobile ? 16 : 17,
+                      fontWeight: 600,
+                      padding: isMobile ? "11px 12px" : "12px 14px",
+                      borderRadius: 10,
                       border: "1.5px solid var(--border)",
                       background: "var(--input)",
                       color: "var(--text)",
                       width: "100%",
                       outline: "none",
-                      resize: "vertical",
-                      fontFamily: "inherit",
                       boxShadow: dk ? "inset 0 1px 2px rgba(0,0,0,0.2)" : "inset 0 1px 2px rgba(0,0,0,0.03)",
                       transition: "border-color .15s"
                     }}
                     onFocus={(e) => e.target.style.borderColor = "var(--accent)"}
                     onBlur={(e) => e.target.style.borderColor = "var(--border)"}
                   />
-
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                    {/* Length toggler */}
-                    <div style={{ display: "flex", gap: 4, background: "var(--border)", padding: 3, borderRadius: 8 }}>
-                      <button
-                        type="button"
-                        onClick={() => setAiLength("short")}
-                        style={{
-                          padding: "5px 12px",
-                          borderRadius: 6,
-                          fontSize: 11.5,
-                          fontWeight: 600,
-                          border: "none",
-                          background: aiLength === "short" ? "var(--surface)" : "transparent",
-                          color: aiLength === "short" ? "var(--text)" : "var(--text-3)",
-                          cursor: "pointer",
-                          transition: "all .12s"
-                        }}
-                      >
-                        Kratší
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setAiLength("long")}
-                        style={{
-                          padding: "5px 12px",
-                          borderRadius: 6,
-                          fontSize: 11.5,
-                          fontWeight: 600,
-                          border: "none",
-                          background: aiLength === "long" ? "var(--surface)" : "transparent",
-                          color: aiLength === "long" ? "var(--text)" : "var(--text-3)",
-                          cursor: "pointer",
-                          transition: "all .12s"
-                        }}
-                      >
-                        Delší
-                      </button>
-                    </div>
-
-                    {/* Generate button */}
-                    <button
-                      type="button"
-                      onClick={handleGenerateAiDraft}
-                      disabled={aiLoading}
-                      style={{
-                        padding: "8px 16px",
-                        borderRadius: 8,
-                        fontSize: 12.5,
-                        fontWeight: 700,
-                        border: "none",
-                        background: "var(--accent)",
-                        color: "#fff",
-                        cursor: aiLoading ? "not-allowed" : "pointer",
-                        boxShadow: "0 4px 10px var(--accent-glow)",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 6,
-                        opacity: aiLoading ? 0.7 : 1,
-                        transition: "all .15s"
-                      }}
-                    >
-                      {aiLoading ? (
-                        <>
-                          <div className="spinner" style={{ width: 12, height: 12, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.6s linear infinite" }} />
-                          Navrhuji...
-                        </>
-                      ) : (
-                        <>
-                          <Icon name="zap" size={12} color="currentColor" strokeWidth={2.5} />
-                          Generovat
-                        </>
-                      )}
-                    </button>
-                  </div>
                 </div>
-              )}
-            </div>
 
-            {/* Description Input */}
-            <div style={{ display: "flex", flexDirection: "column" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                <SectionLabel>
-                  Popis úkolu (volitelný)
-                </SectionLabel>
-                {!description && (
+                {/* AI Draft Section */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   <button
                     type="button"
-                    onClick={() => setDescription(" ")}
-                    style={{ background: "none", border: "none", color: "var(--accent)", fontSize: 11, fontWeight: 600, cursor: "pointer" }}
-                  >
-                    + Přidat popis
-                  </button>
-                )}
-              </div>
-              {(description || description === " ") && (
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Zadej podrobnosti k úkolu..."
-                  rows={description.split('\n').length > 5 ? 6 : 3}
-                  style={{
-                    fontSize: 13,
-                    padding: "10px 12px",
-                    borderRadius: 10,
-                    border: "1.5px solid var(--border)",
-                    background: "var(--input)",
-                    color: "var(--text)",
-                    width: "100%",
-                    outline: "none",
-                    resize: "vertical",
-                    fontFamily: "inherit",
-                    boxShadow: dk ? "inset 0 1px 2px rgba(0,0,0,0.2)" : "inset 0 1px 2px rgba(0,0,0,0.03)",
-                    transition: "border-color .15s"
-                  }}
-                  onFocus={(e) => e.target.style.borderColor = "var(--accent)"}
-                  onBlur={(e) => e.target.style.borderColor = "var(--border)"}
-                />
-              )}
-            </div>
-
-            {/* SECTION 1: Základní nastavení (Status, Priorita) */}
-            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? 12 : 20 }}>
-              {/* Status Section */}
-              <div>
-                <SectionLabel style={{ marginBottom: 6 }}>
-                  Status
-                </SectionLabel>
-                <div style={{
-                  display: isMobile ? "grid" : "flex",
-                  gridTemplateColumns: isMobile ? "repeat(2, minmax(0, 1fr))" : undefined,
-                  flexDirection: isMobile ? undefined : "column",
-                  flexWrap: isMobile ? undefined : "wrap",
-                  gap: isMobile ? 6 : 4
-                }}>
-                  {Object.entries(STATUSES).map(([k, v]) => {
-                    const isActive = status === k;
-                    return (
-                      <button
-                        key={k}
-                        onClick={() => setStatus(k)}
-                        style={{
-                          padding: isMobile ? "8px 10px" : "8px 12px",
-                          borderRadius: 8,
-                          fontSize: 12.5,
-                          fontWeight: 600,
-                          border: `1.5px solid ${isActive ? v.color : "var(--border)"}`,
-                          background: isActive ? v.bg : "transparent",
-                          color: isActive ? v.color : "var(--text-2)",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 6,
-                          cursor: "pointer",
-                          textAlign: "left",
-                          transition: "all .12s",
-                          justifyContent: isMobile ? "center" : undefined,
-                          flex: isMobile ? undefined : undefined,
-                          minHeight: 40,
-                        }}
-                      >
-                        <Icon name={v.icon} size={13} color="currentColor" strokeWidth={2} />
-                        {v.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Priority Section */}
-              <div>
-                <SectionLabel style={{ marginBottom: 6 }}>
-                  Priorita
-                </SectionLabel>
-                <div style={{
-                  display: isMobile ? "grid" : "flex",
-                  gridTemplateColumns: isMobile ? "repeat(2, minmax(0, 1fr))" : undefined,
-                  flexDirection: isMobile ? undefined : "column",
-                  gap: isMobile ? 6 : 4
-                }}>
-                  {/* Option: Žádná priorita */}
-                  <button
-                    onClick={() => setPriority(null)}
+                    onClick={() => setShowAiDraft(!showAiDraft)}
                     style={{
-                      padding: isMobile ? "8px 8px" : "8px 12px",
-                      borderRadius: 8,
-                      fontSize: 12.5,
-                      fontWeight: 600,
-                      border: `1.5px solid ${priority === null ? "var(--text-3)" : "var(--border)"}`,
-                      background: priority === null ? (dk ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)") : "transparent",
-                      color: priority === null ? "var(--text)" : "var(--text-2)",
+                      background: showAiDraft ? "var(--accent-soft)" : "transparent",
+                      border: `1.5px dashed ${showAiDraft ? "var(--accent)" : "var(--border)"}`,
+                      borderRadius: 10,
+                      padding: "10px 14px",
                       display: "flex",
                       alignItems: "center",
-                      justifyContent: isMobile ? "center" : undefined,
+                      justifyContent: "center",
                       gap: 8,
+                      color: showAiDraft ? "var(--accent)" : "var(--text-2)",
+                      fontSize: 13,
+                      fontWeight: 600,
                       cursor: "pointer",
-                      textAlign: "left",
-                      transition: "all .12s"
+                      width: "100%",
+                      transition: "all 0.15s ease",
+                      outline: "none",
                     }}
                   >
-                    <Icon name="circle" size={13} color="currentColor" strokeWidth={1.5} opacity={0.3} />
-                    Žádná priorita
+                    <Icon name="zap" size={14} color="currentColor" strokeWidth={2} />
+                    {showAiDraft ? "Zavřít AI návrh" : "Návrh pomocí AI ✨"}
                   </button>
 
-                  {Object.entries(PRIORITIES).map(([k, v]) => {
-                    const isActive = priority === k;
-                    return (
+                  {showAiDraft && (
+                    <div
+                      style={{
+                        background: "var(--bg-2)",
+                        border: "1px solid var(--border)",
+                        borderRadius: 12,
+                        padding: "14px",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 12,
+                        animation: "fadeIn .2s ease-out",
+                        boxShadow: "inset 0 1px 2px rgba(0,0,0,0.02)"
+                      }}
+                    >
+                      <SectionLabel>
+                        Napište, co je potřeba udělat (AI navrhne parametry)
+                      </SectionLabel>
+
+                      <textarea
+                        value={aiInputText}
+                        onChange={(e) => setAiInputText(e.target.value)}
+                        placeholder="Napiš např.: Do zítra musím naprogramovat novou komponentu pro web, dej to do projektu Web a označ jako vysoká priorita..."
+                        rows={3}
+                        style={{
+                          fontSize: 13,
+                          padding: "10px 12px",
+                          borderRadius: 8,
+                          border: "1.5px solid var(--border)",
+                          background: "var(--input)",
+                          color: "var(--text)",
+                          width: "100%",
+                          outline: "none",
+                          resize: "vertical",
+                          fontFamily: "inherit",
+                          boxShadow: dk ? "inset 0 1px 2px rgba(0,0,0,0.2)" : "inset 0 1px 2px rgba(0,0,0,0.03)",
+                          transition: "border-color .15s"
+                        }}
+                        onFocus={(e) => e.target.style.borderColor = "var(--accent)"}
+                        onBlur={(e) => e.target.style.borderColor = "var(--border)"}
+                      />
+
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                        {/* Length toggler */}
+                        <div style={{ display: "flex", gap: 4, background: "var(--border)", padding: 3, borderRadius: 8 }}>
+                          <button
+                            type="button"
+                            onClick={() => setAiLength("short")}
+                            style={{
+                              padding: "5px 12px",
+                              borderRadius: 6,
+                              fontSize: 11.5,
+                              fontWeight: 600,
+                              border: "none",
+                              background: aiLength === "short" ? "var(--surface)" : "transparent",
+                              color: aiLength === "short" ? "var(--text)" : "var(--text-3)",
+                              cursor: "pointer",
+                              transition: "all .12s"
+                            }}
+                          >
+                            Kratší
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setAiLength("long")}
+                            style={{
+                              padding: "5px 12px",
+                              borderRadius: 6,
+                              fontSize: 11.5,
+                              fontWeight: 600,
+                              border: "none",
+                              background: aiLength === "long" ? "var(--surface)" : "transparent",
+                              color: aiLength === "long" ? "var(--text)" : "var(--text-3)",
+                              cursor: "pointer",
+                              transition: "all .12s"
+                            }}
+                          >
+                            Delší
+                          </button>
+                        </div>
+
+                        {/* Generate button */}
+                        <button
+                          type="button"
+                          onClick={handleGenerateAiDraft}
+                          disabled={aiLoading}
+                          style={{
+                            padding: "8px 16px",
+                            borderRadius: 8,
+                            fontSize: 12.5,
+                            fontWeight: 700,
+                            border: "none",
+                            background: "var(--accent)",
+                            color: "#fff",
+                            cursor: aiLoading ? "not-allowed" : "pointer",
+                            boxShadow: "0 4px 10px var(--accent-glow)",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                            opacity: aiLoading ? 0.7 : 1,
+                            transition: "all .15s"
+                          }}
+                        >
+                          {aiLoading ? (
+                            <>
+                              <div className="spinner" style={{ width: 12, height: 12, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.6s linear infinite" }} />
+                              Navrhuji...
+                            </>
+                          ) : (
+                            <>
+                              <Icon name="zap" size={12} color="currentColor" strokeWidth={2.5} />
+                              Generovat
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Description Input */}
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                    <SectionLabel>
+                      Popis úkolu (volitelný)
+                    </SectionLabel>
+                    {!description && (
                       <button
-                        key={k}
-                        onClick={() => setPriority(k)}
+                        type="button"
+                        onClick={() => setDescription(" ")}
+                        style={{ background: "none", border: "none", color: "var(--accent)", fontSize: 11, fontWeight: 600, cursor: "pointer" }}
+                      >
+                        + Přidat popis
+                      </button>
+                    )}
+                  </div>
+                  {(description || description === " ") && (
+                    <textarea
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="Zadej podrobnosti k úkolu..."
+                      rows={description.split('\n').length > 5 ? 6 : 3}
+                      style={{
+                        fontSize: 13,
+                        padding: "10px 12px",
+                        borderRadius: 10,
+                        border: "1.5px solid var(--border)",
+                        background: "var(--input)",
+                        color: "var(--text)",
+                        width: "100%",
+                        outline: "none",
+                        resize: "vertical",
+                        fontFamily: "inherit",
+                        boxShadow: dk ? "inset 0 1px 2px rgba(0,0,0,0.2)" : "inset 0 1px 2px rgba(0,0,0,0.03)",
+                        transition: "border-color .15s"
+                      }}
+                      onFocus={(e) => e.target.style.borderColor = "var(--accent)"}
+                      onBlur={(e) => e.target.style.borderColor = "var(--border)"}
+                    />
+                  )}
+                </div>
+
+                {/* SECTION 1: Základní nastavení (Status, Priorita) */}
+                <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? 12 : 20 }}>
+                  {/* Status Section */}
+                  <div>
+                    <SectionLabel style={{ marginBottom: 6 }}>
+                      Status
+                    </SectionLabel>
+                    <div style={{
+                      display: isMobile ? "grid" : "flex",
+                      gridTemplateColumns: isMobile ? "repeat(2, minmax(0, 1fr))" : undefined,
+                      flexDirection: isMobile ? undefined : "column",
+                      flexWrap: isMobile ? undefined : "wrap",
+                      gap: isMobile ? 6 : 4
+                    }}>
+                      {Object.entries(STATUSES).map(([k, v]) => {
+                        const isActive = status === k;
+                        return (
+                          <button
+                            key={k}
+                            onClick={() => setStatus(k)}
+                            style={{
+                              padding: isMobile ? "8px 10px" : "8px 12px",
+                              borderRadius: 8,
+                              fontSize: 12.5,
+                              fontWeight: 600,
+                              border: `1.5px solid ${isActive ? v.color : "var(--border)"}`,
+                              background: isActive ? v.bg : "transparent",
+                              color: isActive ? v.color : "var(--text-2)",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 6,
+                              cursor: "pointer",
+                              textAlign: "left",
+                              transition: "all .12s",
+                              justifyContent: isMobile ? "center" : undefined,
+                              flex: isMobile ? undefined : undefined,
+                              minHeight: 40,
+                            }}
+                          >
+                            <Icon name={v.icon} size={13} color="currentColor" strokeWidth={2} />
+                            {v.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Priority Section */}
+                  <div>
+                    <SectionLabel style={{ marginBottom: 6 }}>
+                      Priorita
+                    </SectionLabel>
+                    <div style={{
+                      display: isMobile ? "grid" : "flex",
+                      gridTemplateColumns: isMobile ? "repeat(2, minmax(0, 1fr))" : undefined,
+                      flexDirection: isMobile ? undefined : "column",
+                      gap: isMobile ? 6 : 4
+                    }}>
+                      {/* Option: Žádná priorita */}
+                      <button
+                        onClick={() => setPriority(null)}
                         style={{
                           padding: isMobile ? "8px 8px" : "8px 12px",
                           borderRadius: 8,
                           fontSize: 12.5,
                           fontWeight: 600,
-                          border: `1.5px solid ${isActive ? v.color : "var(--border)"}`,
-                          background: isActive ? v.bg : "transparent",
-                          color: isActive ? v.color : "var(--text-2)",
+                          border: `1.5px solid ${priority === null ? "var(--text-3)" : "var(--border)"}`,
+                          background: priority === null ? (dk ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)") : "transparent",
+                          color: priority === null ? "var(--text)" : "var(--text-2)",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: isMobile ? "center" : undefined,
@@ -729,320 +1113,349 @@ export default function QuickAdd({ defaultProjectId = null }) {
                           transition: "all .12s"
                         }}
                       >
-                        <Icon name={v.icon} size={13} color="currentColor" strokeWidth={2.5} />
-                        {v.label}
+                        <Icon name="circle" size={13} color="currentColor" strokeWidth={1.5} opacity={0.3} />
+                        Žádná priorita
                       </button>
-                    );
-                  })}
+
+                      {Object.entries(PRIORITIES).map(([k, v]) => {
+                        const isActive = priority === k;
+                        return (
+                          <button
+                            key={k}
+                            onClick={() => setPriority(k)}
+                            style={{
+                              padding: isMobile ? "8px 8px" : "8px 12px",
+                              borderRadius: 8,
+                              fontSize: 12.5,
+                              fontWeight: 600,
+                              border: `1.5px solid ${isActive ? v.color : "var(--border)"}`,
+                              background: isActive ? v.bg : "transparent",
+                              color: isActive ? v.color : "var(--text-2)",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: isMobile ? "center" : undefined,
+                              gap: 8,
+                              cursor: "pointer",
+                              textAlign: "left",
+                              transition: "all .12s"
+                            }}
+                          >
+                            <Icon name={v.icon} size={13} color="currentColor" strokeWidth={2.5} />
+                            {v.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
 
-            {/* SECTION 2: Projekt & Termín */}
-            <div style={{ borderTop: "1px solid var(--border)", paddingTop: 16, display: "flex", flexDirection: "column", gap: 14 }}>
-              {/* Project Line */}
-              <div>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                  <SectionLabel>
-                    Projekt
-                  </SectionLabel>
-                  {!newProjOpen && (
-                    <button
-                      onClick={() => setNewProjOpen(true)}
-                      style={{ background: "none", border: "none", color: "var(--accent)", fontSize: 11, fontWeight: 600, display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}
-                    >
-                      <Icon name="plus" size={10} color="currentColor" strokeWidth={2.5} /> Nový projekt
-                    </button>
-                  )}
-                </div>
+                {/* SECTION 2: Projekt & Termín */}
+                <div style={{ borderTop: "1px solid var(--border)", paddingTop: 16, display: "flex", flexDirection: "column", gap: 14 }}>
+                  {/* Project Line */}
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                      <SectionLabel>
+                        Projekt
+                      </SectionLabel>
+                      {!newProjOpen && (
+                        <button
+                          onClick={() => setNewProjOpen(true)}
+                          style={{ background: "none", border: "none", color: "var(--accent)", fontSize: 11, fontWeight: 600, display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}
+                        >
+                          <Icon name="plus" size={10} color="currentColor" strokeWidth={2.5} /> Nový projekt
+                        </button>
+                      )}
+                    </div>
 
-                {/* Inline New Project Form inside modal */}
-                {newProjOpen ? (
-                  <form
-                    onSubmit={handleCreateProject}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      background: "var(--bg-2)",
-                      border: "1px solid var(--border)",
-                      padding: "6px 10px",
-                      borderRadius: 8,
-                      marginBottom: 8,
-                      animation: "fadeIn .15s ease-out"
-                    }}
-                  >
-                    <input
-                      autoFocus
-                      placeholder="Název nového projektu…"
-                      value={newProjName}
-                      onChange={(e) => setNewProjName(e.target.value)}
-                      style={{
-                        flex: 1,
-                        background: "none",
-                        border: "none",
-                        outline: "none",
-                        fontSize: 12.5,
-                        color: "var(--text)"
-                      }}
-                    />
-                    <input
-                      type="color"
-                      value={newProjColor}
-                      onChange={(e) => setNewProjColor(e.target.value)}
-                      style={{
-                        width: 22,
-                        height: 22,
-                        border: "none",
-                        padding: 0,
-                        borderRadius: 4,
-                        background: "none",
-                        cursor: "pointer"
-                      }}
-                    />
-                    <button type="submit" style={{ padding: "4px 10px", borderRadius: 5, border: "none", background: "var(--accent)", color: "#fff", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
-                      Vytvořit
-                    </button>
-                    <button type="button" onClick={() => setNewProjOpen(false)} style={{ padding: "4px 8px", borderRadius: 5, border: "1px solid var(--border)", background: "transparent", color: "var(--text-2)", fontSize: 11, cursor: "pointer" }}>
-                      Zrušit
-                    </button>
-                  </form>
-                ) : null}
-
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-                  {quickProjects.map((p) => {
-                    const isActive = projectId === p.id;
-                    return (
-                      <button
-                        key={p.id ?? "inbox"}
-                        onClick={() => setProjectId(p.id)}
+                    {/* Inline New Project Form inside modal */}
+                    {newProjOpen ? (
+                      <form
+                        onSubmit={handleCreateProject}
                         style={{
-                          padding: "5px 12px",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          background: "var(--bg-2)",
+                          border: "1px solid var(--border)",
+                          padding: "6px 10px",
                           borderRadius: 8,
-                          fontSize: 12,
-                          fontWeight: 500,
-                          border: `1.5px solid ${isActive ? "var(--accent)" : "var(--border)"}`,
-                          background: isActive ? "var(--accent-soft)" : "transparent",
-                          color: isActive ? "var(--accent)" : "var(--text-2)",
-                          cursor: "pointer",
-                          transition: "all .12s"
+                          marginBottom: 8,
+                          animation: "fadeIn .15s ease-out"
                         }}
                       >
-                        {p.name}
-                      </button>
-                    );
-                  })}
+                        <input
+                          autoFocus
+                          placeholder="Název nového projektu…"
+                          value={newProjName}
+                          onChange={(e) => setNewProjName(e.target.value)}
+                          style={{
+                            flex: 1,
+                            background: "none",
+                            border: "none",
+                            outline: "none",
+                            fontSize: 12.5,
+                            color: "var(--text)"
+                          }}
+                        />
+                        <input
+                          type="color"
+                          value={newProjColor}
+                          onChange={(e) => setNewProjColor(e.target.value)}
+                          style={{
+                            width: 22,
+                            height: 22,
+                            border: "none",
+                            padding: 0,
+                            borderRadius: 4,
+                            background: "none",
+                            cursor: "pointer"
+                          }}
+                        />
+                        <button type="submit" style={{ padding: "4px 10px", borderRadius: 5, border: "none", background: "var(--accent)", color: "#fff", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+                          Vytvořit
+                        </button>
+                        <button type="button" onClick={() => setNewProjOpen(false)} style={{ padding: "4px 8px", borderRadius: 5, border: "1px solid var(--border)", background: "transparent", color: "var(--text-2)", fontSize: 11, cursor: "pointer" }}>
+                          Zrušit
+                        </button>
+                      </form>
+                    ) : null}
 
-                  {/* Dropdown for remaining projects */}
-                  {projects.filter((p) => p.status === "active").length > 3 && (
-                    <select
-                      value={projectId || ""}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setProjectId(val === "" ? null : val);
-                      }}
-                      style={{
-                        padding: "4px 10px",
-                        borderRadius: 8,
-                        fontSize: 12,
-                        fontWeight: 500,
-                        border: `1.5px solid ${!quickProjects.map(x=>x.id).includes(projectId) ? "var(--accent)" : "var(--border)"}`,
-                        background: !quickProjects.map(x=>x.id).includes(projectId) ? "var(--accent-soft)" : "var(--input)",
-                        color: !quickProjects.map(x=>x.id).includes(projectId) ? "var(--accent)" : "var(--text-2)",
-                        outline: "none",
-                        cursor: "pointer"
-                      }}
-                    >
-                      <option value="">Ostatní projekty...</option>
-                      {projects
-                        .filter((p) => p.status === "active" && !quickProjects.map((x) => x.id).includes(p.id))
-                        .map((p) => (
-                          <option key={p.id} value={p.id}>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                      {quickProjects.map((p) => {
+                        const isActive = projectId === p.id;
+                        return (
+                          <button
+                            key={p.id ?? "inbox"}
+                            onClick={() => setProjectId(p.id)}
+                            style={{
+                              padding: "5px 12px",
+                              borderRadius: 8,
+                              fontSize: 12,
+                              fontWeight: 500,
+                              border: `1.5px solid ${isActive ? "var(--accent)" : "var(--border)"}`,
+                              background: isActive ? "var(--accent-soft)" : "transparent",
+                              color: isActive ? "var(--accent)" : "var(--text-2)",
+                              cursor: "pointer",
+                              transition: "all .12s"
+                            }}
+                          >
                             {p.name}
-                          </option>
-                        ))}
-                    </select>
-                  )}
-                </div>
-              </div>
+                          </button>
+                        );
+                      })}
 
-              {/* Termín / Due Date */}
-              <div>
-                <SectionLabel style={{ marginBottom: 6 }}>
-                  Termín
-                </SectionLabel>
-                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-                  <input
-                    type="date"
-                    value={dueDate}
-                    onChange={(e) => setDueDate(e.target.value)}
-                    onClick={openNativeDatePicker}
-                    onFocus={openNativeDatePicker}
-                    style={{
-                      padding: "6px 12px",
-                      borderRadius: 8,
-                      border: `1.5px solid ${dueDate ? "var(--accent)" : "var(--border)"}`,
-                      background: dueDate ? "var(--accent-soft)" : "var(--input)",
-                      color: dueDate ? "var(--accent)" : "var(--text)",
-                      fontSize: 12,
-                      outline: "none",
-                      fontWeight: 500,
-                      cursor: "pointer"
-                    }}
-                  />
-                  <button
-                    onClick={() => setRelativeDate(0)}
-                    style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, border: "1.5px solid var(--border)", background: "transparent", color: "var(--text-2)", cursor: "pointer", transition: "background .12s" }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = dk ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)"}
-                    onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
-                  >
-                    Dnes
-                  </button>
-                  <button
-                    onClick={() => setRelativeDate(1)}
-                    style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, border: "1.5px solid var(--border)", background: "transparent", color: "var(--text-2)", cursor: "pointer", transition: "background .12s" }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = dk ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)"}
-                    onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
-                  >
-                    Zítra
-                  </button>
-                  {dueDate && (
-                    <button
-                      onClick={() => setDueDate("")}
-                      style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, border: "none", background: "transparent", color: "#ef4444", cursor: "pointer" }}
-                    >
-                      Smazat
-                    </button>
-                  )}
-                </div>
-              </div>
+                      {/* Dropdown for remaining projects */}
+                      {projects.filter((p) => p.status === "active").length > 3 && (
+                        <select
+                          value={projectId || ""}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setProjectId(val === "" ? null : val);
+                          }}
+                          style={{
+                            padding: "4px 10px",
+                            borderRadius: 8,
+                            fontSize: 12,
+                            fontWeight: 500,
+                            border: `1.5px solid ${!quickProjects.map(x=>x.id).includes(projectId) ? "var(--accent)" : "var(--border)"}`,
+                            background: !quickProjects.map(x=>x.id).includes(projectId) ? "var(--accent-soft)" : "var(--input)",
+                            color: !quickProjects.map(x=>x.id).includes(projectId) ? "var(--accent)" : "var(--text-2)",
+                            outline: "none",
+                            cursor: "pointer"
+                          }}
+                        >
+                          <option value="">Ostatní projekty...</option>
+                          {projects
+                            .filter((p) => p.status === "active" && !quickProjects.map((x) => x.id).includes(p.id))
+                            .map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.name}
+                              </option>
+                            ))}
+                        </select>
+                      )}
+                    </div>
+                  </div>
 
-              {/* Tagy / Tags */}
-              <div>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                  <SectionLabel>
-                    Tagy
-                  </SectionLabel>
-                  {!newTagOpen && (
-                    <button
-                      onClick={() => setNewTagOpen(true)}
-                      style={{ background: "none", border: "none", color: "var(--accent)", fontSize: 11, fontWeight: 600, display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}
-                    >
-                      <Icon name="plus" size={10} color="currentColor" strokeWidth={2.5} /> Nový tag
-                    </button>
-                  )}
-                </div>
-
-                {/* Inline New Tag Form inside modal */}
-                {newTagOpen ? (
-                  <form
-                    onSubmit={handleCreateTag}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      background: "var(--bg-2)",
-                      border: "1px solid var(--border)",
-                      padding: "6px 10px",
-                      borderRadius: 8,
-                      marginBottom: 8,
-                      animation: "fadeIn .15s ease-out"
-                    }}
-                  >
-                    <input
-                      autoFocus
-                      placeholder="Název nového tagu…"
-                      value={newTagName}
-                      onChange={(e) => setNewTagName(e.target.value)}
-                      style={{
-                        flex: 1,
-                        background: "none",
-                        border: "none",
-                        outline: "none",
-                        fontSize: 12.5,
-                        color: "var(--text)"
-                      }}
-                    />
-                    <input
-                      type="color"
-                      value={newTagColor}
-                      onChange={(e) => setNewTagColor(e.target.value)}
-                      style={{
-                        width: 22,
-                        height: 22,
-                        border: "none",
-                        padding: 0,
-                        borderRadius: 4,
-                        background: "none",
-                        cursor: "pointer"
-                      }}
-                    />
-                    <button type="submit" style={{ padding: "4px 10px", borderRadius: 5, border: "none", background: "var(--accent)", color: "#fff", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
-                      Vytvořit
-                    </button>
-                    <button type="button" onClick={() => setNewTagOpen(false)} style={{ padding: "4px 8px", borderRadius: 5, border: "1px solid var(--border)", background: "transparent", color: "var(--text-2)", fontSize: 11, cursor: "pointer" }}>
-                      Zrušit
-                    </button>
-                  </form>
-                ) : null}
-
-                <div style={{ display: "flex", gap: 5, flexWrap: "wrap", alignItems: "center" }}>
-                  {quickTags.map((tg) => {
-                    const active = tagIds.includes(tg.id);
-                    return (
-                      <button
-                        key={tg.id}
-                        onClick={() => toggleTag(tg.id)}
+                  {/* Termín / Due Date */}
+                  <div>
+                    <SectionLabel style={{ marginBottom: 6 }}>
+                      Termín
+                    </SectionLabel>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                      <input
+                        type="date"
+                        value={dueDate}
+                        onChange={(e) => setDueDate(e.target.value)}
+                        onClick={openNativeDatePicker}
+                        onFocus={openNativeDatePicker}
                         style={{
-                          padding: "4px 10px",
+                          padding: "6px 12px",
                           borderRadius: 8,
+                          border: `1.5px solid ${dueDate ? "var(--accent)" : "var(--border)"}`,
+                          background: dueDate ? "var(--accent-soft)" : "var(--input)",
+                          color: dueDate ? "var(--accent)" : "var(--text)",
                           fontSize: 12,
-                          fontWeight: 600,
-                          border: `1.5px solid ${active ? tg.color : "var(--border)"}`,
-                          background: active ? tg.color + "18" : "transparent",
-                          color: active ? tg.color : "var(--text-2)",
-                          cursor: "pointer",
-                          transition: "all .12s"
+                          outline: "none",
+                          fontWeight: 500,
+                          cursor: "pointer"
+                        }}
+                      />
+                      <button
+                        onClick={() => setRelativeDate(0)}
+                        style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, border: "1.5px solid var(--border)", background: "transparent", color: "var(--text-2)", cursor: "pointer", transition: "background .12s" }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = dk ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)"}
+                        onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                      >
+                        Dnes
+                      </button>
+                      <button
+                        onClick={() => setRelativeDate(1)}
+                        style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, border: "1.5px solid var(--border)", background: "transparent", color: "var(--text-2)", cursor: "pointer", transition: "background .12s" }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = dk ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)"}
+                        onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                      >
+                        Zítra
+                      </button>
+                      {dueDate && (
+                        <button
+                          onClick={() => setDueDate("")}
+                          style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12, border: "none", background: "transparent", color: "#ef4444", cursor: "pointer" }}
+                        >
+                          Smazat
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Tagy / Tags */}
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                      <SectionLabel>
+                        Tagy
+                      </SectionLabel>
+                      {!newTagOpen && (
+                        <button
+                          onClick={() => setNewTagOpen(true)}
+                          style={{ background: "none", border: "none", color: "var(--accent)", fontSize: 11, fontWeight: 600, display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}
+                        >
+                          <Icon name="plus" size={10} color="currentColor" strokeWidth={2.5} /> Nový tag
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Inline New Tag Form inside modal */}
+                    {newTagOpen ? (
+                      <form
+                        onSubmit={handleCreateTag}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          background: "var(--bg-2)",
+                          border: "1px solid var(--border)",
+                          padding: "6px 10px",
+                          borderRadius: 8,
+                          marginBottom: 8,
+                          animation: "fadeIn .15s ease-out"
                         }}
                       >
-                        {tg.name}
-                      </button>
-                    );
-                  })}
+                        <input
+                          autoFocus
+                          placeholder="Název nového tagu…"
+                          value={newTagName}
+                          onChange={(e) => setNewTagName(e.target.value)}
+                          style={{
+                            flex: 1,
+                            background: "none",
+                            border: "none",
+                            outline: "none",
+                            fontSize: 12.5,
+                            color: "var(--text)"
+                          }}
+                        />
+                        <input
+                          type="color"
+                          value={newTagColor}
+                          onChange={(e) => setNewTagColor(e.target.value)}
+                          style={{
+                            width: 22,
+                            height: 22,
+                            border: "none",
+                            padding: 0,
+                            borderRadius: 4,
+                            background: "none",
+                            cursor: "pointer"
+                          }}
+                        />
+                        <button type="submit" style={{ padding: "4px 10px", borderRadius: 5, border: "none", background: "var(--accent)", color: "#fff", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+                          Vytvořit
+                        </button>
+                        <button type="button" onClick={() => setNewTagOpen(false)} style={{ padding: "4px 8px", borderRadius: 5, border: "1px solid var(--border)", background: "transparent", color: "var(--text-2)", fontSize: 11, cursor: "pointer" }}>
+                          Zrušit
+                        </button>
+                      </form>
+                    ) : null}
 
-                  {/* Dropdown for remaining tags */}
-                  {tags.length > 4 && (
-                    <select
-                      value=""
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (val) toggleTag(val);
-                      }}
-                      style={{
-                        padding: "4px 10px",
-                        borderRadius: 8,
-                        fontSize: 12,
-                        fontWeight: 500,
-                        border: `1.5px solid ${tagIds.some(id => !quickTags.map(x=>x.id).includes(id)) ? "var(--accent)" : "var(--border)"}`,
-                        background: tagIds.some(id => !quickTags.map(x=>x.id).includes(id)) ? "var(--accent-soft)" : "var(--input)",
-                        color: tagIds.some(id => !quickTags.map(x=>x.id).includes(id)) ? "var(--accent)" : "var(--text-2)",
-                        outline: "none",
-                        cursor: "pointer"
-                      }}
-                    >
-                      <option value="">Ostatní tagy...</option>
-                      {tags
-                        .filter((tg) => !quickTags.map((x) => x.id).includes(tg.id))
-                        .map((tg) => (
-                          <option key={tg.id} value={tg.id} style={{ color: tg.color }}>
-                            {tagIds.includes(tg.id) ? `✓ ${tg.name}` : tg.name}
-                          </option>
-                        ))}
-                    </select>
-                  )}
+                    <div style={{ display: "flex", gap: 5, flexWrap: "wrap", alignItems: "center" }}>
+                      {quickTags.map((tg) => {
+                        const active = tagIds.includes(tg.id);
+                        return (
+                          <button
+                            key={tg.id}
+                            onClick={() => toggleTag(tg.id)}
+                            style={{
+                              padding: "4px 10px",
+                              borderRadius: 8,
+                              fontSize: 12,
+                              fontWeight: 600,
+                              border: `1.5px solid ${active ? tg.color : "var(--border)"}`,
+                              background: active ? tg.color + "18" : "transparent",
+                              color: active ? tg.color : "var(--text-2)",
+                              cursor: "pointer",
+                              transition: "all .12s"
+                            }}
+                          >
+                            {tg.name}
+                          </button>
+                        );
+                      })}
+
+                      {/* Dropdown for remaining tags */}
+                      {tags.length > 4 && (
+                        <select
+                          value=""
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val) toggleTag(val);
+                          }}
+                          style={{
+                            padding: "4px 10px",
+                            borderRadius: 8,
+                            fontSize: 12,
+                            fontWeight: 500,
+                            border: `1.5px solid ${tagIds.some(id => !quickTags.map(x=>x.id).includes(id)) ? "var(--accent)" : "var(--border)"}`,
+                            background: tagIds.some(id => !quickTags.map(x=>x.id).includes(id)) ? "var(--accent-soft)" : "var(--input)",
+                            color: tagIds.some(id => !quickTags.map(x=>x.id).includes(id)) ? "var(--accent)" : "var(--text-2)",
+                            outline: "none",
+                            cursor: "pointer"
+                          }}
+                        >
+                          <option value="">Ostatní tagy...</option>
+                          {tags
+                            .filter((tg) => !quickTags.map((x) => x.id).includes(tg.id))
+                            .map((tg) => (
+                              <option key={tg.id} value={tg.id} style={{ color: tg.color }}>
+                                {tagIds.includes(tg.id) ? `✓ ${tg.name}` : tg.name}
+                              </option>
+                            ))}
+                        </select>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+              </>
+            )}
 
             {/* MODAL FOOTER ACTIONS */}
             <div
@@ -1057,91 +1470,163 @@ export default function QuickAdd({ defaultProjectId = null }) {
                 gap: isMobile ? 10 : 0,
               }}
             >
-              {/* Primary action na mobilu — nahoře, full width */}
-              <button
-                onClick={() => handleCreate(false)}
-                className="btn-press"
-                style={{
-                  padding: "13px 22px",
-                  borderRadius: 12,
-                  fontSize: 14,
-                  fontWeight: 700,
-                  border: "none",
-                  background: "var(--accent)",
-                  color: "#fff",
-                  cursor: "pointer",
-                  boxShadow: "0 4px 14px var(--accent-glow)",
-                  display: isMobile ? "block" : "none",
-                  width: "100%",
-                }}
-              >
-                Založit úkol
-              </button>
-
-              {/* Left Action: Open full drawer details */}
-              <button
-                onClick={() => handleCreate(true)}
-                style={{
-                  padding: "8px 16px",
-                  borderRadius: 10,
-                  fontSize: 12.5,
-                  fontWeight: 600,
-                  border: "1.5px solid var(--border)",
-                  background: "transparent",
-                  color: "var(--text-2)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: isMobile ? "center" : undefined,
-                  gap: 6,
-                  cursor: "pointer",
-                  transition: "all .12s",
-                  width: isMobile ? "100%" : undefined,
-                }}
-              >
-                Další možnosti
-                <Icon name="arrow-right" size={13} color="currentColor" strokeWidth={2.5} />
-              </button>
-
-              {/* Right Actions: Cancel / Submit — jen desktop */}
-              {!isMobile && (
-                <div style={{ display: "flex", gap: 10 }}>
+              {aiSuggestedTasks ? (
+                /* Footer actions for AI suggested review mode */
+                <>
+                  {/* Primary submit action on mobile (gradient indigo-purple) */}
                   <button
-                    onClick={() => setModalOpen(false)}
+                    onClick={handleSaveMultipleAiTasks}
+                    className="btn-press"
+                    style={{
+                      padding: "13px 22px",
+                      borderRadius: 12,
+                      fontSize: 14,
+                      fontWeight: 700,
+                      border: "none",
+                      background: "linear-gradient(135deg, var(--accent), #7c3aed)",
+                      color: "#fff",
+                      cursor: "pointer",
+                      boxShadow: "0 4px 14px rgba(124, 58, 237, 0.4)",
+                      display: isMobile ? "block" : "none",
+                      width: "100%",
+                    }}
+                  >
+                    Uložit úkoly ✨
+                  </button>
+
+                  <button
+                    onClick={() => { setAiSuggestedTasks(null); setAiExplanation(""); }}
                     style={{
                       padding: "8px 16px",
                       borderRadius: 10,
                       fontSize: 12.5,
                       fontWeight: 600,
-                      border: "none",
+                      border: "1.5px solid var(--border)",
                       background: "transparent",
-                      color: "var(--text-3)",
+                      color: "var(--text-2)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 6,
                       cursor: "pointer",
-                      transition: "color .12s"
+                      transition: "all .12s",
+                      width: isMobile ? "100%" : undefined,
                     }}
                   >
-                    Zrušit
+                    <Icon name="arrow-left" size={13} color="currentColor" strokeWidth={2.5} />
+                    Zrušit návrh
                   </button>
+
+                  {!isMobile && (
+                    <button
+                      onClick={handleSaveMultipleAiTasks}
+                      className="btn-press"
+                      style={{
+                        padding: "10px 22px",
+                        borderRadius: 10,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        border: "none",
+                        background: "linear-gradient(135deg, var(--accent), #7c3aed)",
+                        color: "#fff",
+                        cursor: "pointer",
+                        boxShadow: "0 4px 14px rgba(124, 58, 237, 0.3)",
+                        transition: "all .15s"
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-1px)"}
+                      onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
+                    >
+                      Uložit úkoly ✨
+                    </button>
+                  )}
+                </>
+              ) : (
+                /* Footer actions for standard mode */
+                <>
                   <button
                     onClick={() => handleCreate(false)}
                     className="btn-press"
                     style={{
-                      padding: "10px 22px",
-                      borderRadius: 10,
-                      fontSize: 13,
-                      fontWeight: 600,
+                      padding: "13px 22px",
+                      borderRadius: 12,
+                      fontSize: 14,
+                      fontWeight: 700,
                       border: "none",
                       background: "var(--accent)",
                       color: "#fff",
                       cursor: "pointer",
                       boxShadow: "0 4px 14px var(--accent-glow)",
-                      transition: "all .15s"
+                      display: isMobile ? "block" : "none",
+                      width: "100%",
                     }}
-                    onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-1px)"}
-                    onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
                   >
                     Založit úkol
                   </button>
-                </div>
+
+                  <button
+                    onClick={() => handleCreate(true)}
+                    style={{
+                      padding: "8px 16px",
+                      borderRadius: 10,
+                      fontSize: 12.5,
+                      fontWeight: 600,
+                      border: "1.5px solid var(--border)",
+                      background: "transparent",
+                      color: "var(--text-2)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: isMobile ? "center" : undefined,
+                      gap: 6,
+                      cursor: "pointer",
+                      transition: "all .12s",
+                      width: isMobile ? "100%" : undefined,
+                    }}
+                  >
+                    Další možnosti
+                    <Icon name="arrow-right" size={13} color="currentColor" strokeWidth={2.5} />
+                  </button>
+
+                  {!isMobile && (
+                    <div style={{ display: "flex", gap: 10 }}>
+                      <button
+                        onClick={() => setModalOpen(false)}
+                        style={{
+                          padding: "8px 16px",
+                          borderRadius: 10,
+                          fontSize: 12.5,
+                          fontWeight: 600,
+                          border: "none",
+                          background: "transparent",
+                          color: "var(--text-3)",
+                          cursor: "pointer",
+                          transition: "color .12s"
+                        }}
+                      >
+                        Zrušit
+                      </button>
+                      <button
+                        onClick={() => handleCreate(false)}
+                        className="btn-press"
+                        style={{
+                          padding: "10px 22px",
+                          borderRadius: 10,
+                          fontSize: 13,
+                          fontWeight: 600,
+                          border: "none",
+                          background: "var(--accent)",
+                          color: "#fff",
+                          cursor: "pointer",
+                          boxShadow: "0 4px 14px var(--accent-glow)",
+                          transition: "all .15s"
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-1px)"}
+                        onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
+                      >
+                        Založit úkol
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>

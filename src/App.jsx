@@ -485,26 +485,28 @@ function AppShell() {
         :root {
           --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
           --bottom-nav-content-height: 44px;
-          --bottom-nav-safe-padding: 8px; /* Tight compact padding on mobile instead of huge iOS 34px */
+          --bottom-nav-safe-padding: max(6px, env(safe-area-inset-bottom, 0px) * 0.3);
           --bottom-nav-height: calc(var(--bottom-nav-content-height) + var(--bottom-nav-safe-padding));
         }
         @media (display-mode: standalone) {
           :root {
-            --safe-area-inset-bottom: 0px !important;
-            --bottom-nav-safe-padding: 0px !important; /* Zero margin/padding on standalone PWA to put it as low as possible */
+            --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+            --bottom-nav-safe-padding: max(6px, env(safe-area-inset-bottom, 0px) * 0.3);
           }
           html, body, #root {
             height: 100% !important;
             min-height: 100% !important;
+            height: 100dvh !important;
           }
         }
         html.pwa-standalone, :root.pwa-standalone, .pwa-standalone {
-          --safe-area-inset-bottom: 0px !important;
-          --bottom-nav-safe-padding: 0px !important;
+          --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+          --bottom-nav-safe-padding: max(6px, env(safe-area-inset-bottom, 0px) * 0.3);
         }
         html.pwa-standalone, html.pwa-standalone body, html.pwa-standalone #root {
           height: 100% !important;
           min-height: 100% !important;
+          height: 100dvh !important;
         }
         *{margin:0;padding:0;box-sizing:border-box}
         html,body,#root{width:100%;min-height:100%;margin:0;padding:0}
@@ -512,15 +514,17 @@ function AppShell() {
         body,#root{min-height:100%}
         body{overflow-x:hidden}
         @media(max-width:767px){
-          html,body,#root{height:100% !important;min-height:100% !important;overflow:hidden;position:fixed;inset:0;width:100%}
+          html,body,#root{height:100% !important;min-height:100% !important;height:100dvh !important;overflow:hidden;position:fixed;inset:0;width:100%}
           .overlay { padding: 0 !important; display: block !important; background: var(--bg-2) !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
         }
         .mobile-app-container, .mobile-main-container {
           height: 100% !important;
+          height: 100dvh !important;
         }
         html.pwa-standalone .mobile-app-container,
         html.pwa-standalone .mobile-main-container {
           height: 100% !important;
+          height: 100dvh !important;
         }
         input,textarea,select{-webkit-appearance:none;border-radius:0}
         @media(max-width:767px){input,textarea,select{font-size:16px !important}}

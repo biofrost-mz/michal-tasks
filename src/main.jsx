@@ -1,3 +1,4 @@
+// SW Force-rebuild hash: 2026-06-18-v4
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { registerSW } from 'virtual:pwa-register'

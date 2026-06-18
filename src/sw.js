@@ -1,3 +1,4 @@
+// Force cache update v3.2.4 - 2026-06-18
 import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching'
 import { registerRoute, NavigationRoute } from 'workbox-routing'
 import { NetworkOnly, StaleWhileRevalidate, CacheFirst } from 'workbox-strategies'

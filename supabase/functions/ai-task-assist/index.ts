@@ -159,31 +159,46 @@ ${(note.content || "").slice(0, 4000)}`;
       const todayDate = body?.todayDate || new Date().toISOString().slice(0, 10);
       const projNames = body?.availableProjects || [];
       const tagNames = body?.availableTags || [];
+      const existingTasks = body?.existingTasks || [];
 
-      const projectList = projNames.length ? `Dostupné projekty: ${projNames.join(", ")}` : "Žádné projekty.";
-      const tagList = tagNames.length ? `Dostupné tagy: ${tagNames.join(", ")}` : "Žádné tagy.";
+      const projectList = projNames.length ? `Dostupné projekty v aplikaci: ${projNames.join(", ")}` : "Žádné projekty.";
+      const tagList = tagNames.length ? `Dostupné tagy v aplikaci: ${tagNames.join(", ")}` : "Žádné tagy.";
+      const existingList = existingTasks.length ? `Seznam stávajících otevřených úkolů (UUID a Název): ${JSON.stringify(existingTasks)}` : "Žádné existující otevřené úkoly.";
 
-      aiPrompt = `Zanalyzuj následující text a vytvoř z něj strukturovaný návrh úkolu.
+      aiPrompt = `Zanalyzuj následující text od uživatele a navrhni buď jeden úkol, nebo ho rozděl do více samostatných úkolů, pokud obsahuje více nezávislých nebo komplexnějších činností (nikoliv jen dílčí podúkoly, ale jasně samostatné úkoly).
+
 Text od uživatele: "${text}"
 
-Parametry výstupu:
-1. title: Krátký, výstižný a akční název úkolu v češtině (začínající slovesem).
-2. description: Popis úkolu v češtině. Pokud je délka nastavení (length) "${len}" rovna "short", vygeneruj stručný popis (1-2 věty). Pokud je rovna "long", vygeneruj detailnější, strukturovaný popis s odrážkami (Markdown).
-3. suggestedProject: Pokud text zmiňuje nebo odpovídá některému z dostupných projektů, vyber jeho přesné jméno ze seznamu. Pokud žádný neodpovídá, vrať prázdný řetězec "".
-   ${projectList}
-4. suggestedTags: Vyber nejrelevantnější tagy ze seznamu dostupných tagů, které odpovídají obsahu textu. Pokud žádný neodpovídá, vrať prázdné pole [].
-   ${tagList}
-5. priority: Vyhodnoť prioritu ("high" | "medium" | "low"). Pokud je v textu zmíněna naléhavost nebo spěch, nastav "high" nebo "medium", jinak "low" nebo "medium".
-6. dueDate: Pokud je v textu explicitně nebo implicitně zmíněn termín splnění (např. "do zítra", "v pondělí", "příští týden", "do konce června"), převeď ho na konkrétní datum ve formátu YYYY-MM-DD. Dnešní datum je: ${todayDate}. Pokud termín není zmíněn, vrať prázdný řetězec "".
+Dnešní datum: ${todayDate}
+${projectList}
+${tagList}
+${existingList}
 
-Vrať POUZE JSON objekt s následující strukturou (nic jiného, žádné markdown značky jako \`\`\`json):
+Pravidla pro analýzu a detekci:
+1. **Rozdělení úkolů (Splitting)**: Pokud uživatel v zadání popisuje více samostatných aktivit (např. "Připravit prezentaci na poradu a pak zavolat Petrovi ohledně rozpočtu a taky nakoupit kávu"), doporuč rozdělit to do více samostatných úkolů (nastav "suggestedMode" na "multiple"). Pokud se jedná o jednu činnost (i když má dílčí kroky), navrhni jeden úkol (nastav "suggestedMode" na "single").
+2. **Kontrola duplicity (Deduplication)**: Porovnej navrhované úkoly se stávajícími otevřenými úkoly. Pokud je některý navrhovaný úkol velmi podobný nebo duplicitní k existujícímu úkolu (např. řeší stejné téma nebo zadání), vyplň pole "duplicateOfTaskId" a "duplicateOfTaskTitle" příslušnými údaji existujícího úkolu. Do "explanation" vysvětli, že úkol je pravděpodobně duplicitní a doporučuješ ho sloučit.
+3. **Projekty**: Pokud navrhovaný úkol tematicky odpovídá některému z dostupných projektů, vyber jeho přesný název ze seznamu. Jinak prázdný řetězec "".
+4. **Tagy**: Navrhni nejrelevantnější tagy z dostupných tagů.
+5. **Priorita**: Vyhodnoť prioritu ("high" | "medium" | "low") podle závažnosti nebo termínu.
+6. **Termín (dueDate)**: Pokud je v textu zmíněn termín splnění, převeď ho na datum ve formátu YYYY-MM-DD. Jinak "".
+7. **Popis (description)**: Popis úkolu v češtině. Pokud je délka (length) "${len}" rovna "short", vygeneruj stručný popis (1-2 věty). Pokud je rovna "long", vygeneruj detailnější, strukturovaný popis s odrážkami (Markdown).
+
+Vrať POUZE JSON objekt s následující strukturou (nic jiného, žádné markdown značky):
 {
-  "title": "Název úkolu",
-  "description": "Stručný nebo detailní popis",
-  "suggestedProject": "přesný název projektu nebo prázdný řetězec",
-  "suggestedTags": ["tag1", "tag2"],
-  "priority": "high"|"medium"|"low",
-  "dueDate": "YYYY-MM-DD" nebo prázdný řetězec
+  "suggestedMode": "single" | "multiple",
+  "explanation": "Krátké české odůvodnění návrhu (např. proč navrhuješ rozdělení na X úkolů, nebo proč doporučuješ sloučení)",
+  "tasks": [
+    {
+      "title": "Název úkolu (v češtině, akční, začínající slovesem)",
+      "description": "Popis úkolu ve formátu Markdown v češtině",
+      "suggestedProject": "Přesný název projektu ze seznamu dostupných projektů, nebo \"\"",
+      "suggestedTags": ["tag1", "tag2"],
+      "priority": "high"|"medium"|"low",
+      "dueDate": "YYYY-MM-DD nebo \"\"",
+      "duplicateOfTaskId": "ID duplicitního existujícího úkolu, nebo \"\"",
+      "duplicateOfTaskTitle": "Název duplicitního existujícího úkolu, nebo \"\""
+    }
+  ]
 }`;
 
     } else {
@@ -197,16 +212,16 @@ Vrať POUZE JSON objekt s následující strukturou (nic jiného, žádné markd
     const apiKey = Deno.env.get("GOOGLE_GENERATIVE_AI_API_KEY");
     if (apiKey) {
       try {
-        console.log(`ai-task-assist: Pokouším se volat Google Gemini API (gemini-3.5-flash) pro akci "${action}"...`);
+        console.log(`ai-task-assist: Pokouším se volat Google Gemini API (gemini-2.5-flash) pro akci "${action}"...`);
         const isJsonAction = ["subtasks", "tags", "priority", "note_extract_tasks", "draft_task"].includes(action);
         
         const geminiResp = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              model: "gemini-3.5-flash",
+              model: "gemini-2.5-flash",
               contents: [{ role: "user", parts: [{ text: aiPrompt }] }],
               systemInstruction: {
                 parts: [{ text: SYSTEM }]
@@ -300,7 +315,7 @@ Vrať POUZE JSON objekt s následující strukturou (nic jiného, žádné markd
       JSON.stringify({
         result: raw,
         meta: {
-          model: success ? "Gemini 3.5 Flash" : "Claude 3.5 Haiku",
+          model: success ? "Gemini 2.5 Flash" : "Claude 3.5 Haiku",
         }
       }),
       { headers: { ...CORS, "Content-Type": "application/json" } }
