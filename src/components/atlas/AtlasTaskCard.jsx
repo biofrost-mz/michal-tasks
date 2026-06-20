@@ -93,6 +93,9 @@ export function Stepper({ statusClass, onChange }) {
   );
 }
 
+const SWIPE_THRESHOLD = 56;
+const SWIPE_MAX = 160;
+
 export default function AtlasTaskCard({ task, onOpen, onStatusChange, onStar, projectsById }) {
   const { isMobile } = useApp();
   const [offsetX, setOffsetX] = useState(0);
@@ -100,65 +103,99 @@ export default function AtlasTaskCard({ task, onOpen, onStatusChange, onStar, pr
   const [exiting, setExiting] = useState(false);
   const startXRef = useRef(null);
   const startYRef = useRef(null);
-  const swipeAxisRef = useRef(null); // null | "x" | "ignored"
-  const THRESHOLD = 56;
+  const swipeAxisRef = useRef(null);
+  const offsetXRef = useRef(0);
+  const pointerIdRef = useRef(null);
+  const hasSwipedRef = useRef(false);
 
-  const onTouchStart = useCallback((e) => {
-    startXRef.current = e.touches[0].clientX;
-    startYRef.current = e.touches[0].clientY;
+  const onPointerDown = useCallback((e) => {
+    if (exiting) return;
+    if (e.button !== undefined && e.button !== 0) return;
+    if (e.target.closest?.("button, input, textarea, select, a")) return;
+    startXRef.current = e.clientX;
+    startYRef.current = e.clientY;
+    pointerIdRef.current = e.pointerId;
+    offsetXRef.current = 0;
     swipeAxisRef.current = null;
+    hasSwipedRef.current = false;
     setSwiping(false);
-  }, []);
+  }, [exiting]);
 
-  const onTouchMove = useCallback((e) => {
-    if (startXRef.current === null || startYRef.current === null) return;
-    if (swipeAxisRef.current === "ignored") return;
+  const onPointerMove = useCallback((e) => {
+    if (pointerIdRef.current !== e.pointerId) return;
+    if (startXRef.current == null) return;
 
-    const dx = e.touches[0].clientX - startXRef.current;
-    const dy = e.touches[0].clientY - startYRef.current;
-    const absX = Math.abs(dx);
-    const absY = Math.abs(dy);
+    const diff = e.clientX - startXRef.current;
+    const diffY = e.clientY - startYRef.current;
+    const absX = Math.abs(diff);
+    const absY = Math.abs(diffY);
 
-    if (swipeAxisRef.current === null) {
-      if (absX < 6 && absY < 6) return;
-      if (absY > absX * 1.5 || dx > 0) {
+    if (swipeAxisRef.current == null) {
+      if (absX < 3 && absY < 3) return;
+      if (absY > absX * 4.0 || diff > 0) {
         swipeAxisRef.current = "ignored";
-        setOffsetX(0);
         setSwiping(false);
         return;
       }
       swipeAxisRef.current = "x";
       setSwiping(true);
+      hasSwipedRef.current = true;
+      try { e.currentTarget.setPointerCapture?.(e.pointerId); } catch {}
     }
 
     if (swipeAxisRef.current !== "x") return;
-    setOffsetX(Math.max(dx, -160));
+    e.preventDefault();
+
+    const clamped = Math.max(-SWIPE_MAX, Math.min(0, diff));
+    offsetXRef.current = clamped;
+    setOffsetX(clamped);
   }, []);
 
-  const onTouchEnd = useCallback(() => {
+  const onPointerEnd = useCallback((e) => {
+    if (pointerIdRef.current == null || pointerIdRef.current !== e.pointerId) return;
     setSwiping(false);
-    if (swipeAxisRef.current === "x" && offsetX < -THRESHOLD) {
+    const finalX = offsetXRef.current;
+
+    if (swipeAxisRef.current === "x" && finalX <= -SWIPE_THRESHOLD) {
       setExiting(true);
       if (navigator.vibrate) navigator.vibrate(10);
       setTimeout(() => onStatusChange(task.id, "done"), 260);
     } else {
       setOffsetX(0);
+      offsetXRef.current = 0;
     }
+
     startXRef.current = null;
     startYRef.current = null;
     swipeAxisRef.current = null;
-  }, [offsetX, task.id, onStatusChange]);
+    pointerIdRef.current = null;
+    try { e.currentTarget.releasePointerCapture?.(e.pointerId); } catch {}
+  }, [task.id, onStatusChange]);
 
-  const bgOpacity = Math.min(Math.abs(offsetX) / THRESHOLD, 1);
+  const onPointerCancel = useCallback((e) => {
+    setSwiping(false);
+    setOffsetX(0);
+    offsetXRef.current = 0;
+    startXRef.current = null;
+    startYRef.current = null;
+    swipeAxisRef.current = null;
+    pointerIdRef.current = null;
+    try { e.currentTarget.releasePointerCapture?.(e.pointerId); } catch {}
+  }, []);
+
+  const bgOpacity = Math.min(Math.abs(offsetX) / SWIPE_THRESHOLD, 1);
 
   const card = (
     <div
       className={`tcard ${task.statusClass} ${task.overdue ? "alert" : ""}`}
       onClick={() => onOpen(task.id)}
-      onTouchStart={isMobile ? onTouchStart : undefined}
-      onTouchMove={isMobile ? onTouchMove : undefined}
-      onTouchEnd={isMobile ? onTouchEnd : undefined}
+      onPointerDown={isMobile ? onPointerDown : undefined}
+      onPointerMove={isMobile ? onPointerMove : undefined}
+      onPointerUp={isMobile ? onPointerEnd : undefined}
+      onPointerCancel={isMobile ? onPointerCancel : undefined}
+      onLostPointerCapture={isMobile ? onPointerEnd : undefined}
       style={isMobile ? {
+        touchAction: "pan-y",
         transform: exiting ? "translateX(-110%)" : `translateX(${offsetX}px)`,
         opacity: exiting ? 0 : 1,
         transition: swiping ? "none" : "transform .5s cubic-bezier(.4,0,.2,1), opacity .22s",

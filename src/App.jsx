@@ -484,7 +484,7 @@ function AppShell() {
       <style>{`
         :root {
           --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
-          --bottom-nav-content-height: 44px;
+          --bottom-nav-content-height: 40px;
           --bottom-nav-safe-padding: 0px;
           --bottom-nav-height: calc(var(--bottom-nav-content-height) + var(--bottom-nav-safe-padding));
         }
@@ -556,7 +556,7 @@ function AppShell() {
           <OnboardingWizard />
         </Suspense>
       )}
-      <button
+      {!isMobile && <button
         className="shortcuts-fab"
         onClick={() => window.dispatchEvent(new CustomEvent("openShortcuts"))}
         title="Klávesové zkratky"
@@ -566,7 +566,7 @@ function AppShell() {
           <rect x="2" y="5" width="20" height="14" rx="2" />
           <path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M8 13h.01M12 13h.01M16 13h.01M6 17h4M14 17h4" />
         </svg>
-      </button>
+      </button>}
 
       <div className={isMobile ? "mobile-app-container" : `app ${collapsed ? "collapsed" : ""}`} style={isMobile ? { display: "flex", flexDirection: "column", width: "100%", height: "100%", overflow: "hidden", position: "absolute", top: 0, left: 0, right: 0, bottom: 0 } : undefined}>
         {!isMobile && <AtlasSidebar collapsed={collapsed} setCollapsed={setCollapsed} />}
