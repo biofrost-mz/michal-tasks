@@ -485,13 +485,13 @@ function AppShell() {
         :root {
           --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
           --bottom-nav-content-height: 44px;
-          --bottom-nav-safe-padding: env(safe-area-inset-bottom, 2px);
+          --bottom-nav-safe-padding: 0px;
           --bottom-nav-height: calc(var(--bottom-nav-content-height) + var(--bottom-nav-safe-padding));
         }
         @media (display-mode: standalone) {
           :root {
             --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
-            --bottom-nav-safe-padding: env(safe-area-inset-bottom, 2px);
+            --bottom-nav-safe-padding: 0px;
           }
           html, body, #root {
             height: 100% !important;
@@ -501,7 +501,7 @@ function AppShell() {
         }
         html.pwa-standalone, :root.pwa-standalone, .pwa-standalone {
           --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
-          --bottom-nav-safe-padding: env(safe-area-inset-bottom, 2px);
+          --bottom-nav-safe-padding: 0px;
         }
         html.pwa-standalone, html.pwa-standalone body, html.pwa-standalone #root {
           height: 100% !important;
