@@ -497,7 +497,9 @@ export function AppProvider({ children }) {
           .eq("id", userId)
           .maybeSingle();
         if (profileError) console.warn("profile onboarding state:", profileError.message);
-        if (!cancelled && hasOwn(profileRow, "onboarded_at") && profileRow.onboarded_at) {
+        const userOnboardedInDb = hasOwn(profileRow, "onboarded_at") && profileRow.onboarded_at;
+        const userOnboardedLocally = localStorage.getItem(`mt3:onboarding_done:${userId}`);
+        if (!cancelled && (userOnboardedInDb || userOnboardedLocally)) {
           localStorage.setItem("mt3:onboarding_done", "1");
           window.dispatchEvent(new Event("mt3:onboarding_done"));
         }

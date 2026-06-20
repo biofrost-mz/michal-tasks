@@ -188,7 +188,10 @@ export default function AtlasTaskCard({ task, onOpen, onStatusChange, onStar, pr
   const card = (
     <div
       className={`tcard ${task.statusClass} ${task.overdue ? "alert" : ""}`}
-      onClick={() => onOpen(task.id)}
+      onClick={() => {
+        if (hasSwipedRef.current) return;
+        onOpen(task.id);
+      }}
       onPointerDown={isMobile ? onPointerDown : undefined}
       onPointerMove={isMobile ? onPointerMove : undefined}
       onPointerUp={isMobile ? onPointerEnd : undefined}

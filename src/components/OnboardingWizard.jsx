@@ -103,6 +103,7 @@ export default function OnboardingWizard() {
 
   const close = useCallback(() => {
     localStorage.setItem(LS_KEY, "1");
+    if (userId) localStorage.setItem(`${LS_KEY}:${userId}`, "1");
     window.dispatchEvent(new Event("mt3:onboarding_done"));
     if (!userId) return;
     void (async () => {
