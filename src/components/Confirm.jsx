@@ -5,7 +5,12 @@ export const useConfirm = () => useContext(ConfirmCtx);
 
 export function ConfirmProvider({ children }) {
   const [state, setState] = useState(null); // { msg, resolve }
-  const confirm = useCallback((msg) => new Promise((resolve) => setState({ msg, resolve })), []);
+  const confirm = useCallback((msg) => new Promise((resolve) => {
+    setState((current) => {
+      if (current) { resolve(false); return current; } // dialog already open — reject duplicate
+      return { msg, resolve };
+    });
+  }), []);
   const handle = (ok) => { state?.resolve(ok); setState(null); };
   return (
     <ConfirmCtx.Provider value={confirm}>

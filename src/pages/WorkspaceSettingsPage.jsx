@@ -764,7 +764,15 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
                         {push.subscribed ? 'Upozorníme tě na blížící se termíny a připomínky.' : 'Dostávej upozornění i když je app zavřená.'}
                       </div>
                     </div>
-                    <button className={`btn${push.subscribed ? '' : ' primary'}`} onClick={push.subscribed ? push.unsubscribe : push.subscribe} disabled={push.loading} style={{ flexShrink: 0, minWidth: 120 }}>
+                    <button
+                      className={`btn${push.subscribed ? '' : ' primary'}`}
+                      onClick={() => {
+                        const action = push.subscribed ? push.unsubscribe : push.subscribe;
+                        action().catch((err) => toast(err?.message || 'Nepodařilo se změnit nastavení notifikací', 'error'));
+                      }}
+                      disabled={push.loading}
+                      style={{ flexShrink: 0, minWidth: 120 }}
+                    >
                       {push.loading ? '…' : push.subscribed ? 'Vypnout' : 'Zapnout'}
                     </button>
                   </div>

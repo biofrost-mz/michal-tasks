@@ -28,7 +28,9 @@ export function usePushNotifications() {
     navigator.serviceWorker.ready.then(async (reg) => {
       const sub = await reg.pushManager.getSubscription()
       setSubscribed(!!sub)
-    }).catch(() => {})
+    }).catch((err) => {
+      console.warn('Push: failed to check subscription status', err)
+    })
   }, [supported, userId])
 
   const subscribe = useCallback(async () => {
@@ -49,7 +51,7 @@ export function usePushNotifications() {
       }
 
       const { endpoint, keys } = sub.toJSON()
-      await supabase.from('push_subscriptions').upsert(
+      const { error: dbError } = await supabase.from('push_subscriptions').upsert(
         {
           user_id: userId,
           workspace_id: activeWorkspaceId,
@@ -59,9 +61,11 @@ export function usePushNotifications() {
         },
         { onConflict: 'user_id,endpoint' },
       )
+      if (dbError) throw new Error('Notifikace nelze uložit: ' + dbError.message)
       setSubscribed(true)
     } catch (err) {
       console.error('Push subscribe:', err)
+      throw err
     } finally {
       setLoading(false)
     }

@@ -377,9 +377,16 @@ function AppShell() {
     window.addEventListener("mt3:onboarding_done", handler);
     return () => window.removeEventListener("mt3:onboarding_done", handler);
   }, []);
+  useEffect(() => {
+    const handleOnline = () => { if (loaded) refetchAll(); };
+    window.addEventListener("online", handleOnline);
+    return () => window.removeEventListener("online", handleOnline);
+  }, [loaded, refetchAll]);
+
   const { pullY, refreshing } = usePullToRefresh(isMobile && loaded, refetchAll);
   const gPressedRef = useRef(false);
   const gTimerRef = useRef(null);
+  const [gHint, setGHint] = useState(false);
   const hideMobileFab = page === "workspace-settings" || page === "user-profile" || page === "admin";
 
   useEffect(() => {
@@ -452,13 +459,18 @@ function AppShell() {
 
       if (e.key === "g" && !e.metaKey && !e.ctrlKey && !e.altKey) {
         gPressedRef.current = true;
+        setGHint(true);
         clearTimeout(gTimerRef.current);
-        gTimerRef.current = setTimeout(() => { gPressedRef.current = false; }, 800);
+        gTimerRef.current = setTimeout(() => {
+          gPressedRef.current = false;
+          setGHint(false);
+        }, 800);
         return;
       }
 
       if (gPressedRef.current) {
         gPressedRef.current = false;
+        setGHint(false);
         clearTimeout(gTimerRef.current);
         switch (e.key) {
           case "h": e.preventDefault(); setPage("dashboard"); break;
@@ -476,7 +488,10 @@ function AppShell() {
       }
     };
     window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
+    return () => {
+      window.removeEventListener("keydown", handler);
+      clearTimeout(gTimerRef.current);
+    };
   }, [shortcutsOpen, setPage, page]);
 
   return (
@@ -548,6 +563,25 @@ function AppShell() {
       `}</style>
 
       <SplashScreen visible={!splashDone} />
+      {gHint && !isMobile && (
+        <div style={{
+          position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
+          zIndex: 9999, background: "var(--bg-2)", border: "1px solid var(--border)",
+          borderRadius: 10, padding: "8px 16px", display: "flex", alignItems: "center", gap: 10,
+          boxShadow: "var(--shadow-lg)", fontSize: 13, color: "var(--text-2)",
+          animation: "fadeIn .15s ease-out",
+          pointerEvents: "none",
+        }}>
+          <kbd style={{ background: "var(--input)", border: "1px solid var(--border)", borderRadius: 5, padding: "1px 7px", fontFamily: "var(--mono)", fontSize: 12, color: "var(--text)" }}>g</kbd>
+          <span>pak</span>
+          {[["h","Přehled"],["t","Úkoly"],["n","Poznámky"],["p","Plán"]].map(([k, label]) => (
+            <span key={k} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <kbd style={{ background: "var(--input)", border: "1px solid var(--border)", borderRadius: 5, padding: "1px 7px", fontFamily: "var(--mono)", fontSize: 12, color: "var(--accent)" }}>{k}</kbd>
+              <span style={{ fontSize: 12, color: "var(--text-3)" }}>{label}</span>
+            </span>
+          ))}
+        </div>
+      )}
       <OfflineBanner />
       <AppErrorReporter />
       <AppUpdatePrompt />
