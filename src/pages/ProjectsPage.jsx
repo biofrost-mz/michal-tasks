@@ -310,8 +310,8 @@ export function ProjectDetailPage() {
         <div className="quickadd" style={{ borderStyle: "solid", marginBottom: 12, flexDirection: "column", alignItems: "stretch", gap: 12, padding: "16px 20px" }}>
           <div style={{ display: "flex", gap: 10, width: "100%", alignItems: "center" }}>
             <span className="quickadd-plus">✎</span>
-            <input value={eName} onChange={(e) => setEName(e.target.value)} placeholder="Název projektu" style={{ flex: 1 }} />
-            <input value={eDesc} onChange={(e) => setEDesc(e.target.value)} placeholder="Popis projektu" style={{ flex: 2 }} />
+            <input value={eName} onChange={(e) => setEName(e.target.value.slice(0, 80))} placeholder="Název projektu" maxLength={80} style={{ flex: 1 }} />
+            <input value={eDesc} onChange={(e) => setEDesc(e.target.value.slice(0, 300))} placeholder="Popis projektu" maxLength={300} style={{ flex: 2 }} />
           </div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -1623,7 +1623,8 @@ function AIProjectGeneratorModal({ onClose }) {
                   <input
                     className="ai-input"
                     value={projectName}
-                    onChange={(e) => setProjectName(e.target.value)}
+                    onChange={(e) => setProjectName(e.target.value.slice(0, 80))}
+                    maxLength={80}
                   />
                 </div>
 

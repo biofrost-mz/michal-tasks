@@ -335,9 +335,9 @@ function AppShell() {
 
   const [collapsed, setCollapsed] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
-  const [onboardingDone, setOnboardingDone] = useState(
-    () => Boolean(localStorage.getItem("mt3:onboarding_done"))
-  );
+  const [onboardingDone, setOnboardingDone] = useState(() => {
+    try { return Boolean(localStorage.getItem("mt3:onboarding_done")); } catch { return false; }
+  });
   const [minTimePassed, setMinTimePassed] = useState(false);
   const [splashDone, setSplashDone] = useState(false);
 

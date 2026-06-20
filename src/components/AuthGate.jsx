@@ -197,7 +197,9 @@ export default function AuthGate({ children }) {
   }, [isMobile]);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session ?? null));
+    supabase.auth.getSession()
+      .then(({ data }) => setSession(data.session ?? null))
+      .catch(() => setSession(null));
     const { data: sub } = supabase.auth.onAuthStateChange((event, newSession) => {
       setSession(newSession ?? null);
       if (event === "PASSWORD_RECOVERY") {

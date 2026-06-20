@@ -161,7 +161,13 @@ export default function QuickAdd({ defaultProjectId = null }) {
       window.dispatchEvent(new Event("mt3:ai_tried"));
 
       const cleaned = raw.replace(/^```[a-z]*\n?/i, "").replace(/```$/, "").trim();
-      const parsed = JSON.parse(cleaned);
+      let parsed;
+      try {
+        parsed = JSON.parse(cleaned);
+      } catch {
+        toast("AI vrátilo neplatnou odpověď. Zkus to znovu.", "error");
+        return;
+      }
 
       let suggestedTasksArray = [];
       if (Array.isArray(parsed.tasks)) {
@@ -426,9 +432,10 @@ export default function QuickAdd({ defaultProjectId = null }) {
         <input
           ref={inputRef}
           value={val}
-          onChange={(e) => setVal(e.target.value)}
+          onChange={(e) => setVal(e.target.value.slice(0, 200))}
           onKeyDown={(e) => e.key === "Enter" && handleOpenModal()}
           placeholder="Nový úkol… (N / Enter)"
+          maxLength={200}
           style={{
             flex: 1,
             border: "none",
@@ -602,9 +609,10 @@ export default function QuickAdd({ defaultProjectId = null }) {
 
                           <input
                             value={t.title}
-                            onChange={(e) => updateSuggestedTask(t.id, { title: e.target.value })}
+                            onChange={(e) => updateSuggestedTask(t.id, { title: e.target.value.slice(0, 200) })}
                             disabled={!t.selected}
                             placeholder="Název úkolu…"
+                            maxLength={200}
                             style={{
                               fontSize: 14,
                               fontWeight: 600,

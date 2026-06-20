@@ -3,6 +3,7 @@ import React, {
   useEffect,
   useRef,
   useCallback,
+  useMemo,
   createContext,
   useContext,
 } from "react";
@@ -304,13 +305,18 @@ export function AppProvider({ children }) {
   const reportError = useCallback((msg) => setErrorQueue((prev) => [...prev, msg]), []);
   const clearErrors = useCallback(() => setErrorQueue([]), []);
 
+  const switchingToWsRef = useRef(null);
   const setActiveWorkspaceId = useCallback(async (wsId) => {
     setActiveWorkspaceIdRaw(wsId);
     if (wsId) {
       localStorage.setItem("lastWorkspaceId", wsId);
+      switchingToWsRef.current = wsId;
       const normalized = await workspaceService.fetchMembers(wsId);
-      setWorkspaceMembers(normalized);
+      if (switchingToWsRef.current === wsId) {
+        setWorkspaceMembers(normalized);
+      }
     } else {
+      switchingToWsRef.current = null;
       setWorkspaceMembers([]);
     }
   }, []);
@@ -1379,12 +1385,25 @@ export function AppProvider({ children }) {
   }, [userId, session]);
 
   const t = theme(dk, uiSettings.accent);
-  const openProject = (id) => {
+
+  const openProject = useCallback((id) => {
     setSelProject(id);
     setPage("project-detail");
-  };
+  }, []);
 
-  const ctx = {
+  const logout = useCallback(async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.warn("signOut error", e);
+    }
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith("sb-")) localStorage.removeItem(key);
+    });
+    window.location.reload();
+  }, []);
+
+  const ctx = useMemo(() => ({
     t,
     dk,
     setDk,
@@ -1472,17 +1491,7 @@ export function AppProvider({ children }) {
     userId,
     userEmail,
     isSystemAdmin,
-    logout: async () => {
-      try {
-        await supabase.auth.signOut();
-      } catch (e) {
-        console.warn("signOut error", e);
-      }
-      Object.keys(localStorage).forEach(key => {
-        if (key.startsWith("sb-")) localStorage.removeItem(key);
-      });
-      window.location.reload();
-    },
+    logout,
     // Error queue
     errorQueue,
     clearErrors,
@@ -1491,7 +1500,22 @@ export function AppProvider({ children }) {
     permanentlyDeleteTask: hardDeleteTask,
     permanentlyDeleteProject: hardDeleteProject,
     permanentlyDeleteNote: hardDeleteNote,
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [t, dk, uiSettings, loaded, loadError, projects, deletedProjects, tasks, deletedTasks, tags,
+    notes, deletedNotes, quickTodos, attachments, workspaces, activeWorkspaceId, workspaceMembers,
+    page, selProject, taskDetail, search, dashFilter, tasksPageFilter, openNoteId, cmdOpen,
+    isMobile, errorQueue, userId, userEmail, isSystemAdmin,
+    setDk, updateUiSettings, setLoadError, setLoaded, updateProfileDisplayName,
+    addProject, updateProject, deleteProject, restoreProject, hardDeleteProject, reorderProjects,
+    reorderTasks, addTask, updateTask, deleteTask, restoreTask, hardDeleteTask,
+    addTag, updateTag, deleteTag, setPage, setTimelineOffsetDays, timelineOffsetDays,
+    setSelProject, openProject, setTaskDetail, setSearch, setDashFilter, setTasksPageFilter,
+    addNote, updateNote, deleteNote, restoreNote, hardDeleteNote, openNote, setOpenNoteId,
+    addQuickTodo, archiveQuickTodo, restoreQuickTodo, deleteQuickTodo, updateQuickTodo,
+    clearArchivedQuickTodos, setCmdOpen, uploadAttachment, deleteAttachment,
+    switchWorkspace, createWorkspace, generateInviteLink, acceptInvite, renameWorkspace,
+    updateMemberRole, removeMember, leaveWorkspace, fetchWorkspaceInvites, revokeInvite,
+    refetchAll, logout, clearErrors, hardDeleteTask, hardDeleteProject, hardDeleteNote]);
 
   return (
     <AppContext.Provider value={ctx}>

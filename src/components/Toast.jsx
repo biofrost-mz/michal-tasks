@@ -127,7 +127,8 @@ export function ToastProvider({ children }) {
   const add = useCallback((msg, type = "info") => {
     const id = uid();
     setToasts((p) => [...p, { id, msg, type }]);
-    setTimeout(() => setToasts((p) => p.filter((t) => t.id !== id)), 2800);
+    const duration = type === "error" ? 5500 : 2800;
+    setTimeout(() => setToasts((p) => p.filter((t) => t.id !== id)), duration);
     if (type === "error") navigator.vibrate?.([50, 30, 50]);
   }, []);
   return (
