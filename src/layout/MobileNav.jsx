@@ -256,7 +256,7 @@ export default function MobileNav({ toggleDk }) {
               }}
             >
               <div style={{ position: "relative", display: "inline-flex" }}>
-                <Icon name={n.icon} size={22} color={act ? "var(--accent)" : "var(--text-3)"} strokeWidth={act ? 2.25 : 1.75} />
+                <Icon name={n.icon} size={20} color={act ? "var(--accent)" : "var(--text-3)"} strokeWidth={act ? 2.25 : 1.75} />
                 {n.count > 0 && (
                   <span style={{
                     position: "absolute", top: -5, right: -9,
@@ -287,7 +287,7 @@ export default function MobileNav({ toggleDk }) {
           }}
         >
           <div style={{ position: "relative", display: "inline-flex" }}>
-            <Icon name="more-horizontal" size={22} color={moreOpen ? "var(--accent)" : "var(--text-3)"} strokeWidth={moreOpen ? 2.25 : 1.75} />
+            <Icon name="more-horizontal" size={20} color={moreOpen ? "var(--accent)" : "var(--text-3)"} strokeWidth={moreOpen ? 2.25 : 1.75} />
             {urgentCount > 0 && (
               <span style={{
                 position: "absolute", top: -5, right: -9,
