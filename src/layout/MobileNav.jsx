@@ -58,12 +58,13 @@ export default function MobileNav({ toggleDk }) {
 
   const navItemStyle = (act) => ({
     flex: 1,
-    height: "100%",
+    height: "auto",
     minHeight: 0,
     display: "flex",
+    flexDirection: "column",
     alignItems: "center",
-    justifyContent: "center",
-    padding: 0,
+    justifyContent: "flex-end",
+    padding: "0 2px 3px",
     border: "none",
     background: "transparent",
     color: act ? "var(--accent)" : "var(--text-3)",
@@ -74,9 +75,7 @@ export default function MobileNav({ toggleDk }) {
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    justifyContent: "center",
     gap: 2,
-    transform: "translateY(var(--bottom-nav-content-shift))",
     pointerEvents: "none",
   };
 
@@ -262,7 +261,7 @@ export default function MobileNav({ toggleDk }) {
           background: "var(--bg-2)",
           borderTop: "1px solid var(--border)",
           display: "flex",
-          alignItems: "stretch",
+          alignItems: "flex-end",
           boxSizing: "border-box",
           boxShadow: "0 -4px 20px #0002",
           padding: 0,
