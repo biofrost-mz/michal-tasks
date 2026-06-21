@@ -540,20 +540,18 @@ function AppShell() {
       <style>{`
         :root {
           --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
-          --bottom-nav-height: 64px;
-          --bottom-nav-edge-gap: max(4px, calc(env(safe-area-inset-bottom, 0px) - 28px));
+          --bottom-nav-height: 58px;
+          --bottom-nav-edge-gap: 3px;
         }
         @media (display-mode: standalone) {
           html, body, #root {
-            height: 100% !important;
-            min-height: 100% !important;
-            height: 100dvh !important;
+            height: var(--app-height, 100svh) !important;
+            min-height: var(--app-height, 100svh) !important;
           }
         }
         html.pwa-standalone, html.pwa-standalone body, html.pwa-standalone #root {
-          height: 100% !important;
-          min-height: 100% !important;
-          height: 100dvh !important;
+          height: var(--app-height, 100svh) !important;
+          min-height: var(--app-height, 100svh) !important;
         }
         *{margin:0;padding:0;box-sizing:border-box}
         html,body,#root{width:100%;min-height:100%;margin:0;padding:0}
@@ -561,17 +559,17 @@ function AppShell() {
         body,#root{min-height:100%}
         body{overflow-x:hidden}
         @media(max-width:767px){
-          html,body,#root{height:100% !important;min-height:100% !important;height:100dvh !important;overflow:hidden;position:fixed;inset:0;width:100%}
+          html,body,#root{height:var(--app-height,100svh) !important;min-height:var(--app-height,100svh) !important;overflow:hidden;position:fixed;inset:0;width:100%}
           .overlay { padding: 0 !important; display: block !important; background: var(--bg-2) !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
         }
         .mobile-app-container, .mobile-main-container {
-          height: 100% !important;
-          height: 100dvh !important;
+          height: var(--app-height, 100svh) !important;
+          min-height: var(--app-height, 100svh) !important;
         }
         html.pwa-standalone .mobile-app-container,
         html.pwa-standalone .mobile-main-container {
-          height: 100% !important;
-          height: 100dvh !important;
+          height: var(--app-height, 100svh) !important;
+          min-height: var(--app-height, 100svh) !important;
         }
         input,textarea,select{-webkit-appearance:none;border-radius:0}
         @media(max-width:767px){input,textarea,select{font-size:16px !important}}
