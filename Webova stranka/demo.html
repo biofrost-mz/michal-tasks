@@ -141,6 +141,8 @@ button{font-family:inherit; cursor:pointer;}
 .weather .wtemp{font-family:var(--fontD); font-size:28px; font-weight:700;}
 .weather .wdesc{color:var(--text3); font-size:12.5px;}
 .weather .wcity{margin-left:auto; text-align:right; color:var(--text3); font-size:12px;}
+.livedot{width:6px; height:6px; border-radius:50%; background:var(--green); box-shadow:0 0 0 0 rgba(95,212,160,.7); animation:livepulse 2s infinite; display:inline-block;}
+@keyframes livepulse{0%{box-shadow:0 0 0 0 rgba(95,212,160,.6)} 70%{box-shadow:0 0 0 6px rgba(95,212,160,0)} 100%{box-shadow:0 0 0 0 rgba(95,212,160,0)}}
 
 /* Stats row */
 .stats{display:grid; grid-template-columns:repeat(6,1fr); gap:12px; margin-bottom:18px;}
@@ -212,6 +214,7 @@ button{font-family:inherit; cursor:pointer;}
 .minical .day.today{background:var(--accent); color:#1b1206; font-weight:700;}
 .minical .day .mk{position:absolute; bottom:3px; width:4px; height:4px; border-radius:50%; background:var(--blue);}
 .minical .day.today .mk{background:#1b1206}
+.minical .day.overdue .mk{background:var(--red)}
 
 /* Dashboard 2-col grid */
 .dash-grid{display:grid; grid-template-columns:1fr 332px; gap:18px; align-items:start;}
@@ -518,6 +521,7 @@ tbody tr:hover{background:var(--cardH);}
 .kcol[data-status="progress"]{border-top-color:var(--blue);}
 .kcol[data-status="wait"]{border-top-color:var(--accent);}
 .kcol[data-status="done"]{border-top-color:var(--green);}
+.kcol.drop{border-color:var(--accent); background:var(--accentSoft);}
 .kcol-head{display:flex; align-items:center; gap:9px; font-size:13px; font-weight:700;}
 .kcol-head .kcount{
   margin-left:auto; font-family:var(--mono); font-size:10.5px; font-weight:600; color:var(--text3);
@@ -535,9 +539,10 @@ tbody tr:hover{background:var(--cardH);}
 .kc-prio{display:inline-flex; align-items:center; gap:5px; font-weight:600;}
 .kcard{
   background:var(--card); border:1px solid var(--border); border-radius:var(--radius-sm);
-  padding:12px 13px; display:flex; flex-direction:column; gap:9px; cursor:pointer;
+  padding:12px 13px; display:flex; flex-direction:column; gap:9px; cursor:grab;
   transition:transform .14s ease, border-color .14s ease, box-shadow .14s ease;
 }
+.kcard.drag{opacity:.45;}
 .kcard:hover{border-color:var(--accent); transform:translateY(-2px); box-shadow:0 10px 26px rgba(0,0,0,.18);}
 [data-theme="light"] .kcard:hover{box-shadow:0 10px 26px rgba(40,48,80,.10);}
 .kcard b{font-size:12.5px; font-weight:600; line-height:1.42; color:var(--text);}
@@ -631,9 +636,138 @@ textarea.dr-input{resize:vertical; min-height:64px; line-height:1.5;}
 }
 *{transition:background-color .18s ease, border-color .18s ease, color .18s ease;}
 input,textarea,button,svg,.cell,.day,.kcard,.proj-card,.note-card,.tag-chip{transition:background-color .18s ease, border-color .18s ease, color .18s ease, transform .14s ease, box-shadow .14s ease;}
+
+/* Back-to-web button */
+.back-to-web-btn{
+  display:flex; align-items:center; gap:8px; padding:9px 12px; border-radius:var(--radius-sm);
+  border:1px solid var(--border); background:var(--bg2); color:var(--text3);
+  font-size:12px; font-weight:600; text-decoration:none; letter-spacing:.3px;
+  transition:border-color .15s, color .15s, background .15s;
+}
+.back-to-web-btn:hover{border-color:var(--accent); color:var(--accent); background:var(--accentSoft);}
+.back-to-web-btn .ic svg{width:13px; height:13px;}
+
+/* Demo badge strip */
+.demo-strip{
+  position:fixed; top:0; left:0; right:0; z-index:200;
+  display:flex; align-items:center; justify-content:center; gap:10px;
+  padding:8px 16px; font-size:12px; font-weight:600; color:var(--text2);
+  background:color-mix(in srgb, var(--bg2) 94%, transparent);
+  backdrop-filter:blur(10px); border-bottom:1px solid var(--border);
+}
+.demo-strip .ds-badge{display:inline-flex; align-items:center; gap:6px; color:var(--accent); font-weight:700; font-size:12px;}
+.demo-strip .ds-badge .dot{width:6px; height:6px; border-radius:50%; background:var(--accent); box-shadow:0 0 0 0 rgba(240,168,71,.5); animation:dpulse 2s infinite;}
+@keyframes dpulse{0%{box-shadow:0 0 0 0 rgba(240,168,71,.5)} 70%{box-shadow:0 0 0 6px rgba(240,168,71,0)} 100%{box-shadow:0 0 0 0 rgba(240,168,71,0)}}
+.demo-strip .ds-sep{width:1px; height:14px; background:var(--border);}
+.demo-strip .ds-back{display:inline-flex; align-items:center; gap:5px; color:var(--text3); font-size:11.5px; font-weight:600; padding:5px 11px; border:1px solid var(--border); border-radius:8px; background:var(--card); text-decoration:none; transition:.15s;}
+.demo-strip .ds-back:hover{color:var(--accent); border-color:var(--accent);}
+@media(max-width:600px){.demo-strip .ds-sep,.demo-strip span:not(.ds-badge):not(.ds-back){display:none}}
+body{padding-top:40px;}
+
+/* Welcome overlay */
+.welcome-overlay{
+  position:fixed; inset:0; z-index:500;
+  background:rgba(5,7,14,.75); backdrop-filter:blur(6px);
+  display:flex; align-items:center; justify-content:center; padding:20px;
+  opacity:1; transition:opacity .3s;
+}
+.welcome-overlay.out{opacity:0; pointer-events:none;}
+.welcome-card{
+  background:var(--bg2); border:1px solid var(--border);
+  border-radius:20px; width:100%; max-width:500px;
+  box-shadow:0 32px 80px rgba(0,0,0,.5); overflow:hidden;
+  animation:wcard .4s cubic-bezier(.2,.8,.2,1) both;
+}
+@keyframes wcard{from{opacity:0;transform:translateY(22px) scale(.97)} to{opacity:1;transform:none}}
+.wc-head{
+  padding:26px 28px 0;
+  display:flex; align-items:flex-start; gap:14px;
+}
+.wc-icon{
+  width:48px; height:48px; border-radius:14px; flex-shrink:0;
+  background:linear-gradient(135deg,var(--accent),#c9772b);
+  display:flex; align-items:center; justify-content:center;
+  color:#1b1206; font-family:'Outfit',sans-serif; font-weight:800; font-size:22px;
+  box-shadow:0 8px 22px -6px rgba(240,168,71,.6);
+}
+.wc-head-text h2{font-family:'Outfit',sans-serif; font-size:19px; font-weight:800; margin-bottom:4px;}
+.wc-head-text p{font-size:12.5px; color:var(--text3); line-height:1.5;}
+.wc-steps{display:flex; flex-direction:column; gap:0; padding:20px 28px 0;}
+.wc-step{
+  display:flex; align-items:flex-start; gap:14px; padding:13px 0;
+  border-bottom:1px solid var(--border);
+}
+.wc-step:last-child{border-bottom:none;}
+.wc-step .wsn{
+  width:26px; height:26px; border-radius:8px; flex-shrink:0;
+  background:var(--accentSoft); color:var(--accent);
+  font-family:'Outfit',sans-serif; font-weight:800; font-size:13px;
+  display:flex; align-items:center; justify-content:center;
+}
+.wc-step .wst b{display:block; font-size:13px; font-weight:700; margin-bottom:2px;}
+.wc-step .wst span{font-size:12px; color:var(--text3); line-height:1.45;}
+.wc-foot{
+  padding:18px 28px 22px;
+  display:flex; gap:10px; align-items:center;
+}
+.wc-foot .wc-cta{
+  flex:1; display:flex; align-items:center; justify-content:center; gap:8px;
+  padding:12px; border-radius:var(--radius-sm); border:none;
+  background:var(--accent); color:#1b1206; font-family:inherit;
+  font-size:13.5px; font-weight:700; cursor:pointer;
+  box-shadow:0 10px 26px -8px rgba(240,168,71,.55);
+  transition:transform .15s, box-shadow .15s;
+}
+.wc-foot .wc-cta:hover{transform:translateY(-2px); box-shadow:0 14px 32px -8px rgba(240,168,71,.7);}
+.wc-foot .wc-skip{
+  font-size:12px; color:var(--text3); background:none; border:none; cursor:pointer;
+  font-family:inherit; padding:4px 8px; border-radius:7px;
+}
+.wc-foot .wc-skip:hover{color:var(--text2); background:var(--card);}
 </style>
 </head>
 <body>
+
+<!-- Demo info strip -->
+<div class="demo-strip">
+  <span class="ds-badge"><span class="dot"></span> INTERAKTIVNÍ DEMO</span>
+  <span class="ds-sep"></span>
+  <span>Ukázková data · žádná registrace · klikej a zkoušej</span>
+  <span class="ds-sep"></span>
+  <a href="index.html" class="ds-back"><span class="ic" data-icon="arrow_left"></span> Zpět na web</a>
+</div>
+
+<!-- Welcome overlay -->
+<div class="welcome-overlay" id="welcomeOverlay">
+  <div class="welcome-card">
+    <div class="wc-head">
+      <div class="wc-icon">Z</div>
+      <div class="wc-head-text">
+        <h2>Vítej v demu Zentera</h2>
+        <p>Plně funkční ukázka appky s reálnými daty. Žádná registrace — klikej a zkoušej.</p>
+      </div>
+    </div>
+    <div class="wc-steps">
+      <div class="wc-step">
+        <div class="wsn">1</div>
+        <div class="wst"><b>Projdi levé menu</b><span>Přehled, Úkoly, Projekty, Plán, Poznámky — každá sekce je plně proklikatelná s daty.</span></div>
+      </div>
+      <div class="wc-step">
+        <div class="wsn">2</div>
+        <div class="wst"><b>Otevři detail úkolu</b><span>Klikni na libovolný úkol — otevře se drawer se stavem, prioritou, podúkoly i AI návrhy.</span></div>
+      </div>
+      <div class="wc-step">
+        <div class="wsn">3</div>
+        <div class="wst"><b>Vyzkoušej kanban</b><span>V sekci Projekty → detail projektu → taháš kartičky mezi sloupci jako v reálné appce.</span></div>
+      </div>
+    </div>
+    <div class="wc-foot">
+      <button class="wc-cta" id="welcomeStart"><span class="ic" data-icon="zap"></span> Spustit demo</button>
+      <button class="wc-skip" id="welcomeSkip">Přeskočit</button>
+    </div>
+  </div>
+</div>
+
 <div class="app">
 
   <!-- SIDEBAR -->
@@ -643,11 +777,11 @@ input,textarea,button,svg,.cell,.day,.kcard,.proj-card,.note-card,.tag-chip{tran
       <div class="brand-text"><b>Zentero</b><span>PERSONAL OS · V2</span></div>
     </div>
     <div style="position:relative">
-      <div class="workspace" id="wsToggle" style="cursor:pointer"><span class="dot"></span> <span id="wsName">Avenier</span> <span class="chev ic" data-icon="chevron_down"></span></div>
+      <div class="workspace" id="wsToggle" style="cursor:pointer"><span class="dot"></span> <span id="wsName">Nordeo</span> <span class="chev ic" data-icon="chevron_down"></span></div>
       <div id="wsMenu" style="display:none; position:absolute; top:calc(100% + 5px); left:0; right:0; z-index:60; background:var(--card); border:1px solid var(--border); border-radius:var(--radius-sm); box-shadow:var(--shadow); padding:5px">
-        <div class="ws-opt" data-ws="Avenier" style="display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:8px; font-size:12.5px; cursor:pointer"><span class="dot" style="width:8px;height:8px;border-radius:50%;background:var(--accent)"></span> Avenier <span style="margin-left:auto; font-size:9px; font-weight:700; color:var(--accent); background:var(--accentSoft); padding:1px 6px; border-radius:5px">owner</span></div>
+        <div class="ws-opt" data-ws="Nordeo" style="display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:8px; font-size:12.5px; cursor:pointer"><span class="dot" style="width:8px;height:8px;border-radius:50%;background:var(--accent)"></span> Nordeo <span style="margin-left:auto; font-size:9px; font-weight:700; color:var(--accent); background:var(--accentSoft); padding:1px 6px; border-radius:5px">owner</span></div>
         <div class="ws-opt" data-ws="Osobní" style="display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:8px; font-size:12.5px; cursor:pointer"><span class="dot" style="width:8px;height:8px;border-radius:50%;background:var(--blue)"></span> Osobní <span style="margin-left:auto; font-size:9px; font-weight:700; color:var(--text3); background:var(--bg2); padding:1px 6px; border-radius:5px">owner</span></div>
-        <div class="ws-opt" data-ws="Klient OC" style="display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:8px; font-size:12.5px; cursor:pointer"><span class="dot" style="width:8px;height:8px;border-radius:50%;background:var(--green)"></span> Klient OC <span style="margin-left:auto; font-size:9px; font-weight:700; color:var(--text3); background:var(--bg2); padding:1px 6px; border-radius:5px">admin</span></div>
+        <div class="ws-opt" data-ws="Klient Korvex" style="display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:8px; font-size:12.5px; cursor:pointer"><span class="dot" style="width:8px;height:8px;border-radius:50%;background:var(--green)"></span> Klient Korvex <span style="margin-left:auto; font-size:9px; font-weight:700; color:var(--text3); background:var(--bg2); padding:1px 6px; border-radius:5px">admin</span></div>
         <div style="height:1px; background:var(--border); margin:5px 4px"></div>
         <div style="display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:8px; font-size:12.5px; color:var(--text3); cursor:pointer"><span class="ic" data-icon="plus"></span> Nový workspace</div>
       </div>
@@ -680,14 +814,17 @@ input,textarea,button,svg,.cell,.day,.kcard,.proj-card,.note-card,.tag-chip{tran
     </div>
 
     <div class="sidebar-foot">
+      <a href="index.html" class="back-to-web-btn">
+        <span class="ic" data-icon="arrow_left"></span> Zpět na web
+      </a>
       <div class="theme-toggle" id="themeToggle">
         <button class="on" data-theme-btn="dark" title="Tmavý režim"><span class="ic" data-icon="moon"></span></button>
         <button data-theme-btn="light" title="Světlý režim"><span class="ic" data-icon="sun"></span></button>
       </div>
       <button class="newtask-btn" id="openNewTask"><span class="ic" data-icon="plus"></span> Nový úkol</button>
       <a class="profile-row" data-page="profile">
-        <div class="avatar">MI</div>
-        <div class="pinfo"><b>Michal Zich</b><span>mich.zich@gmail.com</span></div>
+        <div class="avatar">TH</div>
+        <div class="pinfo"><b>Tereza Horáková</b><span>tereza.horakova@gmail.com</span></div>
         <span class="bell ic" id="bellBtn" data-icon="bell"><span class="bdot"></span></span>
       </a>
     </div>
@@ -699,23 +836,23 @@ input,textarea,button,svg,.cell,.day,.kcard,.proj-card,.note-card,.tag-chip{tran
     <!-- DASHBOARD -->
     <section class="page active" id="page-dashboard">
       <div class="topbar">
-        <div><h1>Přehled</h1><div class="sub">Pondělí, 8. června 2026 · pěkný den na pár dokončených úkolů</div></div>
-        <div class="search"><span class="ic" data-icon="search"></span> Hledat… <kbd>⌘K</kbd></div>
+        <div><h1>Přehled</h1><div class="sub">Pondělí, 8. června 2026 · týden 24 · pěkný den na pár dokončených úkolů</div></div>
+        <div class="search"><span class="ic" data-icon="search"></span> Hledat…</div>
       </div>
 
       <div class="hero">
         <div class="hero-greet">
-          <div class="hi">Dobré ráno, <span>Michale</span></div>
+          <div class="hi">Dobré ráno, <span>Terezo</span></div>
           <div class="date">Máš dnes <b style="color:var(--text2)">5 úkolů</b> a <b style="color:var(--text2)">2 termíny</b> ve Zentero. AI ti během chvilky připraví doporučený plán dne.</div>
           <div style="display:flex; gap:16px; flex-wrap:wrap; margin-top:10px; font-size:12px; color:var(--text3)">
             <span style="display:inline-flex; align-items:center; gap:6px"><span class="ic" data-icon="sparkles" style="color:var(--accent)"></span> Svátek má <b style="color:var(--text2)">Medard</b></span>
-            <span style="display:inline-flex; align-items:center; gap:6px"><span class="ic" data-icon="sun" style="color:var(--accent)"></span> Východ <b style="color:var(--text2)">4:51</b> · západ <b style="color:var(--text2)">21:09</b></span>
+            <span style="display:inline-flex; align-items:center; gap:6px"><span class="ic" data-icon="sun" style="color:var(--accent)"></span> Svítání <b style="color:var(--text2)">4:51</b> · soumrak <b style="color:var(--text2)">21:09</b> · délka dne <b style="color:var(--text2)">16 h 18 min</b></span>
           </div>
         </div>
         <div class="weather">
           <div class="wic ic" data-icon="cloud_sun"></div>
           <div><div class="wtemp">21°C</div><div class="wdesc">Polojasno · vítr 9 km/h</div></div>
-          <div class="wcity">Brno<br>Aktualizováno 7:58</div>
+          <div class="wcity"><span style="display:inline-flex; align-items:center; gap:5px; justify-content:flex-end"><span class="livedot"></span>sync · právě teď</span><br>Brno · 7:58</div>
         </div>
       </div>
 
@@ -724,13 +861,13 @@ input,textarea,button,svg,.cell,.day,.kcard,.proj-card,.note-card,.tag-chip{tran
       <div class="ai-banner">
         <div class="ai-banner-head">
           <div class="aiicon ic" data-icon="sparkles"></div>
-          <div><h3>AI doporučení na dnešek</h3><p>Na základě termínů, priorit a tvého obvyklého tempa — Gemini 2.0</p></div>
+          <div><h3>AI doporučení na dnešek</h3><p>Na základě termínů, priorit a tvého obvyklého tempa — pohání Gemini</p></div>
           <button class="gen-btn"><span class="ic" data-icon="sparkles"></span> Vygenerovat plán</button>
         </div>
         <div class="ai-cards">
-          <div class="ai-card"><div class="num">1</div><div class="body"><b>Dokonči audit SEO pro klienta OC</b><span>Termín je zítra — má nejvyšší prioritu a navazují na něj 2 další úkoly.</span></div></div>
+          <div class="ai-card"><div class="num">1</div><div class="body"><b>Dokonči audit SEO pro klienta Korvex</b><span>Termín je zítra — má nejvyšší prioritu a navazují na něj 2 další úkoly.</span></div></div>
           <div class="ai-card"><div class="num">2</div><div class="body"><b>Připrav návrhy bannerů — Online reklama</b><span>Rozpracováno už 3 dny, doporučujeme dokončit dnes dopoledne.</span></div></div>
-          <div class="ai-card"><div class="num">3</div><div class="body"><b>Schůzka k projektu AI Avenier</b><span>Krátká příprava (15 min) ti pomůže udržet návaznost na předchozí poznámky.</span></div></div>
+          <div class="ai-card"><div class="num">3</div><div class="body"><b>Schůzka k projektu AI Nordeo</b><span>Krátká příprava (15 min) ti pomůže udržet návaznost na předchozí poznámky.</span></div></div>
         </div>
       </div>
 
@@ -799,8 +936,8 @@ input,textarea,button,svg,.cell,.day,.kcard,.proj-card,.note-card,.tag-chip{tran
     <!-- PROJECTS -->
     <section class="page" id="page-projects">
       <div class="topbar">
-        <div><h1>Projekty</h1><div class="sub">13 aktivních projektů ve workspace Avenier</div></div>
-        <div class="search"><span class="ic" data-icon="search"></span> Hledat projekt… <kbd>⌘K</kbd></div>
+        <div><h1>Projekty</h1><div class="sub">13 aktivních projektů ve workspace Nordeo</div></div>
+        <div class="search"><span class="ic" data-icon="search"></span> Hledat projekt…</div>
       </div>
       <div class="toolbar">
         <div class="tabs"><button class="active">Vše</button><button>Aktivní</button><button>Nápady</button><button>Hotové</button><button>Archiv</button></div>
@@ -867,7 +1004,7 @@ input,textarea,button,svg,.cell,.day,.kcard,.proj-card,.note-card,.tag-chip{tran
     <section class="page" id="page-tasks">
       <div class="topbar">
         <div><h1>Úkoly</h1><div class="sub">42 úkolů napříč 13 projekty</div></div>
-        <div class="search"><span class="ic" data-icon="search"></span> Hledat úkol… <kbd>⌘K</kbd></div>
+        <div class="search"><span class="ic" data-icon="search"></span> Hledat úkol…</div>
       </div>
       <div class="toolbar">
         <div class="tabs"><button class="active">Vše</button><button>Moje</button><button>Po termínu</button><button>Dnes</button></div>
@@ -912,8 +1049,8 @@ input,textarea,button,svg,.cell,.day,.kcard,.proj-card,.note-card,.tag-chip{tran
     <section class="page" id="page-profile">
       <div class="topbar"><div><h1>Profil</h1><div class="sub">Nastavení účtu a osobní statistiky</div></div></div>
       <div class="profile-head">
-        <div class="avatar">MI</div>
-        <div><h2>Michal Zich</h2><div class="pmail">mich.zich@gmail.com · Workspace: Avenier</div></div>
+        <div class="avatar">TH</div>
+        <div><h2>Tereza Horáková</h2><div class="pmail">tereza.horakova@gmail.com · Workspace: Nordeo</div></div>
       </div>
       <div class="profile-grid">
         <div class="pstat"><b>312</b><span>Splněných úkolů</span></div>
@@ -930,7 +1067,7 @@ input,textarea,button,svg,.cell,.day,.kcard,.proj-card,.note-card,.tag-chip{tran
 <div class="notif-panel" id="notifPanel">
   <div class="nph">Oznámení</div>
   <div class="notif-item"><div class="nic ic" data-icon="sparkles" style="background:var(--accentSoft);color:var(--accent)"></div><div><b>AI navrhla nový plán dne</b><span>3 prioritní úkoly seřazené podle termínu a kontextu · před 12 min</span></div></div>
-  <div class="notif-item"><div class="nic ic" data-icon="clock" style="background:rgba(239,111,111,.15);color:var(--red)"></div><div><b>Úkol „Audit SEO – OC“ má termín zítra</b><span>Projekty OC · připomenutí · před 1 h</span></div></div>
+  <div class="notif-item"><div class="nic ic" data-icon="clock" style="background:rgba(239,111,111,.15);color:var(--red)"></div><div><b>Úkol „Audit SEO – Korvex“ má termín zítra</b><span>Projekty Korvex · připomenutí · před 1 h</span></div></div>
   <div class="notif-item"><div class="nic ic" data-icon="check_circle" style="background:rgba(95,212,160,.15);color:var(--green)"></div><div><b>Dokončil jsi 5 úkolů tento týden</b><span>Skvělé tempo — drž streak! · včera</span></div></div>
   <div class="notif-item"><div class="nic ic" data-icon="bell" style="background:rgba(91,157,255,.15);color:var(--blue)"></div><div><b>Push: „Návrhy bannerů“ má termín zítra</b><span>Online reklama · upozornění na zařízení · včera</span></div></div>
 </div>
@@ -1003,12 +1140,12 @@ input,textarea,button,svg,.cell,.day,.kcard,.proj-card,.note-card,.tag-chip{tran
       <div class="aibody">
         AI se podívá na úkol v kontextu projektu a termínu a pomůže ho vyladit. Vyber, s čím:
         <div style="display:flex; flex-wrap:wrap; gap:8px; margin:10px 0 4px">
-          <button class="btn ai"><span class="ic" data-icon="zap"></span> Optimalizovat</button>
-          <button class="btn ai"><span class="ic" data-icon="list"></span> Navrhnout podúkoly</button>
-          <button class="btn ai"><span class="ic" data-icon="tag"></span> Navrhnout tagy</button>
-          <button class="btn ai"><span class="ic" data-icon="flag"></span> Navrhnout prioritu</button>
+          <button class="btn ai" data-ai="optimize"><span class="ic" data-icon="zap"></span> Optimalizovat</button>
+          <button class="btn ai" data-ai="subtasks"><span class="ic" data-icon="list"></span> Navrhnout podúkoly</button>
+          <button class="btn ai" data-ai="tags"><span class="ic" data-icon="tag"></span> Navrhnout tagy</button>
+          <button class="btn ai" data-ai="priority"><span class="ic" data-icon="flag"></span> Navrhnout prioritu</button>
         </div>
-        <div class="ai-sugg"><b style="color:var(--text)">Optimalizace:</b> rozdělit na 3 podúkoly, nastavit termín o den dřív kvůli návaznosti a přidat tag <b style="color:var(--text)">klient</b>. Sníží to riziko zpoždění o ~40 %.</div>
+        <div class="ai-sugg" id="aiSugg"><b style="color:var(--text)">Optimalizace:</b> rozdělit na 3 podúkoly, nastavit termín o den dřív kvůli návaznosti a přidat tag <b style="color:var(--text)">klient</b>. Sníží to riziko zpoždění o ~40 %.</div>
       </div>
     </details>
 
@@ -1054,9 +1191,9 @@ input,textarea,button,svg,.cell,.day,.kcard,.proj-card,.note-card,.tag-chip{tran
       </div>
       <div class="field"><label>PROJEKT</label>
         <div class="chip-row">
-          <span class="chip sel"><i style="background:#5b9dff"></i> Projekty OC</span>
-          <span class="chip"><i style="background:#5fd4a0"></i> Projekty DC</span>
-          <span class="chip"><i style="background:#f0a847"></i> AI Avenier</span>
+          <span class="chip sel"><i style="background:#5b9dff"></i> Projekty Korvex</span>
+          <span class="chip"><i style="background:#5fd4a0"></i> Projekty Plenta</span>
+          <span class="chip"><i style="background:#f0a847"></i> AI Nordeo</span>
           <span class="chip"><i style="background:#b387f5"></i> Online reklama</span>
           <span class="chip"><i style="background:#f08fc0"></i> Ad hoc</span>
         </div>
@@ -1084,40 +1221,40 @@ input,textarea,button,svg,.cell,.day,.kcard,.proj-card,.note-card,.tag-chip{tran
 
 <script>
 const PROJECTS = [
-  {id:'oc', name:'Projekty OC', color:'#5b9dff', count:5, desc:'Webové a marketingové projekty pro klienta OC.', progress:62, status:'AKTIVNÍ'},
-  {id:'dc', name:'Projekty DC', color:'#5fd4a0', count:5, desc:'Souběžné dodávky pro klienta DC, fáze 2.', progress:48, status:'AKTIVNÍ'},
-  {id:'ave', name:'Domény AVE', color:'#f0a847', count:0, desc:'Správa a obnova doménových jmen Avenier.', progress:100, status:'DOKONČENO'},
+  {id:'korvex', name:'Projekty Korvex', color:'#5b9dff', count:5, desc:'Webové a marketingové projekty pro klienta Korvex.', progress:62, status:'AKTIVNÍ'},
+  {id:'plenta', name:'Projekty Plenta', color:'#5fd4a0', count:5, desc:'Souběžné dodávky pro klienta Plenta, fáze 2.', progress:48, status:'AKTIVNÍ'},
+  {id:'ave', name:'Domény NOR', color:'#f0a847', count:0, desc:'Správa a obnova doménových jmen Nordeo.', progress:100, status:'DOKONČENO'},
   {id:'video', name:'Videomedailonky', color:'#b387f5', count:1, desc:'Krátká videa představující tým a produkty.', progress:30, status:'AKTIVNÍ'},
-  {id:'ai', name:'AI Avenier', color:'#52c8d6', count:2, desc:'Interní AI asistent a automatizace workflow.', progress:55, status:'AKTIVNÍ'},
+  {id:'ai', name:'AI Nordeo', color:'#52c8d6', count:2, desc:'Interní AI asistent a automatizace workflow.', progress:55, status:'AKTIVNÍ'},
   {id:'adhoc', name:'Ad hoc', color:'#f08fc0', count:7, desc:'Drobné a jednorázové úkoly mimo hlavní projekty.', progress:20, status:'AKTIVNÍ'},
-  {id:'poc', name:'Problémy OC', color:'#ef6f6f', count:1, desc:'Sledování a řešení reportovaných problémů OC.', progress:75, status:'AKTIVNÍ'},
+  {id:'pkorvex', name:'Problémy Korvex', color:'#ef6f6f', count:1, desc:'Sledování a řešení reportovaných problémů Korvex.', progress:75, status:'AKTIVNÍ'},
   {id:'spol', name:'Spolupráce', color:'#5b9dff', count:1, desc:'Společné iniciativy s externími partnery.', progress:40, status:'AKTIVNÍ'},
-  {id:'pdc', name:'Problém DC', color:'#ef6f6f', count:1, desc:'Kritická oprava pro klienta DC — vysoká priorita.', progress:85, status:'URGENTNÍ'},
+  {id:'pplenta', name:'Problém Plenta', color:'#ef6f6f', count:1, desc:'Kritická oprava pro klienta Plenta — vysoká priorita.', progress:85, status:'URGENTNÍ'},
   {id:'medevio', name:'Medevio', color:'#5fd4a0', count:3, desc:'Zdravotnický projekt — obsah a kampaně.', progress:33, status:'AKTIVNÍ'},
   {id:'reklama', name:'Online reklama', color:'#b387f5', count:5, desc:'Plánování a optimalizace PPC kampaní.', progress:58, status:'AKTIVNÍ'},
   {id:'seo', name:'SEO', color:'#52c8d6', count:0, desc:'Technické a obsahové SEO audity klientů.', progress:90, status:'AKTIVNÍ'},
-  {id:'blog', name:'Články blog (OC)', color:'#f0a847', count:1, desc:'Redakční plán a tvorba obsahu pro blog OC.', progress:22, status:'AKTIVNÍ'},
+  {id:'blog', name:'Články blog (Korvex)', color:'#f0a847', count:1, desc:'Redakční plán a tvorba obsahu pro blog Korvex.', progress:22, status:'AKTIVNÍ'},
 ];
 
 const TASKS = [
-  {title:'AI odpovědi na e-maily', proj:'Projekty OC', due:'26. 5.', prio:'Vysoká', status:'progress', desc:'Projít s linkou automaticky předpřipravené odpovědi a sjednotit tón.'},
+  {title:'AI odpovědi na e-maily', proj:'Projekty Korvex', due:'26. 5.', prio:'Vysoká', status:'progress', desc:'Projít s linkou automaticky předpřipravené odpovědi a sjednotit tón.'},
   {title:'Smazat všechny fotky z článku', proj:'Ad hoc', due:'5. 6.', prio:'Střední', status:'progress', desc:'Po publikaci nového článku odstranit nepoužité přílohy z knihovny.'},
   {title:'Spolupráce: Cestujzababku.cz', proj:'Spolupráce', due:'26. 5.', prio:'Nízká', status:'wait', desc:'Rozjedeme spolupráci? Čekáme na odpověď od partnera.'},
-  {title:'Připravit prezentaci pro klienta DC', proj:'Problém DC', due:'3. 6.', prio:'Vysoká', status:'todo', desc:'Shrnutí aktuálního stavu projektu a návrh dalších kroků.'},
-  {title:'Zveřejnit článek o novém produktu', proj:'Články blog (OC)', due:'1. 6.', prio:'Střední', status:'todo', desc:'Publikace a propagace na sociálních sítích, naplánovat newsletter.'},
-  {title:'Dokončit audit SEO pro klienta OC', proj:'SEO', due:'9. 6.', prio:'Vysoká', status:'todo', desc:'Technický a obsahový audit + doporučení na další čtvrtletí.'},
+  {title:'Připravit prezentaci pro klienta Plenta', proj:'Problém Plenta', due:'3. 6.', prio:'Vysoká', status:'todo', desc:'Shrnutí aktuálního stavu projektu a návrh dalších kroků.'},
+  {title:'Zveřejnit článek o novém produktu', proj:'Články blog (Korvex)', due:'1. 6.', prio:'Střední', status:'todo', desc:'Publikace a propagace na sociálních sítích, naplánovat newsletter.'},
+  {title:'Dokončit audit SEO pro klienta Korvex', proj:'SEO', due:'9. 6.', prio:'Vysoká', status:'todo', desc:'Technický a obsahový audit + doporučení na další čtvrtletí.'},
   {title:'Návrhy bannerů — letní kampaň', proj:'Online reklama', due:'10. 6.', prio:'Střední', status:'progress', desc:'Tři varianty formátů pro PPC kampaně a sociální sítě.'},
-  {title:'Schůzka k AI asistentovi', proj:'AI Avenier', due:'11. 6.', prio:'Nízká', status:'wait', desc:'Krátká příprava (15 min) pomůže udržet návaznost na poznámky.'},
-  {title:'Revize textů pro blog OC', proj:'Články blog (OC)', due:'12. 6.', prio:'Střední', status:'todo', desc:'Projít koncepty článků a sjednotit tón komunikace značky.'},
+  {title:'Schůzka k AI asistentovi', proj:'AI Nordeo', due:'11. 6.', prio:'Nízká', status:'wait', desc:'Krátká příprava (15 min) pomůže udržet návaznost na poznámky.'},
+  {title:'Revize textů pro blog Korvex', proj:'Články blog (Korvex)', due:'12. 6.', prio:'Střední', status:'todo', desc:'Projít koncepty článků a sjednotit tón komunikace značky.'},
   {title:'Natočit medailonek — tým support', proj:'Videomedailonky', due:'13. 6.', prio:'Nízká', status:'progress', desc:'Krátké představovací video pro web a sociální sítě.'},
-  {title:'Oprava chyby v objednávkovém formuláři', proj:'Problém DC', due:'9. 6.', prio:'Vysoká', status:'progress', desc:'Kritický bug blokuje dokončení objednávky u části uživatelů.'},
-  {title:'Obnova domény ave-shop.cz', proj:'Domény AVE', due:'15. 6.', prio:'Žádná', status:'done', desc:'Prodloužit registraci domény na další dva roky.'},
+  {title:'Oprava chyby v objednávkovém formuláři', proj:'Problém Plenta', due:'9. 6.', prio:'Vysoká', status:'progress', desc:'Kritický bug blokuje dokončení objednávky u části uživatelů.'},
+  {title:'Obnova domény nordeo-shop.cz', proj:'Domény NOR', due:'15. 6.', prio:'Žádná', status:'done', desc:'Prodloužit registraci domény na další dva roky.'},
   {title:'Report výkonu kampaní za květen', proj:'Online reklama', due:'14. 6.', prio:'Střední', status:'done', desc:'Souhrn metrik a doporučení pro nastavení v červnu.'},
   {title:'Konzultace s partnerem — spolupráce Q3', proj:'Spolupráce', due:'16. 6.', prio:'Nízká', status:'wait', desc:'Naplánovat call a připravit agendu se třemi tématy.'},
   {title:'Návrh struktury pro Medevio kampaň', proj:'Medevio', due:'18. 6.', prio:'Střední', status:'todo', desc:'Rozvržení obsahu napříč kanály a harmonogram publikace.'},
-  {title:'Vyvinout a nasadit chatbot pro zákaznickou podporu', proj:'AI Avenier', due:'20. 6.', prio:'Vysoká', status:'progress', desc:'První verze pro nejčastější dotazy, napojení na znalostní bázi.'},
-  {title:'Anglický web', proj:'Projekty OC', due:'22. 6.', prio:'Nízká', status:'progress', desc:'Komplikované — lokalizace a překlad klíčových stránek webu.'},
-  {title:'Přestaly chodit e-maily s upozorněním na prošlé úkoly', proj:'Projekty OC', due:'17. 6.', prio:'Vysoká', status:'progress', desc:'Taky nechodí připomínací e-maily — ověřit nastavení notifikací.'},
+  {title:'Vyvinout a nasadit chatbot pro zákaznickou podporu', proj:'AI Nordeo', due:'20. 6.', prio:'Vysoká', status:'progress', desc:'První verze pro nejčastější dotazy, napojení na znalostní bázi.'},
+  {title:'Anglický web', proj:'Projekty Korvex', due:'22. 6.', prio:'Nízká', status:'progress', desc:'Komplikované — lokalizace a překlad klíčových stránek webu.'},
+  {title:'Přestaly chodit e-maily s upozorněním na prošlé úkoly', proj:'Projekty Korvex', due:'17. 6.', prio:'Vysoká', status:'progress', desc:'Taky nechodí připomínací e-maily — ověřit nastavení notifikací.'},
   {title:'Vytvořit medailonek', proj:'Videomedailonky', due:'19. 6.', prio:'Střední', status:'todo', desc:'Připravit scénář, harmonogram natáčení a seznam rekvizit.'},
   {title:'Naplánovat další krok pro Online reklamu — harmonogram', proj:'Online reklama', due:'21. 6.', prio:'Nízká', status:'wait', desc:'Sladit termíny s klientem i interním kreativním týmem.'},
   {title:'Zkontrolovat výsledky A/B testu nadpisů', proj:'SEO', due:'23. 6.', prio:'Střední', status:'todo', desc:'Vyhodnotit konverzní poměr obou variant a vybrat vítěze.'},
@@ -1152,10 +1289,10 @@ const NOTE_STATUS = {
 
 const NOTES = [
   {title:'Nápady na Q3 kampaň', body:'Zaměřit se na video obsah a krátké formáty pro Instagram a TikTok. Otestovat 3 varianty headlines.', date:'6. 6. 2026', status:'idea'},
-  {title:'Poznámky ze schůzky — AI Avenier', body:'Rozhodnuto použít Gemini 2.0 pro generování návrhů plánu. Petra připraví draft promptů do pátku.', date:'5. 6. 2026', status:'active'},
-  {title:'Checklist před spuštěním', body:'Zkontrolovat redirecty, meta tagy, rychlost načítání a mobilní zobrazení před launchem nového webu OC.', date:'3. 6. 2026', status:'active'},
-  {title:'Brainstorming — názvy projektů', body:'Avenier Pulse, Avenier Flow, Avenier Compass — vybrat název pro nový interní nástroj.', date:'1. 6. 2026', status:'draft'},
-  {title:'Zpětná vazba od klienta DC', body:'Líbí se jim nový dashboard, chtějí přidat export do PDF a možnost sdílení odkazem.', date:'30. 5. 2026', status:'inbox'},
+  {title:'Poznámky ze schůzky — AI Nordeo', body:'Rozhodnuto použít Gemini 2.0 pro generování návrhů plánu. Petra připraví draft promptů do pátku.', date:'5. 6. 2026', status:'active'},
+  {title:'Checklist před spuštěním', body:'Zkontrolovat redirecty, meta tagy, rychlost načítání a mobilní zobrazení před launchem nového webu Korvex.', date:'3. 6. 2026', status:'active'},
+  {title:'Brainstorming — názvy projektů', body:'Nordeo Pulse, Nordeo Flow, Nordeo Compass — vybrat název pro nový interní nástroj.', date:'1. 6. 2026', status:'draft'},
+  {title:'Zpětná vazba od klienta Plenta', body:'Líbí se jim nový dashboard, chtějí přidat export do PDF a možnost sdílení odkazem.', date:'30. 5. 2026', status:'inbox'},
   {title:'Inspirace — streak & gamifikace', body:'Podívat se na to, jak Duolingo a GitHub motivují uživatele k pravidelnosti — možná i pro Zentero.', date:'28. 5. 2026', status:'done'},
 ];
 
@@ -1207,6 +1344,7 @@ const ICONS = {
   flame:'<path d="M12 2.5s-5.5 5-5.5 10a5.5 5.5 0 0 0 11 0c0-1.6-.7-2.7-1.4-3.7.2 1.4-.5 2.4-1.3 2.7.6-2.4-.6-5-2.8-9z"/>',
   trend_down:'<path d="m4 8 6.5 6.5L14 11l6 6"/><path d="M20 12.5V17h-4.5"/>',
   trend_up:'<path d="m4 16 6.5-6.5L14 13l6-6"/><path d="M20 11.5V7h-4.5"/>',
+  arrow_left:'<path d="M4 12h16M10 6l-6 6 6 6"/>',
 };
 function svgIcon(name, cls){
   const body = ICONS[name];
@@ -1230,12 +1368,12 @@ document.getElementById('sideProjects').innerHTML = PROJECTS.map(p=>`
 
 // Stats row
 const STATS = [
-  {label:'Aktivní úkoly', val:'17', cls:''},
-  {label:'Po termínu', val:'3', cls:'red'},
-  {label:'Hotovo (týden)', val:'9', cls:'green'},
-  {label:'Streak', val:'12', sub:'dní', cls:'accent'},
-  {label:'Projekty', val:'13', cls:'blue'},
-  {label:'Dnes hotovo', val:'2', sub:'/ 5', cls:''},
+  {label:'Aktivní', val:'17', sub:'z 23', cls:''},
+  {label:'Po termínu', val:'3', sub:'vyřeš dnes', cls:'red'},
+  {label:'Hotovo · týden', val:'9', sub:'+12 % nad průměr', cls:'green'},
+  {label:'Streak 🔥', val:'12', sub:'dní · best 21', cls:'accent'},
+  {label:'Projekty', val:'13', sub:'z 18 · 4 hotový', cls:'blue'},
+  {label:'Dnes hotovo', val:'2', sub:'splněno ↑', cls:''},
 ];
 document.getElementById('statsRow').innerHTML = STATS.map(s=>`
   <div class="stat ${s.cls}"><div class="slabel">${s.label}</div><div class="sval">${s.val}${s.sub?` <small>${s.sub}</small>`:''}</div></div>
@@ -1254,11 +1392,13 @@ document.getElementById('heatmap').innerHTML = hm;
 // Mini calendar (June 2026 starts on Monday)
 const dows = ['Po','Út','St','Čt','Pá','So','Ne'];
 let mc = dows.map(d=>`<div class="dow">${d}</div>`).join('');
-const totalDays = 30, today = 8, taskDays = [3,5,8,12,15,21,27];
+const totalDays = 30, today = 8, taskDays = [3,5,8,12,15,21,27], overdueDays = [3,5];
 for(let d=1; d<=totalDays; d++){
   const isToday = d===today;
-  mc += `<div class="day ${isToday?'today':''}">${d}${taskDays.includes(d)?'<span class="mk"></span>':''}</div>`;
+  const isOverdue = overdueDays.includes(d) && !isToday;
+  mc += `<div class="day ${isToday?'today':''} ${isOverdue?'overdue':''}">${d}${taskDays.includes(d)?'<span class="mk"></span>':''}</div>`;
 }
+for(let d=1; d<=5; d++){ mc += `<div class="day muted">${d}</div>`; }
 document.getElementById('miniCal').innerHTML = mc;
 
 // ---- Dashboard: task groups, status donut, streak side-panel, project progress, recent notes ----
@@ -1469,10 +1609,10 @@ for(let i=0;i<7;i++){
 document.getElementById('tlHead').innerHTML = head;
 
 const TL_ROWS = [
-  {name:'Projekty OC', color:'#5b9dff', chips:{0:['Audit SEO','accent'],1:['Revize textů','blue'],4:['Klientský call','green']}},
+  {name:'Projekty Korvex', color:'#5b9dff', chips:{0:['Audit SEO','accent'],1:['Revize textů','blue'],4:['Klientský call','green']}},
   {name:'Online reklama', color:'#b387f5', chips:{1:['Návrhy bannerů','purple'],2:['Návrhy bannerů',''],5:['Report kampaní','blue']}},
-  {name:'AI Avenier', color:'#52c8d6', chips:{2:['Schůzka tým','green'],6:['Prompt review','accent']}},
-  {name:'Problém DC', color:'#ef6f6f', chips:{0:['Hotfix nasazení','accent'],1:['QA test','blue']}},
+  {name:'AI Nordeo', color:'#52c8d6', chips:{2:['Schůzka tým','green'],6:['Prompt review','accent']}},
+  {name:'Problém Plenta', color:'#ef6f6f', chips:{0:['Hotfix nasazení','accent'],1:['QA test','blue']}},
   {name:'Videomedailonky', color:'#b387f5', chips:{3:['Natáčení','purple'],4:['Stříhání',''],5:['Stříhání','']}},
 ];
 document.getElementById('tlBody').innerHTML = TL_ROWS.map(r=>{
@@ -1565,6 +1705,38 @@ function renderKanban(p){
       const col = btn.closest('.kcol');
       openTask({title:'Nový úkol', proj:p.name, due:'—', prio:'Střední', status: col.getAttribute('data-status')});
     });
+  });
+
+  // ---- Drag & drop mezi sloupci (stejná logika jako mini-kanban na hlavní stránce) ----
+  let kDragged = null;
+  const pdKanbanEl = document.getElementById('pdKanban');
+  pdKanbanEl.querySelectorAll('.kcard').forEach(card=>{
+    card.setAttribute('draggable', 'true');
+    card.addEventListener('dragstart', ()=>{ kDragged = card; setTimeout(()=>card.classList.add('drag'), 0); });
+    card.addEventListener('dragend', ()=>{ card.classList.remove('drag'); kDragged = null; });
+  });
+  pdKanbanEl.querySelectorAll('.kcol').forEach(col=>{
+    col.addEventListener('dragover', e=>{ e.preventDefault(); col.classList.add('drop'); });
+    col.addEventListener('dragleave', ()=> col.classList.remove('drop'));
+    col.addEventListener('drop', e=>{
+      e.preventDefault(); col.classList.remove('drop');
+      if(!kDragged) return;
+      const body = col.querySelector('.kcol-body');
+      const empty = body.querySelector('.kempty');
+      if(empty) empty.remove();
+      body.appendChild(kDragged);
+      kDragged.setAttribute('data-task-status', col.getAttribute('data-status'));
+      updateKanbanCounts(pdKanbanEl);
+    });
+  });
+}
+function updateKanbanCounts(root){
+  root.querySelectorAll('.kcol').forEach(col=>{
+    const body = col.querySelector('.kcol-body');
+    const n = body.querySelectorAll('.kcard').length;
+    const badge = col.querySelector('.kcount');
+    if(badge) badge.textContent = n;
+    if(n===0 && !body.querySelector('.kempty')) body.insertAdjacentHTML('beforeend', '<div class="kempty">Žádné úkoly</div>');
   });
 }
 
@@ -1735,9 +1907,9 @@ if(subAddBtn) subAddBtn.addEventListener('click', addSubtaskFromInput);
 // ---- Přílohy (drawer) ----
 const ATTACH = {
   'Návrhy bannerů — letní kampaň': [['banner-v2-leto.png','image'],['brief-kampan.pdf','file_text']],
-  'Dokončit audit SEO pro klienta OC': [['seo-audit-Q2.pdf','file_text']],
+  'Dokončit audit SEO pro klienta Korvex': [['seo-audit-Q2.pdf','file_text']],
   'Report výkonu kampaní za květen': [['report-kveten.pdf','file_text']],
-  'Připravit prezentaci pro klienta DC': [['prezentace-stav.pdf','file_text']],
+  'Připravit prezentaci pro klienta Plenta': [['prezentace-stav.pdf','file_text']],
 };
 function attachRow(name, icon){
   return `<div style="display:flex; align-items:center; gap:9px; background:var(--card); border:1px solid var(--border); border-radius:9px; padding:8px 11px; font-size:12px">
@@ -1797,7 +1969,7 @@ function chatBubble(who, text){
     </div>`;
   }
   return `<div style="display:flex; gap:9px; align-items:flex-start; flex-direction:row-reverse">
-    <span class="avatar" style="width:26px;height:26px;font-size:10px">MI</span>
+    <span class="avatar" style="width:26px;height:26px;font-size:10px">TH</span>
     <div style="background:var(--accentSoft); border:1px solid rgba(240,168,71,.25); border-radius:10px; padding:9px 12px; font-size:12.5px; color:var(--text); max-width:80%">${text}</div>
   </div>`;
 }
@@ -1852,6 +2024,43 @@ if(pdChatInput){
     setTimeout(()=>{ typing.innerHTML = chatBubble('ai', projectAnswer(q)); paintIcons(typing); log.scrollTop = log.scrollHeight; }, 650);
   });
 }
+
+// ---- AI banner: "Vygenerovat plán" (simulovaná odezva) ----
+const genBtn = document.querySelector('.ai-banner-head .gen-btn');
+if(genBtn){
+  const genLabel = genBtn.innerHTML;
+  genBtn.addEventListener('click', ()=>{
+    if(genBtn.disabled) return;
+    genBtn.disabled = true;
+    genBtn.innerHTML = '<span class="ic" data-icon="sparkles"></span> Generuji…';
+    paintIcons(genBtn);
+    const cards = document.querySelector('.ai-cards');
+    if(cards) cards.style.transition = 'opacity .25s';
+    if(cards) cards.style.opacity = '.35';
+    setTimeout(()=>{
+      if(cards) cards.style.opacity = '1';
+      genBtn.innerHTML = genLabel;
+      paintIcons(genBtn);
+      genBtn.disabled = false;
+    }, 900);
+  });
+}
+
+// ---- AI accordion v draweru úkolu (4 tlačítka, různé canned odpovědi) ----
+const AI_SUGGESTIONS = {
+  optimize: '<b style="color:var(--text)">Optimalizace:</b> rozdělit na 3 podúkoly, nastavit termín o den dřív kvůli návaznosti a přidat tag <b style="color:var(--text)">klient</b>. Sníží to riziko zpoždění o ~40 %.',
+  subtasks: '<b style="color:var(--text)">Navržené podúkoly:</b> připravit podklady → odeslat klientovi ke schválení → zapracovat zpětnou vazbu → finálně odeslat. Mám je rovnou přidat k úkolu?',
+  tags: '<b style="color:var(--text)">Navržené tagy:</b> klient, urgentní — podle projektu a blížícího se termínu úkolu.',
+  priority: '<b style="color:var(--text)">Navržená priorita:</b> Vysoká — termín je do 2 dní a navazují na něj další úkoly v projektu.',
+};
+document.querySelectorAll('.ai-accordion [data-ai]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const sugg = document.getElementById('aiSugg');
+    if(!sugg) return;
+    sugg.innerHTML = '<i style="color:var(--text3)">AI přemýšlí…</i>';
+    setTimeout(()=>{ sugg.innerHTML = AI_SUGGESTIONS[btn.dataset.ai] || AI_SUGGESTIONS.optimize; }, 550);
+  });
+});
 
 // ---- Theme toggle ----
 const themeToggle = document.getElementById('themeToggle');
@@ -1918,10 +2127,19 @@ document.querySelectorAll('.status-toggle').forEach(group=>{
   });
 });
 
-// ⌘K closes modal as a small easter egg
-document.addEventListener('keydown', e=>{
-  if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='k'){ e.preventDefault(); }
-});
+// Welcome overlay
+(function(){
+  const ov = document.getElementById('welcomeOverlay');
+  if(!ov) return;
+  const dismiss = ()=>{ ov.classList.add('out'); setTimeout(()=>{ ov.style.display='none'; }, 320); };
+  document.getElementById('welcomeStart')?.addEventListener('click', dismiss);
+  document.getElementById('welcomeSkip')?.addEventListener('click', dismiss);
+  ov.addEventListener('click', e=>{ if(e.target===ov) dismiss(); });
+  // ESC
+  document.addEventListener('keydown', e=>{ if(e.key==='Escape') dismiss(); });
+})();
+
+
 </script>
 </body>
 </html>

@@ -129,10 +129,43 @@
   .end-cta{max-width:820px; background:var(--card); border:1px solid var(--border); border-radius:18px; padding:30px 34px; display:flex; align-items:center; justify-content:space-between; gap:24px; flex-wrap:wrap; box-shadow:var(--shadow)}
   .end-cta h3{font-size:18px; margin-bottom:5px}
   .end-cta p{color:var(--text2); font-size:13.5px; margin:0}
+
+  /* TOC search */
+  .toc-search{
+    position:relative; margin-bottom:14px;
+  }
+  .toc-search input{
+    width:100%; background:var(--cardH); border:1px solid var(--border);
+    border-radius:9px; padding:8px 11px 8px 34px; color:var(--text);
+    font-size:12.5px; font-family:inherit; outline:none;
+  }
+  .toc-search input::placeholder{color:var(--text3)}
+  .toc-search input:focus{border-color:var(--accent); background:var(--card)}
+  .toc-search .ts-ic{position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--text3); pointer-events:none; display:flex}
+  .toc-search .ts-ic .svgicon{width:13px;height:13px}
+  .toc a.toc-hidden{display:none}
+  .toc-no-result{font-size:12.5px; color:var(--text3); padding:8px 12px; display:none}
+  .toc-no-result.show{display:block}
+
+  /* Reading progress */
+  .read-progress{
+    position:fixed; top:0; left:0; height:2.5px; width:0%;
+    background:linear-gradient(90deg,var(--accent),var(--purple));
+    z-index:50; transition:width .08s linear; pointer-events:none;
+  }
+
+  /* Section highlight band on enter */
+  @keyframes secglow{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 30%,transparent)} 60%{box-shadow:0 0 0 6px color-mix(in srgb,var(--accent) 0%,transparent)} 100%{box-shadow:none}}
+  article.sec:target{animation:secglow .7s ease}
+
+  /* Estimated read time badge */
+  .read-time{display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600; color:var(--text3); background:var(--cardH); border:1px solid var(--border); border-radius:99px; padding:5px 12px; margin-top:14px}
+  .read-time .svgicon{width:13px;height:13px}
 </style>
 </head>
 <body>
 
+<div class="read-progress" id="readProgress"></div>
 <header>
   <div class="nav">
     <a href="index.html" class="brand"><span class="mark">Z</span> Zentero <span class="sep">/</span> Manuál appky</a>
@@ -150,6 +183,11 @@
 <div class="shell">
   <!-- TOC -->
   <nav class="toc" id="toc">
+    <div class="toc-search">
+      <span class="ts-ic"><span class="ic" data-icon="search"></span></span>
+      <input type="search" id="tocSearch" placeholder="Hledat v manuálu…" autocomplete="off">
+    </div>
+    <div class="toc-no-result" id="tocNoResult">Žádná shoda</div>
     <div class="toc-group">
       <div class="toc-label">Na úvod</div>
       <a href="#zaciname" data-tocid="zaciname"><span class="ic" data-icon="zap"></span> Začínáme</a>
@@ -192,6 +230,7 @@
         <a class="qbtn" href="#faq"><span class="ic" data-icon="check_circle"></span> Časté dotazy</a>
         <a class="qbtn" href="demo.html"><span class="ic" data-icon="external"></span> Vyzkoušet demo appky</a>
       </div>
+      <span class="read-time"><span class="ic" data-icon="clock"></span> cca <span id="readTimeVal">12</span> min čtení</span>
     </div>
 
     <!-- ZAČÍNÁME -->
@@ -203,6 +242,10 @@
 
       <h3>Přihlášení</h3>
       <p>Appku najdete na <a href="https://tasks.zichmichal.cz" target="_blank" rel="noopener" style="color:var(--accent); font-weight:600">tasks.zichmichal.cz</a> (postupně se přesouvá na novou doménu zentero.cz). Po přihlášení se vám otevře <b>Přehled</b> — výchozí obrazovka appky.</p>
+
+      <h3>Úvodní wizard pro nové uživatele</h3>
+      <p>Při úplně prvním přihlášení appka spustí krátký <b>3krokový onboarding wizard</b> — pomůže vám pojmenovat workspace, vybrat výchozí motiv (tmavý/světlý) a založit první projekt nebo úkol, ať nezačínáte na prázdné obrazovce. Wizard můžete kdykoliv přeskočit.</p>
+      <p>Po jeho dokončení nebo přeskočení se na Přehledu objeví karta <b>„Začínáme"</b> s odškrtávacím seznamem prvních kroků (založit projekt, přidat úkol, vyzkoušet AI plán dne…). Karta sama zmizí, jakmile máte kroky hotové, nebo si ji můžete skrýt ručně.</p>
 
       <h3>Rozvržení appky</h3>
       <ul>
@@ -646,6 +689,8 @@ const ICONS = {
   sun:'<circle cx="12" cy="12" r="4.2"/><path d="M12 3v2.2M12 18.8V21M5 5l1.6 1.6M17.4 17.4 19 19M3 12h2.2M18.8 12H21M5 19l1.6-1.6M17.4 6.6 19 5"/>',
   moon:'<path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10Z"/>',
   flame:'<path d="M12 2.5s-5.5 5-5.5 10a5.5 5.5 0 0 0 11 0c0-1.6-.7-2.7-1.4-3.7.2 1.4-.5 2.4-1.3 2.7.6-2.4-.6-5-2.8-9z"/>',
+  search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+  clock:'<circle cx="12" cy="12" r="8.2"/><path d="M12 7.5V12l3 2"/>',
 };
 function svgIcon(name){
   const body = ICONS[name];
@@ -693,9 +738,64 @@ function syncToc(){
     if(sec.offsetTop <= probe) current = sec.id;
   }
   tocLinks.forEach(l=> l.classList.toggle('on', l.dataset.tocid === current));
+  // scroll active link into view in TOC
+  const activeLink = document.querySelector('#toc a.on');
+  if(activeLink){
+    const toc = document.getElementById('toc');
+    const lTop = activeLink.offsetTop;
+    const tH = toc.clientHeight;
+    const sTop = toc.scrollTop;
+    if(lTop < sTop + 40 || lTop > sTop + tH - 80){
+      toc.scrollTo({top: lTop - tH/2, behavior:'smooth'});
+    }
+  }
 }
 window.addEventListener('scroll', syncToc, {passive:true});
 syncToc();
+
+// ---- Reading progress bar ----
+const readProg = document.getElementById('readProgress');
+if(readProg){
+  function updateReadProg(){
+    const h = document.documentElement;
+    const max = h.scrollHeight - h.clientHeight;
+    readProg.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + '%';
+  }
+  window.addEventListener('scroll', updateReadProg, {passive:true});
+  updateReadProg();
+}
+
+// ---- Estimated read time ----
+(function(){
+  const el = document.getElementById('readTimeVal');
+  if(!el) return;
+  const text = document.querySelector('main')?.innerText || '';
+  const words = text.trim().split(/\s+/).length;
+  el.textContent = Math.max(1, Math.round(words / 200));
+})();
+
+// ---- TOC live search ----
+(function(){
+  const inp = document.getElementById('tocSearch');
+  const noRes = document.getElementById('tocNoResult');
+  if(!inp) return;
+  inp.addEventListener('input', ()=>{
+    const q = inp.value.trim().toLowerCase();
+    let visible = 0;
+    tocLinks.forEach(link=>{
+      const text = link.textContent.toLowerCase();
+      const match = !q || text.includes(q);
+      link.classList.toggle('toc-hidden', !match);
+      if(match) visible++;
+    });
+    // hide/show group labels
+    document.querySelectorAll('#toc .toc-group').forEach(group=>{
+      const anyVisible = [...group.querySelectorAll('a')].some(a => !a.classList.contains('toc-hidden'));
+      group.style.display = anyVisible ? '' : 'none';
+    });
+    noRes.classList.toggle('show', visible === 0);
+  });
+})();
 </script>
 
 </body>
