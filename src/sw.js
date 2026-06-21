@@ -12,9 +12,18 @@ clientsClaim()
 precacheAndRoute(self.__WB_MANIFEST)
 cleanupOutdatedCaches()
 
-/* Auto-activate new SW immediately on install — no manual "Aktualizovat" needed */
+/* Auto-activate new SW immediately on install */
 self.addEventListener('install', () => {
   self.skipWaiting()
+})
+
+/* Tell all open clients to reload after new SW takes over */
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+      clients.forEach((client) => client.postMessage({ type: 'FORCE_RELOAD' }))
+    })
+  )
 })
 
 self.addEventListener('message', (event) => {

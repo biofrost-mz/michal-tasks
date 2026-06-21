@@ -1,4 +1,4 @@
-// SW Force-rebuild hash: 2026-06-18-v4
+// SW Force-rebuild hash: 2026-06-21-v5
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { registerSW } from 'virtual:pwa-register'
@@ -41,5 +41,16 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
     onRegisterError(error) {
       console.warn('SW registration failed:', error);
     },
+  });
+
+  /* Force SW update check on every app load */
+  navigator.serviceWorker.ready.then(reg => reg.update()).catch(() => {});
+
+  /* Auto-reload when SW sends FORCE_RELOAD (fired on new SW activate) */
+  navigator.serviceWorker.addEventListener('message', (event) => {
+    if (event.data?.type === 'FORCE_RELOAD' && !refreshing) {
+      refreshing = true;
+      window.location.reload();
+    }
   });
 }
