@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="cs" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ochrana soukromí — Zentero</title>
+<meta name="description" content="Informace o zpracování osobních údajů v aplikaci Zentero.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b0d13; --bg2:#10131b; --card:#141822; --cardH:#191e2a;
+    --accent:#f0a847; --accentBg:rgba(240,168,71,.14);
+    --text:#eef1f6; --text2:#aab1c2; --text3:#6f7790;
+    --border:#222837; --shadow:0 18px 50px -16px rgba(0,0,0,.5);
+    --blue:#5b9dff; --green:#5fd4a0; --purple:#b387f5;
+    --radius:14px;
+  }
+  [data-theme="light"]{
+    --bg:#f4f5f9; --bg2:#ffffff; --card:#ffffff; --cardH:#f3f5fa;
+    --accentBg:rgba(197,138,54,.12);
+    --text:#1b2030; --text2:#5b6378; --text3:#99a1b5;
+    --border:#e4e8f1; --shadow:0 18px 50px -20px rgba(40,48,80,.18);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--text);font-family:'Figtree',-apple-system,sans-serif;-webkit-font-smoothing:antialiased;line-height:1.7}
+  h1,h2,h3{font-family:'Outfit',sans-serif;letter-spacing:-.02em;font-weight:700}
+  a{color:var(--accent);text-decoration:none;transition:opacity .15s}
+  a:hover{opacity:.8}
+  ::-webkit-scrollbar{width:8px} ::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px} ::-webkit-scrollbar-track{background:transparent}
+
+  header{position:sticky;top:0;z-index:40;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+  .nav{display:flex;align-items:center;justify-content:space-between;padding:14px 28px;max-width:900px;margin:0 auto;gap:18px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:17px;font-family:'Outfit',sans-serif;color:var(--text);text-decoration:none}
+  .brand .mark{width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,var(--accent),var(--purple));display:flex;align-items:center;justify-content:center;color:#1a130a;font-weight:800;font-size:14px}
+  .nav-back{font-size:13px;color:var(--text3);border:1px solid var(--border);background:var(--card);border-radius:9px;padding:8px 14px;font-family:inherit;cursor:pointer;transition:.15s;font-weight:600}
+  .nav-back:hover{color:var(--accent);border-color:var(--accent)}
+  .theme-toggle{display:flex;align-items:center;gap:2px;background:var(--card);border:1px solid var(--border);border-radius:99px;padding:3px}
+  .theme-toggle button{display:flex;align-items:center;justify-content:center;width:30px;height:28px;border:none;background:transparent;color:var(--text3);border-radius:99px;cursor:pointer;font-size:13px;transition:.15s}
+  .theme-toggle button.on{background:var(--accentBg);color:var(--accent)}
+
+  main{max-width:720px;margin:0 auto;padding:60px 24px 80px}
+  .doc-head{margin-bottom:44px;padding-bottom:32px;border-bottom:1px solid var(--border)}
+  .doc-eyebrow{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);background:var(--accentBg);border:1px solid color-mix(in srgb,var(--accent) 25%,transparent);border-radius:99px;padding:5px 12px;margin-bottom:16px}
+  .doc-head h1{font-size:clamp(26px,4vw,36px);margin-bottom:12px}
+  .doc-head .meta{font-size:13px;color:var(--text3)}
+  .doc-head .meta span+span::before{content:'·';margin:0 8px;opacity:.4}
+  .doc-section{margin-bottom:36px}
+  .doc-section h2{font-size:18px;margin-bottom:12px;color:var(--text)}
+  .doc-section h3{font-size:15px;margin:20px 0 8px;color:var(--text2);font-weight:700}
+  .doc-section p{font-size:14.5px;color:var(--text2);margin-bottom:12px;line-height:1.75}
+  .doc-section ul{padding-left:0;list-style:none;display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+  .doc-section ul li{font-size:14.5px;color:var(--text2);padding-left:22px;position:relative}
+  .doc-section ul li::before{content:'→';position:absolute;left:0;color:var(--accent);font-weight:700}
+  .callout{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin:18px 0}
+  .callout.good{border-color:color-mix(in srgb,var(--green) 35%,transparent);background:color-mix(in srgb,var(--green) 7%,var(--card))}
+  .callout p{font-size:13.5px;color:var(--text2);margin:0}
+  .callout b{color:var(--green)}
+  footer-mini{display:block;text-align:center;padding:24px;font-size:12.5px;color:var(--text3);border-top:1px solid var(--border)}
+  footer-mini a{color:var(--text3)}
+  footer-mini a:hover{color:var(--accent)}
+</style>
+</head>
+<body>
+<header>
+  <div class="nav">
+    <a href="index.html" class="brand"><span class="mark">Z</span> Zentero</a>
+    <div style="display:flex;gap:10px;align-items:center">
+      <a href="index.html" class="nav-back">← Zpět na web</a>
+      <div class="theme-toggle" id="themeToggle">
+        <button class="on" data-theme-btn="dark" title="Tmavý">🌙</button>
+        <button data-theme-btn="light" title="Světlý">☀️</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="doc-head">
+    <div class="doc-eyebrow">Právní dokument</div>
+    <h1>Ochrana soukromí</h1>
+    <div class="meta">
+      <span>Zentero · osobní projekt Michala Zicha</span>
+      <span>Platnost od 1. 1. 2025</span>
+      <span>Poslední aktualizace: červen 2025</span>
+    </div>
+  </div>
+
+  <div class="callout good">
+    <p><b>Krátce:</b> Zentero neshromažďuje žádná analytická data, nepoužívá reklamy ani sledovací skripty. Vaše úkoly, projekty a poznámky jsou uloženy v zabezpečené databázi a nikdy nejsou sdíleny s třetími stranami.</p>
+  </div>
+
+  <div class="doc-section">
+    <h2>1. Správce osobních údajů</h2>
+    <p>Správcem osobních údajů je fyzická osoba Michal Zich, provozovatel webové aplikace Zentero dostupné na adrese <a href="https://tasks.zichmichal.cz">tasks.zichmichal.cz</a>. Kontakt: <a href="mailto:mich.zich@gmail.com">mich.zwei@gmail.com</a>.</p>
+  </div>
+
+  <div class="doc-section">
+    <h2>2. Jaké údaje zpracováváme</h2>
+    <h3>Údaje zadané uživatelem</h3>
+    <ul>
+      <li>E-mailová adresa a heslo (pro přihlášení přes Supabase Auth)</li>
+      <li>Obsah úkolů, projektů, poznámek a tagů, které sami zadáte</li>
+      <li>Volitelné profilové informace (jméno, avatar)</li>
+    </ul>
+    <h3>Technická data</h3>
+    <ul>
+      <li>Datum a čas přihlášení (uložen v databázi Supabase)</li>
+      <li>Data o aktivitě v appce potřebná pro streak a heatmapu</li>
+    </ul>
+    <h3>Co <em>nesbíráme</em></h3>
+    <ul>
+      <li>Žádná analytická data (Google Analytics, Mixpanel apod.)</li>
+      <li>Žádné reklamní či sledovací cookies třetích stran</li>
+      <li>Žádná data o chování v prohlížeči mimo appku</li>
+    </ul>
+  </div>
+
+  <div class="doc-section">
+    <h2>3. Účel a právní základ zpracování</h2>
+    <p>Osobní údaje zpracováváme výlučně za účelem poskytnutí funkčnosti appky — přihlášení, ukládání a zobrazování vašich dat. Právním základem je plnění smlouvy (poskytnutí služby) ve smyslu čl. 6 odst. 1 písm. b) GDPR.</p>
+  </div>
+
+  <div class="doc-section">
+    <h2>4. Kde jsou data uložena</h2>
+    <p>Data jsou uložena ve službě <a href="https://supabase.com" target="_blank" rel="noopener">Supabase</a> (PostgreSQL databáze) provozované na serverech v EU. Supabase je SOC 2 Type II certifikovaná platforma s šifrováním dat v klidu i při přenosu.</p>
+  </div>
+
+  <div class="doc-section">
+    <h2>5. Sdílení s třetími stranami</h2>
+    <p>Vaše data nejsou sdílena, prodávána ani pronajímána třetím stranám. Jediná výjimka jsou zpracovatelé nezbytní pro provoz appky:</p>
+    <ul>
+      <li><strong style="color:var(--text)">Supabase</strong> — hostování databáze a autentizace</li>
+      <li><strong style="color:var(--text)">Google Gemini / Anthropic Claude</strong> — pouze při aktivním použití AI funkce. Do AI jsou odesílány jen texty úkolů a poznámek, které AI aktivně zpracovává — nikdy celá databáze.</li>
+    </ul>
+  </div>
+
+  <div class="doc-section">
+    <h2>6. Vaše práva</h2>
+    <p>Máte právo na přístup ke svým datům, jejich opravu, výmaz (právo být zapomenut), přenositelnost a omezení zpracování. Pro uplatnění těchto práv nás kontaktujte na <a href="mailto:mich.zich@gmail.com">mich.zich@gmail.com</a>. Na žádost odpovíme do 30 dnů.</p>
+  </div>
+
+  <div class="doc-section">
+    <h2>7. Cookies</h2>
+    <p>Zentero používá pouze nezbytné funkční cookies pro udržení přihlášeného stavu (session token od Supabase Auth). Žádné reklamní ani analytické cookies nejsou nastavovány.</p>
+  </div>
+
+  <div class="doc-section">
+    <h2>8. Změny tohoto dokumentu</h2>
+    <p>V případě změn budeme uživatele informovat prostřednictvím upozornění v appce. Aktuální verze je vždy dostupná na této stránce.</p>
+  </div>
+
+  <div class="doc-section">
+    <h2>9. Kontakt</h2>
+    <p>Dotazy k ochraně soukromí zasílejte na <a href="mailto:mich.zich@gmail.com">mich.zich@gmail.com</a> nebo navštivte <a href="https://zichmichal.cz" target="_blank" rel="noopener">zichmichal.cz</a>.</p>
+  </div>
+</main>
+
+<footer-mini>
+  <a href="index.html">Zentero</a> &nbsp;·&nbsp; <a href="terms.html">Podmínky použití</a> &nbsp;·&nbsp; © 2025 Michal Zich
+</footer-mini>
+
+<script>
+const t = document.getElementById('themeToggle');
+if(t){
+  const saved = localStorage.getItem('zentero-theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
+  t.querySelectorAll('button').forEach(b=>{
+    b.classList.toggle('on', b.dataset.themeBtn === saved);
+    b.addEventListener('click', ()=>{
+      const th = b.dataset.themeBtn;
+      document.documentElement.setAttribute('data-theme', th);
+      localStorage.setItem('zentero-theme', th);
+      t.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    });
+  });
+}
+</script>
+</body>
+</html>

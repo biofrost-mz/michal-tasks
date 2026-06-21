@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="cs" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Podmínky použití — Zentero</title>
+<meta name="description" content="Podmínky použití webové aplikace Zentero.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b0d13; --bg2:#10131b; --card:#141822; --cardH:#191e2a;
+    --accent:#f0a847; --accentBg:rgba(240,168,71,.14);
+    --text:#eef1f6; --text2:#aab1c2; --text3:#6f7790;
+    --border:#222837; --shadow:0 18px 50px -16px rgba(0,0,0,.5);
+    --blue:#5b9dff; --green:#5fd4a0; --purple:#b387f5;
+  }
+  [data-theme="light"]{
+    --bg:#f4f5f9; --bg2:#ffffff; --card:#ffffff; --cardH:#f3f5fa;
+    --accentBg:rgba(197,138,54,.12);
+    --text:#1b2030; --text2:#5b6378; --text3:#99a1b5;
+    --border:#e4e8f1; --shadow:0 18px 50px -20px rgba(40,48,80,.18);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--text);font-family:'Figtree',-apple-system,sans-serif;-webkit-font-smoothing:antialiased;line-height:1.7}
+  h1,h2,h3{font-family:'Outfit',sans-serif;letter-spacing:-.02em;font-weight:700}
+  a{color:var(--accent);text-decoration:none;transition:opacity .15s}
+  a:hover{opacity:.8}
+  ::-webkit-scrollbar{width:8px} ::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px} ::-webkit-scrollbar-track{background:transparent}
+
+  header{position:sticky;top:0;z-index:40;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+  .nav{display:flex;align-items:center;justify-content:space-between;padding:14px 28px;max-width:900px;margin:0 auto;gap:18px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:17px;font-family:'Outfit',sans-serif;color:var(--text);text-decoration:none}
+  .brand .mark{width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,var(--accent),var(--purple));display:flex;align-items:center;justify-content:center;color:#1a130a;font-weight:800;font-size:14px}
+  .nav-back{font-size:13px;color:var(--text3);border:1px solid var(--border);background:var(--card);border-radius:9px;padding:8px 14px;font-family:inherit;cursor:pointer;transition:.15s;font-weight:600}
+  .nav-back:hover{color:var(--accent);border-color:var(--accent)}
+  .theme-toggle{display:flex;align-items:center;gap:2px;background:var(--card);border:1px solid var(--border);border-radius:99px;padding:3px}
+  .theme-toggle button{display:flex;align-items:center;justify-content:center;width:30px;height:28px;border:none;background:transparent;color:var(--text3);border-radius:99px;cursor:pointer;font-size:13px;transition:.15s}
+  .theme-toggle button.on{background:var(--accentBg);color:var(--accent)}
+
+  main{max-width:720px;margin:0 auto;padding:60px 24px 80px}
+  .doc-head{margin-bottom:44px;padding-bottom:32px;border-bottom:1px solid var(--border)}
+  .doc-eyebrow{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);background:var(--accentBg);border:1px solid color-mix(in srgb,var(--accent) 25%,transparent);border-radius:99px;padding:5px 12px;margin-bottom:16px}
+  .doc-head h1{font-size:clamp(26px,4vw,36px);margin-bottom:12px}
+  .doc-head .meta{font-size:13px;color:var(--text3)}
+  .doc-head .meta span+span::before{content:'·';margin:0 8px;opacity:.4}
+  .doc-section{margin-bottom:36px}
+  .doc-section h2{font-size:18px;margin-bottom:12px;color:var(--text)}
+  .doc-section p{font-size:14.5px;color:var(--text2);margin-bottom:12px;line-height:1.75}
+  .doc-section ul{padding-left:0;list-style:none;display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+  .doc-section ul li{font-size:14.5px;color:var(--text2);padding-left:22px;position:relative}
+  .doc-section ul li::before{content:'→';position:absolute;left:0;color:var(--accent);font-weight:700}
+  .callout{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin:18px 0}
+  .callout p{font-size:13.5px;color:var(--text2);margin:0}
+  footer-mini{display:block;text-align:center;padding:24px;font-size:12.5px;color:var(--text3);border-top:1px solid var(--border)}
+  footer-mini a{color:var(--text3)}
+  footer-mini a:hover{color:var(--accent)}
+</style>
+</head>
+<body>
+<header>
+  <div class="nav">
+    <a href="index.html" class="brand"><span class="mark">Z</span> Zentero</a>
+    <div style="display:flex;gap:10px;align-items:center">
+      <a href="index.html" class="nav-back">← Zpět na web</a>
+      <div class="theme-toggle" id="themeToggle">
+        <button class="on" data-theme-btn="dark" title="Tmavý">🌙</button>
+        <button data-theme-btn="light" title="Světlý">☀️</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="doc-head">
+    <div class="doc-eyebrow">Právní dokument</div>
+    <h1>Podmínky použití</h1>
+    <div class="meta">
+      <span>Zentero · osobní projekt Michala Zicha</span>
+      <span>Platnost od 1. 1. 2025</span>
+      <span>Poslední aktualizace: červen 2025</span>
+    </div>
+  </div>
+
+  <div class="callout">
+    <p>Zentero je osobní, nekomerční projekt. Používáním appky souhlasíte s těmito podmínkami. Jsou psány srozumitelně — bez právnického žargonu, pokud to lze.</p>
+  </div>
+
+  <div class="doc-section">
+    <h2>1. O službě</h2>
+    <p>Zentero (<a href="https://tasks.zichmichal.cz">tasks.zichmichal.cz</a>) je webová aplikace pro správu úkolů, projektů a poznámek s AI asistencí. Je provozována jako osobní projekt fyzické osoby Michal Zich, se sídlem v České republice.</p>
+    <p>Zentero není komerční SaaS produkt — jedná se o indie projekt ve aktivním vývoji, přístupný bezplatně.</p>
+  </div>
+
+  <div class="doc-section">
+    <h2>2. Podmínky přístupu</h2>
+    <p>Appku mohou používat osoby starší 16 let. Registrací souhlasíte s těmito podmínkami a <a href="privacy.html">zásadami ochrany soukromí</a>.</p>
+    <ul>
+      <li>Přístup je poskytován „jak stojí a leží" — bez záruky 100% dostupnosti</li>
+      <li>Registrace je zdarma, bez nutnosti platební karty</li>
+      <li>Provozovatel si vyhrazuje právo ukončit nebo omezit přístup při porušení podmínek</li>
+    </ul>
+  </div>
+
+  <div class="doc-section">
+    <h2>3. Vaše data</h2>
+    <p>Veškerý obsah, který do appky zadáte (úkoly, projekty, poznámky), je váš. Provozovatel nemá právo ho použít pro jiné účely než provoz samotné služby.</p>
+    <p>Svá data můžete kdykoli exportovat nebo požádat o jejich smazání kontaktem na <a href="mailto:mich.zich@gmail.com">mich.zich@gmail.com</a>.</p>
+  </div>
+
+  <div class="doc-section">
+    <h2>4. AI funkce</h2>
+    <p>Zentero využívá AI modely (Google Gemini, Anthropic Claude) pro plán dne, generování projektů a chat. Při použití AI jsou vybrané texty odeslány do API poskytovatele. Tato data nejsou používána k trénování modelů (dle podmínek příslušných API).</p>
+    <p>AI výstupy jsou návrhy — nejsou závaznými doporučeními. Vždy je ověřte před důležitými rozhodnutími.</p>
+  </div>
+
+  <div class="doc-section">
+    <h2>5. Dostupnost a záruky</h2>
+    <p>Provozovatel se snaží udržovat appku dostupnou, ale nezaručuje 100% uptime. Zentero je budován jedním vývojářem ve volném čase. V případě výpadku nebo ztráty dat provozovatel neručí za škody.</p>
+    <p>Doporučujeme pravidelně exportovat důležitá data.</p>
+  </div>
+
+  <div class="doc-section">
+    <h2>6. Zakázané chování</h2>
+    <ul>
+      <li>Automatizované scraping či strojový přístup k API bez souhlasu</li>
+      <li>Zneužití AI funkcí k generování škodlivého obsahu</li>
+      <li>Sdílení přihlašovacích údajů s třetími stranami</li>
+      <li>Pokusy o narušení bezpečnosti nebo infrastruktury appky</li>
+    </ul>
+  </div>
+
+  <div class="doc-section">
+    <h2>7. Změny podmínek</h2>
+    <p>Podmínky mohou být průběžně aktualizovány. O zásadních změnách budete informováni v appce. Aktuální verze je vždy dostupná na této stránce.</p>
+  </div>
+
+  <div class="doc-section">
+    <h2>8. Kontakt</h2>
+    <p>Dotazy zasílejte na <a href="mailto:mich.zich@gmail.com">mich.zich@gmail.com</a> nebo navštivte <a href="https://zichmichal.cz" target="_blank" rel="noopener">zichmichal.cz</a>.</p>
+  </div>
+</main>
+
+<footer-mini>
+  <a href="index.html">Zentero</a> &nbsp;·&nbsp; <a href="privacy.html">Ochrana soukromí</a> &nbsp;·&nbsp; © 2025 Michal Zich
+</footer-mini>
+
+<script>
+const t = document.getElementById('themeToggle');
+if(t){
+  const saved = localStorage.getItem('zentero-theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
+  t.querySelectorAll('button').forEach(b=>{
+    b.classList.toggle('on', b.dataset.themeBtn === saved);
+    b.addEventListener('click', ()=>{
+      const th = b.dataset.themeBtn;
+      document.documentElement.setAttribute('data-theme', th);
+      localStorage.setItem('zentero-theme', th);
+      t.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    });
+  });
+}
+</script>
+</body>
+</html>
