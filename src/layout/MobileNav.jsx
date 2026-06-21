@@ -272,10 +272,10 @@ export default function MobileNav({ toggleDk }) {
           style={{
             position: "absolute",
             left: 0, right: 0, bottom: 0,
-            height: "var(--bottom-nav-height)",
-            background: "var(--bottom-nav-bg)",
-            borderTop: "var(--bottom-nav-border)",
-            boxShadow: "var(--bottom-nav-shadow)",
+            height: "var(--bottom-nav-object-height)",
+            background: "var(--bottom-nav-object-bg)",
+            borderTop: "var(--bottom-nav-object-border)",
+            boxShadow: "var(--bottom-nav-object-shadow)",
             pointerEvents: "none",
             zIndex: 1,
           }}

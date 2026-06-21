@@ -541,32 +541,43 @@ function AppShell() {
         :root {
           --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
 
-          /* Výchozí stav = běžný prohlížeč */
+          /* Legacy – zachováno pro jiné části aplikace */
           --bottom-nav-height: 22px;
+
+          /* Neviditelná vrstva pro záložky */
           --bottom-tabs-hit-height: 64px;
           --bottom-tabs-shift-y: 30px;
+
+          /* Výchozí = Safari / prohlížeč */
           --mobile-nav-bottom-offset: 8px;
 
-          --bottom-nav-bg: var(--bg-2);
-          --bottom-nav-border: 1px solid var(--border);
-          --bottom-nav-shadow: 0 -4px 20px #0002;
+          /* Viditelný objekt v prohlížeči */
+          --bottom-nav-object-height: 22px;
+          --bottom-nav-object-bg: var(--bg-2);
+          --bottom-nav-object-border: 1px solid var(--border);
+          --bottom-nav-object-shadow: 0 -4px 20px #0002;
+
+          /* Rezerva obsahu stránky */
+          --mobile-main-bottom-padding: calc(var(--bottom-tabs-hit-height) + var(--mobile-nav-bottom-offset) + 24px);
         }
 
-        /* PWA — objekt zmizí, záložky zůstanou dole */
+        /* PWA — objekt zmizí, prostor pro záložky zůstane */
         html.pwa-standalone {
           --mobile-nav-bottom-offset: 0px;
-          --bottom-nav-height: 0px;
-          --bottom-nav-bg: transparent;
-          --bottom-nav-border: 0 solid transparent;
-          --bottom-nav-shadow: none;
+          --bottom-nav-object-height: 0px;
+          --bottom-nav-object-bg: transparent;
+          --bottom-nav-object-border: 0 solid transparent;
+          --bottom-nav-object-shadow: none;
+          --mobile-main-bottom-padding: calc(var(--bottom-tabs-hit-height) + 24px);
         }
         @media (display-mode: standalone) {
           :root {
             --mobile-nav-bottom-offset: 0px;
-            --bottom-nav-height: 0px;
-            --bottom-nav-bg: transparent;
-            --bottom-nav-border: 0 solid transparent;
-            --bottom-nav-shadow: none;
+            --bottom-nav-object-height: 0px;
+            --bottom-nav-object-bg: transparent;
+            --bottom-nav-object-border: 0 solid transparent;
+            --bottom-nav-object-shadow: none;
+            --mobile-main-bottom-padding: calc(var(--bottom-tabs-hit-height) + 24px);
           }
           html, body, #root {
             height: var(--app-height, 100svh) !important;
@@ -711,7 +722,7 @@ function AppShell() {
           )}
           <main
             {...edgeSwipeHandlers}
-            style={isMobile ? { flex: 1, minWidth: 0, width: "100%", overflowY: "auto", position: "relative", paddingBottom: "calc(var(--bottom-tabs-hit-height) + 8px)", overscrollBehaviorY: "auto", WebkitOverflowScrolling: "touch" } : undefined}
+            style={isMobile ? { flex: 1, minWidth: 0, width: "100%", overflowY: "auto", position: "relative", paddingBottom: "var(--mobile-main-bottom-padding)", overscrollBehaviorY: "auto", WebkitOverflowScrolling: "touch" } : undefined}
           >
             <PageTransition pageKey={page}>
               <Suspense fallback={<PageLoader />}>
