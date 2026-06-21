@@ -542,7 +542,7 @@ function AppShell() {
           --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
           --bottom-nav-height: 22px;
           --bottom-tabs-hit-height: 56px;
-          --bottom-tabs-shift-y: 0px;
+          --bottom-tabs-shift-y: 15px;
         }
         @media (display-mode: standalone) {
           html, body, #root {
