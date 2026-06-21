@@ -1,4 +1,4 @@
-// Force cache update v3.2.4 - 2026-06-18
+// Force cache update v3.2.5 - 2026-06-21
 import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching'
 import { registerRoute, NavigationRoute } from 'workbox-routing'
 import { NetworkOnly, StaleWhileRevalidate, CacheFirst } from 'workbox-strategies'
@@ -11,6 +11,11 @@ clientsClaim()
 /* Precache all Vite-hashed build assets */
 precacheAndRoute(self.__WB_MANIFEST)
 cleanupOutdatedCaches()
+
+/* Auto-activate new SW immediately on install — no manual "Aktualizovat" needed */
+self.addEventListener('install', () => {
+  self.skipWaiting()
+})
 
 self.addEventListener('message', (event) => {
   if (event.data?.type === 'SKIP_WAITING') {
