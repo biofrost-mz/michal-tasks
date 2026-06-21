@@ -21,7 +21,7 @@ export function ConfirmProvider({ children }) {
     <ConfirmCtx.Provider value={confirm}>
       {children}
       {state && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 2000, background: "#0006", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+        <div style={{ position: "fixed", inset: 0, zIndex: 10000, background: "#0006", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
           <div className="pop" style={{ background: "var(--bg-2)", border: "1px solid var(--border)", borderRadius: 14, padding: "24px 28px", maxWidth: 360, width: "100%", boxShadow: "0 20px 60px #0005" }}>
             <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text)", marginBottom: 20, lineHeight: 1.45 }}>{state.msg}</div>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>

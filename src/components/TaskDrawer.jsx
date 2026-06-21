@@ -465,39 +465,6 @@ export default function TaskDrawer() {
         <div className="detail-top" style={isMobile ? { background: "var(--bg-2)", flexShrink: 0 } : undefined}>
           <div className="detail-top-l">Detail úkolu · #{taskNumber}</div>
           <div className="row">
-            <button
-              className="btn"
-              title="Duplikovat úkol"
-              onClick={() => {
-                const copy = addTask({
-                  title: `Kopie: ${task.title}`,
-                  description: task.description,
-                  status: "todo",
-                  priority: task.priority,
-                  dueDate: task.dueDate,
-                  projectId: task.projectId,
-                  tagIds: task.tagIds || [],
-                  subtasks: (task.subtasks || []).map((s) => ({ ...s, done: false })),
-                  recurrence: task.recurrence,
-                  assigneeUserId: task.assigneeUserId ?? null,
-                  starred: false,
-                });
-                if (copy?.id) setTaskDetail(copy.id);
-              }}
-            >
-              <Icon name="copy" size={13} color="currentColor" strokeWidth={2} />
-            </button>
-            <button
-              className="btn danger"
-              onClick={async () => {
-                if (await confirm("Smazat úkol?")) {
-                  setTaskDetail(null);
-                  deleteTask(task.id);
-                }
-              }}
-            >
-              Smazat
-            </button>
             <button className="icon-btn" onClick={closeDrawer}>
               <Icon name="x" size={14} color="var(--text-2)" strokeWidth={2} />
             </button>
@@ -588,15 +555,20 @@ export default function TaskDrawer() {
             <div className="detail-k">Termín</div>
             <div className="detail-v" style={{ flexDirection: "column", alignItems: "flex-start", gap: 6 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                <input
-                  type="date"
-                  className="detail-input"
-                  value={task.dueDate || ""}
-                  onChange={(e) => s({ dueDate: e.target.value || null })}
-                  onClick={(e) => { try { e.target.showPicker(); } catch(err) {} }}
-                  onFocus={(e) => { try { e.target.showPicker(); } catch(err) {} }}
-                  style={{ maxWidth: 160, width: "auto" }}
-                />
+                <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
+                  <span style={{ position: "absolute", left: 10, pointerEvents: "none", display: "flex", zIndex: 1 }}>
+                    <Icon name="calendar" size={14} color="var(--text-3)" strokeWidth={1.75} />
+                  </span>
+                  <input
+                    type="date"
+                    className="detail-input"
+                    value={task.dueDate || ""}
+                    onChange={(e) => s({ dueDate: e.target.value || null })}
+                    onClick={(e) => { try { e.target.showPicker(); } catch(err) {} }}
+                    onFocus={(e) => { try { e.target.showPicker(); } catch(err) {} }}
+                    style={{ maxWidth: 180, width: "auto", paddingLeft: 32 }}
+                  />
+                </div>
                 {task.dueDate && (
                   <button
                     className="chip"
@@ -676,29 +648,29 @@ export default function TaskDrawer() {
               {/* Active Task Tags */}
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                 {(task.tagIds || []).length > 0 ? (
-                  tags.filter(tg => (task.tagIds || []).includes(tg.id)).map((tg) => (
-                    <span
-                      key={tg.id}
-                      className="tag"
-                      onClick={() =>
-                        s({
-                          tagIds: task.tagIds.filter((id) => id !== tg.id),
-                        })
-                      }
-                      style={{
-                        cursor: "pointer",
-                        background: "var(--accent-soft)",
-                        color: "var(--accent)",
-                        borderColor: "color-mix(in srgb, var(--accent) 30%, transparent)",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 4,
-                      }}
-                    >
-                      {tg.name}
-                      <Icon name="x" size={10} color="var(--accent)" strokeWidth={2.5} />
-                    </span>
-                  ))
+                  tags.filter(tg => (task.tagIds || []).includes(tg.id)).map((tg) => {
+                    const c = tg.color;
+                    return (
+                      <span
+                        key={tg.id}
+                        className="tag"
+                        onClick={() => s({ tagIds: task.tagIds.filter((id) => id !== tg.id) })}
+                        style={{
+                          cursor: "pointer",
+                          background: c ? `${c}22` : "var(--accent-soft)",
+                          color: c || "var(--accent)",
+                          borderColor: c ? `${c}55` : "color-mix(in srgb, var(--accent) 30%, transparent)",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4,
+                        }}
+                      >
+                        {c && <span style={{ width: 7, height: 7, borderRadius: "50%", background: c, flexShrink: 0 }} />}
+                        {tg.name}
+                        <Icon name="x" size={10} color={c || "var(--accent)"} strokeWidth={2.5} />
+                      </span>
+                    );
+                  })
                 ) : (
                   <span style={{ fontSize: 12, color: "var(--text-4)" }}>Žádné štítky</span>
                 )}
@@ -765,9 +737,9 @@ export default function TaskDrawer() {
                                 }
                                 style={{
                                   cursor: "pointer",
-                                  background: active ? "var(--accent-soft)" : "transparent",
-                                  color: active ? "var(--accent)" : "var(--text-2)",
-                                  borderColor: active ? "color-mix(in srgb, var(--accent) 30%, transparent)" : "var(--border-soft)",
+                                  background: active ? (tg.color ? `${tg.color}22` : "var(--accent-soft)") : "transparent",
+                                  color: active ? (tg.color || "var(--accent)") : "var(--text-2)",
+                                  borderColor: active ? (tg.color ? `${tg.color}55` : "color-mix(in srgb, var(--accent) 30%, transparent)") : "var(--border-soft)",
                                   fontSize: 11.5,
                                   padding: "4px 10px",
                                   borderRadius: 8,
@@ -868,6 +840,7 @@ export default function TaskDrawer() {
                 onBlur={() => s({ description: desc })}
                 rows={4}
                 placeholder="Poznámky, kontext, odkazy… (podporuje Markdown)"
+                style={{ resize: "vertical", minHeight: 80 }}
               />
             )}
           </div>
@@ -1045,6 +1018,46 @@ export default function TaskDrawer() {
             <div>Vytvořeno: {formatDateTime(task.createdAt)}</div>
             <div>Upraveno: {formatDateTime(task.updatedAt)}</div>
             {task.completedAt && <div style={{ color: "var(--green)" }}>Dokončeno: {formatDateTime(task.completedAt)}</div>}
+          </div>
+
+          {/* ── Danger zone ── */}
+          <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+            <button
+              className="btn"
+              style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 13 }}
+              onClick={() => {
+                const copy = addTask({
+                  title: `Kopie: ${task.title}`,
+                  description: task.description,
+                  status: "todo",
+                  priority: task.priority,
+                  dueDate: task.dueDate,
+                  projectId: task.projectId,
+                  tagIds: task.tagIds || [],
+                  subtasks: (task.subtasks || []).map((st) => ({ ...st, done: false })),
+                  recurrence: task.recurrence,
+                  assigneeUserId: task.assigneeUserId ?? null,
+                  starred: false,
+                });
+                if (copy?.id) setTaskDetail(copy.id);
+              }}
+            >
+              <Icon name="copy" size={13} color="currentColor" strokeWidth={2} />
+              Duplikovat
+            </button>
+            <button
+              className="btn danger"
+              style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 13 }}
+              onClick={async () => {
+                if (await confirm("Smazat úkol?")) {
+                  setTaskDetail(null);
+                  deleteTask(task.id);
+                }
+              }}
+            >
+              <Icon name="trash-2" size={13} color="currentColor" strokeWidth={2} />
+              Smazat úkol
+            </button>
           </div>
         </div>
       </div>

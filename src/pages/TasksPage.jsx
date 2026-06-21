@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useCallback, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useApp } from "../context/AppContext.jsx";
 import { useConfirm } from "../components/Confirm.jsx";
 import {
@@ -139,6 +140,7 @@ export default function TasksPage() {
     loaded,
     updateTask,
     deleteTask,
+    addTask,
     setTaskDetail,
     search,
     dashFilter,
@@ -147,6 +149,9 @@ export default function TasksPage() {
     setTasksPageFilter,
     isMobile,
   } = useApp();
+
+  const [desktopCtx, setDesktopCtx] = useState(null); // { task, x, y }
+  const longPressRef = useRef(null);
 
   const [view, setView] = useState(() => isMobile ? "cards" : (sessionStorage.getItem("tp:view") || "table"));
   const [statusFilter, setStatusFilterRaw] = useState(() => tasksPageFilter || sessionStorage.getItem("tp:status") || "active");
@@ -851,6 +856,7 @@ export default function TasksPage() {
             <div className="head-sort">Priorita</div>
             <div className="head-sort">Projekt</div>
             <div className="head-sort">Termín</div>
+            <div className="head-sort">Tagy</div>
           </div>
 
           {filtered.map((t) => {
@@ -893,6 +899,9 @@ export default function TasksPage() {
                 <div><PrioChip priority={t.priority} /></div>
                 <div><ProjectPill projectId={t.project} projectsById={projectsById} /></div>
                 <div><span className={`due ${t.overdue ? "overdue" : ""}`}>{t.due || "—"}</span></div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                  {(t.tagObjects || []).map((tg) => <TagPill key={tg.id} name={tg.name} color={tg.color} />)}
+                </div>
               </div>
             );
           })}
@@ -985,9 +994,20 @@ export default function TasksPage() {
                 key={t.id}
                 className={`tcard ${t.statusClass} ${t.overdue ? "alert" : ""} list-item-enter${t.id === newestTaskId ? " task-slide-in" : ""}${isSelected ? " selected" : ""}`}
                 onClick={(e) => {
+                  if (longPressRef.current) return;
                   if (selectMode) { toggleSelect(t.id, e); return; }
                   setFocusedId(t.id); setTaskDetail(t.id);
                 }}
+                onMouseDown={(e) => {
+                  if (e.button !== 0) return;
+                  const { clientX, clientY } = e;
+                  longPressRef.current = setTimeout(() => {
+                    longPressRef.current = "fired";
+                    setDesktopCtx({ task: t, x: clientX, y: clientY });
+                  }, 500);
+                }}
+                onMouseUp={() => { if (longPressRef.current !== "fired") clearTimeout(longPressRef.current); longPressRef.current = null; }}
+                onMouseLeave={() => { if (longPressRef.current !== "fired") clearTimeout(longPressRef.current); if (longPressRef.current !== "fired") longPressRef.current = null; }}
                 onMouseEnter={() => { if (focusedId !== t.id) setFocusedId(t.id); }}
                 style={{
                   "--item-index": Math.min(idx, 7),
@@ -1099,6 +1119,55 @@ export default function TasksPage() {
             <button className="icon-btn" onClick={clearSelected} style={{ marginLeft: 4 }}>✕</button>
           </div>
         </div>
+      )}
+
+      {desktopCtx && createPortal(
+        <>
+          <div onClick={() => setDesktopCtx(null)} style={{ position: "fixed", inset: 0, zIndex: 8000 }} />
+          <div
+            style={{
+              position: "fixed",
+              left: Math.min(desktopCtx.x, window.innerWidth - 200),
+              top: Math.min(desktopCtx.y, window.innerHeight - 260),
+              zIndex: 8001,
+              background: "var(--bg-2)",
+              border: "1px solid var(--border)",
+              borderRadius: 12,
+              boxShadow: "0 8px 32px rgba(0,0,0,0.22)",
+              padding: "6px",
+              minWidth: 190,
+              animation: "pop .15s ease-out",
+            }}
+          >
+            {[
+              { label: "Otevřít detail", icon: "external-link", action: () => { setTaskDetail(desktopCtx.task.id); setDesktopCtx(null); } },
+              { label: desktopCtx.task.status === "done" ? "Označit jako aktivní" : "Označit jako hotové", icon: "check-circle", action: () => { setStatus(desktopCtx.task.id, desktopCtx.task.status === "done" ? "todo" : "done"); setDesktopCtx(null); } },
+              { label: desktopCtx.task.starred ? "Odebrat z TOP" : "Přidat do TOP", icon: "star", action: () => { updateTask(desktopCtx.task.id, { starred: !desktopCtx.task.starred }); setDesktopCtx(null); } },
+              { label: "Duplikovat", icon: "copy", action: () => { const copy = addTask({ title: `Kopie: ${desktopCtx.task.title}`, status: "todo", priority: desktopCtx.task.priority, projectId: desktopCtx.task.projectId, tagIds: desktopCtx.task.tagIds || [] }); if (copy?.id) setTaskDetail(copy.id); setDesktopCtx(null); } },
+              { divider: true },
+              { label: "Smazat", icon: "trash-2", danger: true, action: async () => { if (await confirm("Smazat úkol?")) { deleteTask(desktopCtx.task.id); } setDesktopCtx(null); } },
+            ].map((item, i) => item.divider ? (
+              <div key={i} style={{ height: 1, background: "var(--border-soft)", margin: "4px 0" }} />
+            ) : (
+              <button
+                key={i}
+                onClick={item.action}
+                style={{
+                  width: "100%", display: "flex", alignItems: "center", gap: 10,
+                  padding: "8px 10px", borderRadius: 8, border: "none",
+                  background: "transparent", cursor: "pointer",
+                  color: item.danger ? "#ef4444" : "var(--text)",
+                  fontSize: 13, fontWeight: 500, textAlign: "left",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = item.danger ? "rgba(239,68,68,0.1)" : "var(--surface-2)"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </>,
+        document.body
       )}
     </div>
   );

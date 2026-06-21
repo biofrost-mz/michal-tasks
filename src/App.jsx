@@ -523,7 +523,7 @@ function AppShell() {
       <style>{`
         :root {
           --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
-          --bottom-nav-content-height: 40px;
+          --bottom-nav-content-height: 56px;
           --bottom-nav-height: calc(var(--bottom-nav-content-height) + env(safe-area-inset-bottom, 0px));
         }
         @media (display-mode: standalone) {

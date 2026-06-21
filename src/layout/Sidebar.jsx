@@ -359,7 +359,7 @@ function MiniCalendar({ tasks, setPage }) {
   const isCurrentMonth = vy === todayY && vm === todayM;
 
   return (
-    <div style={{ padding: "12px 10px 8px", borderBottom: "1px solid var(--border)" }}>
+    <div style={{ padding: "10px 10px 8px", borderBottom: "1px solid var(--border)", border: "2px solid var(--accent)", borderRadius: 10, margin: "0 6px 8px" }}>
       {/* Month nav */}
       <div style={{ display: "flex", alignItems: "center", marginBottom: 8 }}>
         <button onClick={prevMonth} style={{ background: "none", border: "none", color: "var(--text-3)", cursor: "pointer", padding: "2px 5px", borderRadius: 5, fontSize: 15, lineHeight: 1, display: "flex", alignItems: "center" }}>‹</button>
@@ -589,16 +589,25 @@ export default function Sidebar({ toggleDk }) {
           <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
             <div
               style={{
-                fontSize: 12,
-                fontWeight: 700,
-                textTransform: "uppercase",
-                letterSpacing: ".08em",
-                color: "var(--text-3)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
                 padding: "0 10px",
                 marginBottom: 6,
               }}
             >
-              Aktivní projekty
+              <span style={{ fontSize: 14, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".08em", color: "var(--text-2)" }}>
+                Aktivní projekty
+              </span>
+              <button
+                onClick={() => setPage("projects")}
+                title="Nový projekt"
+                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", padding: "2px 4px", borderRadius: 5, display: "flex", alignItems: "center", lineHeight: 1 }}
+                onMouseEnter={e => { e.currentTarget.style.color = "var(--accent)"; e.currentTarget.style.background = "var(--accent-soft)"; }}
+                onMouseLeave={e => { e.currentTarget.style.color = "var(--text-3)"; e.currentTarget.style.background = "none"; }}
+              >
+                <Icon name="plus" size={14} color="currentColor" strokeWidth={2.5} />
+              </button>
             </div>
 
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleProjectDragEnd}>

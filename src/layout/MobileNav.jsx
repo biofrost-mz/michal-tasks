@@ -245,21 +245,24 @@ export default function MobileNav({ toggleDk }) {
               onClick={() => handleNav(n.id)}
               style={{
                 flex: 1, display: "flex", flexDirection: "column", alignItems: "center",
-                justifyContent: "center", gap: 2, padding: "2px 2px 1px",
+                justifyContent: "flex-end", gap: 3, padding: "0 2px 10px",
                 border: "none", background: "transparent",
                 color: act ? "var(--accent)" : "var(--text-3)",
                 position: "relative",
               }}
             >
-              {n.count > 0 && (
-                <span style={{
-                  position: "absolute", top: 2, right: "50%", transform: "translateX(10px)",
-                  minWidth: 16, height: 16, borderRadius: 8, background: n.urgent ? "#ef4444" : "var(--accent)",
-                  color: "#fff", fontSize: 9, fontWeight: 700, display: "flex",
-                  alignItems: "center", justifyContent: "center", padding: "0 3px",
-                }}>{n.urgent ? overdue.length : (n.count > 99 ? "99+" : n.count)}</span>
-              )}
-              <Icon name={n.icon} size={22} color={act ? "var(--accent)" : "var(--text-3)"} strokeWidth={act ? 2.25 : 1.75} />
+              <div style={{ position: "relative", display: "inline-flex" }}>
+                <Icon name={n.icon} size={22} color={act ? "var(--accent)" : "var(--text-3)"} strokeWidth={act ? 2.25 : 1.75} />
+                {n.count > 0 && (
+                  <span style={{
+                    position: "absolute", top: -5, right: -9,
+                    minWidth: 16, height: 16, borderRadius: 8, background: n.urgent ? "#ef4444" : "var(--accent)",
+                    color: "#fff", fontSize: 9, fontWeight: 700, display: "flex",
+                    alignItems: "center", justifyContent: "center", padding: "0 3px",
+                    boxShadow: "0 0 0 2px var(--bg-2)",
+                  }}>{n.urgent ? overdue.length : (n.count > 99 ? "99+" : n.count)}</span>
+                )}
+              </div>
               <span style={{ fontSize: 10, fontWeight: act ? 600 : 400, letterSpacing: "0.01em" }}>{n.label}</span>
             </button>
           );
@@ -270,21 +273,24 @@ export default function MobileNav({ toggleDk }) {
           onClick={() => setMoreOpen((v) => !v)}
           style={{
             flex: 1, display: "flex", flexDirection: "column", alignItems: "center",
-            justifyContent: "center", gap: 2, padding: "2px 2px 1px",
+            justifyContent: "flex-end", gap: 3, padding: "0 2px 10px",
             border: "none", background: "transparent",
             color: moreOpen ? "var(--accent)" : "var(--text-3)",
             position: "relative",
           }}
         >
-          {urgentCount > 0 && (
-            <span style={{
-              position: "absolute", top: 2, right: "50%", transform: "translateX(10px)",
-              minWidth: 16, height: 16, borderRadius: 8, background: "#ef4444",
-              color: "#fff", fontSize: 9, fontWeight: 700, display: "flex",
-              alignItems: "center", justifyContent: "center", padding: "0 3px",
-            }}>{urgentCount > 99 ? "99+" : urgentCount}</span>
-          )}
-          <Icon name="more-horizontal" size={22} color={moreOpen ? "var(--accent)" : "var(--text-3)"} strokeWidth={moreOpen ? 2.25 : 1.75} />
+          <div style={{ position: "relative", display: "inline-flex" }}>
+            <Icon name="more-horizontal" size={22} color={moreOpen ? "var(--accent)" : "var(--text-3)"} strokeWidth={moreOpen ? 2.25 : 1.75} />
+            {urgentCount > 0 && (
+              <span style={{
+                position: "absolute", top: -5, right: -9,
+                minWidth: 16, height: 16, borderRadius: 8, background: "#ef4444",
+                color: "#fff", fontSize: 9, fontWeight: 700, display: "flex",
+                alignItems: "center", justifyContent: "center", padding: "0 3px",
+                boxShadow: "0 0 0 2px var(--bg-2)",
+              }}>{urgentCount > 99 ? "99+" : urgentCount}</span>
+            )}
+          </div>
           <span style={{ fontSize: 10, fontWeight: moreOpen ? 600 : 400 }}>Více</span>
         </button>
       </nav>
