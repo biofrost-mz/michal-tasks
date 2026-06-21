@@ -228,10 +228,12 @@ export default function MobileNav({ toggleDk }) {
         className="mobile-nav-bar"
         style={{
           position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 200,
+          height: "var(--bottom-nav-height)",
           background: "var(--bg-2)", borderTop: "1px solid var(--border)",
-          display: "flex", alignItems: "flex-end",
+          display: "flex", alignItems: "stretch",
           boxSizing: "border-box",
           boxShadow: "0 -4px 20px #0002",
+          paddingBottom: 0,
         }}
       >
         {primary.map((n) => {
@@ -245,7 +247,7 @@ export default function MobileNav({ toggleDk }) {
                 justifyContent: "flex-end", gap: 2,
                 paddingTop: 6,
                 paddingLeft: 2, paddingRight: 2,
-                paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 7px)",
+                paddingBottom: "var(--bottom-nav-edge-gap)",
                 border: "none", background: "transparent",
                 color: act ? "var(--accent)" : "var(--text-3)",
                 position: "relative", minHeight: 44,

@@ -355,6 +355,23 @@ function AppShell() {
   }, []);
 
   useEffect(() => {
+    if (!isMobile) return;
+    const setAppHeight = () => {
+      const h = window.visualViewport?.height || window.innerHeight;
+      document.documentElement.style.setProperty("--app-height", `${h}px`);
+    };
+    setAppHeight();
+    window.addEventListener("resize", setAppHeight);
+    window.visualViewport?.addEventListener("resize", setAppHeight);
+    window.visualViewport?.addEventListener("scroll", setAppHeight);
+    return () => {
+      window.removeEventListener("resize", setAppHeight);
+      window.visualViewport?.removeEventListener("resize", setAppHeight);
+      window.visualViewport?.removeEventListener("scroll", setAppHeight);
+    };
+  }, [isMobile]);
+
+  useEffect(() => {
     if (typeof window !== "undefined") {
       const isStandalone = window.navigator.standalone || window.matchMedia("(display-mode: standalone)").matches;
       if (isStandalone) {
@@ -523,8 +540,8 @@ function AppShell() {
       <style>{`
         :root {
           --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
-          --bottom-nav-content-height: 50px;
-          --bottom-nav-height: calc(var(--bottom-nav-content-height) + env(safe-area-inset-bottom, 0px));
+          --bottom-nav-height: 64px;
+          --bottom-nav-edge-gap: max(4px, calc(env(safe-area-inset-bottom, 0px) - 28px));
         }
         @media (display-mode: standalone) {
           html, body, #root {
@@ -672,7 +689,7 @@ function AppShell() {
           )}
           <main
             {...edgeSwipeHandlers}
-            style={isMobile ? { flex: 1, minWidth: 0, width: "100%", overflowY: "auto", position: "relative", paddingBottom: "var(--bottom-nav-height)", overscrollBehaviorY: "auto", WebkitOverflowScrolling: "touch" } : undefined}
+            style={isMobile ? { flex: 1, minWidth: 0, width: "100%", overflowY: "auto", position: "relative", paddingBottom: "calc(var(--bottom-nav-height) + 8px)", overscrollBehaviorY: "auto", WebkitOverflowScrolling: "touch" } : undefined}
           >
             <PageTransition pageKey={page}>
               <Suspense fallback={<PageLoader />}>
