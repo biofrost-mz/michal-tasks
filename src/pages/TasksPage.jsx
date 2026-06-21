@@ -400,6 +400,9 @@ export default function TasksPage() {
     clearSelected();
   }, [selected, deleteTask, clearSelected]);
 
+  const [bulkPrioOpen, setBulkPrioOpen] = useState(false);
+  const [bulkProjOpen, setBulkProjOpen] = useState(false);
+
   const bulkSetPriority = useCallback((priority) => {
     selected.forEach((id) => updateTask(id, { priority }));
     setBulkPrioOpen(false);
@@ -409,9 +412,6 @@ export default function TasksPage() {
     selected.forEach((id) => updateTask(id, { projectId: projectId || null }));
     setBulkProjOpen(false);
   }, [selected, updateTask]);
-
-  const [bulkPrioOpen, setBulkPrioOpen] = useState(false);
-  const [bulkProjOpen, setBulkProjOpen] = useState(false);
 
   return (
     <div className="content">
@@ -795,7 +795,7 @@ export default function TasksPage() {
                 <div style={{ flex: 1, height: 1, background: "var(--border-soft)" }} />
               </div>
               <div className="tcards">
-                {group.items.map((t, idx) => {
+                {group.items.map((t) => {
                   const isSelected = selected.has(t.id);
                   return (
                     <div

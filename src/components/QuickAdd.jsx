@@ -584,7 +584,6 @@ export default function QuickAdd({ defaultProjectId = null }) {
                 {/* Suggested Tasks Cards */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                   {aiSuggestedTasks.map((t) => {
-                    const isSelected = t.selected && t.action !== "skip";
                     const hasDuplicate = !!t.duplicateOfTaskId;
                     return (
                       <div

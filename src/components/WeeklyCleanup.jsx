@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { useApp } from "../context/AppContext.jsx";
 import { useToast } from "./Toast.jsx";
 import Icon from "./Icon.jsx";
@@ -25,9 +25,11 @@ export default function WeeklyCleanup({ onClose }) {
   const { tasks, updateTask, deleteTask, projects, pushUndo } = useApp();
   const toast = useToast();
 
-  const staleCutoff = Date.now() - STALE_DAYS * 86400000;
+  // eslint-disable-next-line react-hooks/purity
+  const openedAtRef = useRef(Date.now());
 
   const staleTasks = useMemo(() => {
+    const staleCutoff = openedAtRef.current - STALE_DAYS * 86400000;
     return tasks
       .filter((t) => {
         if (t.status === "done" || t.status === "deleted") return false;
@@ -35,7 +37,7 @@ export default function WeeklyCleanup({ onClose }) {
         return lastActivity < staleCutoff;
       })
       .sort((a, b) => (a.updatedAt || a.createdAt || 0) - (b.updatedAt || b.createdAt || 0));
-  }, [tasks, staleCutoff]);
+  }, [tasks]);
 
   const [dismissed, setDismissed] = useState(new Set());
   const visible = staleTasks.filter((t) => !dismissed.has(t.id));
