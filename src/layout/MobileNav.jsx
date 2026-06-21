@@ -248,7 +248,7 @@ export default function MobileNav({ toggleDk }) {
                 flex: 1, height: "100%", minHeight: 0,
                 display: "flex", flexDirection: "column", alignItems: "center",
                 justifyContent: "flex-end", gap: 2,
-                paddingTop: 5, paddingLeft: 2, paddingRight: 2,
+                paddingTop: 0, paddingLeft: 2, paddingRight: 2,
                 paddingBottom: "var(--bottom-nav-edge-gap)",
                 border: "none", background: "transparent",
                 color: act ? "var(--accent)" : "var(--text-3)",
