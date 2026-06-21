@@ -541,6 +541,8 @@ function AppShell() {
         :root {
           --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
           --bottom-nav-height: 22px;
+          --bottom-tabs-hit-height: 56px;
+          --bottom-tabs-shift-y: 0px;
         }
         @media (display-mode: standalone) {
           html, body, #root {
@@ -686,7 +688,7 @@ function AppShell() {
           )}
           <main
             {...edgeSwipeHandlers}
-            style={isMobile ? { flex: 1, minWidth: 0, width: "100%", overflowY: "auto", position: "relative", paddingBottom: "calc(var(--bottom-nav-height) + 24px)", overscrollBehaviorY: "auto", WebkitOverflowScrolling: "touch" } : undefined}
+            style={isMobile ? { flex: 1, minWidth: 0, width: "100%", overflowY: "auto", position: "relative", paddingBottom: "calc(var(--bottom-tabs-hit-height) + 8px)", overscrollBehaviorY: "auto", WebkitOverflowScrolling: "touch" } : undefined}
           >
             <PageTransition pageKey={page}>
               <Suspense fallback={<PageLoader />}>

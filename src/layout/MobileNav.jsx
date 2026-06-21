@@ -59,6 +59,7 @@ export default function MobileNav({ toggleDk }) {
   const navItemStyle = (act) => ({
     flex: 1,
     height: "100%",
+    minHeight: 0,
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
@@ -68,6 +69,7 @@ export default function MobileNav({ toggleDk }) {
     background: "transparent",
     color: act ? "var(--accent)" : "var(--text-3)",
     position: "relative",
+    pointerEvents: "auto",
   });
 
   const navItemContentStyle = {
@@ -76,6 +78,8 @@ export default function MobileNav({ toggleDk }) {
     alignItems: "center",
     gap: 2,
     pointerEvents: "none",
+    transform: "translateY(var(--bottom-tabs-shift-y, 0px))",
+    willChange: "transform",
   };
 
   return (
@@ -252,19 +256,34 @@ export default function MobileNav({ toggleDk }) {
           position: "fixed",
           left: 0, right: 0, bottom: 0,
           zIndex: 200,
-          height: "var(--bottom-nav-height)",
-          background: "var(--bg-2)",
-          borderTop: "1px solid var(--border)",
+          height: "var(--bottom-tabs-hit-height)",
+          background: "transparent",
           boxSizing: "border-box",
-          boxShadow: "0 -4px 20px #0002",
           overflow: "visible",
+          pointerEvents: "none",
         }}
       >
-        {/* Buttons sit in an absolutely-positioned row anchored to the bottom,
-            taller than the nav bar so icons extend above the bar */}
+        {/* Visible background strip — stays small */}
+        <div
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            left: 0, right: 0, bottom: 0,
+            height: "var(--bottom-nav-height)",
+            background: "var(--bg-2)",
+            borderTop: "1px solid var(--border)",
+            boxShadow: "0 -4px 20px #0002",
+            pointerEvents: "none",
+          }}
+        />
+
+        {/* Tab buttons — independently positionable via --bottom-tabs-shift-y */}
         <div style={{
-          position: "absolute", bottom: 0, left: 0, right: 0,
-          height: 46, display: "flex",
+          position: "absolute",
+          left: 0, right: 0, bottom: 0,
+          height: "var(--bottom-tabs-hit-height)",
+          display: "flex",
+          pointerEvents: "auto",
         }}>
           {primary.map((n) => {
             const act = page === n.id || (n.id === "projects" && page === "project-detail");
@@ -293,7 +312,6 @@ export default function MobileNav({ toggleDk }) {
             );
           })}
 
-          {/* Více button */}
           <button
             onClick={() => setMoreOpen((v) => !v)}
             style={navItemStyle(moreOpen)}
