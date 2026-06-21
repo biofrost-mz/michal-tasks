@@ -56,6 +56,30 @@ export default function MobileNav({ toggleDk }) {
     await logout();
   };
 
+  const navItemStyle = (act) => ({
+    flex: 1,
+    height: "100%",
+    minHeight: 0,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 0,
+    border: "none",
+    background: "transparent",
+    color: act ? "var(--accent)" : "var(--text-3)",
+    position: "relative",
+  });
+
+  const navItemContentStyle = {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 2,
+    transform: "translateY(var(--bottom-nav-content-shift))",
+    pointerEvents: "none",
+  };
+
   return (
     <>
       {/* "Více" drawer overlay */}
@@ -227,15 +251,23 @@ export default function MobileNav({ toggleDk }) {
       <nav
         className="mobile-nav-bar"
         style={{
-          position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 200,
+          position: "fixed",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 200,
           height: "var(--bottom-nav-height)",
           minHeight: "var(--bottom-nav-height)",
           maxHeight: "var(--bottom-nav-height)",
-          background: "var(--bg-2)", borderTop: "1px solid var(--border)",
-          display: "flex", alignItems: "flex-end",
+          background: "var(--bg-2)",
+          borderTop: "1px solid var(--border)",
+          display: "flex",
+          alignItems: "stretch",
           boxSizing: "border-box",
           boxShadow: "0 -4px 20px #0002",
-          padding: 0, margin: 0, overflow: "visible",
+          padding: 0,
+          margin: 0,
+          overflow: "visible",
         }}
       >
         {primary.map((n) => {
@@ -244,30 +276,23 @@ export default function MobileNav({ toggleDk }) {
             <button
               key={n.id}
               onClick={() => handleNav(n.id)}
-              style={{
-                flex: 1, height: "auto", minHeight: 0,
-                display: "flex", flexDirection: "column", alignItems: "center",
-                justifyContent: "flex-end", gap: 2,
-                paddingTop: 0, paddingLeft: 2, paddingRight: 2,
-                paddingBottom: "var(--bottom-nav-edge-gap)",
-                border: "none", background: "transparent",
-                color: act ? "var(--accent)" : "var(--text-3)",
-                position: "relative",
-              }}
+              style={navItemStyle(act)}
             >
-              <div style={{ position: "relative", display: "inline-flex" }}>
-                <Icon name={n.icon} size={20} color={act ? "var(--accent)" : "var(--text-3)"} strokeWidth={act ? 2.25 : 1.75} />
-                {n.count > 0 && (
-                  <span style={{
-                    position: "absolute", top: -5, right: -9,
-                    minWidth: 16, height: 16, borderRadius: 8, background: n.urgent ? "#ef4444" : "var(--accent)",
-                    color: "#fff", fontSize: 9, fontWeight: 700, display: "flex",
-                    alignItems: "center", justifyContent: "center", padding: "0 3px",
-                    boxShadow: "0 0 0 2px var(--bg-2)",
-                  }}>{n.urgent ? overdue.length : (n.count > 99 ? "99+" : n.count)}</span>
-                )}
+              <div style={navItemContentStyle}>
+                <div style={{ position: "relative", display: "inline-flex" }}>
+                  <Icon name={n.icon} size={22} color={act ? "var(--accent)" : "var(--text-3)"} strokeWidth={act ? 2.25 : 1.75} />
+                  {n.count > 0 && (
+                    <span style={{
+                      position: "absolute", top: -5, right: -9,
+                      minWidth: 16, height: 16, borderRadius: 8, background: n.urgent ? "#ef4444" : "var(--accent)",
+                      color: "#fff", fontSize: 9, fontWeight: 700, display: "flex",
+                      alignItems: "center", justifyContent: "center", padding: "0 3px",
+                      boxShadow: "0 0 0 2px var(--bg-2)",
+                    }}>{n.urgent ? overdue.length : (n.count > 99 ? "99+" : n.count)}</span>
+                  )}
+                </div>
+                <span style={{ fontSize: 10, fontWeight: act ? 600 : 400, letterSpacing: "0.01em" }}>{n.label}</span>
               </div>
-              <span style={{ fontSize: 10, fontWeight: act ? 600 : 400, letterSpacing: "0.01em" }}>{n.label}</span>
             </button>
           );
         })}
@@ -275,30 +300,23 @@ export default function MobileNav({ toggleDk }) {
         {/* Více button */}
         <button
           onClick={() => setMoreOpen((v) => !v)}
-          style={{
-            flex: 1, height: "auto", minHeight: 0,
-            display: "flex", flexDirection: "column", alignItems: "center",
-            justifyContent: "flex-end", gap: 2,
-            paddingTop: 0, paddingLeft: 2, paddingRight: 2,
-            paddingBottom: "var(--bottom-nav-edge-gap)",
-            border: "none", background: "transparent",
-            color: moreOpen ? "var(--accent)" : "var(--text-3)",
-            position: "relative",
-          }}
+          style={navItemStyle(moreOpen)}
         >
-          <div style={{ position: "relative", display: "inline-flex" }}>
-            <Icon name="more-horizontal" size={20} color={moreOpen ? "var(--accent)" : "var(--text-3)"} strokeWidth={moreOpen ? 2.25 : 1.75} />
-            {urgentCount > 0 && (
-              <span style={{
-                position: "absolute", top: -5, right: -9,
-                minWidth: 16, height: 16, borderRadius: 8, background: "#ef4444",
-                color: "#fff", fontSize: 9, fontWeight: 700, display: "flex",
-                alignItems: "center", justifyContent: "center", padding: "0 3px",
-                boxShadow: "0 0 0 2px var(--bg-2)",
-              }}>{urgentCount > 99 ? "99+" : urgentCount}</span>
-            )}
+          <div style={navItemContentStyle}>
+            <div style={{ position: "relative", display: "inline-flex" }}>
+              <Icon name="more-horizontal" size={22} color={moreOpen ? "var(--accent)" : "var(--text-3)"} strokeWidth={moreOpen ? 2.25 : 1.75} />
+              {urgentCount > 0 && (
+                <span style={{
+                  position: "absolute", top: -5, right: -9,
+                  minWidth: 16, height: 16, borderRadius: 8, background: "#ef4444",
+                  color: "#fff", fontSize: 9, fontWeight: 700, display: "flex",
+                  alignItems: "center", justifyContent: "center", padding: "0 3px",
+                  boxShadow: "0 0 0 2px var(--bg-2)",
+                }}>{urgentCount > 99 ? "99+" : urgentCount}</span>
+              )}
+            </div>
+            <span style={{ fontSize: 10, fontWeight: moreOpen ? 600 : 400 }}>Více</span>
           </div>
-          <span style={{ fontSize: 10, fontWeight: moreOpen ? 600 : 400 }}>Více</span>
         </button>
       </nav>
     </>
