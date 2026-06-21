@@ -7,9 +7,10 @@ import AttachmentsMiniList from './AttachmentsMiniList.jsx'
 import NotesMiniList from './NotesMiniList.jsx'
 import AITaskAssist from './AITaskAssist.jsx'
 import { STATUSES, PRIORITIES, PROJ_STATUS } from '../constants.js'
-import { formatDate, formatDateTime } from '../locale.js'
-import { projectColor, triggerConfettiBurst } from '../utils.js'
+import { formatDate, formatDateTime, formatDateKey } from '../locale.js'
+import { projectColor, triggerConfettiBurst, startOfToday } from '../utils.js'
 import { PrioChip } from './atlas/AtlasTaskCard.jsx'
+import { renderMarkdown } from '../utils/markdownToJsx.jsx'
 
 function toLocalDateTimeValue(iso) {
   if (!iso) return "";
@@ -141,7 +142,7 @@ function SubtasksSection({ task, updateTask }) {
           <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontFamily: "var(--mono)", color: "var(--text-3)" }}>
             {done}/{subtasks.length}
             <span style={{ width: 60, height: 4, borderRadius: 2, background: "var(--border-soft)", overflow: "hidden", display: "inline-block" }}>
-              <span style={{ display: "block", width: `${(done / subtasks.length) * 100}%`, height: "100%", background: "#22c55e", borderRadius: 2, transition: "width .2s" }} />
+              <span style={{ display: "block", width: `${(done / subtasks.length) * 100}%`, height: "100%", background: "var(--green)", borderRadius: 2, transition: "width .2s" }} />
             </span>
           </span>
         )}
@@ -224,9 +225,10 @@ function SubtaskRow({ subtask, editingId, editText, setEditText, onToggle, onRem
         <span
           onDoubleClick={() => onStartEdit(subtask)}
           style={{
-            flex: 1, fontSize: 13, color: subtask.done ? "var(--text-3)" : "var(--text)",
+            flex: 1, minWidth: 0, fontSize: 13, color: subtask.done ? "var(--text-3)" : "var(--text)",
             textDecoration: subtask.done ? "line-through" : "none",
             cursor: "text", lineHeight: 1.4,
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
           }}
         >
           {subtask.text}
@@ -250,7 +252,7 @@ function SubtaskRow({ subtask, editingId, editText, setEditText, onToggle, onRem
    TaskDrawer — Atlas .overlay + .detail design
 ───────────────────────────────────────────── */
 export default function TaskDrawer() {
-  const { tasks, projects, tags, addTag, updateTask, deleteTask, addProject, taskDetail, setTaskDetail, isMobile } = useApp();
+  const { tasks, projects, tags, addTag, updateTask, deleteTask, addTask, addProject, taskDetail, setTaskDetail, isMobile } = useApp();
   const toast = useToast();
   const confirm = useConfirm();
 
@@ -258,6 +260,7 @@ export default function TaskDrawer() {
   const [newTagName, setNewTagName] = useState("");
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
+  const [descPreview, setDescPreview] = useState(false);
   const [showNewProject, setShowNewProject] = useState(false);
   const [npName, setNpName] = useState("");
   const [newPhase, setNewPhase] = useState("");
@@ -463,6 +466,28 @@ export default function TaskDrawer() {
           <div className="detail-top-l">Detail úkolu · #{taskNumber}</div>
           <div className="row">
             <button
+              className="btn"
+              title="Duplikovat úkol"
+              onClick={() => {
+                const copy = addTask({
+                  title: `Kopie: ${task.title}`,
+                  description: task.description,
+                  status: "todo",
+                  priority: task.priority,
+                  dueDate: task.dueDate,
+                  projectId: task.projectId,
+                  tagIds: task.tagIds || [],
+                  subtasks: (task.subtasks || []).map((s) => ({ ...s, done: false })),
+                  recurrence: task.recurrence,
+                  assigneeUserId: task.assigneeUserId ?? null,
+                  starred: false,
+                });
+                if (copy?.id) setTaskDetail(copy.id);
+              }}
+            >
+              <Icon name="copy" size={13} color="currentColor" strokeWidth={2} />
+            </button>
+            <button
               className="btn danger"
               onClick={async () => {
                 if (await confirm("Smazat úkol?")) {
@@ -499,7 +524,7 @@ export default function TaskDrawer() {
             )}
             <PrioChip priority={task.priority} />
             {task.dueDate && (
-              <span className={`due ${task.dueDate < new Date().toISOString().slice(0, 10) ? "overdue" : ""}`}>
+              <span className={`due ${task.dueDate < formatDateKey(startOfToday()) ? "overdue" : ""}`}>
                 {task.dueDate}
               </span>
             )}
@@ -561,16 +586,45 @@ export default function TaskDrawer() {
             </div>
 
             <div className="detail-k">Termín</div>
-            <div className="detail-v">
-              <input
-                type="date"
-                className="detail-input"
-                value={task.dueDate || ""}
-                onChange={(e) => s({ dueDate: e.target.value || null })}
-                onClick={(e) => { try { e.target.showPicker(); } catch(err) {} }}
-                onFocus={(e) => { try { e.target.showPicker(); } catch(err) {} }}
-                style={{ maxWidth: 180, width: "auto" }}
-              />
+            <div className="detail-v" style={{ flexDirection: "column", alignItems: "flex-start", gap: 6 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                <input
+                  type="date"
+                  className="detail-input"
+                  value={task.dueDate || ""}
+                  onChange={(e) => s({ dueDate: e.target.value || null })}
+                  onClick={(e) => { try { e.target.showPicker(); } catch(err) {} }}
+                  onFocus={(e) => { try { e.target.showPicker(); } catch(err) {} }}
+                  style={{ maxWidth: 160, width: "auto" }}
+                />
+                {task.dueDate && (
+                  <button
+                    className="chip"
+                    onClick={() => s({ dueDate: null })}
+                    title="Zrušit termín"
+                    style={{ padding: "2px 8px", fontSize: 12, color: "var(--text-3)" }}
+                  >✕</button>
+                )}
+              </div>
+              <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                {[
+                  { label: "Dnes", offset: 0 },
+                  { label: "Zítra", offset: 1 },
+                  { label: "+7 dní", offset: 7 },
+                ].map(({ label, offset }) => {
+                  const d = startOfToday();
+                  d.setDate(d.getDate() + offset);
+                  const val = formatDateKey(d);
+                  return (
+                    <button
+                      key={label}
+                      className={`chip${task.dueDate === val ? " active" : ""}`}
+                      onClick={() => s({ dueDate: val })}
+                      style={{ padding: "2px 9px", fontSize: 12 }}
+                    >{label}</button>
+                  );
+                })}
+              </div>
               <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--text-3)" }}>
                 založeno {formatDate(task.createdAt, { day: "numeric", month: "long", year: "numeric" })}
               </span>
@@ -777,15 +831,45 @@ export default function TaskDrawer() {
 
           {/* ── Description ── */}
           <div className="detail-sect">
-            <div className="detail-h">Popis</div>
-            <textarea
-              className="detail-input"
-              value={desc}
-              onChange={(e) => setDesc(e.target.value)}
-              onBlur={() => s({ description: desc })}
-              rows={4}
-              placeholder="Poznámky, kontext, odkazy…"
-            />
+            <div className="detail-h" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              Popis
+              {desc.trim() && (
+                <button
+                  onClick={() => setDescPreview(v => !v)}
+                  style={{
+                    background: "none", border: "none", cursor: "pointer",
+                    fontSize: 11.5, fontWeight: 600, color: "var(--accent)",
+                    display: "flex", alignItems: "center", gap: 4, padding: "2px 0",
+                  }}
+                >
+                  {descPreview
+                    ? <><Icon name="edit-3" size={11} color="currentColor" strokeWidth={2.5} /> Upravit</>
+                    : <><Icon name="eye" size={11} color="currentColor" strokeWidth={2.5} /> Náhled</>}
+                </button>
+              )}
+            </div>
+            {descPreview && desc.trim() ? (
+              <div
+                onClick={() => setDescPreview(false)}
+                title="Klikni pro editaci"
+                style={{
+                  cursor: "text", padding: "10px 14px",
+                  background: "var(--surface-2)", border: "1px solid var(--border)",
+                  borderRadius: "var(--r)", minHeight: 72,
+                }}
+              >
+                {renderMarkdown(desc)}
+              </div>
+            ) : (
+              <textarea
+                className="detail-input"
+                value={desc}
+                onChange={(e) => setDesc(e.target.value)}
+                onBlur={() => s({ description: desc })}
+                rows={4}
+                placeholder="Poznámky, kontext, odkazy… (podporuje Markdown)"
+              />
+            )}
           </div>
 
           {/* ── AI Assistant ── */}
@@ -888,6 +972,7 @@ export default function TaskDrawer() {
                 { value: null, label: "Žádné" },
                 { value: "daily", label: "Každý den" },
                 { value: "weekly", label: "Každý týden" },
+                { value: "biweekly", label: "Každé 2 týdny" },
                 { value: "monthly", label: "Každý měsíc" },
               ].map(({ value, label }) => {
                 const active = (task.recurrence ?? null) === value;
@@ -904,9 +989,42 @@ export default function TaskDrawer() {
               })}
             </div>
             {task.recurrence && (
-              <div style={{ marginTop: 6, fontSize: 12, color: "var(--text-3)" }}>
-                Po dokončení se automaticky vytvoří nový úkol.
-              </div>
+              <>
+                <div style={{ marginTop: 8, fontSize: 12, color: "var(--text-3)" }}>
+                  ↺ Opakuje se <strong style={{ color: "var(--text-2)" }}>
+                    {task.recurrence === "daily" ? "každý den" : task.recurrence === "weekly" ? "každý týden" : task.recurrence === "biweekly" ? "každé 2 týdny" : "každý měsíc"}
+                  </strong> — po dokončení se automaticky vytvoří nový úkol.
+                </div>
+                <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                  <button
+                    className="btn"
+                    style={{ fontSize: 12, gap: 5, display: "inline-flex", alignItems: "center" }}
+                    title="Přeskočí toto opakování a posunutí termín na příští"
+                    onClick={() => {
+                      if (!task.dueDate) return;
+                      const base = new Date(task.dueDate + "T12:00:00");
+                      const rec = task.recurrence;
+                      if (rec === "daily") base.setDate(base.getDate() + 1);
+                      else if (rec === "weekly") base.setDate(base.getDate() + 7);
+                      else if (rec === "biweekly") base.setDate(base.getDate() + 14);
+                      else if (rec === "monthly") base.setMonth(base.getMonth() + 1);
+                      updateTask(task.id, { dueDate: formatDateKey(base) });
+                    }}
+                  >
+                    <Icon name="skip-forward" size={12} color="currentColor" strokeWidth={2} />
+                    Přeskočit
+                  </button>
+                  <button
+                    className="btn"
+                    style={{ fontSize: 12, gap: 5, display: "inline-flex", alignItems: "center", color: "var(--text-3)" }}
+                    title="Zastavit opakování tohoto úkolu"
+                    onClick={() => updateTask(task.id, { recurrence: null })}
+                  >
+                    <Icon name="x-circle" size={12} color="currentColor" strokeWidth={2} />
+                    Zastavit
+                  </button>
+                </div>
+              </>
             )}
           </div>
 
@@ -926,7 +1044,7 @@ export default function TaskDrawer() {
           <div style={{ borderTop: "1px solid var(--border-soft)", paddingTop: 12, marginTop: 28, fontSize: 12, color: "var(--text-3)", fontFamily: "var(--mono)" }}>
             <div>Vytvořeno: {formatDateTime(task.createdAt)}</div>
             <div>Upraveno: {formatDateTime(task.updatedAt)}</div>
-            {task.completedAt && <div style={{ color: "#22c55e" }}>Dokončeno: {formatDateTime(task.completedAt)}</div>}
+            {task.completedAt && <div style={{ color: "var(--green)" }}>Dokončeno: {formatDateTime(task.completedAt)}</div>}
           </div>
         </div>
       </div>

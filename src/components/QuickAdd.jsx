@@ -6,6 +6,9 @@ import Icon from './Icon.jsx'
 import { STATUSES, PRIORITIES } from '../constants.js'
 import { supabase } from '../supabase.js'
 import { SectionLabel } from "./ui/index.js";
+import { startOfToday } from '../utils.js'
+import { formatDateKey } from '../locale.js'
+import { parseNaturalDate, naturalDateLabel } from '../utils/naturalDate.js'
 
 export default function QuickAdd({ defaultProjectId = null }) {
   const { dk, addTask, projects, tags, addProject, addTag, setTaskDetail, isMobile, tasks, updateTask } = useApp();
@@ -44,11 +47,13 @@ export default function QuickAdd({ defaultProjectId = null }) {
   // Triggered when clicking inline "Přidat" or pressing Enter
   const handleOpenModal = useCallback((initialTitle = "") => {
     const prefTitle = typeof initialTitle === "string" ? initialTitle.trim() : "";
-    setModalTitle(prefTitle || val.trim());
+    const rawTitle = prefTitle || val.trim();
+    const { date: parsedDate, cleaned: parsedTitle } = parseNaturalDate(rawTitle);
+    setModalTitle(parsedTitle);
     setStatus("todo");
     setPriority(null);
     setProjectId(defaultProjectId);
-    setDueDate("");
+    setDueDate(parsedDate || "");
     setTagIds([]);
     setDescription("");
     setShowAiDraft(false);
@@ -118,7 +123,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
 
     setAiLoading(true);
     try {
-      const todayDate = new Date().toISOString().slice(0, 10);
+      const todayDate = formatDateKey(startOfToday());
       const availableProjects = projects.map(p => p.name);
       const availableTags = tags.map(t => t.name);
       const existingTasks = (tasks || [])
@@ -399,6 +404,8 @@ export default function QuickAdd({ defaultProjectId = null }) {
     );
   };
 
+  const dateHint = val.trim() ? parseNaturalDate(val) : null;
+
   // Top 3 active projects + Inbox
   const quickProjects = [
     { id: null, name: "Inbox" },
@@ -447,6 +454,17 @@ export default function QuickAdd({ defaultProjectId = null }) {
           }}
         />
 
+        {dateHint?.date && (
+          <div style={{
+            display: "flex", alignItems: "center", gap: 4,
+            padding: "3px 9px", borderRadius: 6, marginRight: 6,
+            background: "var(--accent-soft)", color: "var(--accent)",
+            fontSize: 11.5, fontWeight: 600, whiteSpace: "nowrap", flexShrink: 0,
+            animation: "pop .15s ease-out",
+          }}>
+            📅 {naturalDateLabel(dateHint.date)}
+          </div>
+        )}
         <button
           onClick={handleOpenModal}
           className="btn-press"

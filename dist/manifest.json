@@ -1,7 +1,7 @@
 {
-  "name": "Michal Tasks",
-  "short_name": "Tasks",
-  "description": "Osobní produktivní systém a asistent s AI",
+  "name": "Zentero",
+  "short_name": "Zentero",
+  "description": "Osobní plánovač úkolů a projektů s AI asistencí",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0b0f19",

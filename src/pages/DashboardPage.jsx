@@ -47,8 +47,9 @@ function TaskCard({ task, onOpen, onStatusChange, onStar, projectsById }) {
           <ProjectPill projectId={task.project} projectsById={projectsById} />
           <PrioChip priority={task.priority} />
           {task.due ? <span className={`due ${task.overdue ? "overdue" : ""}`}>{task.overdue ? "⚠ " : ""}{task.due}</span> : null}
-          {task.tags.map((tg) => <TagPill key={tg} name={tg} />)}
-          {task.hasSubtasks > 0 ? <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--text-3)" }}>≡ {task.hasSubtasks}</span> : null}
+          {(task.tagObjects || task.tags.map((n) => ({ id: n, name: n }))).map((tg) => <TagPill key={tg.id} name={tg.name} color={tg.color} />)}
+          {task.hasSubtasks > 0 ? <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: task.doneSubtasks === task.hasSubtasks ? "var(--green)" : "var(--text-3)" }}>≡ {task.doneSubtasks}/{task.hasSubtasks}</span> : null}
+          {task.recurrence ? <span title="Opakující se úkol" style={{ fontSize: 11, color: "var(--text-3)" }}>↺</span> : null}
         </div>
       </div>
       <div className="tcard-acts" onClick={(e) => e.stopPropagation()}>
@@ -349,18 +350,18 @@ function scoreTask(task) {
   return s;
 }
 
-const GROUP_LABELS = {
-  status: "Výchozí (Stav)",
-  project: "Projektu",
-  priority: "Priority",
-  dueDate: "Termínu",
-};
-
 const SORT_LABELS = {
   default: "Výchozí",
   dueDate: "Termínu",
   priority: "Priority",
   title: "Názvu",
+};
+
+const GROUP_LABELS = {
+  status: "Stav",
+  project: "Projekt",
+  priority: "Priorita",
+  dueDate: "Termín",
 };
 
 export default function DashboardPage() {
@@ -398,8 +399,7 @@ export default function DashboardPage() {
   const [showAiTasks, setShowAiTasks] = useState(!isMobile);
   const [activeModel, setActiveModel] = useState(() => {
     if (!userId || !activeWorkspaceId) return "Gemini 2.5 Pro";
-    const today = new Date().toISOString().slice(0, 10);
-    const key = `ai-plan:${userId}:${activeWorkspaceId}:${today}`;
+    const key = `ai-plan:${userId}:${activeWorkspaceId}:${formatDateKey(startOfToday())}`;
     try {
       const raw = localStorage.getItem(key);
       if (raw) {
@@ -424,9 +424,11 @@ export default function DashboardPage() {
     return () => window.removeEventListener("zentero:daily_plan_updated", handleUpdate);
   }, []);
 
-  const groupBy = "status";
+  const [groupBy, setGroupBy] = useState("status");
   const [sortBy, setSortBy] = useState("default"); // "default", "dueDate", "priority", "title"
   const [sortByOpen, setSortByOpen] = useState(false);
+  const [groupByOpen, setGroupByOpen] = useState(false);
+  const groupByRef = useRef(null);
 
   const sortRef = useRef(null);
 
@@ -439,6 +441,9 @@ export default function DashboardPage() {
     const handleClickOutside = (e) => {
       if (sortRef.current && !sortRef.current.contains(e.target)) {
         setSortByOpen(false);
+      }
+      if (groupByRef.current && !groupByRef.current.contains(e.target)) {
+        setGroupByOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -832,6 +837,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="chips">
+            {groupBy === "status" && (<>
             <span className={`chip ${filter === "all" ? "active" : ""}`} onClick={() => setFilter("all")}>
               <span className="chip-dot" style={{ background: "var(--text-2)" }} /> Vše <span className="chip-count">{activeTasks.length}</span>
             </span>
@@ -850,8 +856,10 @@ export default function DashboardPage() {
             <span className={`chip ${filter === "starred" ? "active" : ""}`} onClick={() => setFilter("starred")} style={{ cursor: "pointer" }}>
               <span className="chip-dot" style={{ background: "var(--accent)" }} /> Top úkoly <span className="chip-count">{starred.length}</span>
             </span>
+            </>)}
 
             {isMobile ? (
+              <>
               <span className={`chip ${sortBy !== "default" ? "active" : ""}`} style={{ position: "relative", padding: 0, overflow: "hidden" }}>
                 <select
                   value={sortBy}
@@ -873,54 +881,125 @@ export default function DashboardPage() {
                   ))}
                 </select>
                 <span style={{ padding: "6px 12px", display: "inline-flex", alignItems: "center", gap: 6, pointerEvents: "none" }}>
-                  Řadit podle: {SORT_LABELS[sortBy]} ▾
+                  Řadit: {SORT_LABELS[sortBy]} ▾
                 </span>
               </span>
-            ) : (
-              <span style={{ position: "relative" }} ref={sortRef}>
-                <span className={`chip ${sortBy !== "default" ? "active" : ""}`} onClick={() => setSortByOpen(!sortByOpen)}>
-                  Řadit podle: {SORT_LABELS[sortBy]} ▾
-                </span>
-                {sortByOpen && (
-                  <div className="pop" style={{
+              <span className={`chip ${groupBy !== "status" ? "active" : ""}`} style={{ position: "relative", padding: 0, overflow: "hidden" }}>
+                <select
+                  value={groupBy}
+                  onChange={(e) => { setGroupBy(e.target.value); if (e.target.value !== "status") setFilter("all"); }}
+                  style={{
                     position: "absolute",
-                    top: "calc(100% + 6px)",
-                    right: 0,
-                    background: "var(--bg-2)",
-                    border: "1px solid var(--border)",
-                    borderRadius: 12,
-                    boxShadow: "var(--shadow)",
-                    zIndex: 200,
-                    minWidth: 180,
-                    padding: "6px"
-                  }}>
-                    {Object.entries(SORT_LABELS).map(([k, label]) => (
-                      <button
-                        key={k}
-                        onClick={() => { setSortBy(k); setSortByOpen(false); }}
-                        style={{
-                          width: "100%",
-                          display: "flex",
-                          alignItems: "center",
-                          padding: "8px 12px",
-                          borderRadius: 8,
-                          border: "none",
-                          background: sortBy === k ? "var(--accent-soft)" : "transparent",
-                          color: sortBy === k ? "var(--accent)" : "var(--text-2)",
-                          fontSize: 13,
-                          fontWeight: sortBy === k ? 600 : 400,
-                          cursor: "pointer",
-                          textAlign: "left"
-                        }}
-                        onMouseEnter={(e) => { if (sortBy !== k) e.currentTarget.style.background = "var(--card-h)"; }}
-                        onMouseLeave={(e) => { if (sortBy !== k) e.currentTarget.style.background = "transparent"; }}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                    inset: 0,
+                    opacity: 0,
+                    width: "100%",
+                    height: "100%",
+                    cursor: "pointer",
+                    appearance: "none",
+                    WebkitAppearance: "none",
+                    zIndex: 10,
+                  }}
+                >
+                  {Object.entries(GROUP_LABELS).map(([k, label]) => (
+                    <option key={k} value={k}>{label}</option>
+                  ))}
+                </select>
+                <span style={{ padding: "6px 12px", display: "inline-flex", alignItems: "center", gap: 6, pointerEvents: "none" }}>
+                  Skupiny: {GROUP_LABELS[groupBy]} ▾
+                </span>
               </span>
+              </>
+            ) : (
+              <>
+                <span style={{ position: "relative" }} ref={sortRef}>
+                  <span className={`chip ${sortBy !== "default" ? "active" : ""}`} onClick={() => setSortByOpen(!sortByOpen)}>
+                    Řadit: {SORT_LABELS[sortBy]} ▾
+                  </span>
+                  {sortByOpen && (
+                    <div className="pop" style={{
+                      position: "absolute",
+                      top: "calc(100% + 6px)",
+                      right: 0,
+                      background: "var(--bg-2)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 12,
+                      boxShadow: "var(--shadow)",
+                      zIndex: 200,
+                      minWidth: 180,
+                      padding: "6px"
+                    }}>
+                      {Object.entries(SORT_LABELS).map(([k, label]) => (
+                        <button
+                          key={k}
+                          onClick={() => { setSortBy(k); setSortByOpen(false); }}
+                          style={{
+                            width: "100%",
+                            display: "flex",
+                            alignItems: "center",
+                            padding: "8px 12px",
+                            borderRadius: 8,
+                            border: "none",
+                            background: sortBy === k ? "var(--accent-soft)" : "transparent",
+                            color: sortBy === k ? "var(--accent)" : "var(--text-2)",
+                            fontSize: 13,
+                            fontWeight: sortBy === k ? 600 : 400,
+                            cursor: "pointer",
+                            textAlign: "left"
+                          }}
+                          onMouseEnter={(e) => { if (sortBy !== k) e.currentTarget.style.background = "var(--card-h)"; }}
+                          onMouseLeave={(e) => { if (sortBy !== k) e.currentTarget.style.background = "transparent"; }}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </span>
+                <span style={{ position: "relative" }} ref={groupByRef}>
+                  <span className={`chip ${groupBy !== "status" ? "active" : ""}`} onClick={() => setGroupByOpen(!groupByOpen)}>
+                    Skupiny: {GROUP_LABELS[groupBy]} ▾
+                  </span>
+                  {groupByOpen && (
+                    <div className="pop" style={{
+                      position: "absolute",
+                      top: "calc(100% + 6px)",
+                      right: 0,
+                      background: "var(--bg-2)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 12,
+                      boxShadow: "var(--shadow)",
+                      zIndex: 200,
+                      minWidth: 160,
+                      padding: "6px"
+                    }}>
+                      {Object.entries(GROUP_LABELS).map(([k, label]) => (
+                        <button
+                          key={k}
+                          onClick={() => { setGroupBy(k); setGroupByOpen(false); if (k !== "status") setFilter("all"); }}
+                          style={{
+                            width: "100%",
+                            display: "flex",
+                            alignItems: "center",
+                            padding: "8px 12px",
+                            borderRadius: 8,
+                            border: "none",
+                            background: groupBy === k ? "var(--accent-soft)" : "transparent",
+                            color: groupBy === k ? "var(--accent)" : "var(--text-2)",
+                            fontSize: 13,
+                            fontWeight: groupBy === k ? 600 : 400,
+                            cursor: "pointer",
+                            textAlign: "left"
+                          }}
+                          onMouseEnter={(e) => { if (groupBy !== k) e.currentTarget.style.background = "var(--card-h)"; }}
+                          onMouseLeave={(e) => { if (groupBy !== k) e.currentTarget.style.background = "transparent"; }}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </span>
+              </>
             )}
           </div>
 

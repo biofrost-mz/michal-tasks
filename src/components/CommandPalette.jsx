@@ -34,11 +34,13 @@ export default function CommandPalette({ onClose }) {
   };
 
   const quickActions = [
-    { id: "new-task",      icon: "check-square", label: "Nový úkol",           group: "Akce",     action: () => { onClose(); window.dispatchEvent(new CustomEvent("focusQuickAdd")); } },
-    { id: "new-note",      icon: "file-text",    label: "Nová poznámka",        group: "Akce",     action: () => { const n = addNote({}); openNote(n.id); onClose(); } },
+    { id: "new-task",        icon: "check-square", label: "Nový úkol",           group: "Akce",     action: () => { onClose(); window.dispatchEvent(new CustomEvent("focusQuickAdd")); } },
+    { id: "new-note",        icon: "file-text",    label: "Nová poznámka",        group: "Akce",     action: () => { const n = addNote({}); openNote(n.id); onClose(); } },
+    { id: "weekly-cleanup",  icon: "trash-2",      label: "Týdenní čistka",       group: "Akce",     action: () => { onClose(); window.dispatchEvent(new CustomEvent("openWeeklyCleanup")); } },
     { id: "go-dashboard",   icon: "home",         label: "Přejít na Přehled",      group: "Navigace", action: () => { setPage("dashboard"); onClose(); } },
     { id: "go-tasks",       icon: "check-square", label: "Přejít na Úkoly",        group: "Navigace", action: () => { setPage("tasks"); onClose(); } },
     { id: "go-quick-todos", icon: "zap",          label: "Přejít na Rychlý seznam",group: "Navigace", action: () => { setPage("quick-todos"); onClose(); } },
+    { id: "go-projects",    icon: "folder",       label: "Přejít na Projekty",     group: "Navigace", action: () => { setPage("projects"); onClose(); } },
     { id: "go-timeline",    icon: "calendar",     label: "Přejít na Plán",         group: "Navigace", action: () => { setPage("timeline"); onClose(); } },
     { id: "go-notes",       icon: "file-text",    label: "Přejít na Poznámky",     group: "Navigace", action: () => { setPage("notes"); onClose(); } },
   ];

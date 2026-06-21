@@ -157,7 +157,7 @@ export default function GettingStartedCard() {
               border: `2px solid ${item.done ? "var(--accent)" : "var(--border)"}`,
               fontSize: 10,
               fontWeight: 900,
-              color: "#000",
+              color: "#fff",
             }}
           >
             {item.done ? "✓" : ""}

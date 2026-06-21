@@ -132,7 +132,7 @@ export default function OnboardingWizard() {
     const active = workspaces.find((w) => w.id === activeWorkspaceId);
     if (wsName.trim() && wsName.trim() !== (active?.name ?? "")) {
       try { await renameWorkspace(wsName.trim()); }
-      catch { toast.error("Workspace se nepodařilo přejmenovat."); }
+      catch { toast("Workspace se nepodařilo přejmenovat.", "error"); }
     }
     setStep(2);
   }
@@ -144,13 +144,13 @@ export default function OnboardingWizard() {
         { user_id: userId, ...prefs, updated_at: new Date().toISOString() },
         { onConflict: "user_id" }
       );
-      if (error) throw error;
+      if (error) toast("Notifikace se nepodařilo uložit.", "error");
     } catch {
-      toast.error("Notifikace se nepodařilo uložit.");
+      toast("Notifikace se nepodařilo uložit.", "error");
     } finally {
       setSaving(false);
+      setStep(3);
     }
-    setStep(3);
   }
 
   const cardStyle = {

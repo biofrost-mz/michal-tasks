@@ -40,6 +40,13 @@ const TASK_COLS = [
 function taskDue(task) {
   const d = parseYMD(task.dueDate);
   if (!d) return null;
+  const today = startOfToday();
+  const diffDays = Math.round((d - today) / 86400000);
+  if (diffDays === 0) return "Dnes";
+  if (diffDays === 1) return "Zítra";
+  if (diffDays === -1) return "Včera";
+  if (diffDays > 1 && diffDays <= 7) return `za ${diffDays} d`;
+  if (diffDays < -1 && diffDays >= -7) return `před ${-diffDays} d`;
   return `${d.getDate()}.${d.getMonth() + 1}.`;
 }
 
@@ -70,7 +77,13 @@ function DroppableCol({ colId, color, isOver, children }) {
   );
 }
 
-function SortableKCard({ t }) {
+const KCARD_PRIO = {
+  high:   { color: "var(--prio-high)", label: "↑ Vysoká" },
+  medium: { color: "var(--prio-med)",  label: "→ Střední" },
+  low:    { color: "var(--prio-low)",  label: "↓ Nízká" },
+};
+
+function SortableKCard({ t, tagsById }) {
   const { setTaskDetail, updateTask } = useApp();
   const {
     attributes,
@@ -89,6 +102,9 @@ function SortableKCard({ t }) {
     touchAction: "none",
   };
 
+  const prio = t.priority ? KCARD_PRIO[t.priority] : null;
+  const taskTags = (t.tagIds || []).map((id) => tagsById[id]).filter(Boolean);
+
   return (
     <div
       ref={setNodeRef}
@@ -100,8 +116,14 @@ function SortableKCard({ t }) {
     >
       <div className="kcard-t">{t.title || "Bez názvu"}</div>
       <div className="kcard-m">
-        {t.priority === "high" ? <span className="prio" style={{ "--prio-color": "var(--prio-high)" }}>↑ Vysoká</span> : null}
+        {prio && <span className="prio" style={{ "--prio-color": prio.color }}>{prio.label}</span>}
         {t.dueDate ? <span className={`due ${taskOverdue(t) ? "overdue" : ""}`}>{taskDue(t)}</span> : null}
+        {taskTags.map((tg) => (
+          <span key={tg.id} className="tag" style={tg.color ? { "--tag-color": tg.color, borderColor: `${tg.color}55`, color: tg.color } : undefined}>
+            {tg.color && <span style={{ display: "inline-block", width: 5, height: 5, borderRadius: "50%", background: tg.color, marginRight: 3, flexShrink: 0 }} />}
+            {tg.name}
+          </span>
+        ))}
       </div>
       {Array.isArray(t.subtasks) && t.subtasks.length > 0 ? <div className="kcard-sub">≡ {t.subtasks.length} podúkoly</div> : null}
       <div className="kcard-quick" onClick={(e) => e.stopPropagation()}>
@@ -117,6 +139,7 @@ export function ProjectDetailPage() {
   const {
     projects,
     tasks,
+    tags,
     notes,
     loaded,
     selProject,
@@ -157,6 +180,8 @@ export function ProjectDetailPage() {
     () => project ? tasks.filter((t) => t.projectId === project.id) : [],
     [tasks, project]
   );
+
+  const tagsById = useMemo(() => Object.fromEntries((tags || []).map((tg) => [tg.id, tg])), [tags]);
 
   const columnTasksMap = useMemo(() => {
     const map = {};
@@ -401,7 +426,7 @@ export function ProjectDetailPage() {
                 </div>
 
                 <SortableContext items={list.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-                  {list.map((t) => <SortableKCard key={t.id} t={t} />)}
+                  {list.map((t) => <SortableKCard key={t.id} t={t} tagsById={tagsById} />)}
                 </SortableContext>
 
                 {col.id === "done" && listAll.length > 5 ? (
@@ -481,8 +506,15 @@ export function ProjectDetailPage() {
             >
               <div className="kcard-t">{activeTask.title || "Bez názvu"}</div>
               <div className="kcard-m">
-                {activeTask.priority === "high" ? <span className="prio" style={{ "--prio-color": "var(--prio-high)" }}>↑ Vysoká</span> : null}
+                {activeTask.priority && KCARD_PRIO[activeTask.priority] && (
+                  <span className="prio" style={{ "--prio-color": KCARD_PRIO[activeTask.priority].color }}>{KCARD_PRIO[activeTask.priority].label}</span>
+                )}
                 {activeTask.dueDate ? <span className={`due ${taskOverdue(activeTask) ? "overdue" : ""}`}>{taskDue(activeTask)}</span> : null}
+                {(activeTask.tagIds || []).map((id) => tagsById[id]).filter(Boolean).map((tg) => (
+                  <span key={tg.id} className="tag" style={tg.color ? { "--tag-color": tg.color, borderColor: `${tg.color}55`, color: tg.color } : undefined}>
+                    {tg.name}
+                  </span>
+                ))}
               </div>
             </div>
           ) : null}
@@ -523,16 +555,17 @@ export default function ProjectsPage() {
   const newInputRef = useRef(null);
 
   const [pGroupBy, setPGroupBy] = useState("none"); // "none", "status"
-  const [pSortBy] = useState("newest"); // "newest", "progress", "alphabetical", "tasksCount"
+  const [pSortBy, setPSortBy] = useState("newest"); // "newest", "progress", "alphabetical", "tasksCount"
   const [pGroupOpen, setPGroupByOpen] = useState(false);
+  const [pSortOpen, setPSortOpen] = useState(false);
 
   const pGroupRef = useRef(null);
+  const pSortRef = useRef(null);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (pGroupRef.current && !pGroupRef.current.contains(e.target)) {
-        setPGroupByOpen(false);
-      }
+      if (pGroupRef.current && !pGroupRef.current.contains(e.target)) setPGroupByOpen(false);
+      if (pSortRef.current && !pSortRef.current.contains(e.target)) setPSortOpen(false);
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -777,6 +810,50 @@ export default function ProjectsPage() {
                       }}
                       onMouseEnter={(e) => { if (pGroupBy !== k) e.currentTarget.style.background = "var(--card-h)"; }}
                       onMouseLeave={(e) => { if (pGroupBy !== k) e.currentTarget.style.background = "transparent"; }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </span>
+            <span style={{ position: "relative" }} ref={pSortRef}>
+              <span className={`chip ${pSortBy !== "newest" ? "active" : ""}`} onClick={() => setPSortOpen(!pSortOpen)}>
+                Řadit: {PROJ_SORT_LABELS[pSortBy]} ▾
+              </span>
+              {pSortOpen && (
+                <div className="pop" style={{
+                  position: "absolute",
+                  top: "calc(100% + 6px)",
+                  left: 0,
+                  background: "var(--bg-2)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 12,
+                  boxShadow: "var(--shadow)",
+                  zIndex: 200,
+                  minWidth: 180,
+                  padding: "6px"
+                }}>
+                  {Object.entries(PROJ_SORT_LABELS).map(([k, label]) => (
+                    <button
+                      key={k}
+                      onClick={() => { setPSortBy(k); setPSortOpen(false); }}
+                      style={{
+                        width: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        padding: "8px 12px",
+                        borderRadius: 8,
+                        border: "none",
+                        background: pSortBy === k ? "var(--accent-soft)" : "transparent",
+                        color: pSortBy === k ? "var(--accent)" : "var(--text-2)",
+                        fontSize: 13,
+                        fontWeight: pSortBy === k ? 600 : 400,
+                        cursor: "pointer",
+                        textAlign: "left"
+                      }}
+                      onMouseEnter={(e) => { if (pSortBy !== k) e.currentTarget.style.background = "var(--card-h)"; }}
+                      onMouseLeave={(e) => { if (pSortBy !== k) e.currentTarget.style.background = "transparent"; }}
                     >
                       {label}
                     </button>

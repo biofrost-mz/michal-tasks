@@ -4,7 +4,7 @@ import { useConfirm } from '../components/Confirm.jsx'
 import { useToast } from '../components/Toast.jsx'
 import Icon from '../components/Icon.jsx'
 import MZLogo from '../components/MZLogo.jsx'
-import { projectColor } from '../utils.js'
+import { projectColor, startOfToday } from '../utils.js'
 import { APP_VERSION } from '../appMeta.js'
 import { formatDateKey } from '../locale.js'
 import {
@@ -199,10 +199,11 @@ function UserBar({ setPage }) {
 
   const me = workspaceMembers.find((m) => m.userId === userId);
   const displayName = me?.displayName || me?.email || userEmail || "Uživatel";
-  const initials = displayName.slice(0, 2).toUpperCase();
+  const _parts = displayName.trim().split(/\s+/)
+  const initials = _parts.length >= 2 ? (_parts[0][0] + _parts[1][0]).toUpperCase() : displayName.slice(0, 2).toUpperCase();
 
   const handleLogout = async () => {
-    if (!await confirm("Odhlásit se?")) return;
+    if (!await confirm("Odhlásit se?", { confirmLabel: "Odhlásit", confirmColor: "#3b82f6" })) return;
     await logout();
     toast("Odhlášeno", "success");
   };
@@ -425,6 +426,8 @@ function MiniCalendar({ tasks, setPage }) {
 export default function Sidebar({ toggleDk }) {
   const { dk, projects, tasks, quickTodos, page, setPage, openProject, search, setSearch, setTaskDetail, setCmdOpen, reorderProjects } = useApp();
   const active = projects.filter((p) => p.status === "active");
+  const todayKey = formatDateKey(startOfToday());
+  const overdueCount = tasks.filter((t) => t.status !== "done" && t.dueDate && t.dueDate < todayKey).length;
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const searchRef = useRef(null);
 
@@ -457,7 +460,7 @@ export default function Sidebar({ toggleDk }) {
     { id: "dashboard",   label: "Přehled",       icon: "home"         },
     { id: "quick-todos", label: "Rychlý seznam",  icon: "zap",          count: quickTodos.filter((q) => !q.done).length || null },
     { id: "projects",    label: "Projekty",       icon: "folder"       },
-    { id: "tasks",       label: "Úkoly",          icon: "check-square", count: tasks.filter((t) => t.status !== "done").length },
+    { id: "tasks",       label: "Úkoly",          icon: "check-square", count: tasks.filter((t) => t.status !== "done").length, overdueCount },
     { id: "timeline",    label: "Plán",           icon: "calendar"     },
     { id: "tags",        label: "Tagy",           icon: "tag"          },
     { id: "notes",       label: "Poznámky",       icon: "file-text",   count: null },
@@ -564,13 +567,13 @@ export default function Sidebar({ toggleDk }) {
                   style={{
                     marginLeft: "auto",
                     fontSize: 12,
-                    color: "var(--text-3)",
-                    background: "var(--input)",
+                    color: n.overdueCount > 0 ? "#fff" : "var(--text-3)",
+                    background: n.overdueCount > 0 ? "#ef4444" : "var(--input)",
                     padding: "1px 6px",
                     borderRadius: 8,
                   }}
                 >
-                  {n.count}
+                  {n.overdueCount > 0 ? n.overdueCount : n.count}
                 </span>
               )}
             </button>

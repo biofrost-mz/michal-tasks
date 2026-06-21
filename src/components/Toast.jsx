@@ -26,12 +26,17 @@ function ToastList({ toasts }) {
           transform: translateX(-50%);
           z-index: 99999;
           display: flex;
-          flex-direction: column;
+          flex-direction: column-reverse;
           align-items: center;
           gap: 10px;
           pointer-events: none;
           width: max-content;
           max-width: 90vw;
+        }
+        @media (max-width: 767px) {
+          .toast-container {
+            bottom: calc(var(--bottom-nav-height, 64px) + 16px);
+          }
         }
         .toast-item {
           padding: 12px 22px;

@@ -14,18 +14,26 @@ const PRIORITY_META = {
   high: { label: "Vysoká", glyph: "↑", color: "var(--prio-high)" },
 };
 
-export function formatShortDue(dueDate) {
+export function formatShortDue(dueDate, today) {
   if (!dueDate) return null;
   const d = parseYMD(dueDate);
   if (!d) return null;
+  if (today) {
+    const diffDays = Math.round((d - today) / 86400000);
+    if (diffDays === 0) return "Dnes";
+    if (diffDays === 1) return "Zítra";
+    if (diffDays === -1) return "Včera";
+    if (diffDays > 1 && diffDays <= 7) return `za ${diffDays} d`;
+    if (diffDays < -1 && diffDays >= -7) return `před ${-diffDays} d`;
+  }
   return `${d.getDate()}.${d.getMonth() + 1}.`;
 }
 
 export function mapTaskForAtlas(task, projectsById, tagsById, today) {
   const due = parseYMD(task.dueDate);
   const overdue = !!due && task.status !== "done" && due < today;
-  const tagNames = (task.tagIds || [])
-    .map((id) => tagsById.get(id)?.name)
+  const tagObjects = (task.tagIds || [])
+    .map((id) => tagsById.get(id))
     .filter(Boolean);
 
   return {
@@ -37,15 +45,18 @@ export function mapTaskForAtlas(task, projectsById, tagsById, today) {
     priority: task.priority ?? null,
     createdAt: task.createdAt ?? null,
     updatedAt: task.updatedAt ?? task.createdAt ?? null,
-    due: formatShortDue(task.dueDate),
+    due: formatShortDue(task.dueDate, today),
     dueDate: task.dueDate ?? null,
     overdue,
-    tags: tagNames,
+    tags: tagObjects.map((tg) => tg.name),
+    tagObjects,
     tagIds: task.tagIds || [],
     starred: !!task.starred,
     hasSubtasks: Array.isArray(task.subtasks) ? task.subtasks.length : 0,
+    doneSubtasks: Array.isArray(task.subtasks) ? task.subtasks.filter((s) => s.done).length : 0,
     project: task.projectId,
     projectName: task.projectId ? projectsById.get(task.projectId)?.name : null,
+    recurrence: task.recurrence ?? null,
   };
 }
 
@@ -61,8 +72,13 @@ export function ProjectPill({ projectId, projectsById }) {
   );
 }
 
-export function TagPill({ name }) {
-  return <span className="tag">{name}</span>;
+export function TagPill({ name, color }) {
+  return (
+    <span className="tag" style={color ? { "--tag-color": color, borderColor: `${color}55`, color } : undefined}>
+      {color && <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: color, marginRight: 4, flexShrink: 0 }} />}
+      {name}
+    </span>
+  );
 }
 
 export function PrioChip({ priority }) {
@@ -223,7 +239,8 @@ export default function AtlasTaskCard({ task, onOpen, onStatusChange, onStar, pr
           <PrioChip priority={task.priority} />
           {task.due ? <span className={`due ${task.overdue ? "overdue" : ""}`}>{task.overdue ? "⚠ " : ""}{task.due}</span> : null}
           {task.tags.map((tg) => <TagPill key={tg} name={tg} />)}
-          {task.hasSubtasks > 0 ? <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--text-3)" }}>≡ {task.hasSubtasks}</span> : null}
+          {task.hasSubtasks > 0 ? <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: task.doneSubtasks === task.hasSubtasks ? "var(--green)" : "var(--text-3)" }}>≡ {task.doneSubtasks}/{task.hasSubtasks}</span> : null}
+          {task.recurrence ? <span title="Opakující se úkol" style={{ fontSize: 11, color: "var(--text-3)" }}>↺</span> : null}
         </div>
       </div>
       <div className="tcard-acts" onClick={(e) => e.stopPropagation()}>

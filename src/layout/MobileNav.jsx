@@ -22,7 +22,7 @@ export default function MobileNav({ toggleDk }) {
   const primary = [
     { id: "dashboard",   label: "Přehled",  icon: "home"         },
     { id: "quick-todos", label: "Seznam",   icon: "zap",          count: quickTodos.filter((q) => !q.done).length || null },
-    { id: "tasks",       label: "Úkoly",    icon: "check-square", count: tasks.filter((x) => x.status !== "done").length },
+    { id: "tasks",       label: "Úkoly",    icon: "check-square", count: tasks.filter((x) => x.status !== "done").length, urgent: overdue.length > 0 },
     { id: "projects",    label: "Projekty", icon: "folder"       },
   ];
 
@@ -36,7 +36,8 @@ export default function MobileNav({ toggleDk }) {
 
   const me = workspaceMembers.find((m) => m.userId === userId);
   const displayName = me?.displayName || me?.email || userEmail || "Uživatel";
-  const initials = displayName.slice(0, 2).toUpperCase();
+  const parts = displayName.trim().split(/\s+/)
+  const initials = parts.length >= 2 ? (parts[0][0] + parts[1][0]).toUpperCase() : displayName.slice(0, 2).toUpperCase();
 
   const handleNav = (id) => {
     const isCurrentlyActive = id === "projects" ? (page === "projects" || page === "project-detail") : page === id;
@@ -51,7 +52,7 @@ export default function MobileNav({ toggleDk }) {
   };
 
   const handleLogout = async () => {
-    if (!await confirm("Odhlásit se?")) return;
+    if (!await confirm("Odhlásit se?", { confirmLabel: "Odhlásit", confirmColor: "#3b82f6" })) return;
     await logout();
   };
 
@@ -170,7 +171,7 @@ export default function MobileNav({ toggleDk }) {
                         <span style={{ flex: 1, fontSize: 13, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {task.title || "Bez názvu"}
                         </span>
-                        {proj && <span style={{ fontSize: 12, color: "var(--text-3)", flexShrink: 0 }}>{proj.name}</span>}
+                        {proj && <span style={{ fontSize: 12, color: "var(--text-3)", flexShrink: 1, maxWidth: "40%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{proj.name}</span>}
                       </button>
                     );
                   })}
@@ -231,7 +232,7 @@ export default function MobileNav({ toggleDk }) {
           display: "flex", alignItems: "stretch",
           height: "var(--bottom-nav-height)",
           minHeight: "var(--bottom-nav-height)",
-          paddingBottom: "var(--bottom-nav-safe-padding)", marginBottom: 0,
+          paddingBottom: "env(safe-area-inset-bottom, 0px)",
           boxSizing: "border-box",
           boxShadow: "0 -4px 20px #0002",
         }}
@@ -253,10 +254,10 @@ export default function MobileNav({ toggleDk }) {
               {n.count > 0 && (
                 <span style={{
                   position: "absolute", top: 2, right: "50%", transform: "translateX(10px)",
-                  minWidth: 16, height: 16, borderRadius: 8, background: "var(--accent)",
+                  minWidth: 16, height: 16, borderRadius: 8, background: n.urgent ? "#ef4444" : "var(--accent)",
                   color: "#fff", fontSize: 9, fontWeight: 700, display: "flex",
                   alignItems: "center", justifyContent: "center", padding: "0 3px",
-                }}>{n.count > 99 ? "99+" : n.count}</span>
+                }}>{n.urgent ? overdue.length : (n.count > 99 ? "99+" : n.count)}</span>
               )}
               <Icon name={n.icon} size={22} color={act ? "var(--accent)" : "var(--text-3)"} strokeWidth={act ? 2.25 : 1.75} />
               <span style={{ fontSize: 10, fontWeight: act ? 600 : 400, letterSpacing: "0.01em" }}>{n.label}</span>

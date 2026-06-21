@@ -4,11 +4,16 @@ export const ConfirmCtx = createContext(null);
 export const useConfirm = () => useContext(ConfirmCtx);
 
 export function ConfirmProvider({ children }) {
-  const [state, setState] = useState(null); // { msg, resolve }
-  const confirm = useCallback((msg) => new Promise((resolve) => {
+  const [state, setState] = useState(null); // { msg, confirmLabel, confirmColor, resolve }
+  const confirm = useCallback((msg, opts = {}) => new Promise((resolve) => {
     setState((current) => {
       if (current) { resolve(false); return current; } // dialog already open — reject duplicate
-      return { msg, resolve };
+      return {
+        msg,
+        confirmLabel: opts.confirmLabel ?? "Smazat",
+        confirmColor: opts.confirmColor ?? "#ef4444",
+        resolve,
+      };
     });
   }), []);
   const handle = (ok) => { state?.resolve(ok); setState(null); };
@@ -23,8 +28,8 @@ export function ConfirmProvider({ children }) {
               <button onClick={() => handle(false)} style={{ padding: "8px 18px", borderRadius: 8, border: "1px solid var(--border)", background: "transparent", color: "var(--text-2)", fontSize: 13, fontWeight: 500 }}>
                 Zrušit
               </button>
-              <button onClick={() => handle(true)} style={{ padding: "8px 18px", borderRadius: 8, border: "none", background: "#ef4444", color: "#fff", fontSize: 13, fontWeight: 600 }}>
-                Smazat
+              <button onClick={() => handle(true)} style={{ padding: "8px 18px", borderRadius: 8, border: "none", background: state.confirmColor, color: "#fff", fontSize: 13, fontWeight: 600 }}>
+                {state.confirmLabel}
               </button>
             </div>
           </div>

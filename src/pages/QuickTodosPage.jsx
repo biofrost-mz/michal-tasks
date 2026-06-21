@@ -490,6 +490,7 @@ export default function QuickTodosPage() {
   const [hintOffset, setHintOffset] = useState(0);
   const [sortBy, setSortBy] = useState("created");
   const [filterPrio, setFilterPrio] = useState(null);
+  const [search, setSearch] = useState("");
   const inputRef = useRef(null);
 
   const prevTodosLenRef = useRef(quickTodos.length);
@@ -511,6 +512,10 @@ export default function QuickTodosPage() {
 
   const active = React.useMemo(() => {
     let list = filterPrio ? rawActive.filter((q) => q.priority === filterPrio) : rawActive;
+    if (search.trim()) {
+      const s = search.trim().toLowerCase();
+      list = list.filter((q) => (q.text || "").toLowerCase().includes(s) || (q.description || "").toLowerCase().includes(s));
+    }
     if (sortBy === "priority") {
       list = [...list].sort((a, b) => (PRIORITY_ORDER[a.priority] ?? 3) - (PRIORITY_ORDER[b.priority] ?? 3));
     } else if (sortBy === "due") {
@@ -522,7 +527,7 @@ export default function QuickTodosPage() {
       });
     }
     return list;
-  }, [rawActive, sortBy, filterPrio]);
+  }, [rawActive, sortBy, filterPrio, search]);
 
   useEffect(() => { if (!isMobile) inputRef.current?.focus(); }, [isMobile]);
 
@@ -661,7 +666,21 @@ export default function QuickTodosPage() {
 
       {/* Sort + filter controls — only shown when there's something to sort/filter */}
       {rawActive.length > 1 && (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
+        <div style={{ position: "relative" }}>
+          <Icon name="search" size={14} color="var(--text-3)" strokeWidth={2} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Hledat…"
+            style={{ width: "100%", paddingLeft: 32, paddingRight: search ? 28 : 10, paddingTop: 7, paddingBottom: 7, borderRadius: 8, border: "1px solid var(--border)", background: "var(--input)", color: "var(--text)", fontSize: 13, outline: "none", boxSizing: "border-box" }}
+          />
+          {search && (
+            <button onClick={() => setSearch("")} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--text-3)", cursor: "pointer", padding: 0, fontSize: 14, lineHeight: 1 }}>✕</button>
+          )}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           <span style={{ fontSize: 12, color: "var(--text-3)", fontWeight: 600, textTransform: "uppercase", letterSpacing: ".06em", marginRight: 2 }}>Řadit:</span>
           {[
             { k: "created", label: "Nové" },
@@ -686,6 +705,7 @@ export default function QuickTodosPage() {
             </>
           )}
         </div>
+        </div>
       )}
 
       {/* Active todos — Atlas .tcard cards */}
@@ -706,7 +726,7 @@ export default function QuickTodosPage() {
       {rawActive.length > 0 && active.length === 0 && (
         <div style={{ textAlign: "center", padding: "24px 20px", color: "var(--text-3)", fontSize: 13 }}>
           Žádné položky neodpovídají filtru.
-          <button onClick={() => setFilterPrio(null)} style={{ marginLeft: 8, background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: 13 }}>Zrušit filtr</button>
+          <button onClick={() => { setFilterPrio(null); setSearch(""); }} style={{ marginLeft: 8, background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: 13 }}>Zrušit filtry</button>
         </div>
       )}
 

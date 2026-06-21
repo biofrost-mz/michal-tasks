@@ -526,7 +526,7 @@ function UserRow({ member }) {
   return (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 14, padding: "12px 14px", border: "1px solid var(--border-soft)", borderRadius: 12, background: "var(--bg-2)" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
-        <div style={{ width: 34, height: 34, borderRadius: "50%", background: `${color}1a`, color, border: `1px solid ${color}44`, display: "grid", placeItems: "center", fontFamily: "var(--mono)", fontWeight: 900, fontSize: 12 }}>{(member.displayName || member.email || "U").slice(0, 2).toUpperCase()}</div>
+        <div style={{ width: 34, height: 34, borderRadius: "50%", background: `${color}1a`, color, border: `1px solid ${color}44`, display: "grid", placeItems: "center", fontFamily: "var(--mono)", fontWeight: 900, fontSize: 12 }}>{(() => { const s = member.displayName || member.email || "U"; const p = s.trim().split(/\s+/); return p.length >= 2 ? (p[0][0] + p[1][0]).toUpperCase() : s.slice(0, 2).toUpperCase(); })()}</div>
         <div style={{ minWidth: 0 }}><div style={{ color: "var(--text)", fontWeight: 800, fontSize: 13.5 }}>{member.displayName || "Bez jména"}</div><div style={{ color: "var(--text-3)", fontFamily: "var(--mono)", fontSize: 12, overflow: "hidden", textOverflow: "ellipsis" }}>{member.email || member.userId}</div></div>
       </div>
       <span style={{ color, background: `${color}12`, border: `1px solid ${color}33`, borderRadius: 999, padding: "4px 8px", fontSize: 10.5, fontFamily: "var(--mono)", fontWeight: 900, textTransform: "uppercase" }}>{member.role || "member"}</span>

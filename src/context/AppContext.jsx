@@ -269,10 +269,17 @@ export function AppProvider({ children }) {
   const [uiSettings, setUiSettings] = useState(DEFAULT_UI_SETTINGS);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [dk, setDkRaw] = useState(true);
-  const [page, setPage] = useState(() => {
+  const [page, setPageRaw] = useState(() => {
     const parsed = parseHash();
     return parsed.page || "dashboard";
   });
+  const pageRef = useRef(page);
+  pageRef.current = page;
+  const prevPageRef = useRef("dashboard");
+  const setPage = useCallback((newPage) => {
+    prevPageRef.current = pageRef.current;
+    setPageRaw(newPage);
+  }, []);
   const [timelineOffsetDays, setTimelineOffsetDays] = useState(0);
   const isMobile = useIsMobile();
   const [selProject, setSelProject] = useState(() => {
@@ -738,6 +745,24 @@ export function AppProvider({ children }) {
     })();
   }, [reportError]);
 
+  // ── Undo stack ────────────────────────────────
+  const undoStackRef = useRef([]);
+  const [undoAvailable, setUndoAvailable] = useState(false);
+
+  const pushUndo = useCallback((label, fn) => {
+    undoStackRef.current = [{ label, fn }, ...undoStackRef.current].slice(0, 20);
+    setUndoAvailable(true);
+  }, []);
+
+  const popUndo = useCallback(() => {
+    const [top, ...rest] = undoStackRef.current;
+    if (!top) return;
+    undoStackRef.current = rest;
+    setUndoAvailable(rest.length > 0);
+    top.fn();
+    toast(`↩ Vráceno: ${top.label}`, "success");
+  }, [toast]);
+
   // CRUD — Tasks
   const addTask = useCallback((task) => {
     const tsk = {
@@ -777,8 +802,16 @@ export function AppProvider({ children }) {
       onError: reportError,
       errorMessage: "Úkol se nepodařilo uložit",
     });
+    if (tsk.title) {
+      pushUndo(`"${tsk.title.slice(0, 40)}"`, () => runOptimisticMutation({
+        apply: () => setTasks((p) => p.filter((t) => t.id !== tsk.id)),
+        persist: () => taskService.updateTaskDB(tsk.id, { status: "deleted", updated_at: new Date().toISOString() }),
+        rollback: () => setTasks((p) => [...p, tsk]),
+        onError: reportError,
+      }));
+    }
     return tsk;
-  }, [userId, activeWorkspaceId, reportError, toast]);
+  }, [userId, activeWorkspaceId, reportError, toast, pushUndo]);
 
   const updateTask = useCallback(
     (id, u, options = {}) => {
@@ -857,7 +890,7 @@ export function AppProvider({ children }) {
           if (!res.ok) return;
         }
 
-        const VALID_RECURRENCE = ["daily", "weekly", "monthly"];
+        const VALID_RECURRENCE = ["daily", "weekly", "biweekly", "monthly"];
         if (u.status === "done" && prevTask?.status !== "done" && VALID_RECURRENCE.includes(nextTask.recurrence)) {
           const rec = nextTask.recurrence;
           let nextDue = null;
@@ -875,6 +908,9 @@ export function AppProvider({ children }) {
             nextDue = d.toISOString().split("T")[0];
           } else if (rec === "weekly") {
             const d = new Date(baseDate); d.setDate(d.getDate() + 7);
+            nextDue = d.toISOString().split("T")[0];
+          } else if (rec === "biweekly") {
+            const d = new Date(baseDate); d.setDate(d.getDate() + 14);
             nextDue = d.toISOString().split("T")[0];
           } else if (rec === "monthly") {
             const d = new Date(baseDate); d.setMonth(d.getMonth() + 1);
@@ -936,8 +972,6 @@ export function AppProvider({ children }) {
       const updated = { ...target, status: "deleted", updatedAt: Date.now() };
 
       if (taskDetail === id) setTaskDetail(null);
-      toast("Úkol byl přesunut do koše", "success");
-
       runOptimisticMutation({
         apply: () => {
           setTasks((p) => p.filter((x) => x.id !== id));
@@ -952,8 +986,20 @@ export function AppProvider({ children }) {
         onError: reportError,
         errorMessage: "Úkol se nepodařilo přesunout do koše",
       });
+
+      const snapshot = { ...target };
+      pushUndo(`"${snapshot.title?.slice(0, 40) || "Bez názvu"}"`, () => runOptimisticMutation({
+        apply: () => {
+          setDeletedTasks((prev) => prev.filter((x) => x.id !== snapshot.id));
+          setTasks((prev) => [...prev, { ...snapshot, status: "todo", updatedAt: Date.now() }]);
+        },
+        persist: () => taskService.updateTaskDB(snapshot.id, { status: "todo", updated_at: new Date().toISOString() }),
+        rollback: () => setTasks((prev) => prev.filter((t) => t.id !== snapshot.id)),
+        onError: reportError,
+      }));
+      toast("Úkol přesunut do koše · Cmd+Z pro vrácení", "success");
     },
-    [taskDetail, reportError, toast]
+    [taskDetail, reportError, toast, pushUndo]
   );
 
   // CRUD — Tags (vyštěpeno do useTagMutations)
@@ -1407,6 +1453,9 @@ export function AppProvider({ children }) {
     t,
     dk,
     setDk,
+    pushUndo,
+    popUndo,
+    undoAvailable,
     uiSettings,
     updateUiSettings,
     accentThemes: ACCENT_THEMES,
@@ -1436,6 +1485,7 @@ export function AppProvider({ children }) {
     updateTag,
     deleteTag,
     page,
+    prevPage: prevPageRef.current,
     setPage,
     timelineOffsetDays,
     setTimelineOffsetDays,
@@ -1504,9 +1554,10 @@ export function AppProvider({ children }) {
   }), [t, dk, uiSettings, loaded, loadError, projects, deletedProjects, tasks, deletedTasks, tags,
     notes, deletedNotes, quickTodos, attachments, workspaces, activeWorkspaceId, workspaceMembers,
     page, selProject, taskDetail, search, dashFilter, tasksPageFilter, openNoteId, cmdOpen,
-    isMobile, errorQueue, userId, userEmail, isSystemAdmin,
-    setDk, updateUiSettings, setLoadError, setLoaded, updateProfileDisplayName,
+    isMobile, errorQueue, userId, userEmail, isSystemAdmin, undoAvailable,
+    setDk, updateUiSettings, setLoadError, setLoaded, updateProfileDisplayName, pushUndo, popUndo,
     addProject, updateProject, deleteProject, restoreProject, hardDeleteProject, reorderProjects,
+    pushUndo, popUndo, undoAvailable,
     reorderTasks, addTask, updateTask, deleteTask, restoreTask, hardDeleteTask,
     addTag, updateTag, deleteTag, setPage, setTimelineOffsetDays, timelineOffsetDays,
     setSelProject, openProject, setTaskDetail, setSearch, setDashFilter, setTasksPageFilter,

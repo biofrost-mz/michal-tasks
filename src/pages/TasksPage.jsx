@@ -5,6 +5,7 @@ import {
   mapTaskForAtlas,
   ProjectPill,
   PrioChip,
+  TagPill,
   CLASS_TO_STATUS,
 } from "../components/atlas/AtlasTaskCard.jsx";
 import { STATUSES } from "../constants.js";
@@ -46,6 +47,8 @@ const PRIORITY_FILTER_OPTIONS = [
 const SORT_OPTIONS = [
   ["default", "Výchozí pořadí"],
   ["newest", "Nejnovější úpravy"],
+  ["due-asc", "Termín ↑"],
+  ["priority", "Priorita ↓"],
 ];
 
 function lastChangedStamp(item) {
@@ -103,7 +106,7 @@ export function ViewToggle({ view, setView, modes }) {
   return (
     <div className="row">
       {items.map((item) => (
-        <button key={item.k} className={`btn ${view === item.k ? "primary" : ""}`} onClick={() => setView(item.k)}>
+        <button key={item.k} className={`btn ${view === item.k ? "primary" : ""}`} onClick={() => { setView(item.k); try { sessionStorage.setItem("tp:view", item.k); } catch {} }}>
           {item.label}
         </button>
       ))}
@@ -145,8 +148,20 @@ export default function TasksPage() {
     isMobile,
   } = useApp();
 
-  const [view, setView] = useState(() => isMobile ? "cards" : "table");
-  const [statusFilter, setStatusFilter] = useState(() => tasksPageFilter || "active");
+  const [view, setView] = useState(() => isMobile ? "cards" : (sessionStorage.getItem("tp:view") || "table"));
+  const [statusFilter, setStatusFilterRaw] = useState(() => tasksPageFilter || sessionStorage.getItem("tp:status") || "active");
+  const [projectFilter, setProjectFilterRaw] = useState(() => sessionStorage.getItem("tp:project") || "all");
+  const [priorityFilter, setPriorityFilterRaw] = useState(() => sessionStorage.getItem("tp:priority") || "all");
+  const [tagFilter, setTagFilterRaw] = useState(() => sessionStorage.getItem("tp:tag") || "all");
+  const [dateFilter, setDateFilterRaw] = useState(() => sessionStorage.getItem("tp:date") || "all");
+  const [sortBy, setSortByRaw] = useState(() => sessionStorage.getItem("tp:sort") || "default");
+
+  const setStatusFilter = (v) => { setStatusFilterRaw(v); try { sessionStorage.setItem("tp:status", v); } catch {} };
+  const setProjectFilter = (v) => { setProjectFilterRaw(v); try { sessionStorage.setItem("tp:project", v); } catch {} };
+  const setPriorityFilter = (v) => { setPriorityFilterRaw(v); try { sessionStorage.setItem("tp:priority", v); } catch {} };
+  const setTagFilter = (v) => { setTagFilterRaw(v); try { sessionStorage.setItem("tp:tag", v); } catch {} };
+  const setDateFilter = (v) => { setDateFilterRaw(v); try { sessionStorage.setItem("tp:date", v); } catch {} };
+  const setSortBy = (v) => { setSortByRaw(v); try { sessionStorage.setItem("tp:sort", v); } catch {} };
 
   useEffect(() => {
     if (tasksPageFilter && tasksPageFilter !== "all" && tasksPageFilter !== "active") {
@@ -155,11 +170,6 @@ export default function TasksPage() {
       setTasksPageFilter("active");
     }
   }, [tasksPageFilter, setTasksPageFilter]);
-  const [projectFilter, setProjectFilter] = useState("all");
-  const [priorityFilter, setPriorityFilter] = useState("all");
-  const [tagFilter, setTagFilter] = useState("all");
-  const [dateFilter, setDateFilter] = useState("all");
-  const [sortBy, setSortBy] = useState("default");
 
   const today = useMemo(() => startOfToday(), []);
   const todayKey = useMemo(() => formatDateKey(today), [today]);
@@ -173,6 +183,9 @@ export default function TasksPage() {
     d.setDate(d.getDate() + 2); // today + 2 days = 3 days total (today, tomorrow, day after)
     return formatDateKey(d);
   }, [today]);
+  const tomorrowKey = useMemo(() => { const d = new Date(today); d.setDate(d.getDate() + 1); return formatDateKey(d); }, [today]);
+  const thisWeekEndKey = useMemo(() => { const d = new Date(today); d.setDate(d.getDate() + 6); return formatDateKey(d); }, [today]);
+  const nextWeekEndKey = useMemo(() => { const d = new Date(today); d.setDate(d.getDate() + 13); return formatDateKey(d); }, [today]);
   const projectsById = useMemo(() => new Map(projects.map((p) => [p.id, p])), [projects]);
   const tagsById = useMemo(() => new Map(tags.map((tg) => [tg.id, tg])), [tags]);
   const recentProjects = useMemo(
@@ -258,6 +271,16 @@ export default function TasksPage() {
         if (byUpdated) return byUpdated;
         return (b.createdAt || 0) - (a.createdAt || 0);
       });
+    } else if (sortBy === "due-asc") {
+      list = [...list].sort((a, b) => {
+        if (!a.dueDate && !b.dueDate) return 0;
+        if (!a.dueDate) return 1;
+        if (!b.dueDate) return -1;
+        return a.dueDate.localeCompare(b.dueDate);
+      });
+    } else if (sortBy === "priority") {
+      const ORDER = { high: 0, medium: 1, low: 2, null: 3 };
+      list = [...list].sort((a, b) => (ORDER[a.priority] ?? 3) - (ORDER[b.priority] ?? 3));
     }
 
     return list;
@@ -275,6 +298,28 @@ export default function TasksPage() {
 
   const doneCount = mappedTasks.filter((t) => t.status === "done").length;
   const activeCount = mappedTasks.length - doneCount;
+
+  const weekGroups = useMemo(() => {
+    const buckets = [
+      { id: "overdue",   label: "Po termínu",    color: "#ef4444", items: [] },
+      { id: "today",     label: "Dnes",           color: "#f59e0b", items: [] },
+      { id: "tomorrow",  label: "Zítra",          color: "#3b82f6", items: [] },
+      { id: "thisweek",  label: "Tento týden",    color: "var(--accent)", items: [] },
+      { id: "nextweek",  label: "Příští týden",   color: "var(--text-3)", items: [] },
+      { id: "later",     label: "Pozdější",       color: "var(--text-3)", items: [] },
+      { id: "nodate",    label: "Bez termínu",    color: "var(--text-3)", items: [] },
+    ];
+    for (const t of filtered) {
+      if (!t.dueDate) { buckets[6].items.push(t); continue; }
+      if (t.dueDate < todayKey) { buckets[0].items.push(t); continue; }
+      if (t.dueDate === todayKey) { buckets[1].items.push(t); continue; }
+      if (t.dueDate === tomorrowKey) { buckets[2].items.push(t); continue; }
+      if (t.dueDate <= thisWeekEndKey) { buckets[3].items.push(t); continue; }
+      if (t.dueDate <= nextWeekEndKey) { buckets[4].items.push(t); continue; }
+      buckets[5].items.push(t);
+    }
+    return buckets.filter((b) => b.items.length > 0);
+  }, [filtered, todayKey, tomorrowKey, thisWeekEndKey, nextWeekEndKey]);
 
   const [focusedId, setFocusedId] = useState(null);
 
@@ -327,6 +372,7 @@ export default function TasksPage() {
   }, [inlineEditVal, updateTask]);
 
   const [selected, setSelected] = useState(new Set());
+  const [selectMode, setSelectMode] = useState(false);
 
   const toggleSelect = useCallback((id, e) => {
     e.stopPropagation();
@@ -342,7 +388,7 @@ export default function TasksPage() {
     setSelected(new Set(filtered.map((t) => t.id)));
   }, [filtered]);
 
-  const clearSelected = useCallback(() => setSelected(new Set()), []);
+  const clearSelected = useCallback(() => { setSelected(new Set()); setSelectMode(false); }, []);
 
   const bulkDone = useCallback(() => {
     selected.forEach((id) => updateTask(id, { status: "done" }));
@@ -354,6 +400,19 @@ export default function TasksPage() {
     clearSelected();
   }, [selected, deleteTask, clearSelected]);
 
+  const bulkSetPriority = useCallback((priority) => {
+    selected.forEach((id) => updateTask(id, { priority }));
+    setBulkPrioOpen(false);
+  }, [selected, updateTask]);
+
+  const bulkSetProject = useCallback((projectId) => {
+    selected.forEach((id) => updateTask(id, { projectId: projectId || null }));
+    setBulkProjOpen(false);
+  }, [selected, updateTask]);
+
+  const [bulkPrioOpen, setBulkPrioOpen] = useState(false);
+  const [bulkProjOpen, setBulkProjOpen] = useState(false);
+
   return (
     <div className="content">
       <div className="ph">
@@ -362,7 +421,26 @@ export default function TasksPage() {
           <h1 className="ph-title">Úkoly</h1>
           <div className="ph-sub"><span>poslední úprava: dnes</span></div>
         </div>
-        {!isMobile && <ViewToggle view={view} setView={setView} />}
+        {!isMobile && (
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <button
+              className={`btn ${selectMode ? "primary" : ""}`}
+              onClick={() => { setSelectMode((v) => !v); if (selectMode) clearSelected(); }}
+              style={{ fontSize: 12 }}
+            >
+              {selectMode ? "Zrušit výběr" : "Vybrat"}
+            </button>
+            <ViewToggle
+              view={view}
+              setView={setView}
+              modes={[
+                { k: "cards", label: "Karty" },
+                { k: "table", label: "Tabulka" },
+                { k: "week",  label: "Týden" },
+              ]}
+            />
+          </div>
+        )}
       </div>
 
       <div style={{ marginBottom: 18 }}>
@@ -463,17 +541,26 @@ export default function TasksPage() {
         {!isMobile && <span className="chips-sep" />}
         {!isMobile && <span className="chip">{filtered.length} položek</span>}
 
-        {/* Mobilní filtr tlačítko */}
+        {/* Mobilní filtr + výběr tlačítko */}
         {isMobile && (
-          <span
-            className={`chip ${hasActiveFilters ? "active" : ""}`}
-            onClick={() => setFilterDrawerOpen(true)}
-            style={{ marginLeft: "auto", flexShrink: 0 }}
-          >
-            <span style={{ fontSize: 13 }}>⚙</span>
-            Filtrovat
-            {hasActiveFilters && <span className="chip-count">{activeFilterCount}</span>}
-          </span>
+          <>
+            <span
+              className={`chip ${selectMode ? "active" : ""}`}
+              onClick={() => { setSelectMode((v) => !v); if (selectMode) clearSelected(); }}
+              style={{ flexShrink: 0 }}
+            >
+              ☑ Vybrat
+            </span>
+            <span
+              className={`chip ${hasActiveFilters ? "active" : ""}`}
+              onClick={() => setFilterDrawerOpen(true)}
+              style={{ marginLeft: "auto", flexShrink: 0 }}
+            >
+              <span style={{ fontSize: 13 }}>⚙</span>
+              Filtrovat
+              {hasActiveFilters && <span className="chip-count">{activeFilterCount}</span>}
+            </span>
+          </>
         )}
       </div>
 
@@ -693,6 +780,68 @@ export default function TasksPage() {
             description="Žádný úkol neodpovídá zvoleným filtrům. Zkus změnit nebo resetovat filtry."
           />
         )
+      ) : view === "week" ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 24, marginTop: 8 }}>
+          {weekGroups.length === 0 ? (
+            <EmptyState type="filter" title="Žádné výsledky" description="Žádný úkol neodpovídá zvoleným filtrům." />
+          ) : weekGroups.map((group) => (
+            <div key={group.id}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: group.color, flexShrink: 0 }} />
+                <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                  {group.label}
+                </span>
+                <span style={{ fontSize: 12, color: "var(--text-3)", fontFamily: "var(--mono)" }}>{group.items.length}</span>
+                <div style={{ flex: 1, height: 1, background: "var(--border-soft)" }} />
+              </div>
+              <div className="tcards">
+                {group.items.map((t, idx) => {
+                  const isSelected = selected.has(t.id);
+                  return (
+                    <div
+                      key={t.id}
+                      className={`tcard ${t.statusClass} ${t.overdue ? "alert" : ""}${isSelected ? " selected" : ""}`}
+                      onClick={(e) => {
+                        if (selectMode) { toggleSelect(t.id, e); return; }
+                        setFocusedId(t.id); setTaskDetail(t.id);
+                      }}
+                      style={{
+                        ...(isSelected ? { outline: "2px solid var(--accent)", outlineOffset: -1 } : {}),
+                      }}
+                    >
+                      {selectMode && (
+                        <input type="checkbox" checked={isSelected} onChange={(e) => toggleSelect(t.id, e)} onClick={(e) => e.stopPropagation()}
+                          style={{ flexShrink: 0, width: 16, height: 16, cursor: "pointer", accentColor: "var(--accent)", marginRight: 2 }} />
+                      )}
+                      <div className="tcard-state" onClick={(e) => { e.stopPropagation(); const ns = t.status === "done" ? "todo" : "done"; if (ns === "done") triggerConfettiBurst(e); setStatus(t.id, ns); }} title="Toggle hotovo" />
+                      <div className="tcard-body">
+                        <div className="tcard-title">{t.title}</div>
+                        {t.desc ? <div className="tcard-desc">{t.desc}</div> : null}
+                        <div className="tcard-meta">
+                          <ProjectPill projectId={t.project} projectsById={projectsById} />
+                          <PrioChip priority={t.priority} />
+                          {t.due ? <span className={`due ${t.overdue ? "overdue" : ""}`}>{t.due}</span> : null}
+                          {t.recurrence ? <span title="Opakující se" style={{ fontSize: 11, color: "var(--text-3)" }}>↺</span> : null}
+                          {(t.tagObjects || []).map((tg) => <TagPill key={tg.id} name={tg.name} color={tg.color} />)}
+                        </div>
+                      </div>
+                      <div className="tcard-acts" onClick={(e) => e.stopPropagation()}>
+                        <div className="stepper">
+                          {["todo", "doing", "wait", "done"].map((k) => (
+                            <button key={k} className={t.statusClass === k ? `cur ${k}` : ""} onClick={(e) => { e.stopPropagation(); setStatus(t.id, CLASS_TO_STATUS[k]); }}>
+                              {k === "todo" ? "Todo" : k === "doing" ? "Doing" : k === "wait" ? "Wait" : "Done"}
+                            </button>
+                          ))}
+                        </div>
+                        <button className={`icon-btn star ${t.starred ? "on" : ""}`} onClick={() => toggleStar(t.id)} title="Top úkol">★</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
       ) : view === "table" ? (
         <div className="ttable">
           <div className="ttable-row head">
@@ -752,8 +901,18 @@ export default function TasksPage() {
         <div className="tcards" style={{ marginTop: 8 }}>
           {filtered.map((t, idx) => {
             const isFocused = focusedId === t.id;
+            const isSelected = selected.has(t.id);
             const cardInner = (
               <>
+                {selectMode && (
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={(e) => toggleSelect(t.id, e)}
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ flexShrink: 0, width: 16, height: 16, cursor: "pointer", accentColor: "var(--accent)", marginRight: 2 }}
+                  />
+                )}
                 <div className="tcard-state" onClick={(e) => {
                    e.stopPropagation();
                    const nextStatus = t.status === "done" ? "todo" : "done";
@@ -782,6 +941,9 @@ export default function TasksPage() {
                     <ProjectPill projectId={t.project} projectsById={projectsById} />
                     <PrioChip priority={t.priority} />
                     {t.due ? <span className={`due ${t.overdue ? "overdue" : ""}`}>{t.due}</span> : null}
+                    {t.hasSubtasks > 0 ? <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: t.doneSubtasks === t.hasSubtasks ? "var(--green)" : "var(--text-3)" }}>≡ {t.doneSubtasks}/{t.hasSubtasks}</span> : null}
+                    {t.recurrence ? <span title="Opakující se úkol" style={{ fontSize: 11, color: "var(--text-3)" }}>↺</span> : null}
+                    {(t.tagObjects || []).map((tg) => <TagPill key={tg.id} name={tg.name} color={tg.color} />)}
                   </div>
                 </div>
                 <div className="tcard-acts" onClick={(e) => e.stopPropagation()}>
@@ -809,7 +971,7 @@ export default function TasksPage() {
                   hintTarget={idx === 0}
                 >
                   <div
-                    className={`tcard ${t.statusClass} ${t.overdue ? "alert" : ""} list-item-enter${t.id === newestTaskId ? " task-slide-in" : ""}`}
+                    className={`tcard ${t.statusClass} ${t.overdue ? "alert" : ""} list-item-enter${t.id === newestTaskId ? " task-slide-in" : ""}${isSelected ? " selected" : ""}`}
                     style={{ "--item-index": Math.min(idx, 7), ...(t.id === newestTaskId ? { animationDelay: "0ms" } : {}) }}
                   >
                     {cardInner}
@@ -821,13 +983,17 @@ export default function TasksPage() {
             return (
               <div
                 key={t.id}
-                className={`tcard ${t.statusClass} ${t.overdue ? "alert" : ""} list-item-enter${t.id === newestTaskId ? " task-slide-in" : ""}`}
-                onClick={() => { setFocusedId(t.id); setTaskDetail(t.id); }}
+                className={`tcard ${t.statusClass} ${t.overdue ? "alert" : ""} list-item-enter${t.id === newestTaskId ? " task-slide-in" : ""}${isSelected ? " selected" : ""}`}
+                onClick={(e) => {
+                  if (selectMode) { toggleSelect(t.id, e); return; }
+                  setFocusedId(t.id); setTaskDetail(t.id);
+                }}
                 onMouseEnter={() => { if (focusedId !== t.id) setFocusedId(t.id); }}
                 style={{
                   "--item-index": Math.min(idx, 7),
                   ...(t.id === newestTaskId ? { animationDelay: "0ms" } : {}),
-                  ...(isFocused ? { outline: "1px solid var(--accent)", outlineOffset: -1 } : {}),
+                  ...(isFocused && !selectMode ? { outline: "1px solid var(--accent)", outlineOffset: -1 } : {}),
+                  ...(isSelected ? { outline: "2px solid var(--accent)", outlineOffset: -1 } : {}),
                 }}
               >
                 {cardInner}
@@ -843,32 +1009,95 @@ export default function TasksPage() {
       )}
 
       {/* Bulk action floating toolbar */}
-      {selected.size > 0 && (
+      {(selectMode || selected.size > 0) && (
         <div style={{
           position: "fixed",
-          bottom: 32,
+          bottom: isMobile ? "calc(var(--bottom-nav-height, 60px) + 12px)" : 32,
           left: "50%",
           transform: "translateX(-50%)",
           zIndex: 300,
-          background: "var(--surface)",
-          border: "1px solid var(--accent)",
-          borderRadius: "var(--r-pill, 999px)",
-          boxShadow: "0 8px 32px rgba(0,0,0,0.45)",
           display: "flex",
+          flexDirection: "column",
           alignItems: "center",
           gap: 6,
-          padding: "8px 16px",
           animation: "pop .2s ease-out",
         }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: "var(--accent)", paddingRight: 8, borderRight: "1px solid var(--border-soft)" }}>
-            {selected.size} vybráno
-          </span>
-          <button className="btn" onClick={selectAll} style={{ fontSize: 12 }}>Vše</button>
-          <button className="btn primary" onClick={bulkDone} style={{ fontSize: 12 }}>✓ Hotovo</button>
-          <button className="btn danger" onClick={async () => {
-            if (await confirm(`Smazat ${selected.size} úkolů?`)) bulkDelete();
-          }} style={{ fontSize: 12 }}>Smazat</button>
-          <button className="icon-btn" onClick={clearSelected} style={{ marginLeft: 4 }}>✕</button>
+          {/* Priority dropdown */}
+          {bulkPrioOpen && (
+            <div style={{
+              background: "var(--bg-2)", border: "1px solid var(--border)", borderRadius: 12,
+              boxShadow: "var(--shadow)", padding: "6px", display: "flex", flexDirection: "column", gap: 2, minWidth: 160,
+            }}>
+              {[
+                { value: "high", label: "🔴 Vysoká" },
+                { value: "medium", label: "🟡 Střední" },
+                { value: "low", label: "🔵 Nízká" },
+                { value: null, label: "— Žádná" },
+              ].map(({ value, label }) => (
+                <button key={String(value)} onClick={() => bulkSetPriority(value)}
+                  style={{ padding: "8px 12px", borderRadius: 8, border: "none", background: "transparent", color: "var(--text-2)", fontSize: 13, cursor: "pointer", textAlign: "left" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "var(--card-h)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                >{label}</button>
+              ))}
+            </div>
+          )}
+          {/* Project dropdown */}
+          {bulkProjOpen && (
+            <div style={{
+              background: "var(--bg-2)", border: "1px solid var(--border)", borderRadius: 12,
+              boxShadow: "var(--shadow)", padding: "6px", display: "flex", flexDirection: "column", gap: 2, minWidth: 180, maxHeight: 240, overflowY: "auto",
+            }}>
+              <button onClick={() => bulkSetProject(null)}
+                style={{ padding: "8px 12px", borderRadius: 8, border: "none", background: "transparent", color: "var(--text-3)", fontSize: 13, cursor: "pointer", textAlign: "left" }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "var(--card-h)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+              >— Bez projektu</button>
+              {projects.map((p) => (
+                <button key={p.id} onClick={() => bulkSetProject(p.id)}
+                  style={{ padding: "8px 12px", borderRadius: 8, border: "none", background: "transparent", color: "var(--text-2)", fontSize: 13, cursor: "pointer", textAlign: "left" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "var(--card-h)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                >{p.name}</button>
+              ))}
+            </div>
+          )}
+          {/* Main pill */}
+          <div style={{
+            background: "var(--surface)",
+            border: `1px solid ${selected.size > 0 ? "var(--accent)" : "var(--border)"}`,
+            borderRadius: "var(--r-pill, 999px)",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.45)",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "8px 16px",
+            whiteSpace: "nowrap",
+          }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: selected.size > 0 ? "var(--accent)" : "var(--text-3)", paddingRight: 8, borderRight: "1px solid var(--border-soft)" }}>
+              {selected.size > 0 ? `${selected.size} vybráno` : "Výběr"}
+            </span>
+            <button className="btn" onClick={selectAll} style={{ fontSize: 12 }}>Vše</button>
+            {selected.size > 0 && (
+              <>
+                <button className="btn primary" onClick={bulkDone} style={{ fontSize: 12 }}>✓ Hotovo</button>
+                <button
+                  className={`btn ${bulkPrioOpen ? "primary" : ""}`}
+                  onClick={() => { setBulkPrioOpen((v) => !v); setBulkProjOpen(false); }}
+                  style={{ fontSize: 12 }}
+                >Priorita ▾</button>
+                <button
+                  className={`btn ${bulkProjOpen ? "primary" : ""}`}
+                  onClick={() => { setBulkProjOpen((v) => !v); setBulkPrioOpen(false); }}
+                  style={{ fontSize: 12 }}
+                >Projekt ▾</button>
+                <button className="btn danger" onClick={async () => {
+                  if (await confirm(`Smazat ${selected.size} úkolů?`)) bulkDelete();
+                }} style={{ fontSize: 12 }}>Smazat</button>
+              </>
+            )}
+            <button className="icon-btn" onClick={clearSelected} style={{ marginLeft: 4 }}>✕</button>
+          </div>
         </div>
       )}
     </div>

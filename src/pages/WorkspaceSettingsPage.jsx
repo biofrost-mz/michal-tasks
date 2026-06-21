@@ -71,10 +71,19 @@ function FormHint({ children }) {
   return <div className="ws-form-hint">{children}</div>
 }
 
+const ROLE_CZ = { owner: 'vlastník', admin: 'správce', member: 'člen', viewer: 'pozorovatel' }
+function roleCz(role) { return ROLE_CZ[role] || role }
+
+function getWordInitials(str) {
+  const parts = (str || '').trim().split(/\s+/)
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
+  return (str || '?').slice(0, 2).toUpperCase()
+}
+
 export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
   const { workspaces, activeWorkspaceId, workspaceMembers, workspaceRole, userId,
     renameWorkspace, updateMemberRole, removeMember, leaveWorkspace,
-    generateInviteLink, fetchWorkspaceInvites, revokeInvite, setPage, isMobile,
+    generateInviteLink, fetchWorkspaceInvites, revokeInvite, setPage, prevPage, isMobile,
     userEmail, logout, updateProfileDisplayName, dk, setDk,
     uiSettings, updateUiSettings, accentThemes, isSystemAdmin } = useApp()
   const toast = useToast()
@@ -126,13 +135,16 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
   }, [userId]);
 
   const handleSaveNotifPrefs = async (patch) => {
-    const updated = { ...notifPrefs, ...patch };
-    setNotifPrefs(updated);
-    setSavingNotif(true);
-    const { error } = await supabase.from("notification_preferences").upsert({ user_id: userId, ...updated, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
-    setSavingNotif(false);
-    if (error) toast("Nepodařilo se uložit nastavení", "error");
-  };
+    let updated
+    setNotifPrefs((prev) => { updated = { ...prev, ...patch }; return updated })
+    setSavingNotif(true)
+    try {
+      const { error } = await supabase.from("notification_preferences").upsert({ user_id: userId, ...updated, updated_at: new Date().toISOString() }, { onConflict: "user_id" })
+      if (error) toast("Nepodařilo se uložit nastavení", "error")
+    } finally {
+      setSavingNotif(false)
+    }
+  }
 
   const handleSaveName = async () => {
     if (!displayName.trim()) return
@@ -157,7 +169,7 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
   }
 
   const handleLogout = async () => {
-    if (!await confirm('Odhlásit se?')) return
+    if (!await confirm('Odhlásit se?', { confirmLabel: 'Odhlásit', confirmColor: '#3b82f6' })) return
     await logout()
   }
 
@@ -182,7 +194,7 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
   }
 
   const handleRemove = async (member, skipConfirm = false) => {
-    if (!skipConfirm && !await confirm(`Odebrat ${member.email || member.userId.slice(0, 8)} z workspace?`)) return
+    if (!skipConfirm && !await confirm(`Odebrat ${member.email || member.userId.slice(0, 8)} z workspace?`, { confirmLabel: 'Odebrat', confirmColor: '#f59e0b' })) return
     try {
       await removeMember(member.userId)
       toast('Člen odebrán', 'success')
@@ -192,7 +204,7 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
   }
 
   const handleLeave = async (skipConfirm = false) => {
-    if (!skipConfirm && !await confirm('Opravdu chceš opustit tento workspace?')) return
+    if (!skipConfirm && !await confirm('Opravdu chceš opustit tento workspace?', { confirmLabel: 'Opustit', confirmColor: '#f59e0b' })) return
     try {
       await leaveWorkspace()
       setPage('dashboard')
@@ -225,8 +237,8 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
   }
 
   const getMemberLabel = (m) => m.displayName || m.email || `${m.userId.slice(0, 8)}…`
-  const getInitials = (m) => (m.displayName || m.email || m.userId || '?').slice(0, 2).toUpperCase()
-  const profileInitials = (me?.displayName || userEmail || '?').slice(0, 2).toUpperCase()
+  const getInitials = (m) => getWordInitials(m.displayName || m.email || m.userId || '?')
+  const profileInitials = getWordInitials(me?.displayName || userEmail || '?')
 
   const inputStyle = {
     width: '100%',
@@ -258,6 +270,8 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
     position: 'relative',
     padding: 0,
     flexShrink: 0,
+    cursor: 'pointer',
+    transition: 'border-color .16s ease, background .16s ease',
   })
   const toggleKnobStyle = (on) => ({
     position: 'absolute',
@@ -559,11 +573,11 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
       `}</style>
 
       <div className="ws-settings-hero">
-        <button className="ws-back" onClick={() => setPage('dashboard')}>← Workspace</button>
+        <button className="ws-back" onClick={() => setPage(prevPage || 'dashboard')}>← Zpět</button>
         <h1 className="ws-settings-title">Nastavení</h1>
         <div className="ws-settings-meta">
           <MetaPill>{active?.name || 'Workspace'}</MetaPill>
-          <MetaPill tone="role">role {workspaceRole}</MetaPill>
+          <MetaPill tone="role">{roleCz(workspaceRole)}</MetaPill>
           <span className="ws-settings-email">{userEmail}</span>
         </div>
       </div>
@@ -591,7 +605,7 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div className="ws-profile-name">{me?.displayName || 'Bez jména'}</div>
                   <div className="ws-profile-mail">{userEmail}</div>
-                  <span className="ws-profile-role">role {me?.role ?? workspaceRole}</span>
+                  <span className="ws-profile-role">{roleCz(me?.role ?? workspaceRole)}</span>
                 </div>
               </section>
 
@@ -604,8 +618,8 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
                     placeholder="Tvoje jméno..."
                     style={{ ...inputStyle, flex: 1, minWidth: 220 }}
                   />
-                  <button className="btn primary" onClick={handleSaveName} disabled={!displayName.trim() || savingProfile} style={{ opacity: !displayName.trim() || savingProfile ? 0.6 : 1 }}>
-                    {savingProfile ? 'Ukládám...' : 'Uložit'}
+                  <button className="btn primary" onClick={handleSaveName} disabled={!displayName.trim() || savingProfile || displayName.trim() === (me?.displayName || '')} style={{ opacity: !displayName.trim() || savingProfile || displayName.trim() === (me?.displayName || '') ? 0.5 : 1 }}>
+                    {savingProfile ? 'Ukládám…' : 'Uložit'}
                   </button>
                 </div>
               </Section>
@@ -651,7 +665,7 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
                   <div className="ws-mobile-break">
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontFamily: 'var(--font-ui)', fontSize: isMobile ? 19 : 21, fontWeight: 650, lineHeight: 1.2, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{active?.name || 'Bez názvu'}</div>
-                      <FormHint>{workspaceMembers.length} členů · tvoje role {workspaceRole}</FormHint>
+                      <FormHint>{workspaceMembers.length} členů · tvoje role: {roleCz(workspaceRole)}</FormHint>
                     </div>
                     {isOwner && <button className="btn" onClick={() => { setEditingName(true); setNewWsName(active?.name ?? '') }}>Přejmenovat</button>}
                   </div>
@@ -700,7 +714,7 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
                             </button>
                           </div>
                         ) : (
-                          <span className="ws-role-badge" style={{ border: `1px solid ${color}44`, color, background: `${color}18` }}>{m.role}</span>
+                          <span className="ws-role-badge" style={{ border: `1px solid ${color}44`, color, background: `${color}18` }}>{roleCz(m.role)}</span>
                         )}
                       </div>
                     )
@@ -806,7 +820,7 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
                   <div className="ws-mobile-break" style={{ alignItems: 'center', paddingTop: 12, borderTop: '1px solid var(--border)' }}>
                     <div>
                       <div style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--text)' }}>Čas denního souhrnu</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>Ve kolik hodin chceš ranní souhrn dostat.</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>Ve kolik hodin chceš ranní souhrn dostat (středoevropský čas, UTC+1/+2).</div>
                     </div>
                     <select
                       value={notifPrefs.digest_hour}
@@ -896,8 +910,10 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
                 </div>
               </Section>
 
-              <Section label="Workspace branding" title="Sdílené barvy workspace" icon="sparkles">
-                <div style={mutedText}>Sdílené barvy workspace, ikona a logo patří do dalšího kroku s uložením do backendu. Osobní accent výše je lokální preference a nijak nemění vzhled ostatním členům týmu.</div>
+              <Section label="Workspace branding" title="Sdílené barvy workspace" icon="sparkles" action={
+                <span style={{ fontSize: 11, fontWeight: 750, fontFamily: 'var(--mono)', color: 'var(--text-3)', background: 'var(--bg-2)', border: '1px solid var(--border-soft)', borderRadius: 6, padding: '3px 8px', letterSpacing: '.06em', textTransform: 'uppercase' }}>V přípravě</span>
+              }>
+                <div style={mutedText}>Logo, ikona a sdílená accent barva workspace pro celý tým — uložení na backend bude součástí dalšího vydání. Osobní accent nahoře je tvoje lokální preference a ostatní ji nevidí.</div>
               </Section>
             </>
           )}

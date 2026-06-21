@@ -128,6 +128,10 @@ function normalizeEmail(value) {
   return value.trim().toLowerCase();
 }
 
+function isValidEmail(value) {
+  return /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test(value);
+}
+
 function authRedirectUrl(params = {}) {
   const url = new URL(window.location.origin);
   Object.entries(params).forEach(([key, value]) => {
@@ -220,6 +224,7 @@ export default function AuthGate({ children }) {
   const sendMagicLink = async (targetEmail = email) => {
     const e = normalizeEmail(targetEmail);
     if (!e) return;
+    if (!isValidEmail(e)) { toast("Zadej platnou emailovou adresu.", "error"); return; }
     setSending(true);
     const { error } = await supabase.auth.signInWithOtp({
       email: e,
@@ -249,6 +254,7 @@ export default function AuthGate({ children }) {
   const handlePassword = async () => {
     const e = normalizeEmail(email);
     if (!e || !password) return;
+    if (!isValidEmail(e)) { toast("Zadej platnou emailovou adresu.", "error"); return; }
     if (signMode === "signup") {
       if (!fullName.trim()) return;
       if (!isPasswordStrongEnough(password)) {
@@ -288,6 +294,7 @@ export default function AuthGate({ children }) {
   const handleForgotPassword = async () => {
     const e = normalizeEmail(email);
     if (!e) { toast("Zadej nejdřív email", "error"); return; }
+    if (!isValidEmail(e)) { toast("Zadej platnou emailovou adresu.", "error"); return; }
     setSending(true);
     const { error } = await supabase.auth.resetPasswordForEmail(e, {
       redirectTo: authRedirectUrl({ reset: "1" }),

@@ -30,6 +30,7 @@ const QuickTodosPage = lazy(() => import("./pages/QuickTodosPage.jsx"));
 const AdminPage = lazy(() => import("./pages/AdminPage.jsx"));
 const AdminUsersPage = lazy(() => import("./pages/AdminUsersPage.jsx"));
 const OnboardingWizard = lazy(() => import("./components/OnboardingWizard.jsx"));
+const WeeklyCleanup = lazy(() => import("./components/WeeklyCleanup.jsx"));
 
 function OfflineBanner() {
   const [online, setOnline] = useState(() => (typeof navigator === "undefined" ? true : navigator.onLine));
@@ -87,6 +88,7 @@ function AppUpdatePrompt() {
   const toast = useToast();
   const [updateSW, setUpdateSW] = useState(null);
   const [updating, setUpdating] = useState(false);
+  const timersRef = useRef([]);
 
   useEffect(() => {
     const handleUpdateReady = (event) => {
@@ -99,31 +101,36 @@ function AppUpdatePrompt() {
     return () => {
       window.removeEventListener("app:update-ready", handleUpdateReady);
       window.removeEventListener("app:offline-ready", handleOfflineReady);
+      timersRef.current.forEach(clearTimeout);
+      timersRef.current = [];
     };
   }, [toast]);
 
   if (!updateSW) return null;
 
+  const scheduleReload = (ms) => {
+    const id = window.setTimeout(() => window.location.reload(), ms);
+    timersRef.current.push(id);
+  };
+
   const applyUpdate = async () => {
     if (updating) return;
     setUpdating(true);
-    let fallbackTimer = null;
+    let reloading = false;
+    const fallbackId = window.setTimeout(() => { reloading = true; window.location.reload(); }, 3000);
+    timersRef.current.push(fallbackId);
     try {
-      fallbackTimer = window.setTimeout(() => {
-        window.location.reload();
-      }, 2500);
       navigator.serviceWorker?.addEventListener("controllerchange", () => {
-        window.location.reload();
+        if (!reloading) { reloading = true; window.location.reload(); }
       }, { once: true });
       await updateSW(true);
-      setTimeout(() => window.location.reload(), 3000);
-      window.clearTimeout(fallbackTimer);
-      window.setTimeout(() => window.location.reload(), 250);
+      window.clearTimeout(fallbackId);
+      if (!reloading) scheduleReload(250);
     } catch (error) {
-      if (fallbackTimer) window.clearTimeout(fallbackTimer);
+      window.clearTimeout(fallbackId);
       console.warn("SW update failed:", error);
       toast("Aktualizace se nepodařila spustit, načítám stránku znovu.", "error");
-      window.setTimeout(() => window.location.reload(), 700);
+      scheduleReload(700);
     }
   };
 
@@ -132,7 +139,7 @@ function AppUpdatePrompt() {
       style={{
         position: "fixed",
         left: "50%",
-        bottom: "calc(84px + var(--safe-area-inset-bottom, 0px))",
+        bottom: "calc(var(--bottom-nav-height, 40px) + 44px)",
         transform: "translateX(-50%)",
         zIndex: 99998,
         display: "flex",
@@ -310,7 +317,7 @@ function usePullToRefresh(enabled, onRefresh) {
 }
 
 function AppShell() {
-  const { dk, setDk, isMobile, page, setPage, taskDetail, cmdOpen, setCmdOpen, isSystemAdmin, loaded, tasks, setTaskDetail, refetchAll } = useApp();
+  const { dk, setDk, isMobile, page, setPage, taskDetail, cmdOpen, setCmdOpen, isSystemAdmin, loaded, tasks, setTaskDetail, refetchAll, popUndo, undoAvailable } = useApp();
 
   const handleSwipeLeft = useCallback(() => {
     if (!isMobile) return;
@@ -335,6 +342,7 @@ function AppShell() {
 
   const [collapsed, setCollapsed] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [weeklyCleanupOpen, setWeeklyCleanupOpen] = useState(false);
   const [onboardingDone, setOnboardingDone] = useState(() => {
     try { return Boolean(localStorage.getItem("mt3:onboarding_done")); } catch { return false; }
   });
@@ -396,6 +404,12 @@ function AppShell() {
   }, []);
 
   useEffect(() => {
+    const handler = () => setWeeklyCleanupOpen(true);
+    window.addEventListener("openWeeklyCleanup", handler);
+    return () => window.removeEventListener("openWeeklyCleanup", handler);
+  }, []);
+
+  useEffect(() => {
     applyDocumentMetadata(page);
     const scrollEl = document.querySelector(window.innerWidth < 768 ? "main" : ".main");
     if (scrollEl) {
@@ -430,6 +444,14 @@ function AppShell() {
     const handler = (e) => {
       const tag = e.target.tagName;
       const editable = e.target.isContentEditable;
+
+      if ((e.metaKey || e.ctrlKey) && e.key === "z" && !e.shiftKey) {
+        if (tag === "INPUT" || tag === "TEXTAREA" || editable) return;
+        e.preventDefault();
+        popUndo();
+        return;
+      }
+
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || editable) return;
 
       if (e.key === "?" || (e.shiftKey && e.key === "/")) {
@@ -477,6 +499,8 @@ function AppShell() {
           case "t": e.preventDefault(); setPage("tasks"); break;
           case "n": e.preventDefault(); setPage("notes"); break;
           case "p": e.preventDefault(); setPage("timeline"); break;
+          case "q": e.preventDefault(); setPage("quick-todos"); break;
+          case "j": e.preventDefault(); setPage("projects"); break;
           default: break;
         }
         return;
@@ -492,7 +516,7 @@ function AppShell() {
       window.removeEventListener("keydown", handler);
       clearTimeout(gTimerRef.current);
     };
-  }, [shortcutsOpen, setPage, page]);
+  }, [shortcutsOpen, setPage, page, popUndo]);
 
   return (
     <>
@@ -500,23 +524,14 @@ function AppShell() {
         :root {
           --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
           --bottom-nav-content-height: 40px;
-          --bottom-nav-safe-padding: 0px;
-          --bottom-nav-height: calc(var(--bottom-nav-content-height) + var(--bottom-nav-safe-padding));
+          --bottom-nav-height: calc(var(--bottom-nav-content-height) + env(safe-area-inset-bottom, 0px));
         }
         @media (display-mode: standalone) {
-          :root {
-            --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
-            --bottom-nav-safe-padding: 0px;
-          }
           html, body, #root {
             height: 100% !important;
             min-height: 100% !important;
             height: 100dvh !important;
           }
-        }
-        html.pwa-standalone, :root.pwa-standalone, .pwa-standalone {
-          --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
-          --bottom-nav-safe-padding: 0px;
         }
         html.pwa-standalone, html.pwa-standalone body, html.pwa-standalone #root {
           height: 100% !important;
@@ -559,7 +574,6 @@ function AppShell() {
         .su{animation:slideUp .28s cubic-bezier(.32,1,.4,1)}
         .pop{animation:pop .2s ease-out}
         .page-enter{animation:pageIn .18s cubic-bezier(.4,0,.2,1)}
-        .mobile-nav-bar{position:fixed !important;bottom:calc(env(safe-area-inset-bottom,0px)*-1) !important;height:calc(var(--bottom-nav-content-height) + env(safe-area-inset-bottom,0px)) !important;min-height:calc(var(--bottom-nav-content-height) + env(safe-area-inset-bottom,0px)) !important;padding-bottom:0;margin-bottom:0;left:0;right:0}
       `}</style>
 
       <SplashScreen visible={!splashDone} />
@@ -574,7 +588,7 @@ function AppShell() {
         }}>
           <kbd style={{ background: "var(--input)", border: "1px solid var(--border)", borderRadius: 5, padding: "1px 7px", fontFamily: "var(--mono)", fontSize: 12, color: "var(--text)" }}>g</kbd>
           <span>pak</span>
-          {[["h","Přehled"],["t","Úkoly"],["n","Poznámky"],["p","Plán"]].map(([k, label]) => (
+          {[["h","Přehled"],["t","Úkoly"],["q","Rychlý seznam"],["j","Projekty"],["n","Poznámky"],["p","Plán"]].map(([k, label]) => (
             <span key={k} style={{ display: "flex", alignItems: "center", gap: 4 }}>
               <kbd style={{ background: "var(--input)", border: "1px solid var(--border)", borderRadius: 5, padding: "1px 7px", fontFamily: "var(--mono)", fontSize: 12, color: "var(--accent)" }}>{k}</kbd>
               <span style={{ fontSize: 12, color: "var(--text-3)" }}>{label}</span>
@@ -589,6 +603,23 @@ function AppShell() {
         <Suspense fallback={null}>
           <OnboardingWizard />
         </Suspense>
+      )}
+      {undoAvailable && !isMobile && (
+        <button
+          onClick={popUndo}
+          title="Vrátit poslední akci (Cmd+Z)"
+          style={{
+            position: "fixed", bottom: 20, right: 72, zIndex: 400,
+            background: "var(--surface)", border: "1px solid var(--accent)",
+            borderRadius: 8, padding: "6px 10px", cursor: "pointer",
+            display: "flex", alignItems: "center", gap: 6,
+            fontSize: 12, fontWeight: 600, color: "var(--accent)",
+            boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
+            animation: "pop .2s ease-out",
+          }}
+        >
+          ↩ <kbd style={{ fontFamily: "var(--mono)", fontSize: 11, opacity: 0.7 }}>⌘Z</kbd>
+        </button>
       )}
       {!isMobile && <button
         className="shortcuts-fab"
@@ -694,6 +725,12 @@ function AppShell() {
             <ErrorBoundary inline label="Shortcut helper">
               <ShortcutHelper onClose={() => setShortcutsOpen(false)} />
             </ErrorBoundary>
+          )}
+
+          {weeklyCleanupOpen && (
+            <Suspense fallback={null}>
+              <WeeklyCleanup onClose={() => setWeeklyCleanupOpen(false)} />
+            </Suspense>
           )}
         </div>
         {isMobile && !hideMobileFab && <MobileFAB />}

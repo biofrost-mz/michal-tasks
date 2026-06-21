@@ -8,6 +8,8 @@ const SHORTCUT_GROUPS = [
       { label: "Vyhledávání / Command Palette", keys: ["⌘", "K"] },
       { label: "Přehled (Dashboard)", keys: ["G", "H"] },
       { label: "Úkoly", keys: ["G", "T"] },
+      { label: "Rychlý seznam", keys: ["G", "Q"] },
+      { label: "Projekty", keys: ["G", "J"] },
       { label: "Poznámky", keys: ["G", "N"] },
       { label: "Plán (Timeline)", keys: ["G", "P"] },
     ],

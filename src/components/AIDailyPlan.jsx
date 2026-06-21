@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useApp } from '../context/AppContext.jsx'
 import { supabase } from '../supabase.js'
-import { renderMarkdown, sanitizeHtml } from '../utils.js'
+import { renderMarkdown, sanitizeHtml, startOfToday } from '../utils.js'
+import { formatDateKey } from '../locale.js'
 import { getAiErrorMessage } from '../utils/aiErrors.js'
 import Icon from './Icon.jsx'
 
@@ -9,8 +10,7 @@ import Icon from './Icon.jsx'
    Cache helpers — plan se ukládá per user+datum
 ───────────────────────────────────────────── */
 function getCacheKey(userId, workspaceId) {
-  const today = new Date().toISOString().slice(0, 10);
-  return `ai-plan:${userId}:${workspaceId}:${today}`;
+  return `ai-plan:${userId}:${workspaceId}:${formatDateKey(startOfToday())}`;
 }
 
 function loadCachedPlan(userId, workspaceId) {
