@@ -540,11 +540,34 @@ function AppShell() {
       <style>{`
         :root {
           --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+
+          /* Výchozí stav = běžný prohlížeč */
           --bottom-nav-height: 22px;
-          --bottom-tabs-hit-height: 56px;
+          --bottom-tabs-hit-height: 64px;
           --bottom-tabs-shift-y: 30px;
+          --mobile-nav-bottom-offset: 8px;
+
+          --bottom-nav-bg: var(--bg-2);
+          --bottom-nav-border: 1px solid var(--border);
+          --bottom-nav-shadow: 0 -4px 20px #0002;
+        }
+
+        /* PWA — objekt zmizí, záložky zůstanou dole */
+        html.pwa-standalone {
+          --mobile-nav-bottom-offset: 0px;
+          --bottom-nav-height: 0px;
+          --bottom-nav-bg: transparent;
+          --bottom-nav-border: 0 solid transparent;
+          --bottom-nav-shadow: none;
         }
         @media (display-mode: standalone) {
+          :root {
+            --mobile-nav-bottom-offset: 0px;
+            --bottom-nav-height: 0px;
+            --bottom-nav-bg: transparent;
+            --bottom-nav-border: 0 solid transparent;
+            --bottom-nav-shadow: none;
+          }
           html, body, #root {
             height: var(--app-height, 100svh) !important;
             min-height: var(--app-height, 100svh) !important;

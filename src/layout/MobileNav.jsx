@@ -73,6 +73,8 @@ export default function MobileNav({ toggleDk }) {
   });
 
   const navItemContentStyle = {
+    position: "relative",
+    zIndex: 3,
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
@@ -254,26 +256,28 @@ export default function MobileNav({ toggleDk }) {
         className="mobile-nav-bar"
         style={{
           position: "fixed",
-          left: 0, right: 0, bottom: 0,
+          left: 0, right: 0,
+          bottom: "var(--mobile-nav-bottom-offset, 0px)",
           zIndex: 200,
-          height: "var(--bottom-tabs-hit-height)",
+          height: "var(--bottom-tabs-hit-height, 64px)",
           background: "transparent",
           boxSizing: "border-box",
           overflow: "visible",
           pointerEvents: "none",
         }}
       >
-        {/* Visible background strip — stays small */}
+        {/* Visible background strip — controlled via CSS vars, hidden in PWA */}
         <div
           aria-hidden="true"
           style={{
             position: "absolute",
             left: 0, right: 0, bottom: 0,
             height: "var(--bottom-nav-height)",
-            background: "var(--bg-2)",
-            borderTop: "1px solid var(--border)",
-            boxShadow: "0 -4px 20px #0002",
+            background: "var(--bottom-nav-bg)",
+            borderTop: "var(--bottom-nav-border)",
+            boxShadow: "var(--bottom-nav-shadow)",
             pointerEvents: "none",
+            zIndex: 1,
           }}
         />
 
@@ -281,9 +285,11 @@ export default function MobileNav({ toggleDk }) {
         <div style={{
           position: "absolute",
           left: 0, right: 0, bottom: 0,
-          height: "var(--bottom-tabs-hit-height)",
+          height: "var(--bottom-tabs-hit-height, 64px)",
           display: "flex",
           pointerEvents: "auto",
+          zIndex: 2,
+          overflow: "visible",
         }}>
           {primary.map((n) => {
             const act = page === n.id || (n.id === "projects" && page === "project-detail");
