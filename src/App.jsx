@@ -523,7 +523,7 @@ function AppShell() {
       <style>{`
         :root {
           --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
-          --bottom-nav-content-height: 56px;
+          --bottom-nav-content-height: 50px;
           --bottom-nav-height: calc(var(--bottom-nav-content-height) + env(safe-area-inset-bottom, 0px));
         }
         @media (display-mode: standalone) {
@@ -603,23 +603,6 @@ function AppShell() {
         <Suspense fallback={null}>
           <OnboardingWizard />
         </Suspense>
-      )}
-      {undoAvailable && !isMobile && (
-        <button
-          onClick={popUndo}
-          title="Vrátit poslední akci (Cmd+Z)"
-          style={{
-            position: "fixed", bottom: 20, right: 72, zIndex: 400,
-            background: "var(--surface)", border: "1px solid var(--accent)",
-            borderRadius: 8, padding: "6px 10px", cursor: "pointer",
-            display: "flex", alignItems: "center", gap: 6,
-            fontSize: 12, fontWeight: 600, color: "var(--accent)",
-            boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
-            animation: "pop .2s ease-out",
-          }}
-        >
-          ↩ <kbd style={{ fontFamily: "var(--mono)", fontSize: 11, opacity: 0.7 }}>⌘Z</kbd>
-        </button>
       )}
       {!isMobile && <button
         className="shortcuts-fab"

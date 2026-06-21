@@ -229,10 +229,7 @@ export default function MobileNav({ toggleDk }) {
         style={{
           position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 200,
           background: "var(--bg-2)", borderTop: "1px solid var(--border)",
-          display: "flex", alignItems: "stretch",
-          height: "var(--bottom-nav-height)",
-          minHeight: "var(--bottom-nav-height)",
-          paddingBottom: "env(safe-area-inset-bottom, 0px)",
+          display: "flex", alignItems: "flex-end",
           boxSizing: "border-box",
           boxShadow: "0 -4px 20px #0002",
         }}
@@ -245,10 +242,13 @@ export default function MobileNav({ toggleDk }) {
               onClick={() => handleNav(n.id)}
               style={{
                 flex: 1, display: "flex", flexDirection: "column", alignItems: "center",
-                justifyContent: "flex-end", gap: 3, padding: "0 2px 10px",
+                justifyContent: "flex-end", gap: 2,
+                paddingTop: 6,
+                paddingLeft: 2, paddingRight: 2,
+                paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 7px)",
                 border: "none", background: "transparent",
                 color: act ? "var(--accent)" : "var(--text-3)",
-                position: "relative",
+                position: "relative", minHeight: 44,
               }}
             >
               <div style={{ position: "relative", display: "inline-flex" }}>
@@ -273,10 +273,13 @@ export default function MobileNav({ toggleDk }) {
           onClick={() => setMoreOpen((v) => !v)}
           style={{
             flex: 1, display: "flex", flexDirection: "column", alignItems: "center",
-            justifyContent: "flex-end", gap: 3, padding: "0 2px 10px",
+            justifyContent: "flex-end", gap: 2,
+            paddingTop: 6,
+            paddingLeft: 2, paddingRight: 2,
+            paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 7px)",
             border: "none", background: "transparent",
             color: moreOpen ? "var(--accent)" : "var(--text-3)",
-            position: "relative",
+            position: "relative", minHeight: 44,
           }}
         >
           <div style={{ position: "relative", display: "inline-flex" }}>

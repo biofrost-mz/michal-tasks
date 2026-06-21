@@ -359,7 +359,7 @@ function MiniCalendar({ tasks, setPage }) {
   const isCurrentMonth = vy === todayY && vm === todayM;
 
   return (
-    <div style={{ padding: "10px 10px 8px", borderBottom: "1px solid var(--border)", border: "2px solid var(--accent)", borderRadius: 10, margin: "0 6px 8px" }}>
+    <div style={{ padding: "10px 10px 8px", border: "2px solid var(--accent)", borderRadius: 12, margin: "0 8px 10px", background: "color-mix(in srgb, var(--accent) 4%, var(--bg-2))" }}>
       {/* Month nav */}
       <div style={{ display: "flex", alignItems: "center", marginBottom: 8 }}>
         <button onClick={prevMonth} style={{ background: "none", border: "none", color: "var(--text-3)", cursor: "pointer", padding: "2px 5px", borderRadius: 5, fontSize: 15, lineHeight: 1, display: "flex", alignItems: "center" }}>‹</button>
@@ -596,17 +596,21 @@ export default function Sidebar({ toggleDk }) {
                 marginBottom: 6,
               }}
             >
-              <span style={{ fontSize: 14, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".08em", color: "var(--text-2)" }}>
+              <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".1em", color: "var(--text)" }}>
                 Aktivní projekty
               </span>
               <button
                 onClick={() => setPage("projects")}
                 title="Nový projekt"
-                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-3)", padding: "2px 4px", borderRadius: 5, display: "flex", alignItems: "center", lineHeight: 1 }}
-                onMouseEnter={e => { e.currentTarget.style.color = "var(--accent)"; e.currentTarget.style.background = "var(--accent-soft)"; }}
-                onMouseLeave={e => { e.currentTarget.style.color = "var(--text-3)"; e.currentTarget.style.background = "none"; }}
+                style={{
+                  background: "var(--accent-soft)", border: "1px solid color-mix(in srgb, var(--accent) 35%, transparent)",
+                  cursor: "pointer", color: "var(--accent)", padding: "3px 5px", borderRadius: 7,
+                  display: "flex", alignItems: "center", lineHeight: 1, transition: "all .15s",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = "var(--accent)"; e.currentTarget.style.color = "#fff"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "var(--accent-soft)"; e.currentTarget.style.color = "var(--accent)"; }}
               >
-                <Icon name="plus" size={14} color="currentColor" strokeWidth={2.5} />
+                <Icon name="plus" size={16} color="currentColor" strokeWidth={2.5} />
               </button>
             </div>
 
