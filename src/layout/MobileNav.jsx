@@ -232,7 +232,7 @@ export default function MobileNav({ toggleDk }) {
           minHeight: "var(--bottom-nav-height)",
           maxHeight: "var(--bottom-nav-height)",
           background: "var(--bg-2)", borderTop: "1px solid var(--border)",
-          display: "flex", alignItems: "stretch",
+          display: "flex", alignItems: "flex-end",
           boxSizing: "border-box",
           boxShadow: "0 -4px 20px #0002",
           padding: 0, margin: 0, overflow: "visible",
@@ -245,7 +245,7 @@ export default function MobileNav({ toggleDk }) {
               key={n.id}
               onClick={() => handleNav(n.id)}
               style={{
-                flex: 1, height: "100%", minHeight: 0,
+                flex: 1, height: "auto", minHeight: 0,
                 display: "flex", flexDirection: "column", alignItems: "center",
                 justifyContent: "flex-end", gap: 2,
                 paddingTop: 0, paddingLeft: 2, paddingRight: 2,
@@ -276,10 +276,10 @@ export default function MobileNav({ toggleDk }) {
         <button
           onClick={() => setMoreOpen((v) => !v)}
           style={{
-            flex: 1, height: "100%", minHeight: 0,
+            flex: 1, height: "auto", minHeight: 0,
             display: "flex", flexDirection: "column", alignItems: "center",
             justifyContent: "flex-end", gap: 2,
-            paddingTop: 5, paddingLeft: 2, paddingRight: 2,
+            paddingTop: 0, paddingLeft: 2, paddingRight: 2,
             paddingBottom: "var(--bottom-nav-edge-gap)",
             border: "none", background: "transparent",
             color: moreOpen ? "var(--accent)" : "var(--text-3)",
