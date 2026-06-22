@@ -376,21 +376,32 @@ export default function AuthGate({ children }) {
     isPasswordStrongEnough(password)
   );
   const resetReady = Boolean(newPassword && isPasswordStrongEnough(newPassword));
+  const handleMobileInputFocus = (event) => {
+    if (!isMobile) return;
+    const target = event.currentTarget;
+    window.setTimeout(() => {
+      target?.scrollIntoView?.({ block: "center", behavior: "smooth" });
+    }, 120);
+  };
 
   return (
     <div style={{
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
-      justifyContent: "center",
-      minHeight: "100vh",
+      justifyContent: isMobile ? "flex-start" : "center",
+      minHeight: isMobile ? "var(--app-height, 100svh)" : "100vh",
+      height: isMobile ? "var(--app-height, 100svh)" : undefined,
       background: "#030303",
       color: "#ffffff",
       fontFamily: "var(--font-ui)",
       position: "relative",
-      overflow: "hidden",
+      overflowX: "hidden",
+      overflowY: isMobile ? "auto" : "hidden",
+      WebkitOverflowScrolling: "touch",
+      overscrollBehaviorY: isMobile ? "contain" : undefined,
       boxSizing: "border-box",
-      padding: isMobile ? "24px 16px" : "40px 32px",
+      padding: isMobile ? "24px 16px calc(24px + env(safe-area-inset-bottom))" : "40px 32px",
     }}>
       {/* Interactive Aurora Mouse Glow Background with parralax depth */}
       <div style={{
@@ -560,6 +571,7 @@ export default function AuthGate({ children }) {
                       required
                       style={{ ...inputFieldStyle, paddingRight: "44px" }}
                       onFocus={e => {
+                        handleMobileInputFocus(e);
                         e.target.style.borderColor = "#fbbf24";
                         e.target.style.background = "rgba(255, 255, 255, 0.08)";
                       }}
@@ -810,6 +822,7 @@ export default function AuthGate({ children }) {
                         required
                         style={inputFieldStyle}
                         onFocus={e => {
+                          handleMobileInputFocus(e);
                           e.target.style.borderColor = "#fbbf24";
                           e.target.style.background = "rgba(255, 255, 255, 0.08)";
                         }}
@@ -879,6 +892,7 @@ export default function AuthGate({ children }) {
                         required
                         style={inputFieldStyle}
                         onFocus={e => {
+                          handleMobileInputFocus(e);
                           e.target.style.borderColor = "#fbbf24";
                           e.target.style.background = "rgba(255, 255, 255, 0.08)";
                         }}
@@ -902,6 +916,7 @@ export default function AuthGate({ children }) {
                       required
                       style={inputFieldStyle}
                       onFocus={e => {
+                        handleMobileInputFocus(e);
                         e.target.style.borderColor = "#fbbf24";
                         e.target.style.background = "rgba(255, 255, 255, 0.08)";
                       }}
@@ -938,6 +953,7 @@ export default function AuthGate({ children }) {
                         required
                         style={{ ...inputFieldStyle, paddingRight: "44px" }}
                         onFocus={e => {
+                          handleMobileInputFocus(e);
                           e.target.style.borderColor = "#fbbf24";
                           e.target.style.background = "rgba(255, 255, 255, 0.08)";
                         }}
@@ -981,6 +997,7 @@ export default function AuthGate({ children }) {
                           required
                           style={inputFieldStyle}
                           onFocus={e => {
+                            handleMobileInputFocus(e);
                             e.target.style.borderColor = "#fbbf24";
                             e.target.style.background = "rgba(255, 255, 255, 0.08)";
                           }}

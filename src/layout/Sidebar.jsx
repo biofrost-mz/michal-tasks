@@ -641,7 +641,7 @@ export default function Sidebar({ toggleDk }) {
           </button>
         </div>
         <a
-          href="https://www.zichmichal.cz/"
+          href="https://zichmichal.cz"
           target="_blank"
           rel="noopener noreferrer"
           style={{
