@@ -583,10 +583,16 @@ function AppShell() {
             --nav-border: 1px solid var(--border);
             --nav-shadow: 0 6px 24px rgba(0,0,0,0.18), 0 1px 3px rgba(0,0,0,0.10);
           }
+          /* 100dvh (ne --app-height) → kontejnery sahají na FYZICKÉ dno obrazovky
+             včetně zóny home indicatoru; obsah scrolluje až dolů za pill. */
           html, body, #root {
-            height: var(--app-height, 100svh) !important;
-            min-height: var(--app-height, 100svh) !important;
+            height: 100dvh !important;
+            min-height: 100dvh !important;
             background: var(--bg) !important;
+          }
+          .mobile-app-container, .mobile-main-container {
+            height: 100dvh !important;
+            min-height: 100dvh !important;
           }
           /* Frosted-glass lišta → obsah viditelně prosvítá za pillem (FB/IG efekt) */
           .mobile-nav-surface {
@@ -595,8 +601,8 @@ function AppShell() {
           }
         }
         html.pwa-standalone, html.pwa-standalone body, html.pwa-standalone #root {
-          height: var(--app-height, 100svh) !important;
-          min-height: var(--app-height, 100svh) !important;
+          height: 100dvh !important;
+          min-height: 100dvh !important;
           /* Pozadí pod plovoucím pillem = barva stránky → žádný odlišný pruh, žádný umělý konec */
           background: var(--bg) !important;
         }
@@ -619,8 +625,8 @@ function AppShell() {
         }
         html.pwa-standalone .mobile-app-container,
         html.pwa-standalone .mobile-main-container {
-          height: var(--app-height, 100svh) !important;
-          min-height: var(--app-height, 100svh) !important;
+          height: 100dvh !important;
+          min-height: 100dvh !important;
         }
         input,textarea,select{-webkit-appearance:none;border-radius:0}
         @media(max-width:767px){input,textarea,select{font-size:16px !important}}
