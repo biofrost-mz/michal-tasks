@@ -610,20 +610,6 @@ function AppShell() {
           backdrop-filter: blur(18px) saturate(140%);
           -webkit-backdrop-filter: blur(18px) saturate(140%);
         }
-        /* === DOČASNÝ DEBUG — zjišťujeme, jestli appka kreslí až na fyzické dno ===
-           Červená = appka kreslí. Pokud pod červenou zůstane ne-červený pruh,
-           aplikace tam nekreslí (viewport/cache). Po testu SMAZAT. */
-        html.pwa-standalone::after {
-          content: "";
-          position: fixed;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          height: 90px;
-          background: red;
-          z-index: 999999;
-          pointer-events: none;
-        }
         *{margin:0;padding:0;box-sizing:border-box}
         html,body,#root{width:100%;min-height:100%;margin:0;padding:0}
         html{overscroll-behavior-x:none;overflow-x:hidden}
