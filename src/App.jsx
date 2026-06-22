@@ -564,10 +564,8 @@ function AppShell() {
         /* PWA — plovoucí "pill" lišta jako Facebook */
         html.pwa-standalone {
           --nav-side-gap: 10px;
-          /* Pill dosedne až na fyzický spodek (přetlačí home-indikátor zónu)
-             a její pozadí tu zónu vyplní; popisky zůstávají v horních 64px. */
-          --nav-bottom-gap: calc(-1 * var(--safe-area-inset-bottom));
-          --nav-inner-safe: var(--safe-area-inset-bottom);
+          --nav-bottom-gap: 0px;
+          --nav-inner-safe: 0px;
           --nav-radius: 24px;
           --nav-bg: var(--surface);
           --nav-border: 1px solid var(--border);
@@ -586,11 +584,14 @@ function AppShell() {
           html, body, #root {
             height: var(--app-height, 100svh) !important;
             min-height: var(--app-height, 100svh) !important;
+            background: var(--bg) !important;
           }
         }
         html.pwa-standalone, html.pwa-standalone body, html.pwa-standalone #root {
           height: var(--app-height, 100svh) !important;
           min-height: var(--app-height, 100svh) !important;
+          /* Safe-area zóna pod pillem dostane barvu stránky, ne bílou — žádný odlišný pruh */
+          background: var(--bg) !important;
         }
         *{margin:0;padding:0;box-sizing:border-box}
         html,body,#root{width:100%;min-height:100%;margin:0;padding:0}
