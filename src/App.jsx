@@ -569,7 +569,7 @@ function AppShell() {
           --nav-bottom-gap: calc(var(--safe-area-inset-bottom) + 8px); /* nadzvednutí nad home indicator */
           --nav-inner-safe: 0px;                                       /* lišta = jen 64px řádek se záložkami */
           --nav-radius: 22px;
-          --nav-bg: color-mix(in srgb, var(--surface) 82%, transparent); /* lehce průhledné → obsah prosvítá */
+          --nav-bg: var(--surface); /* NEPRŮHLEDNÉ → iOS netintuje chin zónu na šedo */
           --nav-border: 1px solid var(--border);
           --nav-shadow: 0 6px 24px rgba(0,0,0,0.18), 0 1px 3px rgba(0,0,0,0.10);
         }
@@ -579,7 +579,7 @@ function AppShell() {
             --nav-bottom-gap: calc(var(--safe-area-inset-bottom) + 8px);
             --nav-inner-safe: 0px;
             --nav-radius: 22px;
-            --nav-bg: color-mix(in srgb, var(--surface) 82%, transparent);
+            --nav-bg: var(--surface);
             --nav-border: 1px solid var(--border);
             --nav-shadow: 0 6px 24px rgba(0,0,0,0.18), 0 1px 3px rgba(0,0,0,0.10);
           }
@@ -594,21 +594,12 @@ function AppShell() {
             height: 100dvh !important;
             min-height: 100dvh !important;
           }
-          /* Frosted-glass lišta → obsah viditelně prosvítá za pillem (FB/IG efekt) */
-          .mobile-nav-surface {
-            backdrop-filter: blur(18px) saturate(140%);
-            -webkit-backdrop-filter: blur(18px) saturate(140%);
-          }
         }
         html.pwa-standalone, html.pwa-standalone body, html.pwa-standalone #root {
           height: 100dvh !important;
           min-height: 100dvh !important;
           /* Pozadí pod plovoucím pillem = barva stránky → žádný odlišný pruh, žádný umělý konec */
           background: var(--bg) !important;
-        }
-        html.pwa-standalone .mobile-nav-surface {
-          backdrop-filter: blur(18px) saturate(140%);
-          -webkit-backdrop-filter: blur(18px) saturate(140%);
         }
         *{margin:0;padding:0;box-sizing:border-box}
         html,body,#root{width:100%;min-height:100%;margin:0;padding:0}

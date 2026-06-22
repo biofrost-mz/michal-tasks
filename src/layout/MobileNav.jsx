@@ -249,24 +249,6 @@ export default function MobileNav({ toggleDk }) {
         </>
       )}
 
-      {/* Neprůhledná "podlaha" v safe-area zóně u dolního okraje.
-          iOS tintuje spodní "chin" zónu podle pozadí NEJBLIŽŠÍHO fixed prvku —
-          bez tohoto by zdrojem byl průhledný plovoucí pill → plochý šedý pruh.
-          Tahle podlaha (v barvě stránky, u bottom:0) se stane zdrojem tintu,
-          takže se chin sladí s pozadím a žádný šedý pruh nevznikne. */}
-      <div
-        aria-hidden="true"
-        className="mobile-nav-safe-floor"
-        style={{
-          position: "fixed",
-          left: 0, right: 0, bottom: 0,
-          height: "var(--safe-area-inset-bottom, 0px)",
-          background: "var(--bg)",
-          zIndex: 0,
-          pointerEvents: "none",
-        }}
-      />
-
       {/* Bottom tab bar — full-bleed wrapper passes clicks through; the
           visible bar is the single inner surface (docked v Safari, plovoucí pill v PWA) */}
       <nav
