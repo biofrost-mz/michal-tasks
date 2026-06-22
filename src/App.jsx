@@ -565,7 +565,7 @@ function AppShell() {
         html.pwa-standalone {
           --nav-side-gap: 10px;
           --nav-bottom-gap: 0px;
-          --nav-inner-safe: 0px;
+          --nav-inner-safe: var(--safe-area-inset-bottom); /* pill sahá až na fyzický kraj — překrývá safe-area zónu */
           --nav-radius: 24px;
           --nav-bg: var(--surface);
           --nav-border: 1px solid var(--border);
@@ -574,8 +574,8 @@ function AppShell() {
         @media (display-mode: standalone) {
           :root {
             --nav-side-gap: 10px;
-            --nav-bottom-gap: calc(var(--safe-area-inset-bottom) + 8px);
-            --nav-inner-safe: 0px;
+            --nav-bottom-gap: 0px;
+            --nav-inner-safe: var(--safe-area-inset-bottom);
             --nav-radius: 24px;
             --nav-bg: var(--surface);
             --nav-border: 1px solid var(--border);
