@@ -610,15 +610,6 @@ function AppShell() {
           backdrop-filter: blur(18px) saturate(140%);
           -webkit-backdrop-filter: blur(18px) saturate(140%);
         }
-        /* === DOČASNÁ BAREVNÁ DIAGNOSTIKA — identifikace šedého pruhu dole ===
-           Barva pruhu řekne, čí to je vrstva. Když zůstane šedý → iOS systém.
-           body=ZELENÁ  #root=MODRÁ  app-container=ORANŽOVÁ
-           main-container=FIALOVÁ  nav-wrapper=ČERVENÁ.  Po testu SMAZAT. */
-        html.pwa-standalone body { background: #00ff00 !important; }
-        html.pwa-standalone #root { background: #00bfff !important; }
-        html.pwa-standalone .mobile-app-container { background: #ff8c00 !important; }
-        html.pwa-standalone .mobile-main-container { background: #ff00ff !important; }
-        html.pwa-standalone .mobile-nav-bar { background: #ff0000 !important; }
         *{margin:0;padding:0;box-sizing:border-box}
         html,body,#root{width:100%;min-height:100%;margin:0;padding:0}
         html{overscroll-behavior-x:none;overflow-x:hidden}
