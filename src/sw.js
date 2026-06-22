@@ -1,7 +1,7 @@
 // Force cache update v3.2.5 - 2026-06-21
 import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching'
 import { registerRoute, NavigationRoute } from 'workbox-routing'
-import { NetworkOnly, StaleWhileRevalidate, CacheFirst } from 'workbox-strategies'
+import { NetworkOnly, NetworkFirst, StaleWhileRevalidate, CacheFirst } from 'workbox-strategies'
 import { ExpirationPlugin } from 'workbox-expiration'
 import { CacheableResponsePlugin } from 'workbox-cacheable-response'
 import { clientsClaim } from 'workbox-core'
@@ -74,16 +74,13 @@ registerRoute(
   new NetworkOnly(),
 )
 
-/* SPA navigation fallback */
+/* SPA navigation — always network-first so refreshes always get latest index.html */
 registerRoute(
   new NavigationRoute(
-    async ({ request }) => {
-      try {
-        return await fetch(request)
-      } catch {
-        return caches.match('/index.html')
-      }
-    },
+    new NetworkFirst({
+      cacheName: 'navigation',
+      networkTimeoutSeconds: 3,
+    }),
     {
       denylist: [/^\/rest\//, /^\/auth\//, /^\/storage\//, /^\/realtime\//, /^\/functions\//],
     },

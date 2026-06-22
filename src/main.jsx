@@ -1,4 +1,4 @@
-// SW Force-rebuild hash: 2026-06-21-v5
+// SW Force-rebuild hash: 2026-06-22-v6
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { registerSW } from 'virtual:pwa-register'
@@ -16,6 +16,14 @@ createRoot(document.getElementById('root')).render(
     <App />
   </StrictMode>,
 )
+
+/* Emergency SW reset: visiting ?reset-sw clears all caches + unregisters SW */
+if ('serviceWorker' in navigator && new URLSearchParams(location.search).has('reset-sw')) {
+  Promise.all([
+    navigator.serviceWorker.getRegistrations().then(regs => Promise.all(regs.map(r => r.unregister()))),
+    caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))),
+  ]).then(() => { location.replace(location.pathname) })
+}
 
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   let updateServiceWorker = () => Promise.resolve();
