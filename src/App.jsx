@@ -564,7 +564,7 @@ function AppShell() {
         /* PWA — plovoucí "pill" lišta jako Facebook */
         html.pwa-standalone {
           --nav-side-gap: 10px;
-          --nav-bottom-gap: calc(var(--safe-area-inset-bottom) + 8px);
+          --nav-bottom-gap: 0px;
           --nav-inner-safe: 0px;
           --nav-radius: 24px;
           --nav-bg: var(--surface);
