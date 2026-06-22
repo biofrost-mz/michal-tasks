@@ -541,43 +541,45 @@ function AppShell() {
         :root {
           --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
 
-          /* Legacy – zachováno pro jiné části aplikace */
-          --bottom-nav-height: 22px;
+          /* ===== Spodní navigace — jeden poctivý prvek ===== */
+          /* Výška řádku se záložkami (schválená, neměnit) */
+          --nav-tabs-height: 64px;
 
-          /* Neviditelná vrstva pro záložky */
-          --bottom-tabs-hit-height: 64px;
-          --bottom-tabs-shift-y: 30px;
+          /* Výchozí = Safari / prohlížeč → dokovaná lišta přes celou šířku */
+          --nav-side-gap: 0px;                          /* odsazení od bočních krajů */
+          --nav-bottom-gap: 0px;                        /* mezera nade dnem obrazovky */
+          --nav-inner-safe: var(--safe-area-inset-bottom); /* výplň safe-area UVNITŘ lišty */
+          --nav-radius: 0px;
+          --nav-bg: var(--bg-2);
+          --nav-border: 1px solid var(--border);
+          --nav-shadow: 0 -4px 20px #0002;
 
-          /* Výchozí = Safari / prohlížeč */
-          --mobile-nav-bottom-offset: 8px;
+          /* Reálná výška, kterou lišta zabírá ode dna — čte FAB, Toast, bannery */
+          --bottom-nav-height: calc(var(--nav-tabs-height) + var(--nav-inner-safe) + var(--nav-bottom-gap));
 
-          /* Viditelný objekt v prohlížeči */
-          --bottom-nav-object-height: 22px;
-          --bottom-nav-object-bg: var(--bg-2);
-          --bottom-nav-object-border: 1px solid var(--border);
-          --bottom-nav-object-shadow: 0 -4px 20px #0002;
-
-          /* Rezerva obsahu stránky */
-          --mobile-main-bottom-padding: calc(var(--bottom-tabs-hit-height) + var(--mobile-nav-bottom-offset) + 24px);
+          /* Rezerva obsahu stránky pod lištou */
+          --mobile-main-bottom-padding: calc(var(--bottom-nav-height) + 24px);
         }
 
-        /* PWA — objekt zmizí, prostor pro záložky zůstane */
+        /* PWA — plovoucí "pill" lišta jako Facebook */
         html.pwa-standalone {
-          --mobile-nav-bottom-offset: 0px;
-          --bottom-nav-object-height: 0px;
-          --bottom-nav-object-bg: transparent;
-          --bottom-nav-object-border: 0 solid transparent;
-          --bottom-nav-object-shadow: none;
-          --mobile-main-bottom-padding: calc(var(--bottom-tabs-hit-height) + 24px);
+          --nav-side-gap: 10px;
+          --nav-bottom-gap: calc(var(--safe-area-inset-bottom) + 8px);
+          --nav-inner-safe: 0px;
+          --nav-radius: 24px;
+          --nav-bg: var(--surface);
+          --nav-border: 1px solid var(--border);
+          --nav-shadow: 0 6px 24px rgba(0,0,0,0.18), 0 1px 3px rgba(0,0,0,0.10);
         }
         @media (display-mode: standalone) {
           :root {
-            --mobile-nav-bottom-offset: 0px;
-            --bottom-nav-object-height: 0px;
-            --bottom-nav-object-bg: transparent;
-            --bottom-nav-object-border: 0 solid transparent;
-            --bottom-nav-object-shadow: none;
-            --mobile-main-bottom-padding: calc(var(--bottom-tabs-hit-height) + 24px);
+            --nav-side-gap: 10px;
+            --nav-bottom-gap: calc(var(--safe-area-inset-bottom) + 8px);
+            --nav-inner-safe: 0px;
+            --nav-radius: 24px;
+            --nav-bg: var(--surface);
+            --nav-border: 1px solid var(--border);
+            --nav-shadow: 0 6px 24px rgba(0,0,0,0.18), 0 1px 3px rgba(0,0,0,0.10);
           }
           html, body, #root {
             height: var(--app-height, 100svh) !important;

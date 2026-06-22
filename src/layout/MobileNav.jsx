@@ -63,8 +63,8 @@ export default function MobileNav({ toggleDk }) {
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    justifyContent: "flex-end",
-    padding: "0 2px 3px",
+    justifyContent: "center",
+    padding: "0 2px",
     border: "none",
     background: "transparent",
     color: act ? "var(--accent)" : "var(--text-3)",
@@ -80,8 +80,6 @@ export default function MobileNav({ toggleDk }) {
     alignItems: "center",
     gap: 2,
     pointerEvents: "none",
-    transform: "translateY(var(--bottom-tabs-shift-y, 0px))",
-    willChange: "transform",
   };
 
   return (
@@ -251,46 +249,43 @@ export default function MobileNav({ toggleDk }) {
         </>
       )}
 
-      {/* Bottom tab bar */}
+      {/* Bottom tab bar — full-bleed wrapper passes clicks through; the
+          visible bar is the single inner surface (docked v Safari, plovoucí pill v PWA) */}
       <nav
         className="mobile-nav-bar"
         style={{
           position: "fixed",
-          left: 0, right: 0,
-          bottom: "var(--mobile-nav-bottom-offset, 0px)",
+          left: 0, right: 0, bottom: 0,
           zIndex: 200,
-          height: "var(--bottom-tabs-hit-height, 64px)",
-          background: "transparent",
-          boxSizing: "border-box",
-          overflow: "visible",
           pointerEvents: "none",
         }}
       >
-        {/* Visible background strip — controlled via CSS vars, hidden in PWA */}
         <div
-          aria-hidden="true"
+          className="mobile-nav-surface"
           style={{
             position: "absolute",
-            left: 0, right: 0, bottom: 0,
-            height: "var(--bottom-nav-object-height)",
-            background: "var(--bottom-nav-object-bg)",
-            borderTop: "var(--bottom-nav-object-border)",
-            boxShadow: "var(--bottom-nav-object-shadow)",
-            pointerEvents: "none",
-            zIndex: 1,
+            left: "var(--nav-side-gap, 0px)",
+            right: "var(--nav-side-gap, 0px)",
+            bottom: "var(--nav-bottom-gap, 0px)",
+            height: "calc(var(--nav-tabs-height, 64px) + var(--nav-inner-safe, 0px))",
+            boxSizing: "border-box",
+            background: "var(--nav-bg)",
+            border: "var(--nav-border)",
+            borderRadius: "var(--nav-radius, 0px)",
+            boxShadow: "var(--nav-shadow)",
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+            pointerEvents: "auto",
           }}
-        />
-
-        {/* Tab buttons — independently positionable via --bottom-tabs-shift-y */}
-        <div style={{
-          position: "absolute",
-          left: 0, right: 0, bottom: 0,
-          height: "var(--bottom-tabs-hit-height, 64px)",
-          display: "flex",
-          pointerEvents: "auto",
-          zIndex: 2,
-          overflow: "visible",
-        }}>
+        >
+          {/* Tab row — fixed approved height; safe-area filler (if any) sits below it */}
+          <div style={{
+            display: "flex",
+            height: "var(--nav-tabs-height, 64px)",
+            flex: "0 0 var(--nav-tabs-height, 64px)",
+            width: "100%",
+          }}>
           {primary.map((n) => {
             const act = page === n.id || (n.id === "projects" && page === "project-detail");
             return (
@@ -338,7 +333,8 @@ export default function MobileNav({ toggleDk }) {
               <span style={{ fontSize: 10, fontWeight: moreOpen ? 600 : 400 }}>Více</span>
             </div>
           </button>
-        </div>
+          </div>{/* end tab row */}
+        </div>{/* end mobile-nav-surface */}
       </nav>
     </>
   );
