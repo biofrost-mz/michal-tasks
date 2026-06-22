@@ -564,8 +564,10 @@ function AppShell() {
         /* PWA — plovoucí "pill" lišta jako Facebook */
         html.pwa-standalone {
           --nav-side-gap: 10px;
-          --nav-bottom-gap: 0px;
-          --nav-inner-safe: 0px;
+          /* Pill dosedne až na fyzický spodek (přetlačí home-indikátor zónu)
+             a její pozadí tu zónu vyplní; popisky zůstávají v horních 64px. */
+          --nav-bottom-gap: calc(-1 * var(--safe-area-inset-bottom));
+          --nav-inner-safe: var(--safe-area-inset-bottom);
           --nav-radius: 24px;
           --nav-bg: var(--surface);
           --nav-border: 1px solid var(--border);
