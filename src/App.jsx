@@ -557,27 +557,29 @@ function AppShell() {
           /* Reálná výška, kterou lišta zabírá ode dna — čte FAB, Toast, bannery */
           --bottom-nav-height: calc(var(--nav-tabs-height) + var(--nav-inner-safe) + var(--nav-bottom-gap));
 
-          /* Rezerva obsahu stránky pod lištou */
-          --mobile-main-bottom-padding: calc(var(--bottom-nav-height) + 24px);
+          /* Rezerva obsahu stránky pod lištou (poslední karta v klidu odsazena nad pill) */
+          --mobile-main-bottom-padding: calc(var(--bottom-nav-height) + 16px);
         }
 
-        /* PWA — plovoucí "pill" lišta jako Facebook */
+        /* PWA — opravdová plovoucí "pill" lišta jako Facebook:
+           safe-area NENÍ uvnitř lišty, ale jako odsazení ODE DNA → pill se nadzvedne
+           nad home indicator, zaoblí se ze všech čtyř stran a obsah stránky scrolluje za ním. */
         html.pwa-standalone {
-          --nav-side-gap: 10px;
-          --nav-bottom-gap: 0px;
-          --nav-inner-safe: var(--safe-area-inset-bottom); /* pill sahá až na fyzický kraj — překrývá safe-area zónu */
-          --nav-radius: 24px;
-          --nav-bg: var(--surface);
+          --nav-side-gap: 12px;
+          --nav-bottom-gap: calc(var(--safe-area-inset-bottom) + 8px); /* nadzvednutí nad home indicator */
+          --nav-inner-safe: 0px;                                       /* lišta = jen 64px řádek se záložkami */
+          --nav-radius: 22px;
+          --nav-bg: color-mix(in srgb, var(--surface) 82%, transparent); /* lehce průhledné → obsah prosvítá */
           --nav-border: 1px solid var(--border);
           --nav-shadow: 0 6px 24px rgba(0,0,0,0.18), 0 1px 3px rgba(0,0,0,0.10);
         }
         @media (display-mode: standalone) {
           :root {
-            --nav-side-gap: 10px;
-            --nav-bottom-gap: 0px;
-            --nav-inner-safe: var(--safe-area-inset-bottom);
-            --nav-radius: 24px;
-            --nav-bg: var(--surface);
+            --nav-side-gap: 12px;
+            --nav-bottom-gap: calc(var(--safe-area-inset-bottom) + 8px);
+            --nav-inner-safe: 0px;
+            --nav-radius: 22px;
+            --nav-bg: color-mix(in srgb, var(--surface) 82%, transparent);
             --nav-border: 1px solid var(--border);
             --nav-shadow: 0 6px 24px rgba(0,0,0,0.18), 0 1px 3px rgba(0,0,0,0.10);
           }
@@ -586,12 +588,21 @@ function AppShell() {
             min-height: var(--app-height, 100svh) !important;
             background: var(--bg) !important;
           }
+          /* Frosted-glass lišta → obsah viditelně prosvítá za pillem (FB/IG efekt) */
+          .mobile-nav-surface {
+            backdrop-filter: blur(18px) saturate(140%);
+            -webkit-backdrop-filter: blur(18px) saturate(140%);
+          }
         }
         html.pwa-standalone, html.pwa-standalone body, html.pwa-standalone #root {
           height: var(--app-height, 100svh) !important;
           min-height: var(--app-height, 100svh) !important;
-          /* Safe-area zóna pod pillem dostane barvu stránky, ne bílou — žádný odlišný pruh */
+          /* Pozadí pod plovoucím pillem = barva stránky → žádný odlišný pruh, žádný umělý konec */
           background: var(--bg) !important;
+        }
+        html.pwa-standalone .mobile-nav-surface {
+          backdrop-filter: blur(18px) saturate(140%);
+          -webkit-backdrop-filter: blur(18px) saturate(140%);
         }
         *{margin:0;padding:0;box-sizing:border-box}
         html,body,#root{width:100%;min-height:100%;margin:0;padding:0}
