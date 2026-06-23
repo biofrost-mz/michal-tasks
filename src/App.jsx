@@ -567,7 +567,7 @@ function AppShell() {
         html.pwa-standalone {
           --nav-tabs-height: 50px;                            /* prostor kolem ikon ~8px nahoře/dole */
           --nav-side-gap: 12px;
-          --nav-bottom-gap: 25px;                             /* plovoucí ~25px nade dnem obrazovky */
+          --nav-bottom-gap: 8px;                              /* jen jemný odstup, bez viditelného spodního pruhu */
           --nav-inner-safe: 0px;
           --nav-radius: 22px;
           --nav-bg: var(--surface); /* NEPRŮHLEDNÉ → iOS netintuje chin zónu na šedo */
@@ -578,7 +578,7 @@ function AppShell() {
           :root {
             --nav-tabs-height: 50px;
             --nav-side-gap: 12px;
-            --nav-bottom-gap: 25px;
+            --nav-bottom-gap: 8px;
             --nav-inner-safe: 0px;
             --nav-radius: 22px;
             --nav-bg: var(--surface);
