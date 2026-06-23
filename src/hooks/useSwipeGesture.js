@@ -24,12 +24,14 @@ export function useSwipeGesture({
   const hasSwipedRef = useRef(false);
   const offsetXRef = useRef(0);
   const pointerIdRef = useRef(null);
+  const thresholdSideRef = useRef(null);
 
   const resetRefs = useCallback((e) => {
     startXRef.current = null;
     startYRef.current = null;
     swipeAxisRef.current = null;
     pointerIdRef.current = null;
+    thresholdSideRef.current = null;
     if (e) {
       try { e.currentTarget.releasePointerCapture?.(e.pointerId); } catch {}
     }
@@ -37,11 +39,12 @@ export function useSwipeGesture({
 
   const onPointerDown = useCallback((e) => {
     if (e.button !== undefined && e.button !== 0) return;
-    if (e.target.closest?.("button, input, textarea, select, a")) return;
+    if (e.target.closest?.("input, textarea, select, a, [contenteditable='true'], [data-swipe-ignore='true']")) return;
     startXRef.current = e.clientX;
     startYRef.current = e.clientY;
     pointerIdRef.current = e.pointerId;
     offsetXRef.current = 0;
+    thresholdSideRef.current = null;
     swipeAxisRef.current = null;
     setSwiping(false);
     hasSwipedRef.current = false;
@@ -75,8 +78,13 @@ export function useSwipeGesture({
     const clamped = Math.max(-maxSwipe, Math.min(maxSwipe, diff));
     offsetXRef.current = clamped;
     setOffsetX(clamped);
+    const side = clamped >= threshold ? "right" : clamped <= -threshold ? "left" : null;
+    if (side && thresholdSideRef.current !== side) {
+      navigator.vibrate?.(8);
+    }
+    thresholdSideRef.current = side;
     if (Math.abs(clamped) > 10) hasSwipedRef.current = true;
-  }, [maxSwipe]);
+  }, [maxSwipe, threshold]);
 
   const onPointerEnd = useCallback((e) => {
     if (pointerIdRef.current == null || pointerIdRef.current !== e.pointerId) return;
@@ -88,14 +96,14 @@ export function useSwipeGesture({
         setOffsetX(0);
         offsetXRef.current = 0;
         resetRefs(e);
-        onSwipeRight();
+        onSwipeRight({ offsetX: finalX, distance: Math.abs(finalX) });
         return;
       }
       if (finalX <= -threshold && onSwipeLeft) {
         setOffsetX(0);
         offsetXRef.current = 0;
         resetRefs(e);
-        onSwipeLeft();
+        onSwipeLeft({ offsetX: finalX, distance: Math.abs(finalX) });
         return;
       }
     }

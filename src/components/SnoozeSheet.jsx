@@ -9,13 +9,21 @@ const OPTIONS = [
   { label: "+3 dny", icon: "calendar", days: 3 },
   { label: "Příští týden", icon: "calendar", days: 7 },
 ];
+const SHEET_BACKDROP_Z = 2147483000;
+const SHEET_PANEL_Z = 2147483001;
 
-export default function SnoozeSheet({ taskId, onClose }) {
+export default function SnoozeSheet({ taskId, task, onClose, onSnoozed }) {
   const { updateTask } = useApp();
 
   const snooze = (days) => {
     const d = new Date(startOfToday().getTime() + days * 86400000);
-    updateTask(taskId, { dueDate: formatDateKey(d) });
+    const nextDueDate = formatDateKey(d);
+    updateTask(taskId, { dueDate: nextDueDate }, { silent: !!onSnoozed });
+    onSnoozed?.({
+      previousDueDate: task?.dueDate ?? null,
+      nextDueDate,
+      label: OPTIONS.find((o) => o.days === days)?.label || "Odloženo",
+    });
     navigator.vibrate?.([15, 20]);
     onClose();
   };
@@ -25,14 +33,14 @@ export default function SnoozeSheet({ taskId, onClose }) {
       <div
         onClick={onClose}
         style={{
-          position: "fixed", inset: 0, zIndex: 99998,
+          position: "fixed", inset: 0, zIndex: SHEET_BACKDROP_Z,
           background: "rgba(0,0,0,0.45)",
         }}
       />
       <div
         className="su"
         style={{
-          position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 99999,
+          position: "fixed", left: 0, right: 0, bottom: 0, zIndex: SHEET_PANEL_Z,
           background: "var(--bg-2)",
           borderRadius: "16px 16px 0 0",
           paddingBottom: "calc(20px + var(--safe-area-inset-bottom, 0px))",

@@ -53,6 +53,21 @@ function ToastList({ toasts }) {
           gap: 10px;
           font-family: var(--font-ui);
         }
+        .toast-action {
+          background: rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(255, 255, 255, 0.16);
+          color: inherit;
+          padding: 4px 9px;
+          border-radius: 7px;
+          font-size: 11px;
+          font-weight: 800;
+          cursor: pointer;
+          text-transform: uppercase;
+          letter-spacing: .02em;
+        }
+        .toast-action:hover {
+          background: rgba(255, 255, 255, 0.14);
+        }
         
         /* Success Toast style */
         .toast-item.success {
@@ -119,7 +134,7 @@ function ToastList({ toasts }) {
             {toast.type === "error" && (
               <span className="toast-icon error" style={{ background: "rgba(239, 68, 68, 0.15)", color: "#ef4444" }}>✕</span>
             )}
-            <span>{toast.msg}</span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>{toast.msg}</span>
           </div>
         ))}
       </div>

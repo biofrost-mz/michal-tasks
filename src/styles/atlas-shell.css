@@ -3318,6 +3318,8 @@ body, p, li, td, th {
   border-radius: var(--r);
   touch-action: pan-y;
   user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .swipe-bg-right {
@@ -3426,12 +3428,18 @@ body, p, li, td, th {
   position: relative;
   z-index: 2;
   touch-action: pan-y;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
   cursor: grab;
   transform: translateX(var(--drag-x)) !important;
-  transition: transform .32s cubic-bezier(.34,1.56,.64,1), opacity .18s ease !important;
+  transition: transform .32s cubic-bezier(.34,1.56,.64,1), opacity .18s ease, background .15s, border-color .18s, box-shadow .18s !important;
   will-change: transform;
 }
-.swipe-card.tcard { touch-action: pan-y; }
+.swipe-card.tcard {
+  touch-action: pan-y;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
 .swipe-card:hover,
 .swipe-card:active,
 .swipe-card.tcard:hover,
@@ -3441,6 +3449,12 @@ body, p, li, td, th {
 .swipe-shell.is-swiping .swipe-card {
   cursor: grabbing;
   transition: none !important;
+}
+.swipe-shell.is-swiping .swipe-bg-right,
+.swipe-shell.is-swiping .swipe-bg-left,
+.swipe-shell.is-swiping .swipe-action-right,
+.swipe-shell.is-swiping .swipe-action-left {
+  transition: none;
 }
 .swipe-shell.is-exiting .swipe-card {
   opacity: 0;

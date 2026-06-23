@@ -1,9 +1,11 @@
 import React, { useCallback, useMemo, useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useApp } from "../context/AppContext.jsx";
 import Icon from "../components/Icon.jsx";
 import AIDailyPlan from "../components/AIDailyPlan.jsx";
 import QuickAdd from "../components/QuickAdd.jsx";
 import GettingStartedCard from "../components/GettingStartedCard.jsx";
+import TaskContextSheet from "../components/TaskContextSheet.jsx";
 import { formatDate, formatDateKey } from "../locale.js";
 import { parseYMD, projectColor, startOfToday, triggerConfettiBurst } from "../utils.js";
 import { getNamedayInfo } from "../data/czechNamedays.js";
@@ -28,37 +30,88 @@ function getWeekNumber(date) {
 
 
 function TaskCard({ task, onOpen, onStatusChange, onStar, projectsById }) {
+  const [contextOpen, setContextOpen] = useState(false);
+  const longPressTimerRef = useRef(null);
+  const longPressStartRef = useRef(null);
+  const longPressDidFireRef = useRef(false);
+
+  const clearLongPress = ({ resetDidFire = false } = {}) => {
+    clearTimeout(longPressTimerRef.current);
+    longPressStartRef.current = null;
+    if (resetDidFire) longPressDidFireRef.current = false;
+  };
+
   return (
-    <div className={`tcard ${task.statusClass} ${task.overdue ? "alert" : ""}`} onClick={() => onOpen(task.id)}>
+    <>
       <div
-        className="tcard-state"
-        onClick={(e) => {
-          e.stopPropagation();
-          const nextStatus = task.status === "done" ? "todo" : "done";
-          if (nextStatus === "done") triggerConfettiBurst(e);
-          onStatusChange(task.id, nextStatus);
+        className={`tcard ${task.statusClass} ${task.overdue ? "alert" : ""}`}
+        onPointerDown={(e) => {
+          if (e.target.closest?.("button, input, textarea, select, a, [contenteditable='true']")) return;
+          longPressStartRef.current = { x: e.clientX, y: e.clientY };
+          longPressTimerRef.current = setTimeout(() => {
+            navigator.vibrate?.([15, 20]);
+            longPressDidFireRef.current = true;
+            setContextOpen(true);
+            longPressStartRef.current = null;
+          }, 500);
         }}
-        title="Toggle hotovo"
-      />
-      <div className="tcard-body">
-        <div className="tcard-title">{task.title}</div>
-        {task.desc ? <div className="tcard-desc">{task.desc}</div> : null}
-        <div className="tcard-meta">
-          <ProjectPill projectId={task.project} projectsById={projectsById} />
-          <PrioChip priority={task.priority} />
-          {task.due ? <span className={`due ${task.overdue ? "overdue" : ""}`}>{task.overdue ? "⚠ " : ""}{task.due}</span> : null}
-          {(task.tagObjects || task.tags.map((n) => ({ id: n, name: n }))).map((tg) => <TagPill key={tg.id} name={tg.name} color={tg.color} />)}
-          {task.hasSubtasks > 0 ? <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: task.doneSubtasks === task.hasSubtasks ? "var(--green)" : "var(--text-3)" }}>≡ {task.doneSubtasks}/{task.hasSubtasks}</span> : null}
-          {task.recurrence ? <span title="Opakující se úkol" style={{ fontSize: 11, color: "var(--text-3)" }}>↺</span> : null}
+        onPointerMove={(e) => {
+          if (!longPressStartRef.current) return;
+          const dx = Math.abs(e.clientX - longPressStartRef.current.x);
+          const dy = Math.abs(e.clientY - longPressStartRef.current.y);
+          if (dx > 8 || dy > 8) clearLongPress({ resetDidFire: true });
+        }}
+        onPointerUp={() => clearLongPress()}
+        onPointerCancel={() => clearLongPress({ resetDidFire: true })}
+        onLostPointerCapture={() => clearLongPress()}
+        onClick={(e) => {
+          if (longPressDidFireRef.current) {
+            e.preventDefault();
+            e.stopPropagation();
+            longPressDidFireRef.current = false;
+            return;
+          }
+          onOpen(task.id);
+        }}
+      >
+        <div
+          className="tcard-state"
+          onClick={(e) => {
+            e.stopPropagation();
+            const nextStatus = task.status === "done" ? "todo" : "done";
+            if (nextStatus === "done") triggerConfettiBurst(e);
+            onStatusChange(task.id, nextStatus);
+          }}
+          title="Toggle hotovo"
+        />
+        <div className="tcard-body">
+          <div className="tcard-title">{task.title}</div>
+          {task.desc ? <div className="tcard-desc">{task.desc}</div> : null}
+          <div className="tcard-meta">
+            <ProjectPill projectId={task.project} projectsById={projectsById} />
+            <PrioChip priority={task.priority} />
+            {task.due ? <span className={`due ${task.overdue ? "overdue" : ""}`}>{task.overdue ? "⚠ " : ""}{task.due}</span> : null}
+            {(task.tagObjects || task.tags.map((n) => ({ id: n, name: n }))).map((tg) => <TagPill key={tg.id} name={tg.name} color={tg.color} />)}
+            {task.hasSubtasks > 0 ? <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: task.doneSubtasks === task.hasSubtasks ? "var(--green)" : "var(--text-3)" }}>≡ {task.doneSubtasks}/{task.hasSubtasks}</span> : null}
+            {task.recurrence ? <span title="Opakující se úkol" style={{ fontSize: 11, color: "var(--text-3)" }}>↺</span> : null}
+          </div>
+        </div>
+        <div className="tcard-acts" onClick={(e) => e.stopPropagation()}>
+          <Stepper statusClass={task.statusClass} onChange={(s) => onStatusChange(task.id, s)} />
+          <button className={`icon-btn star ${task.starred ? "on" : ""}`} onClick={() => onStar(task.id)} title="Top úkol">
+            <Icon name="star" size={15} color="currentColor" strokeWidth={1.6} fill={task.starred ? "currentColor" : "none"} />
+          </button>
         </div>
       </div>
-      <div className="tcard-acts" onClick={(e) => e.stopPropagation()}>
-        <Stepper statusClass={task.statusClass} onChange={(s) => onStatusChange(task.id, s)} />
-        <button className={`icon-btn star ${task.starred ? "on" : ""}`} onClick={() => onStar(task.id)} title="Top úkol">
-          <Icon name="star" size={15} color="currentColor" strokeWidth={1.6} fill={task.starred ? "currentColor" : "none"} />
-        </button>
-      </div>
-    </div>
+      {contextOpen && createPortal(
+        <TaskContextSheet
+          task={task}
+          onClose={() => setContextOpen(false)}
+          onEdit={() => onOpen(task.id)}
+        />,
+        document.body
+      )}
+    </>
   );
 }
 

@@ -328,7 +328,7 @@ export default function TasksPage() {
 
   const [focusedId, setFocusedId] = useState(null);
 
-  const setStatus = useCallback((id, status) => updateTask(id, { status }), [updateTask]);
+  const setStatus = useCallback((id, status, options) => updateTask(id, { status }, options), [updateTask]);
   const toggleStar = useCallback((id) => {
     const current = tasks.find((t) => t.id === id);
     if (!current) return;

@@ -79,6 +79,10 @@ const ACCENT_THEMES = {
 
 const VALID_PAGES = new Set(["dashboard", "tasks", "quick-todos", "projects", "timeline", "notes"]);
 
+function localDateKey(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 function normalizeUiSettings(raw) {
   const migratedTheme = raw?.themeMode || (typeof raw?.dk === "boolean" ? (raw.dk ? "dark" : "light") : DEFAULT_UI_SETTINGS.themeMode);
   return {
@@ -857,6 +861,28 @@ export function AppProvider({ children }) {
           } else {
             toast("Připomenutí bylo zrušeno", "success");
           }
+        }
+      }
+
+      if (u.status === "done" && prevTask.status !== "done") {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayKey = localDateKey(today);
+        const celebrationKey = `mt:done-3-celebrated:${todayKey}`;
+        const doneToday = tasksRef.current.filter((t) => {
+          if (t.id === id) return false;
+          if (t.status !== "done") return false;
+          const stamp = t.completedAt || t.updatedAt;
+          return stamp && stamp >= today.getTime();
+        }).length + 1;
+
+        try {
+          if (doneToday === 3 && localStorage.getItem(celebrationKey) !== "1") {
+            localStorage.setItem(celebrationKey, "1");
+            setTimeout(() => toast("3 hotové dnes. Dobrá jízda.", "success"), 180);
+          }
+        } catch {
+          if (doneToday === 3) setTimeout(() => toast("3 hotové dnes. Dobrá jízda.", "success"), 180);
         }
       }
 

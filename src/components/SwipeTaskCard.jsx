@@ -4,11 +4,16 @@ import Icon from "./Icon.jsx";
 import SnoozeSheet from "./SnoozeSheet.jsx";
 import TaskContextSheet from "./TaskContextSheet.jsx";
 import { useSwipeGesture } from "../hooks/useSwipeGesture.js";
-import { triggerConfettiBurst } from "../utils.js";
+import { useApp } from "../context/AppContext.jsx";
+import { useToast } from "./Toast.jsx";
+import { formatDateKey } from "../locale.js";
+import { startOfToday, triggerConfettiBurst } from "../utils.js";
 
 const SWIPE_HINT_KEY = "mt:swipe-hint-shown";
+const SWIPE_USED_KEY = "mt:swipe-used";
 const LONG_PRESS_MS = 500;
 const LONG_PRESS_MOVE_LIMIT = 8;
+const LONG_LEFT_SWIPE_THRESHOLD = 110;
 
 export default function SwipeTaskCard({
   task,
@@ -19,6 +24,8 @@ export default function SwipeTaskCard({
   hintTarget,
   children,
 }) {
+  const { updateTask } = useApp();
+  const toast = useToast();
   const [snoozeOpen, setSnoozeOpen] = useState(false);
   const [contextOpen, setContextOpen] = useState(false);
   const [exiting, setExiting] = useState(false);
@@ -27,19 +34,62 @@ export default function SwipeTaskCard({
   const longPressTimerRef = useRef(null);
   const longPressStartRef = useRef(null);
   const longPressDidFireRef = useRef(false);
+  const portalRoot = typeof document !== "undefined" ? document.body : null;
+
+  const markSwipeUsed = () => {
+    try { localStorage.setItem(SWIPE_USED_KEY, "1"); } catch {}
+  };
+
+  const showUndoToast = (message, onUndo) => {
+    toast(
+      <>
+        <span>{message}</span>
+        <button
+          className="toast-action"
+          onClick={(e) => {
+            e.stopPropagation();
+            onUndo?.();
+          }}
+        >
+          Zpět
+        </button>
+      </>,
+      "success"
+    );
+  };
+
+  const snoozeToTomorrow = () => {
+    const tomorrow = new Date(startOfToday().getTime() + 86400000);
+    const nextDueDate = formatDateKey(tomorrow);
+    const previousDueDate = task.dueDate ?? null;
+    updateTask(task.id, { dueDate: nextDueDate }, { silent: true });
+    showUndoToast("Odloženo na zítra", () => {
+      updateTask(task.id, { dueDate: previousDueDate }, { silent: true });
+    });
+  };
 
   const handleSwipeRight = () => {
     if (task.status === "done") return;
+    markSwipeUsed();
     navigator.vibrate?.([20, 30, 60]);
     triggerConfettiBurst({ target: cardRef.current });
     setExiting(true);
     setTimeout(() => {
-      onStatusChange(task.id, "done");
+      onStatusChange(task.id, "done", { silent: true });
+      showUndoToast("Hotovo", () => {
+        setExiting(false);
+        onStatusChange(task.id, task.status || "todo", { silent: true });
+      });
     }, 260);
   };
 
-  const handleSwipeLeft = () => {
+  const handleSwipeLeft = ({ distance } = {}) => {
+    markSwipeUsed();
     navigator.vibrate?.([15, 20]);
+    if (distance >= LONG_LEFT_SWIPE_THRESHOLD) {
+      snoozeToTomorrow();
+      return;
+    }
     setSnoozeOpen(true);
   };
 
@@ -57,18 +107,29 @@ export default function SwipeTaskCard({
     onSwipeLeft: handleSwipeLeft,
   });
 
-  const clearLongPress = () => {
+  const clearLongPress = ({ resetDidFire = false } = {}) => {
     clearTimeout(longPressTimerRef.current);
     longPressStartRef.current = null;
-    longPressDidFireRef.current = false;
+    if (resetDidFire) longPressDidFireRef.current = false;
   };
 
-  const scaleR = 0.72 + rightProgress * 0.28 + (pastRightThreshold ? 0.04 : 0);
-  const scaleL = 0.72 + leftProgress * 0.28 + (pastLeftThreshold ? 0.04 : 0);
+  const suppressSyntheticClick = (e) => {
+    if (!longPressDidFireRef.current && !hasSwipedRef.current) return false;
+    e.preventDefault();
+    e.stopPropagation();
+    longPressDidFireRef.current = false;
+    return true;
+  };
+
+  const scaleR = pastRightThreshold ? 1.04 : 0.7 + rightProgress * 0.22;
+  const scaleL = pastLeftThreshold ? 1.04 : 0.7 + leftProgress * 0.22;
 
   // One-time swipe hint nudge
   useEffect(() => {
     if (!hintTarget) return;
+    try {
+      if (localStorage.getItem(SWIPE_USED_KEY)) return;
+    } catch {}
     if (sessionStorage.getItem(SWIPE_HINT_KEY)) return;
     const t = setTimeout(() => {
       setHintActive(true);
@@ -132,6 +193,7 @@ export default function SwipeTaskCard({
           ].filter(Boolean).join(" "),
           onPointerDown: (e) => {
             handlers.onPointerDown(e);
+            if (e.target.closest?.("input, textarea, select, a, [contenteditable='true'], [data-swipe-ignore='true']")) return;
             longPressStartRef.current = { x: e.clientX, y: e.clientY };
             longPressTimerRef.current = setTimeout(() => {
               navigator.vibrate?.([15, 20]);
@@ -146,7 +208,7 @@ export default function SwipeTaskCard({
               const dx = Math.abs(e.clientX - longPressStartRef.current.x);
               const dy = Math.abs(e.clientY - longPressStartRef.current.y);
               if (dx > LONG_PRESS_MOVE_LIMIT || dy > LONG_PRESS_MOVE_LIMIT) {
-                clearLongPress();
+                clearLongPress({ resetDidFire: true });
               }
             }
           },
@@ -155,10 +217,17 @@ export default function SwipeTaskCard({
             handlers.onPointerUp(e);
           },
           onPointerCancel: (e) => {
-            clearLongPress();
+            clearLongPress({ resetDidFire: true });
             handlers.onPointerCancel(e);
           },
-          onLostPointerCapture: (e) => handlers.onLostPointerCapture(e),
+          onLostPointerCapture: (e) => {
+            clearLongPress();
+            handlers.onLostPointerCapture(e);
+          },
+          onClickCapture: (e) => {
+            if (suppressSyntheticClick(e)) return;
+            children.props.onClickCapture?.(e);
+          },
           onClick: (e) => {
             if (longPressDidFireRef.current) { longPressDidFireRef.current = false; return; }
             if (hasSwipedRef.current) return;
@@ -172,21 +241,27 @@ export default function SwipeTaskCard({
         })}
       </div>
 
-      {snoozeOpen && createPortal(
+      {snoozeOpen && portalRoot && createPortal(
         <SnoozeSheet
           taskId={task.id}
+          task={task}
+          onSnoozed={({ previousDueDate, label }) => {
+            showUndoToast(`Odloženo: ${label}`, () => {
+              updateTask(task.id, { dueDate: previousDueDate ?? null }, { silent: true });
+            });
+          }}
           onClose={() => setSnoozeOpen(false)}
         />,
-        document.getElementById("root") || document.body
+        portalRoot
       )}
 
-      {contextOpen && createPortal(
+      {contextOpen && portalRoot && createPortal(
         <TaskContextSheet
           task={task}
           onClose={() => setContextOpen(false)}
           onEdit={() => onClick?.()}
         />,
-        document.getElementById("root") || document.body
+        portalRoot
       )}
     </>
   );
