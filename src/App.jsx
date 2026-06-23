@@ -791,8 +791,8 @@ function AppShell() {
             </Suspense>
           )}
         </div>
-        {isMobile && !hideMobileFab && <MobileFAB />}
-        {isMobile && <MobileNav toggleDk={() => setDk(!dk)} />}
+        {isMobile && splashDone && !hideMobileFab && <MobileFAB />}
+        {isMobile && splashDone && <MobileNav toggleDk={() => setDk(!dk)} />}
       </div>
     </>
   );

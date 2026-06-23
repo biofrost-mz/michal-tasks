@@ -21,7 +21,7 @@ export default function SplashScreen({ visible }) {
 
   if (!mounted) return null;
 
-  const bg = dk ? "#0a0c12" : "#f5f5f7";
+  const bg = "var(--surface)";
   const textColor = dk ? "#e8ecf4" : "#0a0c12";
   const sloganColor = dk ? "#4e5161" : "#8e8e93";
 
