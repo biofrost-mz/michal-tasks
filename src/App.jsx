@@ -573,11 +573,11 @@ function AppShell() {
           --nav-inner-safe: 0px;
           --nav-radius: 22px 22px 0 0;
           --nav-bg: var(--surface); /* NEPRŮHLEDNÉ → iOS netintuje chin zónu na šedo */
-          --nav-border: 1px solid var(--border);
+          --nav-border: none;
           --nav-shadow: 0 -6px 22px rgba(0,0,0,0.12), 0 -1px 3px rgba(0,0,0,0.08);
           --nav-system-overdraw: 0px;
           --nav-item-justify: flex-start;
-          --nav-item-padding-top: 5px;
+          --nav-item-padding-top: 8px;
         }
         @media (display-mode: standalone) {
           :root {
@@ -587,11 +587,11 @@ function AppShell() {
             --nav-inner-safe: 0px;
             --nav-radius: 22px 22px 0 0;
             --nav-bg: var(--surface);
-            --nav-border: 1px solid var(--border);
+            --nav-border: none;
             --nav-shadow: 0 -6px 22px rgba(0,0,0,0.12), 0 -1px 3px rgba(0,0,0,0.08);
             --nav-system-overdraw: 0px;
             --nav-item-justify: flex-start;
-            --nav-item-padding-top: 5px;
+            --nav-item-padding-top: 8px;
           }
           /* 100dvh (ne --app-height) → kontejnery sahají na FYZICKÉ dno obrazovky
              včetně zóny home indicatoru; obsah scrolluje až dolů za pill. */
