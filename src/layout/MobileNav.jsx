@@ -256,7 +256,7 @@ export default function MobileNav({ toggleDk }) {
         className="mobile-nav-bar"
         style={{
           position: "fixed",
-          left: 0, right: 0, bottom: 0,
+          left: 0, right: 0, bottom: "calc(-1 * var(--nav-system-overdraw, 0px))",
           zIndex: 200,
           pointerEvents: "none",
         }}

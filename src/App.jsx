@@ -553,6 +553,7 @@ function AppShell() {
           --nav-bg: var(--bg-2);
           --nav-border: 1px solid var(--border);
           --nav-shadow: 0 -4px 20px #0002;
+          --nav-system-overdraw: 0px;
 
           /* Reálná výška, kterou lišta zabírá ode dna — čte FAB, Toast, bannery */
           --bottom-nav-height: calc(var(--nav-tabs-height) + var(--nav-inner-safe) + var(--nav-bottom-gap));
@@ -561,29 +562,30 @@ function AppShell() {
           --mobile-main-bottom-padding: calc(var(--bottom-nav-height) + 16px);
         }
 
-        /* PWA — spodní safe-area vyplní neprůhledné tělo pillu.
-           Kdyby safe-area zůstala pod pillem jako odsazení, iOS ji vykreslí
-           jako samostatný šedý chin pruh. */
+        /* PWA — iOS někdy kotví fixed prvky nad spodní safe-area hranou.
+           Overdraw posune celou nav vrstvu do chin prostoru bez natažení pillu. */
         html.pwa-standalone {
           --nav-tabs-height: 50px;                            /* prostor kolem ikon ~8px nahoře/dole */
           --nav-side-gap: 12px;
-          --nav-bottom-gap: 0px;
-          --nav-inner-safe: var(--safe-area-inset-bottom);
+          --nav-bottom-gap: 25px;                             /* vizuální odstup uvnitř overdraw vrstvy */
+          --nav-inner-safe: 0px;
           --nav-radius: 22px;
           --nav-bg: var(--surface); /* NEPRŮHLEDNÉ → iOS netintuje chin zónu na šedo */
           --nav-border: 1px solid var(--border);
           --nav-shadow: 0 6px 24px rgba(0,0,0,0.18), 0 1px 3px rgba(0,0,0,0.10);
+          --nav-system-overdraw: calc(var(--safe-area-inset-bottom) + var(--nav-bottom-gap));
         }
         @media (display-mode: standalone) {
           :root {
             --nav-tabs-height: 50px;
             --nav-side-gap: 12px;
-            --nav-bottom-gap: 0px;
-            --nav-inner-safe: var(--safe-area-inset-bottom);
+            --nav-bottom-gap: 25px;
+            --nav-inner-safe: 0px;
             --nav-radius: 22px;
             --nav-bg: var(--surface);
             --nav-border: 1px solid var(--border);
             --nav-shadow: 0 6px 24px rgba(0,0,0,0.18), 0 1px 3px rgba(0,0,0,0.10);
+            --nav-system-overdraw: calc(var(--safe-area-inset-bottom) + var(--nav-bottom-gap));
           }
           /* 100dvh (ne --app-height) → kontejnery sahají na FYZICKÉ dno obrazovky
              včetně zóny home indicatoru; obsah scrolluje až dolů za pill. */
