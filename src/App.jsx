@@ -561,14 +561,14 @@ function AppShell() {
           --mobile-main-bottom-padding: calc(var(--bottom-nav-height) + 16px);
         }
 
-        /* PWA — opravdová plovoucí "pill" lišta jako Facebook:
-           safe-area NENÍ uvnitř lišty, ale jako odsazení ODE DNA → pill se nadzvedne
-           nad home indicator, zaoblí se ze všech čtyř stran a obsah stránky scrolluje za ním. */
+        /* PWA — spodní safe-area vyplní neprůhledné tělo pillu.
+           Kdyby safe-area zůstala pod pillem jako odsazení, iOS ji vykreslí
+           jako samostatný šedý chin pruh. */
         html.pwa-standalone {
           --nav-tabs-height: 50px;                            /* prostor kolem ikon ~8px nahoře/dole */
           --nav-side-gap: 12px;
-          --nav-bottom-gap: 8px;                              /* jen jemný odstup, bez viditelného spodního pruhu */
-          --nav-inner-safe: 0px;
+          --nav-bottom-gap: 0px;
+          --nav-inner-safe: var(--safe-area-inset-bottom);
           --nav-radius: 22px;
           --nav-bg: var(--surface); /* NEPRŮHLEDNÉ → iOS netintuje chin zónu na šedo */
           --nav-border: 1px solid var(--border);
@@ -578,8 +578,8 @@ function AppShell() {
           :root {
             --nav-tabs-height: 50px;
             --nav-side-gap: 12px;
-            --nav-bottom-gap: 8px;
-            --nav-inner-safe: 0px;
+            --nav-bottom-gap: 0px;
+            --nav-inner-safe: var(--safe-area-inset-bottom);
             --nav-radius: 22px;
             --nav-bg: var(--surface);
             --nav-border: 1px solid var(--border);
