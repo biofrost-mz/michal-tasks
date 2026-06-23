@@ -562,48 +562,49 @@ function AppShell() {
           --mobile-main-bottom-padding: calc(var(--bottom-nav-height) + 16px);
         }
 
-        /* PWA — iOS někdy kotví fixed prvky nad spodní safe-area hranou.
-           Overdraw posune celou nav vrstvu do chin prostoru bez natažení pillu. */
+        /* PWA — fixed prvky necháváme nad iOS chin vrstvou.
+           Samotný chin se barví kořenovým pozadím, ne překreslením navigace. */
         html.pwa-standalone {
           --nav-tabs-height: 50px;                            /* prostor kolem ikon ~8px nahoře/dole */
           --nav-side-gap: 12px;
-          --nav-bottom-gap: 25px;                             /* vizuální odstup uvnitř overdraw vrstvy */
+          --nav-bottom-gap: calc(var(--safe-area-inset-bottom) + 8px);
           --nav-inner-safe: 0px;
           --nav-radius: 22px;
           --nav-bg: var(--surface); /* NEPRŮHLEDNÉ → iOS netintuje chin zónu na šedo */
           --nav-border: 1px solid var(--border);
           --nav-shadow: 0 6px 24px rgba(0,0,0,0.18), 0 1px 3px rgba(0,0,0,0.10);
-          --nav-system-overdraw: calc(var(--safe-area-inset-bottom) + var(--nav-bottom-gap));
+          --nav-system-overdraw: 0px;
         }
         @media (display-mode: standalone) {
           :root {
             --nav-tabs-height: 50px;
             --nav-side-gap: 12px;
-            --nav-bottom-gap: 25px;
+            --nav-bottom-gap: calc(var(--safe-area-inset-bottom) + 8px);
             --nav-inner-safe: 0px;
             --nav-radius: 22px;
             --nav-bg: var(--surface);
             --nav-border: 1px solid var(--border);
             --nav-shadow: 0 6px 24px rgba(0,0,0,0.18), 0 1px 3px rgba(0,0,0,0.10);
-            --nav-system-overdraw: calc(var(--safe-area-inset-bottom) + var(--nav-bottom-gap));
+            --nav-system-overdraw: 0px;
           }
           /* 100dvh (ne --app-height) → kontejnery sahají na FYZICKÉ dno obrazovky
              včetně zóny home indicatoru; obsah scrolluje až dolů za pill. */
           html, body, #root {
             height: 100dvh !important;
             min-height: 100dvh !important;
-            background: var(--bg) !important;
+            background: var(--surface) !important;
           }
           .mobile-app-container, .mobile-main-container {
             height: 100dvh !important;
             min-height: 100dvh !important;
+            background: var(--bg) !important;
           }
         }
         html.pwa-standalone, html.pwa-standalone body, html.pwa-standalone #root {
           height: 100dvh !important;
           min-height: 100dvh !important;
-          /* Pozadí pod plovoucím pillem = barva stránky → žádný odlišný pruh, žádný umělý konec */
-          background: var(--bg) !important;
+          /* iOS chin bere barvu z kořenové vrstvy; necháme ji splynout s pillem. */
+          background: var(--surface) !important;
         }
         *{margin:0;padding:0;box-sizing:border-box}
         html,body,#root{width:100%;min-height:100%;margin:0;padding:0}
@@ -622,6 +623,7 @@ function AppShell() {
         html.pwa-standalone .mobile-main-container {
           height: 100dvh !important;
           min-height: 100dvh !important;
+          background: var(--bg) !important;
         }
         input,textarea,select{-webkit-appearance:none;border-radius:0}
         @media(max-width:767px){input,textarea,select{font-size:16px !important}}
