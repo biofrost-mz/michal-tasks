@@ -257,7 +257,11 @@ export default function MobileNav({ toggleDk }) {
         style={{
           position: "fixed",
           left: 0, right: 0, bottom: "calc(-1 * var(--nav-system-overdraw, 0px))",
-          zIndex: 200,
+          zIndex: 2147483647,
+          isolation: "isolate",
+          transform: "translateZ(0)",
+          WebkitTransform: "translateZ(0)",
+          willChange: "transform",
           pointerEvents: "none",
         }}
       >
@@ -278,6 +282,7 @@ export default function MobileNav({ toggleDk }) {
             flexDirection: "column",
             overflow: "visible",
             pointerEvents: "auto",
+            zIndex: 1,
           }}
         >
           {/* Tab row — fixed approved height; safe-area filler (if any) sits below it */}
