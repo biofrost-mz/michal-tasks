@@ -565,9 +565,10 @@ function AppShell() {
            safe-area NENÍ uvnitř lišty, ale jako odsazení ODE DNA → pill se nadzvedne
            nad home indicator, zaoblí se ze všech čtyř stran a obsah stránky scrolluje za ním. */
         html.pwa-standalone {
+          --nav-tabs-height: 38px;                            /* těsná lišta: ikona+popisek (34px) + 2px nahoře/dole */
           --nav-side-gap: 12px;
-          --nav-bottom-gap: 0px;                              /* žádná mezera pod lištou → žádný proužek */
-          --nav-inner-safe: var(--safe-area-inset-bottom);    /* lišta sama vyplní spodní safe zónu */
+          --nav-bottom-gap: 10px;                             /* plovoucí ~10px nade dnem obrazovky */
+          --nav-inner-safe: 0px;
           --nav-radius: 22px;
           --nav-bg: var(--surface); /* NEPRŮHLEDNÉ → iOS netintuje chin zónu na šedo */
           --nav-border: 1px solid var(--border);
@@ -575,9 +576,10 @@ function AppShell() {
         }
         @media (display-mode: standalone) {
           :root {
+            --nav-tabs-height: 38px;
             --nav-side-gap: 12px;
-            --nav-bottom-gap: 0px;
-            --nav-inner-safe: var(--safe-area-inset-bottom);
+            --nav-bottom-gap: 10px;
+            --nav-inner-safe: 0px;
             --nav-radius: 22px;
             --nav-bg: var(--surface);
             --nav-border: 1px solid var(--border);

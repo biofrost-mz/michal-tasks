@@ -79,6 +79,7 @@ export default function MobileNav({ toggleDk }) {
     flexDirection: "column",
     alignItems: "center",
     gap: 2,
+    lineHeight: 1,
     pointerEvents: "none",
   };
 
@@ -275,7 +276,7 @@ export default function MobileNav({ toggleDk }) {
             boxShadow: "var(--nav-shadow)",
             display: "flex",
             flexDirection: "column",
-            overflow: "hidden",
+            overflow: "visible",
             pointerEvents: "auto",
           }}
         >
