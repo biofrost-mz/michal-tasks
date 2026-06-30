@@ -412,7 +412,7 @@ export function AppProvider({ children }) {
       }
       setSettingsLoaded(true);
     })();
-  }, []);
+  }, [setPage]);
 
   // Hash Router: Listen to hashchange (e.g. browser back/forward)
   useEffect(() => {
@@ -428,7 +428,7 @@ export function AppProvider({ children }) {
 
     window.addEventListener("hashchange", handleHashChange);
     return () => window.removeEventListener("hashchange", handleHashChange);
-  }, []);
+  }, [setPage]);
 
   // Hash Router: Sync state changes back to hash
   useEffect(() => {
@@ -698,7 +698,7 @@ export function AppProvider({ children }) {
         setSelProject(null);
       }
     },
-    [selProject, projects, reportError]
+    [selProject, projects, reportError, setPage]
   );
 
   // Přeuspořádání úkolů — přijme nové pole úkolů v požadovaném pořadí
@@ -1440,7 +1440,7 @@ export function AppProvider({ children }) {
     setPage("notes");
     setOpenNoteId(id);
     setTaskDetail(null);
-  }, []);
+  }, [setPage]);
 
   const updateProfileDisplayName = useCallback(async (displayName) => {
     const trimmed = displayName.trim();
@@ -1461,7 +1461,7 @@ export function AppProvider({ children }) {
   const openProject = useCallback((id) => {
     setSelProject(id);
     setPage("project-detail");
-  }, []);
+  }, [setPage]);
 
   const logout = useCallback(async () => {
     try {

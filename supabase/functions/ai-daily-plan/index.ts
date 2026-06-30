@@ -1,5 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  clampText,
+  isPayloadTooLargeError,
+  readJsonLimited,
+} from "../_shared/validate.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -69,10 +74,15 @@ serve(async (req) => {
     // Parsuj tělo
     let workspaceId: string;
     try {
-      const body = await req.json();
-      workspaceId = body.workspaceId;
+      const body = await readJsonLimited(req);
+      workspaceId = clampText(body?.workspaceId, 80);
       if (!workspaceId) throw new Error("Missing workspaceId");
-    } catch {
+    } catch (parseErr) {
+      if (isPayloadTooLargeError(parseErr)) {
+        return new Response(JSON.stringify({ error: "Payload too large" }), {
+          status: 413, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       return new Response(JSON.stringify({ error: "workspaceId required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -104,6 +114,7 @@ serve(async (req) => {
         .select("title, description, status, priority, due_date, project_id, starred")
         .eq("workspace_id", workspaceId)
         .neq("status", "done")
+        .neq("status", "deleted")
         .order("due_date", { ascending: true, nullsFirst: false }),
       db.from("projects")
         .select("id, name, status")

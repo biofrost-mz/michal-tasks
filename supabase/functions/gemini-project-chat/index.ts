@@ -1,5 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  MAX_TEXT,
+  MAX_TITLE,
+  clampText,
+  isPayloadTooLargeError,
+  readJsonLimited,
+} from "../_shared/validate.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -39,7 +46,7 @@ serve(async (req) => {
     );
     const { data: { user }, error: authErr } = await userClient.auth.getUser();
     if (authErr || !user) {
-      return new Response(JSON.stringify({ error: `Unauthorized: ${authErr?.message || "User not found"}` }), { status: 401, headers: JSON_HEADERS });
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: JSON_HEADERS });
     }
 
     if (!checkRateLimit(user.id)) {
@@ -49,18 +56,55 @@ serve(async (req) => {
       );
     }
 
-    const body = await req.json();
-    const currentMessage: string = body.currentMessage ?? "";
-    const messages: Array<{ role: string; content: string }> = body.messages ?? [];
-    const projectContext = body.projectContext ?? {};
+    let body;
+    try {
+      body = await readJsonLimited(req);
+    } catch (parseErr) {
+      if (isPayloadTooLargeError(parseErr)) {
+        return new Response(JSON.stringify({ error: "Payload too large" }), { status: 413, headers: JSON_HEADERS });
+      }
+      return new Response(JSON.stringify({ error: "Neplatný požadavek. Tělo musí být platný JSON." }), { status: 400, headers: JSON_HEADERS });
+    }
+    const currentMessage = clampText(body?.currentMessage, MAX_TEXT);
+    const messages: Array<{ role: string; content: string }> = Array.isArray(body?.messages)
+      ? body.messages.slice(-20).map((m: Record<string, unknown>) => ({
+          role: m?.role === "assistant" ? "assistant" : "user",
+          content: clampText(m?.content, 1000),
+        }))
+      : [];
+    const projectContext = body?.projectContext && typeof body.projectContext === "object" ? body.projectContext : {};
 
     if (!currentMessage.trim()) {
       return new Response(JSON.stringify({ error: "currentMessage je povinný." }), { status: 400, headers: JSON_HEADERS });
     }
 
-    const project = projectContext.project ?? {};
-    const tasks: Array<{ title: string; status: string; priority?: string; dueDate?: string; subtasks?: Array<{ text: string; done: boolean }> }> = projectContext.tasks ?? [];
-    const notes: Array<{ title: string; content?: string }> = projectContext.notes ?? [];
+    const projectRaw = projectContext.project && typeof projectContext.project === "object" ? projectContext.project : {};
+    const project = {
+      name: clampText(projectRaw.name, MAX_TITLE),
+      status: clampText(projectRaw.status, 40),
+      description: clampText(projectRaw.description, MAX_TEXT),
+    };
+    const tasks: Array<{ title: string; status: string; priority?: string; dueDate?: string; subtasks?: Array<{ text: string; done: boolean }> }> =
+      Array.isArray(projectContext.tasks)
+        ? projectContext.tasks.slice(0, 100).map((task: Record<string, unknown>) => ({
+            title: clampText(task?.title, MAX_TITLE),
+            status: clampText(task?.status, 40),
+            priority: clampText(task?.priority, 40),
+            dueDate: clampText(task?.dueDate, 32),
+            subtasks: Array.isArray(task?.subtasks)
+              ? task.subtasks.slice(0, 20).map((subtask: Record<string, unknown>) => ({
+                  text: clampText(subtask?.text, 120),
+                  done: Boolean(subtask?.done),
+                }))
+              : [],
+          }))
+        : [];
+    const notes: Array<{ title: string; content?: string }> = Array.isArray(projectContext.notes)
+      ? projectContext.notes.slice(0, 50).map((note: Record<string, unknown>) => ({
+          title: clampText(note?.title, MAX_TITLE),
+          content: clampText(note?.content, 500),
+        }))
+      : [];
 
     const taskLines = tasks.map((task) => {
       const subDone = task.subtasks ? task.subtasks.filter((s) => s.done).length : 0;

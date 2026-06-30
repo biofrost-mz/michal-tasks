@@ -20,6 +20,8 @@ export function clearErrorLogs() {
 // Inicializace globálních posluchačů
 export function initGlobalErrorLogging() {
   if (typeof window === "undefined") return;
+  if (window.__mtGlobalErrorLoggingInitialized) return;
+  window.__mtGlobalErrorLoggingInitialized = true;
 
   // Zachycení běžných JS chyb (window.onerror)
   window.addEventListener("error", (event) => {

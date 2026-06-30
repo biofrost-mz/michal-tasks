@@ -472,7 +472,15 @@ export default function TaskDrawer() {
         </div>
 
         {/* ── Body ── */}
-        <div className="detail-body" style={isMobile ? { flex: 1, overflowY: "auto", paddingBottom: "24px" } : undefined}>
+        <div
+          className="detail-body"
+          style={isMobile ? {
+            flex: 1,
+            overflowY: "auto",
+            paddingBottom: "calc(104px + env(safe-area-inset-bottom, 0px))",
+            scrollPaddingBottom: "calc(104px + env(safe-area-inset-bottom, 0px))",
+          } : undefined}
+        >
 
           {/* Star + Project pill + Priority + Due (top row) */}
           <div className="row">

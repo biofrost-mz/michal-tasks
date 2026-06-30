@@ -155,6 +155,35 @@ function isPasswordStrongEnough(password) {
   return passwordChecklist(password).every((item) => item.ok);
 }
 
+function authErrorMessage(error, mode = "signin") {
+  const message = String(error?.message || "").toLowerCase();
+  const status = error?.status;
+
+  if (
+    status === 400 ||
+    message.includes("invalid login credentials") ||
+    message.includes("invalid credentials") ||
+    message.includes("invalid email or password")
+  ) {
+    return "Chybné heslo nebo e-mail.";
+  }
+
+  if (message.includes("email not confirmed")) {
+    return "E-mail ještě není potvrzený. Zkontroluj schránku a potvrzovací odkaz.";
+  }
+
+  if (message.includes("already registered") || message.includes("user already registered")) {
+    return "Účet s tímto e-mailem už existuje. Zkus se přihlásit.";
+  }
+
+  if (message.includes("rate limit") || message.includes("too many")) {
+    return "Příliš mnoho pokusů. Zkus to prosím za chvíli znovu.";
+  }
+
+  if (mode === "signup") return "Registrace se nepodařila. Zkontroluj údaje a zkus to znovu.";
+  return "Přihlášení se nepodařilo. Zkontroluj e-mail a heslo.";
+}
+
 export default function AuthGate({ children }) {
   const { isMobile } = useApp();
   const toast = useToast();
@@ -288,7 +317,7 @@ export default function AuthGate({ children }) {
       ({ error } = await supabase.auth.signInWithPassword({ email: e, password }));
     }
     setSending(false);
-    if (error) toast(error.message || "Chyba přihlášení", "error");
+    if (error) toast(authErrorMessage(error, signMode), "error");
   };
 
   const handleForgotPassword = async () => {

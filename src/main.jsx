@@ -1,7 +1,6 @@
 // SW Force-rebuild hash: 2026-06-22-v6
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { registerSW } from 'virtual:pwa-register'
 import './index.css'
 import App from './App.jsx'
 import { initGlobalErrorLogging } from './utils/errorLogger.js'
@@ -26,8 +25,11 @@ if ('serviceWorker' in navigator && new URLSearchParams(location.search).has('re
 }
 
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
-  let updateServiceWorker = () => Promise.resolve();
   let refreshing = false;
+  let updateReadyDispatched = false;
+  const swBase = import.meta.env.BASE_URL || '/';
+  const swScope = swBase.endsWith('/') ? swBase : `${swBase}/`;
+  const swUrl = `${swScope}sw.js`;
 
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (refreshing) return;
@@ -35,24 +37,38 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
     window.location.reload();
   });
 
-  const notifyUpdateReady = () => {
-    window.dispatchEvent(new CustomEvent('app:update-ready', { detail: { updateSW: updateServiceWorker } }));
+  const notifyUpdateReady = (registration) => {
+    if (updateReadyDispatched) return;
+    updateReadyDispatched = true;
+    const updateSW = () => {
+      registration.waiting?.postMessage({ type: 'SKIP_WAITING' });
+    };
+    window.dispatchEvent(new CustomEvent('app:update-ready', { detail: { updateSW } }));
   };
 
-  updateServiceWorker = registerSW({
-    immediate: true,
-    onNeedRefresh: notifyUpdateReady,
-    onNeedReload: notifyUpdateReady,
-    onOfflineReady() {
-      window.dispatchEvent(new CustomEvent('app:offline-ready'));
-    },
-    onRegisterError(error) {
-      console.warn('SW registration failed:', error);
-    },
-  });
+  navigator.serviceWorker.register(swUrl, { scope: swScope }).then((registration) => {
+    if (registration.waiting && navigator.serviceWorker.controller) {
+      notifyUpdateReady(registration);
+    }
 
-  /* Force SW update check on every app load */
-  navigator.serviceWorker.ready.then(reg => reg.update()).catch(() => {});
+    registration.addEventListener('updatefound', () => {
+      const worker = registration.installing;
+      if (!worker) return;
+
+      worker.addEventListener('statechange', () => {
+        if (worker.state !== 'installed') return;
+        if (navigator.serviceWorker.controller) {
+          notifyUpdateReady(registration);
+        } else {
+          window.dispatchEvent(new CustomEvent('app:offline-ready'));
+        }
+      });
+    });
+
+    registration.update().catch(() => {});
+  }).catch((error) => {
+    console.warn('SW registration failed:', error);
+  });
 
   /* Auto-reload when SW sends FORCE_RELOAD (fired on new SW activate) */
   navigator.serviceWorker.addEventListener('message', (event) => {

@@ -18,6 +18,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 const APP_URL = Deno.env.get("APP_URL") ?? "https://tasks.zichmichal.cz";
+const EMAIL_LOGO_URL = Deno.env.get("EMAIL_LOGO_URL") ?? `${APP_URL}/icon-zentero.png`;
 
 const PRIORITY_LABELS: Record<string, string> = {
   critical: "Kritická",
@@ -93,6 +94,7 @@ async function sendReminderEmail(to: string, tasks: Record<string, string>[], pr
       title: single ? "Připomínka úkolu" : "Připomínka úkolů",
       subtitle: "Tuhle připomínku sis nastavil u konkrétního úkolu.",
       extraLine: `Nastaveno na ${formatDateTime(tasks[0]?.remind_at)}`,
+      logoUrl: EMAIL_LOGO_URL,
     }) +
     contentRow(
       section({
@@ -112,6 +114,7 @@ async function sendReminderEmail(to: string, tasks: Record<string, string>[], pr
       note: "Automatická připomínka ze Zentero — chodí podle času, který sis nastavil u úkolu. Upravíš ji v",
       settingsUrl: APP_URL,
       host: APP_URL.replace(/^https?:\/\//, ""),
+      logoUrl: EMAIL_LOGO_URL,
     });
 
   const html = emailShell({ preheader: `${taskLabel} čeká na kontrolu.`, title: "Připomínka úkolu — Zentero", body });
@@ -147,11 +150,7 @@ Deno.serve(async (req) => {
     console.warn("task-reminders: unauthorized call", {
       ip: req.headers.get("x-forwarded-for") ?? "unknown",
       hasRuntimeCronSecret: Boolean(cronSecret),
-      runtimeCronSecretLength: cronSecret?.length ?? 0,
-      runtimeCronSecretSuffix: cronSecret ? cronSecret.slice(-4) : null,
       hasRequestCronSecret: Boolean(providedCronSecret),
-      requestCronSecretLength: providedCronSecret?.length ?? 0,
-      requestCronSecretSuffix: providedCronSecret ? providedCronSecret.slice(-4) : null,
       headerKeys: [...req.headers.keys()],
     });
     return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403 });
@@ -166,6 +165,7 @@ Deno.serve(async (req) => {
     .select("id, title, description, due_date, priority, project_id, created_by, remind_at")
     .not("remind_at", "is", null)
     .neq("status", "done")
+    .neq("status", "deleted")
     .lte("remind_at", now.toISOString())
     .gte("remind_at", oneHourAgo.toISOString());
 

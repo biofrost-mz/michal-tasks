@@ -1,5 +1,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  MAX_TEXT,
+  MAX_TITLE,
+  clampStringArray,
+  clampText,
+  isPayloadTooLargeError,
+  readJsonLimited,
+} from "../_shared/validate.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -44,7 +52,7 @@ serve(async (req) => {
     const { data: { user }, error: authErr } = await userClient.auth.getUser();
     if (authErr || !user) {
       console.error("ai-task-assist auth error:", authErr);
-      return new Response(JSON.stringify({ error: `Unauthorized: ${authErr?.message || "User not found"}` }), { status: 401, headers: { ...CORS, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...CORS, "Content-Type": "application/json" } });
     }
 
     if (!checkRateLimit(user.id)) {
@@ -56,13 +64,32 @@ serve(async (req) => {
 
     let body, action, task, note, availableTags;
     try {
-      body = await req.json();
+      body = await readJsonLimited(req);
       action = body?.action;
-      task = body?.task;
-      note = body?.note;
-      availableTags = body?.availableTags;
+      task = body?.task && typeof body.task === "object"
+        ? {
+            ...body.task,
+            title: clampText(body.task.title, MAX_TITLE),
+            description: clampText(body.task.description, MAX_TEXT),
+            dueDate: clampText(body.task.dueDate, 32),
+          }
+        : {};
+      note = body?.note && typeof body.note === "object"
+        ? {
+            ...body.note,
+            title: clampText(body.note.title, MAX_TITLE),
+            content: clampText(body.note.content, MAX_TEXT),
+          }
+        : {};
+      availableTags = clampStringArray(body?.availableTags, 50, 40);
     } catch (parseErr) {
       console.error("ai-task-assist: JSON parse error:", parseErr);
+      if (isPayloadTooLargeError(parseErr)) {
+        return new Response(
+          JSON.stringify({ error: "Payload too large" }),
+          { status: 413, headers: { ...CORS, "Content-Type": "application/json" } }
+        );
+      }
       return new Response(
         JSON.stringify({ error: "Neplatný požadavek. Tělo musí být platný JSON." }),
         { status: 400, headers: { ...CORS, "Content-Type": "application/json" } }
@@ -154,12 +181,17 @@ Obsah:
 ${(note.content || "").slice(0, 4000)}`;
 
     } else if (action === "draft_task") {
-      const text = body?.text || "";
+      const text = clampText(body?.text, MAX_TEXT);
       const len = body?.length || "short";
-      const todayDate = body?.todayDate || new Date().toISOString().slice(0, 10);
-      const projNames = body?.availableProjects || [];
-      const tagNames = body?.availableTags || [];
-      const existingTasks = body?.existingTasks || [];
+      const todayDate = clampText(body?.todayDate, 32) || new Date().toISOString().slice(0, 10);
+      const projNames = clampStringArray(body?.availableProjects, 50, 80);
+      const tagNames = availableTags;
+      const existingTasks = Array.isArray(body?.existingTasks)
+        ? body.existingTasks.slice(0, 50).map((task: Record<string, unknown>) => ({
+            id: clampText(task?.id, 80),
+            title: clampText(task?.title, MAX_TITLE),
+          }))
+        : [];
 
       const projectList = projNames.length ? `Dostupné projekty v aplikaci: ${projNames.join(", ")}` : "Žádné projekty.";
       const tagList = tagNames.length ? `Dostupné tagy v aplikaci: ${tagNames.join(", ")}` : "Žádné tagy.";

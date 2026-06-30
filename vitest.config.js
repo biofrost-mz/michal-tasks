@@ -6,8 +6,7 @@ export default defineConfig({
   test: {
     environment: "node",
     globals: false,
-    pool: "forks",
-    singleFork: true,
+    pool: "threads",
     testTimeout: 15000,
     server: {
       deps: {

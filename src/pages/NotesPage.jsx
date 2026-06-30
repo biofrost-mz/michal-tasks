@@ -1,7 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { lazy, Suspense, useState, useEffect, useRef, useCallback } from 'react'
 import { SkeletonLine } from '../components/Skeleton.jsx'
-import { useCreateBlockNote } from '@blocknote/react'
-import { BlockNoteView } from '@blocknote/mantine'
 import { useApp } from '../context/AppContext.jsx'
 import { useToast } from '../components/Toast.jsx'
 import { useConfirm } from '../components/Confirm.jsx'
@@ -11,46 +9,10 @@ import { projectColor, relTime } from '../utils.js'
 import { compareText, formatDate, formatDateTime } from '../locale.js'
 import DOMPurify from 'dompurify'
 
+const NoteBlockEditor = lazy(() => import('../components/notes/NoteBlockEditor.jsx'));
 
 const CURATED_TAG_COLORS = ["#38bdf8", "#34d399", "#fb7185", "#f472b6", "#fbbf24", "#a78bfa", "#c084fc", "#60a5fa", "#2dd4bf", "#fb923c"];
 const getRandomTagColor = () => CURATED_TAG_COLORS[Math.floor(Math.random() * CURATED_TAG_COLORS.length)];
-const BLOCKNOTE_VENDOR_CSS_ID = "blocknote-vendor-css";
-let blockNoteStylesPromise = null;
-
-function ensureBlockNoteStyles() {
-  if (typeof document === "undefined" || document.getElementById(BLOCKNOTE_VENDOR_CSS_ID)) {
-    return Promise.resolve();
-  }
-
-  if (!blockNoteStylesPromise) {
-    blockNoteStylesPromise = Promise.all([
-      import('@blocknote/core/fonts/inter.css?inline'),
-      import('@blocknote/mantine/style.css?inline'),
-    ]).then((styles) => {
-      if (document.getElementById(BLOCKNOTE_VENDOR_CSS_ID)) return;
-      const el = document.createElement("style");
-      el.id = BLOCKNOTE_VENDOR_CSS_ID;
-      el.textContent = styles.map((style) => style.default || "").join("\n");
-      document.head.appendChild(el);
-    });
-  }
-
-  return blockNoteStylesPromise;
-}
-
-function useBlockNoteStyles() {
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-    ensureBlockNoteStyles().then(() => {
-      if (active) setReady(true);
-    });
-    return () => { active = false; };
-  }, []);
-
-  return ready;
-}
 
 const getTagColor = (tagName, globalTags) => {
   if (!tagName || !globalTags) return null;
@@ -500,23 +462,6 @@ function stripHtmlText(value = "") {
     .trim();
 }
 
-function blockContentText(content) {
-  if (!Array.isArray(content)) return "";
-  return content.map(item => {
-    if (typeof item === "string") return item;
-    if (item?.type === "text") return item.text || "";
-    if (Array.isArray(item?.content)) return blockContentText(item.content);
-    return "";
-  }).join("");
-}
-
-function blocksToPlainText(blocks = []) {
-  return blocks
-    .map(block => [blockContentText(block.content), blocksToPlainText(block.children || [])].filter(Boolean).join("\n"))
-    .filter(Boolean)
-    .join("\n");
-}
-
 function noteTemplateLabel(note) {
   const content = `${note.title || ""} ${stripHtmlText(note.content || "")}`.toLowerCase();
   if (content.includes("linkedin")) return "LinkedIn post";
@@ -560,25 +505,18 @@ function linkedItemsForNote(note, projects, tasks) {
 /* ─── NoteEditor ────────────────────────────── */
 function NoteEditor({ note, onSave, dk, isMobile, showProps, onToggleProps, onDelete, onTogglePin, projects, tasks, addTask }) {
   const { tags: globalTags } = useApp();
-  const blockNoteStylesReady = useBlockNoteStyles();
-  const editor = useCreateBlockNote();
+  const blockEditorRef = useRef(null);
   const titleRef = useRef(null);
+  const titleValueRef = useRef(note.title);
   const saveTimer = useRef(null);
-  const loadingNoteRef = useRef(false);
   const latestContentRef = useRef(initEditorContent(note.content));
 
-  const [title, setTitle] = useState(note.title);
   const [saveState, setSaveState] = useState("idle");
   const [aiOpen, setAiOpen] = useState(false);
   const [aiAction, setAiAction] = useState(null);
   const [aiLoading, setAiLoading] = useState(null);
   const [aiResult, setAiResult] = useState(null);
   const [statusMenu, setStatusMenu] = useState(false);
-
-  const serializeEditor = useCallback(() => {
-    const html = editor.blocksToHTMLLossy(editor.document);
-    return initEditorContent(html || "");
-  }, [editor]);
 
   const triggerSave = useCallback((data) => {
     setSaveState("saving");
@@ -595,49 +533,37 @@ function NoteEditor({ note, onSave, dk, isMobile, showProps, onToggleProps, onDe
   }, [onSave]);
 
   useEffect(() => {
-    loadingNoteRef.current = true;
-    setTitle(note.title);
+    titleValueRef.current = note.title;
     if (titleRef.current) titleRef.current.value = note.title;
     latestContentRef.current = initEditorContent(note.content);
-    const blocks = editor.tryParseHTMLToBlocks(latestContentRef.current || "<p></p>");
-    editor.replaceBlocks(editor.document, blocks.length ? blocks : [{ type: "paragraph", content: "" }]);
-    window.setTimeout(() => {
-      loadingNoteRef.current = false;
-    }, 0);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editor, note.id]);
+  }, [note.id, note.content, note.title]);
 
   useEffect(() => () => clearTimeout(saveTimer.current), []);
 
   const handleTitleChange = (e) => {
     const nextTitle = e.target.value;
-    setTitle(nextTitle);
+    titleValueRef.current = nextTitle;
     triggerSave({ title: nextTitle, content: latestContentRef.current });
   };
 
-  const handleEditorChange = useCallback(() => {
-    if (loadingNoteRef.current) return;
-    const content = serializeEditor();
+  const handleEditorContentChange = useCallback((content) => {
     latestContentRef.current = content;
-    triggerSave({ title: titleRef.current?.value || title, content });
-  }, [serializeEditor, title, triggerSave]);
+    triggerSave({ title: titleRef.current?.value || titleValueRef.current, content });
+  }, [triggerSave]);
 
   const getEditorText = useCallback(() => {
-    const text = blocksToPlainText(editor.document).trim();
+    const text = blockEditorRef.current?.getText()?.trim() || "";
     return text || stripHtmlText(latestContentRef.current || note.content || "");
-  }, [editor, note.content]);
+  }, [note.content]);
 
   const appendParagraphs = useCallback((text) => {
-    const blocks = String(text)
-      .split(/\n+/)
-      .map(line => line.trim())
-      .filter(Boolean)
-      .map(line => ({ type: "paragraph", content: line }));
-    if (!blocks.length) return;
-    const reference = editor.document[editor.document.length - 1];
-    editor.insertBlocks(blocks, reference, "after");
-    editor.focus();
-  }, [editor]);
+    blockEditorRef.current?.appendParagraphs(text);
+    const content = blockEditorRef.current?.getContent?.();
+    if (content) {
+      latestContentRef.current = content;
+      triggerSave({ title: titleRef.current?.value || titleValueRef.current, content });
+    }
+  }, [triggerSave]);
 
   const runAI = async (action) => {
     setAiLoading(action);
@@ -841,17 +767,19 @@ function NoteEditor({ note, onSave, dk, isMobile, showProps, onToggleProps, onDe
           </div>
 
           <div className="note-blocknote">
-            {blockNoteStylesReady ? (
-              <BlockNoteView
-                editor={editor}
-                onChange={handleEditorChange}
-                theme={dk ? "dark" : "light"}
-              />
-            ) : (
+            <Suspense fallback={
               <div style={{ minHeight: 260, display: "grid", placeItems: "center", color: "var(--text-3)", fontSize: 13, fontWeight: 700 }}>
                 Načítám editor...
               </div>
-            )}
+            }>
+              <NoteBlockEditor
+                ref={blockEditorRef}
+                noteId={note.id}
+                content={note.content}
+                dk={dk}
+                onContentChange={handleEditorContentChange}
+              />
+            </Suspense>
           </div>
 
           <div className="notes-linked-panel">

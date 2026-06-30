@@ -72,6 +72,7 @@ export interface HeroOpts {
   subtitle: string;
   stats?: StatItem[];
   extraLine?: string;
+  logoUrl?: string;
 }
 
 export function heroBlock(o: HeroOpts): string {
@@ -82,11 +83,14 @@ export function heroBlock(o: HeroOpts): string {
     ? `<div style="margin-top:16px;color:#ffffff;font-size:13px;font-weight:700"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#fbbf24;vertical-align:middle;margin-right:7px"></span>${escHtml(o.extraLine)}</div>`
     : "";
   const stats = o.stats && o.stats.length ? statCellsDesktop(o.stats) + statRowMobile(o.stats) : "";
+  const logo = o.logoUrl
+    ? `<img src="${escHtml(o.logoUrl)}" width="34" height="34" alt="Zentero" style="display:block;width:34px;height:34px;border-radius:11px;border:0;outline:none;text-decoration:none">`
+    : "Z";
   return `<tr><td bgcolor="#4f46e5" style="border-radius:20px 20px 0 0;background:#4f46e5;background:linear-gradient(135deg,#2563eb 0%,#4f46e5 48%,#7c3aed 100%)">
    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td class="em-hero-pad" style="padding:26px 30px 24px">
      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
        <td valign="middle"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-         <td valign="middle" style="width:34px;height:34px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.28);border-radius:11px;text-align:center;color:#ffffff;font-size:16px;font-weight:800;line-height:34px">Z</td>
+         <td valign="middle" style="width:34px;height:34px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.28);border-radius:11px;text-align:center;color:#ffffff;font-size:16px;font-weight:800;line-height:34px">${logo}</td>
          <td valign="middle" style="padding-left:10px;color:#ffffff;font-size:15px;font-weight:800;letter-spacing:-.01em">Zentero</td>
        </tr></table></td>
        <td align="right" valign="middle" style="color:#ffffff;font-size:12px;font-weight:700;white-space:nowrap"><span style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.24);border-radius:999px;padding:7px 12px">${escHtml(o.dateLabel)}</span></td>
@@ -207,16 +211,20 @@ export interface FooterOpts {
   unsubscribeText?: string;
   unsubscribeUrl?: string;
   host?: string;
+  logoUrl?: string;
 }
 
 export function footer(o: FooterOpts): string {
   const bottom = o.unsubscribeText && o.unsubscribeUrl
     ? `Nechceš už tyto e-maily dostávat? <a href="${o.unsubscribeUrl}" style="color:#667085;text-decoration:underline">${escHtml(o.unsubscribeText)}</a>${o.host ? ` · ${escHtml(o.host)}` : ""}`
     : escHtml(o.host ?? "");
+  const logo = o.logoUrl
+    ? `<img src="${escHtml(o.logoUrl)}" width="30" height="30" alt="Zentero" style="display:block;width:30px;height:30px;border-radius:9px;border:0;outline:none;text-decoration:none">`
+    : "Z";
   return `<tr><td style="height:5px;line-height:5px;font-size:0;background:#4f46e5;background:linear-gradient(90deg,#2563eb,#7c3aed)">&nbsp;</td></tr>
    <tr><td bgcolor="#ffffff" class="em-pad em-card em-bd" style="background:#ffffff;border:1px solid #e7e7ea;border-top:0;border-radius:0 0 20px 20px;padding:20px 30px 22px">
      <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-       <td valign="middle" style="width:30px;height:30px;background:#4f46e5;border-radius:9px;text-align:center;color:#fff;font-weight:800;font-size:14px;line-height:30px">Z</td>
+       <td valign="middle" style="width:30px;height:30px;background:#4f46e5;border-radius:9px;text-align:center;color:#fff;font-weight:800;font-size:14px;line-height:30px">${logo}</td>
        <td valign="middle" class="em-strong" style="padding-left:9px;font-size:13px;font-weight:800;color:#1f2937">Zentero</td>
      </tr></table>
      <div class="em-muted" style="margin-top:11px;color:#667085;font-size:12px;line-height:1.55">${escHtml(o.note)} <a href="${o.settingsUrl}" style="color:#4f46e5;text-decoration:none">nastavení notifikací</a>.</div>

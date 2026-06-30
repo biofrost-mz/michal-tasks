@@ -1,6 +1,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3";
+import {
+  MAX_TEXT,
+  clampStringArray,
+  clampText,
+  isPayloadTooLargeError,
+  readJsonLimited,
+} from "../_shared/validate.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -77,7 +84,7 @@ serve(async (req) => {
     );
     const { data: { user }, error: authErr } = await userClient.auth.getUser();
     if (authErr || !user) {
-      return new Response(JSON.stringify({ error: `Unauthorized: ${authErr?.message || "User not found"}` }), { status: 401, headers: { ...CORS, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...CORS, "Content-Type": "application/json" } });
     }
 
     if (!checkRateLimit(user.id)) {
@@ -87,7 +94,23 @@ serve(async (req) => {
       );
     }
 
-    const { userPrompt, availableTags } = await req.json();
+    let body;
+    try {
+      body = await readJsonLimited(req);
+    } catch (parseErr) {
+      if (isPayloadTooLargeError(parseErr)) {
+        return new Response(
+          JSON.stringify({ error: "Payload too large" }),
+          { status: 413, headers: { ...CORS, "Content-Type": "application/json" } }
+        );
+      }
+      return new Response(
+        JSON.stringify({ error: "Neplatný požadavek. Tělo musí být platný JSON." }),
+        { status: 400, headers: { ...CORS, "Content-Type": "application/json" } }
+      );
+    }
+    const userPrompt = clampText(body?.userPrompt, MAX_TEXT);
+    const availableTags = clampStringArray(body?.availableTags, 50, 40);
 
     if (!userPrompt?.trim()) {
       return new Response(JSON.stringify({ error: "userPrompt je povinný." }), { status: 400, headers: { ...CORS, "Content-Type": "application/json" } });
@@ -138,7 +161,6 @@ Pravidla pro tvorbu a výstup projektu:
     let rawText = "";
     let success = false;
     let errorDetails = "";
-    let geminiDebugInfo: any = null;
     let selectedModel = "";
 
     const apiKey = Deno.env.get("GOOGLE_GENERATIVE_AI_API_KEY");
@@ -166,7 +188,6 @@ Pravidla pro tvorbu a výstup projektu:
 
           if (geminiResp.ok) {
             const geminiData = await geminiResp.json();
-            geminiDebugInfo = geminiData;
             const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
             if (text) {
               rawText = text;
@@ -277,14 +298,14 @@ Vrať výsledek jako JSON objekt s touto strukturou:
     try {
       parsed = JSON.parse(cleanedText);
     } catch (parseErr: any) {
-      console.error("ai-project-planner: JSON parse error:", cleanedText);
+      console.error("ai-project-planner: JSON parse error:", {
+        message: parseErr?.message || String(parseErr),
+        outputLength: cleanedText.length,
+      });
       return new Response(
         JSON.stringify({ 
           error: `AI vrátila neplatný JSON formát. Detaily chyb: ${errorDetails}`,
-          rawText: rawText,
-          cleanedText: cleanedText,
           parseError: parseErr?.message || String(parseErr),
-          geminiDebugInfo: geminiDebugInfo
         }),
         { status: 502, headers: { ...CORS, "Content-Type": "application/json" } }
       );
@@ -293,13 +314,16 @@ Vrať výsledek jako JSON objekt s touto strukturou:
     const validated = ProjectPlannerSchema.safeParse(parsed);
     if (!validated.success) {
       console.error("ai-project-planner: Zod validation error:", JSON.stringify(validated.error.flatten()));
-      console.error("ai-project-planner: raw parsed data:", JSON.stringify(parsed));
+      console.error("ai-project-planner: parsed payload metadata:", {
+        type: Array.isArray(parsed) ? "array" : typeof parsed,
+        keys: parsed && typeof parsed === "object" && !Array.isArray(parsed)
+          ? Object.keys(parsed as Record<string, unknown>).slice(0, 20)
+          : [],
+      });
       return new Response(
         JSON.stringify({ 
           error: `AI vrátila neočekávanou strukturu dat. Detaily chyb: ${errorDetails}`,
-          rawParsed: parsed,
           validationErrors: validated.error.flatten(),
-          geminiDebugInfo: geminiDebugInfo
         }),
         { status: 502, headers: { ...CORS, "Content-Type": "application/json" } }
       );

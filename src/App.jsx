@@ -317,7 +317,7 @@ function usePullToRefresh(enabled, onRefresh) {
 }
 
 function AppShell() {
-  const { dk, setDk, isMobile, page, setPage, taskDetail, cmdOpen, setCmdOpen, isSystemAdmin, loaded, tasks, setTaskDetail, refetchAll, popUndo, undoAvailable } = useApp();
+  const { dk, setDk, isMobile, page, setPage, taskDetail, cmdOpen, setCmdOpen, isSystemAdmin, loaded, tasks, setTaskDetail, refetchAll, popUndo, userId } = useApp();
 
   const handleSwipeLeft = useCallback(() => {
     if (!isMobile) return;
@@ -402,6 +402,18 @@ function AppShell() {
     window.addEventListener("mt3:onboarding_done", handler);
     return () => window.removeEventListener("mt3:onboarding_done", handler);
   }, []);
+
+  useEffect(() => {
+    if (!userId || onboardingDone) return;
+    try {
+      if (localStorage.getItem(`mt3:onboarding_done:${userId}`)) {
+        localStorage.setItem("mt3:onboarding_done", "1");
+        setOnboardingDone(true);
+      }
+    } catch {
+      // localStorage can be unavailable in restricted browser modes.
+    }
+  }, [userId, onboardingDone]);
   useEffect(() => {
     const handleOnline = () => { if (loaded) refetchAll(); };
     window.addEventListener("online", handleOnline);

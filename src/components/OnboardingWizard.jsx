@@ -115,8 +115,7 @@ export default function OnboardingWizard() {
       if (error || !Object.prototype.hasOwnProperty.call(profileRow ?? {}, "onboarded_at")) return;
       await supabase
         .from("user_profiles")
-        .update({ onboarded_at: new Date().toISOString() })
-        .eq("id", userId);
+        .upsert({ id: userId, onboarded_at: new Date().toISOString() }, { onConflict: "id" });
     })();
   }, [userId]);
 

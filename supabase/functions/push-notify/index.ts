@@ -136,8 +136,14 @@ async function sendPush(endpoint: string, p256dh: string, auth: string, payload:
 }
 
 Deno.serve(async (req) => {
-  const authHeader = req.headers.get("Authorization") ?? "";
-  if (!authHeader.startsWith("Bearer ")) {
+  const cronSecret = Deno.env.get("CRON_SECRET");
+  const providedCronSecret = req.headers.get("x-cron-secret");
+  if (!cronSecret || providedCronSecret !== cronSecret) {
+    console.warn("push-notify: unauthorized call", {
+      ip: req.headers.get("x-forwarded-for") ?? "unknown",
+      hasRuntimeCronSecret: Boolean(cronSecret),
+      hasRequestCronSecret: Boolean(providedCronSecret),
+    });
     return new Response("Forbidden", { status: 403 });
   }
 
@@ -150,7 +156,8 @@ Deno.serve(async (req) => {
     .select("id, title, workspace_id")
     .gte("remind_at", windowStart)
     .lte("remind_at", windowEnd)
-    .neq("status", "done");
+    .neq("status", "done")
+    .neq("status", "deleted");
 
   const url = new URL(req.url);
   const isDailyRun = url.searchParams.get("daily") === "1";
@@ -172,7 +179,8 @@ Deno.serve(async (req) => {
       .from("tasks")
       .select("workspace_id")
       .eq("due_date", today)
-      .neq("status", "done");
+      .neq("status", "done")
+      .neq("status", "deleted");
 
     const dueCounts = new Map<string, number>();
     for (const t of dueTasks ?? []) {

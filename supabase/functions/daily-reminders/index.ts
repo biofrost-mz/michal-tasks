@@ -26,6 +26,7 @@ const PRIORITY_LABELS: Record<string, string> = {
 };
 
 const APP_URL = Deno.env.get("APP_URL") ?? "https://tasks.zichmichal.cz";
+const EMAIL_LOGO_URL = Deno.env.get("EMAIL_LOGO_URL") ?? `${APP_URL}/icon-zentero.png`;
 const SECTION_LIMIT = 5;
 
 function formatDate(dateStr?: string): string {
@@ -58,11 +59,15 @@ function daysOverdue(due: string, todayStr: string): number {
 function toRow(
   t: Record<string, string>,
   projectMap: Record<string, string>,
+  workspaceMap: Record<string, string>,
   kind: "overdue" | "today" | "tomorrow",
   todayStr: string,
 ): TaskRow {
   const accent = kind === "overdue" ? "#ef4444" : kind === "today" ? "#f59e0b" : "#22c55e";
-  const chips: Chip[] = [{ text: projectMap[t.project_id] ?? "Bez projektu", tone: "neutral" }];
+  const chips: Chip[] = [
+    { text: workspaceMap[t.workspace_id] ?? "Workspace", tone: "neutral" },
+    { text: projectMap[t.project_id] ?? "Bez projektu", tone: "neutral" },
+  ];
   if (kind === "overdue") {
     const n = daysOverdue(t.due_date, todayStr);
     chips.push({ text: `${n} ${plDni(n)} po termínu`, tone: "red" });
@@ -89,10 +94,11 @@ function buildSection(
   items: Record<string, string>[],
   kind: "overdue" | "today" | "tomorrow",
   projectMap: Record<string, string>,
+  workspaceMap: Record<string, string>,
   todayStr: string,
 ): string {
   if (!items.length) return "";
-  const rows = items.slice(0, SECTION_LIMIT).map((t) => toRow(t, projectMap, kind, todayStr));
+  const rows = items.slice(0, SECTION_LIMIT).map((t) => toRow(t, projectMap, workspaceMap, kind, todayStr));
   const extra = items.length - SECTION_LIMIT;
   return section({
     label,
@@ -104,15 +110,22 @@ function buildSection(
   });
 }
 
-function textTaskLines(title: string, tasks: Record<string, string>[], projectMap: Record<string, string>, dueLabel: string): string {
+function textTaskLines(
+  title: string,
+  tasks: Record<string, string>[],
+  projectMap: Record<string, string>,
+  workspaceMap: Record<string, string>,
+  dueLabel: string,
+): string {
   if (!tasks.length) return "";
   return [
     title,
     ...tasks.map((task) => {
+      const workspace = workspaceMap[task.workspace_id] ?? "Workspace";
       const project = projectMap[task.project_id] ?? "Bez projektu";
       const priority = task.priority ? PRIORITY_LABELS[task.priority] ?? task.priority : "Normální";
       const date = dueLabel === "date" ? formatDate(task.due_date) : dueLabel;
-      return `- ${task.title || "Bez názvu"} (${project}, ${date}, ${priority})`;
+      return `- ${task.title || "Bez názvu"} (${workspace}, ${project}, ${date}, ${priority})`;
     }),
     "",
   ].join("\n");
@@ -122,6 +135,7 @@ async function sendDailyEmail(
   to: string,
   tasks: Record<string, string>[],
   projectMap: Record<string, string>,
+  workspaceMap: Record<string, string>,
   todayStr: string,
   tomorrowStr: string,
 ) {
@@ -144,9 +158,9 @@ async function sendDailyEmail(
     "",
     subjectParts,
     "",
-    textTaskLines("Prošlé termíny", overdue, projectMap, "Po termínu"),
-    textTaskLines("Splatné dnes", dueToday, projectMap, "Dnes"),
-    textTaskLines("Splatné zítra", dueTomorrow, projectMap, "Zítra"),
+    textTaskLines("Prošlé termíny", overdue, projectMap, workspaceMap, "Po termínu"),
+    textTaskLines("Splatné dnes", dueToday, projectMap, workspaceMap, "Dnes"),
+    textTaskLines("Splatné zítra", dueTomorrow, projectMap, workspaceMap, "Zítra"),
     `Otevřít aplikaci: ${APP_URL}`,
   ].join("\n");
 
@@ -157,6 +171,7 @@ async function sendDailyEmail(
       title: "Denní přehled úkolů",
       countBadge: `${total} ${plUkol(total)}`,
       subtitle: "Co už hoří, co je potřeba dnes a co se blíží v dalších dnech.",
+      logoUrl: EMAIL_LOGO_URL,
       stats: [
         { label: "Po termínu", value: overdue.length, color: "#ef4444" },
         { label: "Dnes", value: dueToday.length, color: "#f59e0b" },
@@ -165,9 +180,9 @@ async function sendDailyEmail(
     }) +
     contentRow(
       intro("Ahoj, tady je stručný přehled úkolů, které potřebují pozornost — nejdřív po termínu, pak dnešní a blížící se.") +
-        buildSection("Po termínu", "#ef4444", "red", overdue, "overdue", projectMap, todayStr) +
-        buildSection("Splatné dnes", "#f59e0b", "amber", dueToday, "today", projectMap, todayStr) +
-        buildSection("Blíží se termín", "#22c55e", "green", dueTomorrow, "tomorrow", projectMap, todayStr) +
+        buildSection("Po termínu", "#ef4444", "red", overdue, "overdue", projectMap, workspaceMap, todayStr) +
+        buildSection("Splatné dnes", "#f59e0b", "amber", dueToday, "today", projectMap, workspaceMap, todayStr) +
+        buildSection("Blíží se termín", "#22c55e", "green", dueTomorrow, "tomorrow", projectMap, workspaceMap, todayStr) +
         ctaCard({
           title: "Chceš to rovnou odbavit?",
           text: "Otevři Zentero a projdi úkoly podle termínu, priority nebo projektu.",
@@ -181,6 +196,7 @@ async function sendDailyEmail(
       unsubscribeText: "Odhlásit denní přehled",
       unsubscribeUrl: APP_URL,
       host: APP_URL.replace(/^https?:\/\//, ""),
+      logoUrl: EMAIL_LOGO_URL,
     });
 
   const html = emailShell({ preheader: `${subjectParts} čeká v dnešním plánu.`, title: "Denní přehled úkolů — Zentero", body });
@@ -216,11 +232,7 @@ Deno.serve(async (req) => {
     console.warn("daily-reminders: unauthorized call", {
       ip: req.headers.get("x-forwarded-for") ?? "unknown",
       hasRuntimeCronSecret: Boolean(cronSecret),
-      runtimeCronSecretLength: cronSecret?.length ?? 0,
-      runtimeCronSecretSuffix: cronSecret ? cronSecret.slice(-4) : null,
       hasRequestCronSecret: Boolean(providedCronSecret),
-      requestCronSecretLength: providedCronSecret?.length ?? 0,
-      requestCronSecretSuffix: providedCronSecret ? providedCronSecret.slice(-4) : null,
       headerKeys: [...req.headers.keys()],
     });
     return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403 });
@@ -234,8 +246,9 @@ Deno.serve(async (req) => {
   // Fetch relevant tasks (all users, not done, due today or earlier or tomorrow)
   const { data: tasks, error } = await supabase
     .from("tasks")
-    .select("id, title, description, due_date, priority, project_id, status, created_by")
+    .select("id, title, description, due_date, priority, project_id, workspace_id, status, created_by")
     .neq("status", "done")
+    .neq("status", "deleted")
     .not("due_date", "is", null)
     .not("created_by", "is", null)
     .lte("due_date", tomorrowStr)
@@ -250,6 +263,14 @@ Deno.serve(async (req) => {
   if (projectIds.length) {
     const { data: projects } = await supabase.from("projects").select("id, name").in("id", projectIds);
     (projects ?? []).forEach((p) => { projectMap[p.id] = p.name; });
+  }
+
+  // Fetch workspace names for cross-workspace digests
+  const workspaceIds = [...new Set(tasks.map((t) => t.workspace_id).filter(Boolean))];
+  const workspaceMap: Record<string, string> = {};
+  if (workspaceIds.length) {
+    const { data: workspaces } = await supabase.from("workspaces").select("id, name").in("id", workspaceIds);
+    (workspaces ?? []).forEach((w) => { workspaceMap[w.id] = w.name; });
   }
 
   // Fetch user emails
@@ -281,7 +302,7 @@ Deno.serve(async (req) => {
 
   let sent = 0;
   for (const [userId, userTasks] of Object.entries(byUser)) {
-    const ok = await sendDailyEmail(emailMap[userId], userTasks, projectMap, todayStr, tomorrowStr);
+    const ok = await sendDailyEmail(emailMap[userId], userTasks, projectMap, workspaceMap, todayStr, tomorrowStr);
     if (ok) sent++;
   }
 
