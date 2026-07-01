@@ -1279,38 +1279,25 @@ export function AppProvider({ children }) {
 
   const renameWorkspace = useCallback(async (name) => {
     if (!activeWorkspaceId) return;
-    const { error } = await supabase.from("workspaces").update({ name: name.trim() }).eq("id", activeWorkspaceId);
-    if (error) throw error;
-    setWorkspaces((prev) => prev.map((w) => w.id === activeWorkspaceId ? { ...w, name: name.trim() } : w));
+    const trimmed = await workspaceService.renameWorkspace(activeWorkspaceId, name);
+    setWorkspaces((prev) => prev.map((w) => w.id === activeWorkspaceId ? { ...w, name: trimmed } : w));
   }, [activeWorkspaceId]);
 
   const updateMemberRole = useCallback(async (memberUserId, newRole) => {
     if (!activeWorkspaceId) return;
-    const { error } = await supabase.from("workspace_members")
-      .update({ role: newRole })
-      .eq("workspace_id", activeWorkspaceId)
-      .eq("user_id", memberUserId);
-    if (error) throw error;
-    setWorkspaceMembers((prev) => prev.map((m) => m.userId === memberUserId ? { ...m, role: newRole } : m));
+    const role = await workspaceService.updateMemberRole(activeWorkspaceId, memberUserId, newRole);
+    setWorkspaceMembers((prev) => prev.map((m) => m.userId === memberUserId ? { ...m, role } : m));
   }, [activeWorkspaceId]);
 
   const removeMember = useCallback(async (memberUserId) => {
     if (!activeWorkspaceId) return;
-    const { error } = await supabase.from("workspace_members")
-      .delete()
-      .eq("workspace_id", activeWorkspaceId)
-      .eq("user_id", memberUserId);
-    if (error) throw error;
+    await workspaceService.removeWorkspaceMember(activeWorkspaceId, memberUserId);
     setWorkspaceMembers((prev) => prev.filter((m) => m.userId !== memberUserId));
   }, [activeWorkspaceId]);
 
   const leaveWorkspace = useCallback(async () => {
     if (!activeWorkspaceId || !userId) return;
-    const { error } = await supabase.from("workspace_members")
-      .delete()
-      .eq("workspace_id", activeWorkspaceId)
-      .eq("user_id", userId);
-    if (error) throw error;
+    await workspaceService.leaveWorkspace(activeWorkspaceId, userId);
     const remaining = workspaces.filter((w) => w.id !== activeWorkspaceId);
     setWorkspaces(remaining);
     if (remaining.length > 0) {
@@ -1325,39 +1312,15 @@ export function AppProvider({ children }) {
 
   const fetchWorkspaceInvites = useCallback(async () => {
     if (!activeWorkspaceId) return [];
-    const { data, error } = await supabase.from("workspace_invites")
-      .select("*")
-      .eq("workspace_id", activeWorkspaceId)
-      .is("accepted_at", null)
-      .is("revoked_at", null)
-      .gt("expires_at", new Date().toISOString())
-      .order("created_at", { ascending: false });
-    if (error) throw error;
-    return data || [];
+    return workspaceService.fetchWorkspaceInvites(activeWorkspaceId);
   }, [activeWorkspaceId]);
 
   const revokeInvite = useCallback(async (inviteId) => {
-    const { error } = await supabase.from("workspace_invites")
-      .update({ revoked_at: new Date().toISOString() })
-      .eq("id", inviteId);
-    if (error) throw error;
+    await workspaceService.revokeWorkspaceInvite(inviteId);
   }, []);
 
   const createWorkspace = useCallback(async (name) => {
-    const wsId = uuid4();
-    const { error: wsErr } = await supabase.from("workspaces").insert({
-      id: wsId,
-      name: name.trim(),
-      created_by: userId,
-    });
-    if (wsErr) throw wsErr;
-    const { error: memErr } = await supabase.from("workspace_members").insert({
-      workspace_id: wsId,
-      user_id: userId,
-      role: "owner",
-    });
-    if (memErr) throw memErr;
-    const newWs = { id: wsId, name: name.trim(), role: "owner", createdAt: Date.now() };
+    const newWs = await workspaceService.createWorkspace(name, userId);
     setWorkspaces((prev) => [...prev, newWs]);
     return newWs;
   }, [userId]);
@@ -1368,43 +1331,17 @@ export function AppProvider({ children }) {
       throw new Error("Admin pozvánky může vytvářet jen owner workspace.");
     }
 
-    // Preferovaná cesta: RPC create_workspace_invite generuje token server-side
-    // a do DB ukládá jen jeho SHA-256 hash; raw token dostaneme jednou sem.
-    const { data: rawToken, error: rpcError } = await supabase.rpc("create_workspace_invite", {
-      p_workspace_id: activeWorkspaceId,
-      p_role: role,
-    });
-    if (!rpcError && rawToken) {
-      return `${window.location.origin}?invite=${rawToken}`;
-    }
-
-    // Fallback (RPC ještě nenasazená): starý insert s plain tokenem.
-    // Po nasazení migrace 20260610120000_invite_token_hash.sql se sem už nedostane.
-    const rpcMissing = rpcError?.code === "42883" || rpcError?.code === "PGRST202" ||
-      /could not find.*create_workspace_invite/i.test(rpcError?.message || "");
-    if (rpcError && !rpcMissing) throw rpcError;
-
-    const token = uuid4().replace(/-/g, "");
-    const { error } = await supabase.from("workspace_invites").insert({
-      workspace_id: activeWorkspaceId,
+    return workspaceService.generateWorkspaceInviteLink({
+      workspaceId: activeWorkspaceId,
       role,
-      token,
-      invited_by: userId,
+      currentUserRole: activeRole,
+      userId,
+      origin: window.location.origin,
     });
-    if (error) throw error;
-    return `${window.location.origin}?invite=${token}`;
   }, [activeWorkspaceId, userId, workspaceMembers]);
 
   const acceptInvite = useCallback(async (token) => {
-    const { data: acceptedWsId, error: rpcError } = await supabase.rpc("accept_workspace_invite", {
-      invite_token: token,
-    });
-    if (!rpcError && acceptedWsId) return acceptedWsId;
-    const rpcMissing = rpcError?.code === "42883" || rpcError?.code === "PGRST202" || /could not find.*accept_workspace_invite/i.test(rpcError?.message || "");
-    if (rpcMissing) {
-      throw new Error("Přijímání pozvánek vyžaduje nasazenou RPC funkci accept_workspace_invite.");
-    }
-    throw new Error(rpcError?.message || "Pozvánka není platná nebo vypršela");
+    return workspaceService.acceptWorkspaceInvite(token);
   }, []);
 
   // Handle invite token from URL on login

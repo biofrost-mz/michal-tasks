@@ -1,6 +1,35 @@
 import { supabase } from "../supabase.js";
 import { uuid4 } from "../utils.js";
 
+const WORKSPACE_ROLES = new Set(["owner", "admin", "member", "viewer"]);
+const INVITE_ROLES = new Set(["admin", "member", "viewer"]);
+const MEMBER_WRITE_ROLES = new Set(["admin", "member", "viewer"]);
+
+function sanitizeWorkspaceName(name) {
+  const trimmed = String(name ?? "").trim();
+  if (!trimmed) throw new Error("Název workspace nesmí být prázdný.");
+  return trimmed;
+}
+
+function normalizeWorkspaceRole(role) {
+  return WORKSPACE_ROLES.has(role) ? role : "viewer";
+}
+
+function assertInviteRole(role) {
+  if (!INVITE_ROLES.has(role)) throw new Error("Neplatná role pozvánky.");
+  return role;
+}
+
+function assertMemberWriteRole(role) {
+  if (!MEMBER_WRITE_ROLES.has(role)) throw new Error("Neplatná role člena.");
+  return role;
+}
+
+function isRpcMissing(error, fnName) {
+  return error?.code === "42883" || error?.code === "PGRST202" ||
+    new RegExp(`could not find.*${fnName}`, "i").test(error?.message || "");
+}
+
 export function normalizeWorkspace(m) {
   return {
     id: m.workspaces.id,
@@ -48,6 +77,115 @@ export async function fetchMembers(wsId) {
     email: profileMap[m.user_id]?.email ?? null,
     displayName: profileMap[m.user_id]?.display_name ?? null,
   }));
+}
+
+export async function renameWorkspace(workspaceId, name) {
+  const trimmed = sanitizeWorkspaceName(name);
+  const { error } = await supabase.from("workspaces").update({ name: trimmed }).eq("id", workspaceId);
+  if (error) throw error;
+  return trimmed;
+}
+
+export async function updateMemberRole(workspaceId, memberUserId, role) {
+  const nextRole = assertMemberWriteRole(role);
+  const { error } = await supabase.from("workspace_members")
+    .update({ role: nextRole })
+    .eq("workspace_id", workspaceId)
+    .eq("user_id", memberUserId);
+  if (error) throw error;
+  return nextRole;
+}
+
+export async function removeWorkspaceMember(workspaceId, memberUserId) {
+  const { error } = await supabase.from("workspace_members")
+    .delete()
+    .eq("workspace_id", workspaceId)
+    .eq("user_id", memberUserId);
+  if (error) throw error;
+}
+
+export async function leaveWorkspace(workspaceId, userId) {
+  await removeWorkspaceMember(workspaceId, userId);
+}
+
+export async function fetchWorkspaceInvites(workspaceId) {
+  const { data, error } = await supabase.from("workspace_invites")
+    .select("*")
+    .eq("workspace_id", workspaceId)
+    .is("accepted_at", null)
+    .is("revoked_at", null)
+    .gt("expires_at", new Date().toISOString())
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
+export async function revokeWorkspaceInvite(inviteId) {
+  const { error } = await supabase.from("workspace_invites")
+    .update({ revoked_at: new Date().toISOString() })
+    .eq("id", inviteId);
+  if (error) throw error;
+}
+
+export async function createWorkspace(name, userId) {
+  const trimmed = sanitizeWorkspaceName(name);
+  const wsId = uuid4();
+  const { error: wsErr } = await supabase.from("workspaces").insert({
+    id: wsId,
+    name: trimmed,
+    created_by: userId,
+  });
+  if (wsErr) throw wsErr;
+  const { error: memErr } = await supabase.from("workspace_members").insert({
+    workspace_id: wsId,
+    user_id: userId,
+    role: "owner",
+  });
+  if (memErr) throw memErr;
+  return { id: wsId, name: trimmed, role: "owner", createdAt: Date.now() };
+}
+
+export async function generateWorkspaceInviteLink({
+  workspaceId,
+  role = "member",
+  currentUserRole = "viewer",
+  userId,
+  origin,
+}) {
+  const inviteRole = assertInviteRole(role);
+  const normalizedCurrentRole = normalizeWorkspaceRole(currentUserRole);
+  if (inviteRole === "admin" && normalizedCurrentRole !== "owner") {
+    throw new Error("Admin pozvánky může vytvářet jen owner workspace.");
+  }
+
+  const { data: rawToken, error: rpcError } = await supabase.rpc("create_workspace_invite", {
+    p_workspace_id: workspaceId,
+    p_role: inviteRole,
+  });
+  if (!rpcError && rawToken) return `${origin}?invite=${rawToken}`;
+
+  if (rpcError && !isRpcMissing(rpcError, "create_workspace_invite")) throw rpcError;
+
+  const token = uuid4().replace(/-/g, "");
+  const { error } = await supabase.from("workspace_invites").insert({
+    workspace_id: workspaceId,
+    role: inviteRole,
+    token,
+    invited_by: userId,
+  });
+  if (error) throw error;
+  return `${origin}?invite=${token}`;
+}
+
+export async function acceptWorkspaceInvite(token) {
+  const { data: acceptedWsId, error: rpcError } = await supabase.rpc("accept_workspace_invite", {
+    invite_token: token,
+  });
+  if (!rpcError && acceptedWsId) return acceptedWsId;
+  if (isRpcMissing(rpcError, "accept_workspace_invite")) {
+    throw new Error("Přijímání pozvánek vyžaduje nasazenou RPC funkci accept_workspace_invite.");
+  }
+  throw new Error(rpcError?.message || "Pozvánka není platná nebo vypršela");
 }
 
 export async function ensurePersonalWorkspace(userId) {
