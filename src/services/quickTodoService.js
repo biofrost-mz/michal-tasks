@@ -15,8 +15,20 @@ export async function insertQuickTodo(qt, userId, workspaceId) {
   if (error) throw error;
 }
 
+export function toQuickTodoUpdatePayload(payload = {}) {
+  const dbPayload = {};
+  if (Object.prototype.hasOwnProperty.call(payload, "text")) dbPayload.text = payload.text;
+  if (Object.prototype.hasOwnProperty.call(payload, "done")) dbPayload.done = payload.done;
+  if (Object.prototype.hasOwnProperty.call(payload, "priority")) dbPayload.priority = payload.priority;
+  if (Object.prototype.hasOwnProperty.call(payload, "dueDate")) dbPayload.due_date = payload.dueDate;
+  if (Object.prototype.hasOwnProperty.call(payload, "tags")) dbPayload.tags = payload.tags;
+  if (Object.prototype.hasOwnProperty.call(payload, "description")) dbPayload.description = payload.description;
+  return dbPayload;
+}
+
 export async function updateQuickTodoDB(id, payload) {
-  const { error } = await supabase.from("quick_todos").update(payload).eq("id", id);
+  const dbPayload = toQuickTodoUpdatePayload(payload);
+  const { error } = await supabase.from("quick_todos").update(dbPayload).eq("id", id);
   if (error) throw error;
 }
 
