@@ -349,6 +349,10 @@ export default function AdminPage() {
         .admin-card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;}
         .admin-diagnostics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;}
         .admin-two-col{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(320px,.9fr);gap:18px;}
+        .admin-trash-list{display:grid;gap:8px;min-width:0;}
+        .admin-trash-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;padding:12px;border:1px solid var(--border-soft);border-radius:12px;background:var(--bg-2);min-width:0;}
+        .admin-trash-title{color:var(--text);font-weight:750;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+        .admin-trash-actions{display:flex;gap:8px;justify-content:flex-end;min-width:max-content;}
         @media(max-width:760px){
           .admin-page{padding:18px 12px 96px;}
           .admin-header{flex-direction:column;gap:14px;margin-bottom:18px;}
@@ -359,6 +363,10 @@ export default function AdminPage() {
           .admin-tab{padding:9px 11px;border:1px solid var(--border-soft);border-radius:999px;background:var(--surface);border-bottom:1px solid var(--border-soft);font-size:12px;scroll-snap-align:start;}
           .admin-tab.active{background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 48%,var(--border-soft));}
           .admin-card-grid,.admin-diagnostics-grid,.admin-two-col{grid-template-columns:1fr!important;}
+          .admin-trash-row{grid-template-columns:1fr;align-items:stretch;gap:10px;}
+          .admin-trash-title{white-space:normal;overflow-wrap:anywhere;line-height:1.35;}
+          .admin-trash-actions{min-width:0;width:100%;display:grid;grid-template-columns:1fr 1fr;}
+          .admin-trash-actions button{width:100%;}
         }
       `}</style>
       <div style={{ marginBottom: 26 }}>
@@ -536,7 +544,19 @@ function UserRow({ member }) {
 function TrashSection({ title, items, onRestore, onDelete }) {
   return (
     <Card title={`${title} (${items.length})`}>
-      {!items.length ? <div style={{ color: "var(--text-3)", fontSize: 13 }}>Žádné položky.</div> : <div style={{ display: "grid", gap: 8 }}>{items.map((item) => <div key={item.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: 12, border: "1px solid var(--border-soft)", borderRadius: 12, background: "var(--bg-2)" }}><div style={{ color: "var(--text)", fontWeight: 750 }}>{item.title || item.name || "Bez názvu"}</div><div style={{ display: "flex", gap: 8 }}><SmallButton onClick={() => onRestore(item.id)}>Obnovit</SmallButton><SmallButton onClick={() => onDelete(item.id)} tone="danger">Smazat</SmallButton></div></div>)}</div>}
+      {!items.length ? <div style={{ color: "var(--text-3)", fontSize: 13 }}>Žádné položky.</div> : (
+        <div className="admin-trash-list">
+          {items.map((item) => (
+            <div key={item.id} className="admin-trash-row">
+              <div className="admin-trash-title">{item.title || item.name || "Bez názvu"}</div>
+              <div className="admin-trash-actions">
+                <SmallButton onClick={() => onRestore(item.id)}>Obnovit</SmallButton>
+                <SmallButton onClick={() => onDelete(item.id)} tone="danger">Smazat</SmallButton>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </Card>
   );
 }
