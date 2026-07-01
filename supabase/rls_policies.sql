@@ -168,7 +168,8 @@ CREATE POLICY "tasks_insert" ON tasks FOR INSERT
 
 DROP POLICY IF EXISTS "tasks_update" ON tasks;
 CREATE POLICY "tasks_update" ON tasks FOR UPDATE
-  USING (workspace_id = ANY(public.user_editor_workspace_ids()));
+  USING (workspace_id = ANY(public.user_editor_workspace_ids()))
+  WITH CHECK (workspace_id = ANY(public.user_editor_workspace_ids()));
 
 DROP POLICY IF EXISTS "tasks_delete" ON tasks;
 CREATE POLICY "tasks_delete" ON tasks FOR DELETE
@@ -187,7 +188,8 @@ CREATE POLICY "projects_insert" ON projects FOR INSERT
 
 DROP POLICY IF EXISTS "projects_update" ON projects;
 CREATE POLICY "projects_update" ON projects FOR UPDATE
-  USING (workspace_id = ANY(public.user_editor_workspace_ids()));
+  USING (workspace_id = ANY(public.user_editor_workspace_ids()))
+  WITH CHECK (workspace_id = ANY(public.user_editor_workspace_ids()));
 
 DROP POLICY IF EXISTS "projects_delete" ON projects;
 CREATE POLICY "projects_delete" ON projects FOR DELETE
@@ -206,7 +208,8 @@ CREATE POLICY "notes_insert" ON notes FOR INSERT
 
 DROP POLICY IF EXISTS "notes_update" ON notes;
 CREATE POLICY "notes_update" ON notes FOR UPDATE
-  USING (workspace_id = ANY(public.user_editor_workspace_ids()));
+  USING (workspace_id = ANY(public.user_editor_workspace_ids()))
+  WITH CHECK (workspace_id = ANY(public.user_editor_workspace_ids()));
 
 DROP POLICY IF EXISTS "notes_delete" ON notes;
 CREATE POLICY "notes_delete" ON notes FOR DELETE
@@ -225,7 +228,8 @@ CREATE POLICY "tags_insert" ON tags FOR INSERT
 
 DROP POLICY IF EXISTS "tags_update" ON tags;
 CREATE POLICY "tags_update" ON tags FOR UPDATE
-  USING (workspace_id = ANY(public.user_editor_workspace_ids()));
+  USING (workspace_id = ANY(public.user_editor_workspace_ids()))
+  WITH CHECK (workspace_id = ANY(public.user_editor_workspace_ids()));
 
 DROP POLICY IF EXISTS "tags_delete" ON tags;
 CREATE POLICY "tags_delete" ON tags FOR DELETE
