@@ -20,6 +20,10 @@ function summarizeSupabaseError(error) {
   return [error.code, error.message, error.details, error.hint].filter(Boolean).join(" · ");
 }
 
+function hasOwn(obj, key) {
+  return Object.prototype.hasOwnProperty.call(obj ?? {}, key);
+}
+
 async function runWithRetry(operation, label) {
   let lastError = null;
   for (let attempt = 0; attempt <= RETRY_DELAYS.length; attempt += 1) {
@@ -54,6 +58,53 @@ export function normalizeTask(t, tagIds = []) {
     assigneeUserId: t.assignee_user_id ?? null,
     remindAt: t.remind_at ?? null,
   };
+}
+
+export function toTaskUpdatePayload(payload = {}) {
+  const next = {};
+  const directFields = [
+    "title",
+    "description",
+    "status",
+    "priority",
+    "position",
+    "starred",
+    "phases",
+    "subtasks",
+    "recurrence",
+  ];
+
+  directFields.forEach((field) => {
+    if (hasOwn(payload, field)) next[field] = payload[field];
+  });
+
+  const mappedFields = {
+    projectId: "project_id",
+    dueDate: "due_date",
+    remindAt: "remind_at",
+    assigneeUserId: "assignee_user_id",
+    completedAt: "completed_at",
+    updatedAt: "updated_at",
+  };
+
+  Object.entries(mappedFields).forEach(([from, to]) => {
+    if (hasOwn(payload, from)) next[to] = payload[from];
+  });
+
+  const dbFields = [
+    "project_id",
+    "due_date",
+    "remind_at",
+    "assignee_user_id",
+    "completed_at",
+    "updated_at",
+  ];
+
+  dbFields.forEach((field) => {
+    if (hasOwn(payload, field)) next[field] = payload[field];
+  });
+
+  return next;
 }
 
 export async function fetchTasks(workspaceId) {
@@ -143,7 +194,7 @@ export async function insertTask(tsk, userId, workspaceId) {
 }
 
 export async function updateTaskDB(id, payload) {
-  const { error } = await supabase.from("tasks").update(payload).eq("id", id);
+  const { error } = await supabase.from("tasks").update(toTaskUpdatePayload(payload)).eq("id", id);
   if (error) throw error;
 }
 

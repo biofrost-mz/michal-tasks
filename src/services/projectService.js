@@ -11,6 +11,10 @@ function shouldRetrySave(error) {
   return error.code === "23503" || error.code === "40001" || error.code === "40P01";
 }
 
+function hasOwn(obj, key) {
+  return Object.prototype.hasOwnProperty.call(obj ?? {}, key);
+}
+
 async function runWithRetry(operation, label) {
   let lastError = null;
   for (let attempt = 0; attempt <= RETRY_DELAYS.length; attempt += 1) {
@@ -51,6 +55,20 @@ export function normalizeProject(p, i = 0) {
   };
 }
 
+export function toProjectUpdatePayload(payload = {}) {
+  const next = {};
+  const directFields = ["name", "description", "status", "position"];
+
+  directFields.forEach((field) => {
+    if (hasOwn(payload, field)) next[field] = payload[field];
+  });
+
+  if (hasOwn(payload, "updatedAt")) next.updated_at = payload.updatedAt;
+  if (hasOwn(payload, "updated_at")) next.updated_at = payload.updated_at;
+
+  return next;
+}
+
 export async function insertProject(proj, userId, workspaceId) {
   const payload = {
     id: proj.id,
@@ -72,7 +90,7 @@ export async function insertProject(proj, userId, workspaceId) {
 }
 
 export async function updateProjectDB(id, payload) {
-  const { error } = await supabase.from("projects").update(payload).eq("id", id);
+  const { error } = await supabase.from("projects").update(toProjectUpdatePayload(payload)).eq("id", id);
   if (error) throw error;
 }
 

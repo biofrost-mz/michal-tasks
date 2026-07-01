@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { normalizeNote } from "./noteService.js";
+import { normalizeNote, toNoteUpdatePayload } from "./noteService.js";
 
 vi.mock("../supabase.js", () => ({ supabase: {} }));
 
@@ -77,5 +77,39 @@ describe("normalizeNote", () => {
 
     expect(note.createdAt).toBeGreaterThanOrEqual(before);
     expect(note.createdAt).toBeLessThanOrEqual(after);
+  });
+});
+
+describe("toNoteUpdatePayload", () => {
+  it("mapuje frontend vazby na DB sloupce", () => {
+    expect(toNoteUpdatePayload({
+      title: "Nový název",
+      primaryProjectId: "proj-1",
+      primaryTaskId: null,
+      extraProjectIds: ["proj-2"],
+      extraTaskIds: [],
+      updatedAt: "2026-07-01T09:00:00Z",
+      createdAt: 123,
+      workspaceId: "ws-1",
+    })).toEqual({
+      title: "Nový název",
+      primary_project_id: "proj-1",
+      primary_task_id: null,
+      extra_project_ids: ["proj-2"],
+      extra_task_ids: [],
+      updated_at: "2026-07-01T09:00:00Z",
+    });
+  });
+
+  it("propustí existující DB názvy kvůli současným voláním z aplikace", () => {
+    expect(toNoteUpdatePayload({
+      status: "deleted",
+      updated_at: "2026-07-01T09:00:00Z",
+      primary_project_id: null,
+    })).toEqual({
+      status: "deleted",
+      updated_at: "2026-07-01T09:00:00Z",
+      primary_project_id: null,
+    });
   });
 });

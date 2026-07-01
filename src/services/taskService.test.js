@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { normalizeTask, insertTask, updateTaskDB } from "./taskService.js";
+import { normalizeTask, insertTask, updateTaskDB, toTaskUpdatePayload } from "./taskService.js";
 
 // Mockujeme Supabase — testy ověřují logiku, ne síťová volání.
 const mockInsert = vi.fn();
@@ -171,14 +171,51 @@ describe("insertTask — smoke test", () => {
   });
 });
 
+describe("toTaskUpdatePayload", () => {
+  it("mapuje frontend pole na DB sloupce a zachová přímá task pole", () => {
+    expect(toTaskUpdatePayload({
+      title: "Přejmenovaný",
+      projectId: "proj-1",
+      dueDate: "2026-07-10",
+      remindAt: null,
+      assigneeUserId: "user-2",
+      completedAt: "2026-07-01T08:00:00Z",
+      updatedAt: "2026-07-01T09:00:00Z",
+      tagIds: ["tag-1"],
+      createdAt: 123,
+      workspaceId: "ws-1",
+    })).toEqual({
+      title: "Přejmenovaný",
+      project_id: "proj-1",
+      due_date: "2026-07-10",
+      remind_at: null,
+      assignee_user_id: "user-2",
+      completed_at: "2026-07-01T08:00:00Z",
+      updated_at: "2026-07-01T09:00:00Z",
+    });
+  });
+
+  it("propustí existující DB názvy kvůli současným voláním z aplikace", () => {
+    expect(toTaskUpdatePayload({
+      status: "deleted",
+      due_date: null,
+      updated_at: "2026-07-01T09:00:00Z",
+    })).toEqual({
+      status: "deleted",
+      due_date: null,
+      updated_at: "2026-07-01T09:00:00Z",
+    });
+  });
+});
+
 describe("updateTaskDB — smoke test", () => {
   it("volá supabase.update s id a payloadem", async () => {
     mockUpdate.mockReturnValueOnce({ eq: mockEq });
     mockEq.mockResolvedValueOnce({ error: null });
 
-    await updateTaskDB("task-99", { title: "Přejmenovaný" });
+    await updateTaskDB("task-99", { title: "Přejmenovaný", dueDate: "2026-07-10", tagIds: ["ui-only"] });
 
-    expect(mockUpdate).toHaveBeenCalledWith({ title: "Přejmenovaný" });
+    expect(mockUpdate).toHaveBeenCalledWith({ title: "Přejmenovaný", due_date: "2026-07-10" });
     expect(mockEq).toHaveBeenCalledWith("id", "task-99");
   });
 });
