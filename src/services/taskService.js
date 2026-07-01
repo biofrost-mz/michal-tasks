@@ -198,6 +198,14 @@ export async function updateTaskDB(id, payload) {
   if (error) throw error;
 }
 
+export async function updateTaskPositions(tasks) {
+  const results = await Promise.all(
+    tasks.map((task) => supabase.from("tasks").update({ position: task.position }).eq("id", task.id))
+  );
+  const failed = results.find((result) => result?.error);
+  if (failed) throw failed.error;
+}
+
 export async function deleteTaskDB(id) {
   await supabase.from("task_tags").delete().eq("task_id", id);
   const { error } = await supabase.from("tasks").delete().eq("id", id);

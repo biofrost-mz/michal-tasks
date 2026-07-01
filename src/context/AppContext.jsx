@@ -711,11 +711,7 @@ export function AppProvider({ children }) {
     });
     (async () => {
       try {
-        const results = await Promise.all(
-          updated.map((tk) => supabase.from("tasks").update({ position: tk.position }).eq("id", tk.id))
-        );
-        const failed = results.find((r) => r?.error);
-        if (failed) throw failed.error;
+        await taskService.updateTaskPositions(updated);
       } catch {
         // Rollback na původní pořadí + hlášení; jinak by se UI tiše rozešlo s DB.
         setTasks(prevTasks);
@@ -735,13 +731,7 @@ export function AppProvider({ children }) {
     });
     (async () => {
       try {
-        const results = await Promise.all(
-          updated.map((p) =>
-            supabase.from("projects").update({ position: p.position }).eq("id", p.id)
-          )
-        );
-        const failed = results.find((r) => r?.error);
-        if (failed) throw failed.error;
+        await projectService.updateProjectPositions(updated);
       } catch {
         if (prevProjects) setProjects(prevProjects);
         reportError("Pořadí projektů se nepodařilo uložit");

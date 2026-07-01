@@ -5,6 +5,7 @@ import { useToast } from "./Toast.jsx";
 import Icon from "./Icon.jsx";
 import { supabase } from "../supabase.js";
 import { SectionLabel } from "./ui/index.js";
+import { saveNotificationPreferences } from "../services/notificationPreferencesService.js";
 
 export const LS_KEY = "mt3:onboarding_done";
 
@@ -139,11 +140,7 @@ export default function OnboardingWizard() {
   async function handleStep2Continue() {
     setSaving(true);
     try {
-      const { error } = await supabase.from("notification_preferences").upsert(
-        { user_id: userId, ...prefs, updated_at: new Date().toISOString() },
-        { onConflict: "user_id" }
-      );
-      if (error) toast("Notifikace se nepodařilo uložit.", "error");
+      await saveNotificationPreferences(userId, prefs);
     } catch {
       toast("Notifikace se nepodařilo uložit.", "error");
     } finally {

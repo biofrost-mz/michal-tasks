@@ -6,6 +6,11 @@ import Icon from '../components/Icon.jsx'
 import { formatDate } from '../locale.js'
 import { usePushNotifications } from '../hooks/usePushNotifications.js'
 import { supabase } from '../supabase.js'
+import {
+  DEFAULT_NOTIFICATION_PREFS,
+  fetchNotificationPreferences,
+  saveNotificationPreferences,
+} from '../services/notificationPreferencesService.js'
 
 const roleColors = { owner: '#f59e0b', admin: '#3b82f6', member: '#22c55e', viewer: '#8b95a5' }
 
@@ -25,14 +30,6 @@ const tabs = [
   { id: 'notifications', label: 'Notifikace', icon: 'bell' },
   { id: 'app', label: 'Aplikace', icon: 'sliders-horizontal' },
 ]
-
-const DEFAULT_NOTIF_PREFS = {
-  email_task_reminders: true,
-  email_daily_digest: true,
-  push_task_reminders: true,
-  push_daily_digest: true,
-  digest_hour: 8,
-}
 
 function roleColor(role) {
   return roleColors[role] || roleColors.member
@@ -103,7 +100,7 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
   const [savingProfile, setSavingProfile] = useState(false)
   const [resetSent, setResetSent] = useState(false)
 
-  const [notifPrefs, setNotifPrefs] = useState(DEFAULT_NOTIF_PREFS)
+  const [notifPrefs, setNotifPrefs] = useState(DEFAULT_NOTIFICATION_PREFS)
   const [savingNotif, setSavingNotif] = useState(false)
   const [pendingAction, setPendingAction] = useState(null)
 
@@ -130,8 +127,9 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
 
   useEffect(() => {
     if (!userId) return;
-    supabase.from("notification_preferences").select("*").eq("user_id", userId).single()
-      .then(({ data }) => { if (data) setNotifPrefs({ ...DEFAULT_NOTIF_PREFS, ...data }); });
+    fetchNotificationPreferences(userId)
+      .then(setNotifPrefs)
+      .catch(() => {});
   }, [userId]);
 
   const handleSaveNotifPrefs = async (patch) => {
@@ -139,8 +137,9 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
     setNotifPrefs((prev) => { updated = { ...prev, ...patch }; return updated })
     setSavingNotif(true)
     try {
-      const { error } = await supabase.from("notification_preferences").upsert({ user_id: userId, ...updated, updated_at: new Date().toISOString() }, { onConflict: "user_id" })
-      if (error) toast("Nepodařilo se uložit nastavení", "error")
+      await saveNotificationPreferences(userId, updated)
+    } catch {
+      toast("Nepodařilo se uložit nastavení", "error")
     } finally {
       setSavingNotif(false)
     }

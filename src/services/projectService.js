@@ -94,6 +94,16 @@ export async function updateProjectDB(id, payload) {
   if (error) throw error;
 }
 
+export async function updateProjectPositions(projects) {
+  const results = await Promise.all(
+    projects.map((project) =>
+      supabase.from("projects").update({ position: project.position }).eq("id", project.id)
+    )
+  );
+  const failed = results.find((result) => result?.error);
+  if (failed) throw failed.error;
+}
+
 export async function deleteProjectDB(id) {
   await supabase.from("tasks").update({ project_id: null }).eq("project_id", id);
   const { error } = await supabase.from("projects").delete().eq("id", id);

@@ -1,5 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { normalizeTask, insertTask, updateTaskDB, toTaskUpdatePayload } from "./taskService.js";
+import {
+  normalizeTask,
+  insertTask,
+  updateTaskDB,
+  updateTaskPositions,
+  toTaskUpdatePayload,
+} from "./taskService.js";
 
 // Mockujeme Supabase — testy ověřují logiku, ne síťová volání.
 const mockInsert = vi.fn();
@@ -217,5 +223,31 @@ describe("updateTaskDB — smoke test", () => {
 
     expect(mockUpdate).toHaveBeenCalledWith({ title: "Přejmenovaný", due_date: "2026-07-10" });
     expect(mockEq).toHaveBeenCalledWith("id", "task-99");
+  });
+});
+
+describe("updateTaskPositions", () => {
+  beforeEach(() => {
+    mockUpdate.mockReset();
+    mockEq.mockReset();
+  });
+
+  it("uloží pozice úkolů přes DB position payload", async () => {
+    mockUpdate
+      .mockReturnValueOnce({ eq: mockEq })
+      .mockReturnValueOnce({ eq: mockEq });
+    mockEq
+      .mockResolvedValueOnce({ error: null })
+      .mockResolvedValueOnce({ error: null });
+
+    await updateTaskPositions([
+      { id: "task-1", position: 1000, title: "UI pole" },
+      { id: "task-2", position: 2000, dueDate: "2026-07-10" },
+    ]);
+
+    expect(mockUpdate).toHaveBeenNthCalledWith(1, { position: 1000 });
+    expect(mockUpdate).toHaveBeenNthCalledWith(2, { position: 2000 });
+    expect(mockEq).toHaveBeenNthCalledWith(1, "id", "task-1");
+    expect(mockEq).toHaveBeenNthCalledWith(2, "id", "task-2");
   });
 });
