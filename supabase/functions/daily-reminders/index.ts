@@ -29,6 +29,10 @@ const APP_URL = Deno.env.get("APP_URL") ?? "https://tasks.zichmichal.cz";
 const EMAIL_LOGO_URL = Deno.env.get("EMAIL_LOGO_URL") ?? `${APP_URL}/icon-zentero.png`;
 const SECTION_LIMIT = 5;
 
+function recipientUserId(t: Record<string, string>): string | null {
+  return t.assignee_user_id || t.created_by || null;
+}
+
 function formatDate(dateStr?: string): string {
   if (!dateStr) return "Bez termínu";
   return new Date(dateStr + "T00:00:00Z").toLocaleDateString("cs-CZ", {
@@ -246,7 +250,7 @@ Deno.serve(async (req) => {
   // Fetch relevant tasks (all users, not done, due today or earlier or tomorrow)
   const { data: tasks, error } = await supabase
     .from("tasks")
-    .select("id, title, description, due_date, priority, project_id, workspace_id, status, created_by")
+    .select("id, title, description, due_date, priority, project_id, workspace_id, status, created_by, assignee_user_id")
     .neq("status", "done")
     .neq("status", "deleted")
     .not("due_date", "is", null)
@@ -274,7 +278,7 @@ Deno.serve(async (req) => {
   }
 
   // Fetch user emails
-  const userIds = [...new Set(tasks.map((t) => t.created_by).filter(Boolean))];
+  const userIds = [...new Set(tasks.map((t) => recipientUserId(t)).filter(Boolean))];
   const { data: profiles } = await supabase
     .from("user_profiles")
     .select("id, email")
@@ -293,11 +297,12 @@ Deno.serve(async (req) => {
   // Group tasks per user and send
   const byUser: Record<string, typeof tasks> = {};
   for (const task of tasks) {
-    if (!task.created_by || !emailMap[task.created_by]) continue;
+    const targetUserId = recipientUserId(task);
+    if (!targetUserId || !emailMap[targetUserId]) continue;
     // Default: true (send if no preference record exists)
-    if (prefsMap[task.created_by] === false) continue;
-    if (!byUser[task.created_by]) byUser[task.created_by] = [];
-    byUser[task.created_by].push(task);
+    if (prefsMap[targetUserId] === false) continue;
+    if (!byUser[targetUserId]) byUser[targetUserId] = [];
+    byUser[targetUserId].push(task);
   }
 
   let sent = 0;

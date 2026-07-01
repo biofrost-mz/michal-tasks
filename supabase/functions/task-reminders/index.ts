@@ -20,6 +20,10 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 const APP_URL = Deno.env.get("APP_URL") ?? "https://tasks.zichmichal.cz";
 const EMAIL_LOGO_URL = Deno.env.get("EMAIL_LOGO_URL") ?? `${APP_URL}/icon-zentero.png`;
 
+function recipientUserId(t: Record<string, string>): string | null {
+  return t.assignee_user_id || t.created_by || null;
+}
+
 const PRIORITY_LABELS: Record<string, string> = {
   critical: "Kritická",
   high: "Vysoká",
@@ -52,8 +56,11 @@ function prioChip(priority?: string): Chip | null {
   return { text: label, tone };
 }
 
-function toRow(t: Record<string, string>, projectMap: Record<string, string>): TaskRow {
-  const chips: Chip[] = [{ text: projectMap[t.project_id] ?? "Bez projektu", tone: "neutral" }];
+function toRow(t: Record<string, string>, projectMap: Record<string, string>, workspaceMap: Record<string, string>): TaskRow {
+  const chips: Chip[] = [
+    { text: workspaceMap[t.workspace_id] ?? "Workspace", tone: "neutral" },
+    { text: projectMap[t.project_id] ?? "Bez projektu", tone: "neutral" },
+  ];
   if (t.due_date) chips.push({ text: `Termín: ${formatDate(t.due_date)}`, tone: "amber" });
   const p = prioChip(t.priority);
   if (p) chips.push(p);
@@ -67,7 +74,12 @@ function toRow(t: Record<string, string>, projectMap: Record<string, string>): T
   };
 }
 
-async function sendReminderEmail(to: string, tasks: Record<string, string>[], projectMap: Record<string, string>) {
+async function sendReminderEmail(
+  to: string,
+  tasks: Record<string, string>[],
+  projectMap: Record<string, string>,
+  workspaceMap: Record<string, string>,
+) {
   const now = new Date();
   const dateLabel = now.toLocaleString("cs-CZ", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
 
@@ -80,9 +92,10 @@ async function sendReminderEmail(to: string, tasks: Record<string, string>[], pr
     taskLabel,
     "",
     ...tasks.map((task) => {
+      const workspace = workspaceMap[task.workspace_id] ?? "Workspace";
       const project = projectMap[task.project_id] ?? "Bez projektu";
       const priority = task.priority ? PRIORITY_LABELS[task.priority] ?? task.priority : "Normální";
-      return `- ${task.title || "Bez názvu"} (${project}, termín: ${formatDate(task.due_date)}, priorita: ${priority})`;
+      return `- ${task.title || "Bez názvu"} (${workspace}, ${project}, termín: ${formatDate(task.due_date)}, priorita: ${priority})`;
     }),
     "",
     `Otevřít aplikaci: ${APP_URL}`,
@@ -101,7 +114,7 @@ async function sendReminderEmail(to: string, tasks: Record<string, string>[], pr
         label: single ? "Připomínaný úkol" : "Připomínané úkoly",
         dotColor: "#f59e0b",
         countPill: { text: String(tasks.length), tone: "amber" },
-        tasks: tasks.map((t) => toRow(t, projectMap)),
+        tasks: tasks.map((t) => toRow(t, projectMap, workspaceMap)),
       }) +
         ctaCard({
           title: "Otevřít připomínaný úkol",
@@ -162,7 +175,7 @@ Deno.serve(async (req) => {
   // Najdi úkoly s remind_at v uplynulé hodině (přeskočí dokončené)
   const { data: tasks, error } = await supabase
     .from("tasks")
-    .select("id, title, description, due_date, priority, project_id, created_by, remind_at")
+    .select("id, title, description, due_date, priority, project_id, workspace_id, created_by, assignee_user_id, remind_at")
     .not("remind_at", "is", null)
     .neq("status", "done")
     .neq("status", "deleted")
@@ -180,8 +193,16 @@ Deno.serve(async (req) => {
     (projects ?? []).forEach((p) => { projectMap[p.id] = p.name; });
   }
 
+  // Načti názvy workspaců pro týmové připomínky
+  const workspaceIds = [...new Set(tasks.map((t) => t.workspace_id).filter(Boolean))];
+  const workspaceMap: Record<string, string> = {};
+  if (workspaceIds.length) {
+    const { data: workspaces } = await supabase.from("workspaces").select("id, name").in("id", workspaceIds);
+    (workspaces ?? []).forEach((w) => { workspaceMap[w.id] = w.name; });
+  }
+
   // Načti e-maily uživatelů
-  const userIds = [...new Set(tasks.map((t) => t.created_by).filter(Boolean))];
+  const userIds = [...new Set(tasks.map((t) => recipientUserId(t)).filter(Boolean))];
   const { data: profiles } = await supabase
     .from("user_profiles")
     .select("id, email")
@@ -200,11 +221,12 @@ Deno.serve(async (req) => {
   // Seskup úkoly per uživatel a odešli
   const byUser: Record<string, typeof tasks> = {};
   for (const task of tasks) {
-    if (!task.created_by || !emailMap[task.created_by]) continue;
+    const targetUserId = recipientUserId(task);
+    if (!targetUserId || !emailMap[targetUserId]) continue;
     // Výchozí hodnota: true (pokud záznam neexistuje, pošli)
-    if (prefsMap[task.created_by] === false) continue;
-    if (!byUser[task.created_by]) byUser[task.created_by] = [];
-    byUser[task.created_by].push(task);
+    if (prefsMap[targetUserId] === false) continue;
+    if (!byUser[targetUserId]) byUser[targetUserId] = [];
+    byUser[targetUserId].push(task);
   }
 
   let sent = 0;
@@ -212,7 +234,7 @@ Deno.serve(async (req) => {
 
   for (const [userId, userTasks] of Object.entries(byUser)) {
     const email = emailMap[userId];
-    const ok = await sendReminderEmail(email, userTasks, projectMap);
+    const ok = await sendReminderEmail(email, userTasks, projectMap, workspaceMap);
     if (ok) {
       sent++;
       taskIdsToReset.push(...userTasks.map((t) => t.id));

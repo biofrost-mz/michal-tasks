@@ -80,6 +80,12 @@ interface PushPayload {
   data?: Record<string, string>;
 }
 
+interface DirectNotification {
+  userId: string;
+  workspaceId: string;
+  payload: PushPayload;
+}
+
 async function sendPush(endpoint: string, p256dh: string, auth: string, payload: PushPayload): Promise<number> {
   const enc = new TextEncoder();
   const authBytes = b64urlDecode(auth);
@@ -153,7 +159,7 @@ Deno.serve(async (req) => {
 
   const { data: remindTasks } = await supabase
     .from("tasks")
-    .select("id, title, workspace_id")
+    .select("id, title, workspace_id, created_by, assignee_user_id")
     .gte("remind_at", windowStart)
     .lte("remind_at", windowEnd)
     .neq("status", "done")
@@ -162,18 +168,24 @@ Deno.serve(async (req) => {
   const url = new URL(req.url);
   const isDailyRun = url.searchParams.get("daily") === "1";
 
-  // Map workspace → notification payload (remind_at takes priority over daily digest)
-  const wsNotif = new Map<string, PushPayload>();
+  const directNotifs: DirectNotification[] = [];
 
   for (const task of remindTasks ?? []) {
-    wsNotif.set(task.workspace_id, {
-      title: "📌 Připomínka",
-      body: task.title,
-      tag: `remind-${task.id}`,
-      data: { url: `/?task=${task.id}` },
+    const targetUserId = task.assignee_user_id || task.created_by;
+    if (!targetUserId) continue;
+    directNotifs.push({
+      userId: targetUserId,
+      workspaceId: task.workspace_id,
+      payload: {
+        title: "📌 Připomínka",
+        body: task.title,
+        tag: `remind-${task.id}`,
+        data: { url: `/?task=${task.id}` },
+      },
     });
   }
 
+  const dailyWsNotif = new Map<string, PushPayload>();
   if (isDailyRun) {
     const { data: dueTasks } = await supabase
       .from("tasks")
@@ -187,26 +199,29 @@ Deno.serve(async (req) => {
       dueCounts.set(t.workspace_id, (dueCounts.get(t.workspace_id) ?? 0) + 1);
     }
     for (const [wsId, count] of dueCounts) {
-      if (!wsNotif.has(wsId)) {
-        wsNotif.set(wsId, {
-          title: "📋 Michal Tasks",
-          body: count === 1 ? "1 úkol na dnes" : `${count} úkolů na dnes`,
-          tag: "daily-digest",
-        });
-      }
+      dailyWsNotif.set(wsId, {
+        title: "📋 Michal Tasks",
+        body: count === 1 ? "1 úkol na dnes" : `${count} úkolů na dnes`,
+        tag: "daily-digest",
+      });
     }
   }
 
   // Fetch push preferences for all subscribers
-  const allSubUserIds = await (async () => {
-    const allWsIds = [...wsNotif.keys()];
-    if (!allWsIds.length) return [] as string[];
-    const { data } = await supabase
-      .from("push_subscriptions")
-      .select("user_id")
-      .in("workspace_id", allWsIds);
-    return [...new Set((data ?? []).map((r: { user_id: string }) => r.user_id))];
-  })();
+  const allSubUserIds = [
+    ...new Set([
+      ...directNotifs.map((n) => n.userId),
+      ...(await (async () => {
+        const allWsIds = [...dailyWsNotif.keys()];
+        if (!allWsIds.length) return [] as string[];
+        const { data } = await supabase
+          .from("push_subscriptions")
+          .select("user_id")
+          .in("workspace_id", allWsIds);
+        return (data ?? []).map((r: { user_id: string }) => r.user_id);
+      })()),
+    ]),
+  ];
 
   const { data: pushPrefs } = allSubUserIds.length
     ? await supabase
@@ -219,20 +234,38 @@ Deno.serve(async (req) => {
   );
 
   let sent = 0;
-  for (const [wsId, notifPayload] of wsNotif) {
-    const isDaily = notifPayload.tag === "daily-digest";
+  for (const notif of directNotifs) {
+    const { data: subs } = await supabase
+      .from("push_subscriptions")
+      .select("id, user_id, endpoint, p256dh, auth")
+      .eq("workspace_id", notif.workspaceId)
+      .eq("user_id", notif.userId);
+
+    for (const sub of subs ?? []) {
+      // Check preference — default true if no record
+      const pref = pushPrefsMap.get(sub.user_id);
+      if (pref?.push_task_reminders === false) continue;
+      try {
+        const status = await sendPush(sub.endpoint, sub.p256dh, sub.auth, notif.payload);
+        if (status === 200 || status === 201) sent++;
+        if (status === 410 || status === 404) {
+          await supabase.from("push_subscriptions").delete().eq("id", sub.id);
+        }
+      } catch (err) {
+        console.error("Push error:", err);
+      }
+    }
+  }
+
+  for (const [wsId, notifPayload] of dailyWsNotif) {
     const { data: subs } = await supabase
       .from("push_subscriptions")
       .select("id, user_id, endpoint, p256dh, auth")
       .eq("workspace_id", wsId);
 
     for (const sub of subs ?? []) {
-      // Check preference — default true if no record
       const pref = pushPrefsMap.get(sub.user_id);
-      if (pref) {
-        if (isDaily && pref.push_daily_digest === false) continue;
-        if (!isDaily && pref.push_task_reminders === false) continue;
-      }
+      if (pref?.push_daily_digest === false) continue;
       try {
         const status = await sendPush(sub.endpoint, sub.p256dh, sub.auth, notifPayload);
         if (status === 200 || status === 201) sent++;
@@ -245,7 +278,7 @@ Deno.serve(async (req) => {
     }
   }
 
-  return new Response(JSON.stringify({ sent, workspaces: wsNotif.size }), {
+  return new Response(JSON.stringify({ sent, direct: directNotifs.length, workspaces: dailyWsNotif.size }), {
     headers: { "Content-Type": "application/json" },
   });
 });
