@@ -30,7 +30,7 @@ function saveMessages(projectId, messages) {
 }
 
 export default function ProjectChatPanel({ project, tasks, notes, onClose }) {
-  const { isMobile, activeWorkspaceId, userId } = useApp();
+  const { isMobile, activeWorkspaceId, userId, canEditContent } = useApp();
   const toast = useToast();
   const [messages, setMessages] = useState(() => loadMessages(project.id));
   const [activeModel, setActiveModel] = useState(() => {
@@ -40,7 +40,7 @@ export default function ProjectChatPanel({ project, tasks, notes, onClose }) {
   // Uloží zprávu do DB (sdílená historie). Tiše ignoruje chyby —
   // bez migrace / offline zůstává jen localStorage níže.
   const persist = (role, content) => {
-    if (!activeWorkspaceId || !userId) return;
+    if (!canEditContent || !activeWorkspaceId || !userId) return;
     insertProjectChat({ projectId: project.id, workspaceId: activeWorkspaceId, userId, role, content }).catch(() => {});
   };
   const [input, setInput] = useState("");
@@ -77,7 +77,7 @@ export default function ProjectChatPanel({ project, tasks, notes, onClose }) {
 
   const send = async (text) => {
     const msg = (text ?? input).trim();
-    if (!msg || loading) return;
+    if (!msg || loading || !canEditContent) return;
 
     const userMsg = { role: "user", content: msg, ts: Date.now() };
     const next = [...messages, userMsg];
@@ -197,7 +197,7 @@ export default function ProjectChatPanel({ project, tasks, notes, onClose }) {
             </div>
             <div style={{ fontSize: 11, color: "var(--text-3)" }}>{activeModel} · {tasks.length} úkolů</div>
           </div>
-          {messages.length > 0 && (
+          {messages.length > 0 && canEditContent && (
             <button
               onClick={clearChat}
               title="Smazat historii"
@@ -229,10 +229,12 @@ export default function ProjectChatPanel({ project, tasks, notes, onClose }) {
                   <button
                     key={s}
                     onClick={() => send(s)}
+                    disabled={!canEditContent}
                     style={{
                       padding: "8px 12px", borderRadius: 8, fontSize: 12.5,
                       border: "1px solid var(--border)", background: "var(--input)",
-                      color: "var(--text-2)", cursor: "pointer", textAlign: "left",
+                      color: "var(--text-2)", cursor: canEditContent ? "pointer" : "default", textAlign: "left",
+                      opacity: canEditContent ? 1 : 0.55,
                       transition: "all .12s",
                     }}
                   >
@@ -296,25 +298,25 @@ export default function ProjectChatPanel({ project, tasks, notes, onClose }) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKey}
-            placeholder={isMobile ? "Zpráva…" : "Napiš zprávu… (Enter = odeslat)"}
+            placeholder={canEditContent ? (isMobile ? "Zpráva…" : "Napiš zprávu… (Enter = odeslat)") : "Chat je v tomto workspace jen ke čtení"}
             rows={1}
-            disabled={loading}
+            disabled={loading || !canEditContent}
             style={{
               flex: 1, padding: "8px 12px", borderRadius: 8,
               border: "1px solid var(--border)", background: "var(--input)",
               color: "var(--text)", fontSize: 13, outline: "none", resize: "none",
               maxHeight: 100, overflowY: "auto", lineHeight: 1.5,
-              opacity: loading ? 0.6 : 1,
+              opacity: loading || !canEditContent ? 0.6 : 1,
             }}
           />
           <button
             onClick={() => send()}
-            disabled={!input.trim() || loading}
+            disabled={!input.trim() || loading || !canEditContent}
             style={{
               width: isMobile ? 42 : 36, height: isMobile ? 42 : 36,
               borderRadius: 10, border: "none",
-              background: input.trim() && !loading ? "var(--accent)" : "var(--border)",
-              color: "#fff", cursor: input.trim() && !loading ? "pointer" : "default",
+              background: input.trim() && !loading && canEditContent ? "var(--accent)" : "var(--border)",
+              color: "#fff", cursor: input.trim() && !loading && canEditContent ? "pointer" : "default",
               display: "flex", alignItems: "center", justifyContent: "center",
               flexShrink: 0, transition: "background .15s",
             }}

@@ -20,6 +20,7 @@ import * as projectService from "../services/projectService.js";
 import * as tagService from "../services/tagService.js";
 import * as workspaceService from "../services/workspaceService.js";
 import * as attachmentService from "../services/attachmentService.js";
+import { canChangeMemberRole, canRemoveMember } from "../services/permissionService.js";
 import { useToast } from "../components/Toast.jsx";
 import { STATUSES, PRIORITIES } from "../constants.js";
 
@@ -316,12 +317,10 @@ export function AppProvider({ children }) {
   const reportError = useCallback((msg) => setErrorQueue((prev) => [...prev, msg]), []);
   const clearErrors = useCallback(() => setErrorQueue([]), []);
 
-  // Role `viewer` = obsah jen ke čtení. Blokujeme jen když roli pozitivně známe
-  // a je to viewer; offline/demo (!userId) i zatím neznámá membership = povolit
-  // (server RLS je stejně skutečná hranice, tohle je UX vrstva). Zdroj pravdy
-  // je permissionService — viewer nemá editační práva na obsahu.
+  // Role `viewer` = obsah jen ke čtení. Po přihlášení povolujeme editaci až
+  // ve chvíli, kdy známe membership; server RLS zůstává skutečná hranice.
   const myMembership = workspaceMembers.find((m) => m.userId === userId) || null;
-  const canEditContent = !userId || !myMembership || myMembership.role !== "viewer";
+  const canEditContent = !userId || Boolean(myMembership && myMembership.role !== "viewer");
   const canEditRef = useRef(true);
   canEditRef.current = canEditContent;
   const guardContentEdit = useCallback(() => {
@@ -1357,15 +1356,24 @@ export function AppProvider({ children }) {
 
   const updateMemberRole = useCallback(async (memberUserId, newRole) => {
     if (!activeWorkspaceId) return;
+    const currentRole = myMembership?.role;
+    const targetMember = workspaceMembers.find((m) => m.userId === memberUserId);
+    if (!targetMember || !canChangeMemberRole(currentRole, targetMember.role) || !canChangeMemberRole(currentRole, newRole)) {
+      throw new Error("Na tuto změnu role nemáš oprávnění.");
+    }
     const role = await workspaceService.updateMemberRole(activeWorkspaceId, memberUserId, newRole);
     setWorkspaceMembers((prev) => prev.map((m) => m.userId === memberUserId ? { ...m, role } : m));
-  }, [activeWorkspaceId]);
+  }, [activeWorkspaceId, myMembership?.role, workspaceMembers]);
 
   const removeMember = useCallback(async (memberUserId) => {
     if (!activeWorkspaceId) return;
+    const targetMember = workspaceMembers.find((m) => m.userId === memberUserId);
+    if (!targetMember || !canRemoveMember(myMembership?.role, targetMember.role, { isSelf: memberUserId === userId })) {
+      throw new Error("Na odebrání tohoto člena nemáš oprávnění.");
+    }
     await workspaceService.removeWorkspaceMember(activeWorkspaceId, memberUserId);
     setWorkspaceMembers((prev) => prev.filter((m) => m.userId !== memberUserId));
-  }, [activeWorkspaceId]);
+  }, [activeWorkspaceId, myMembership?.role, userId, workspaceMembers]);
 
   const leaveWorkspace = useCallback(async () => {
     if (!activeWorkspaceId || !userId) return;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useMemo, useState, useEffect } from 'react'
 import { useApp } from '../context/AppContext.jsx'
 import { useToast } from '../components/Toast.jsx'
 import { useConfirm } from '../components/Confirm.jsx'
@@ -11,6 +11,7 @@ import {
   fetchNotificationPreferences,
   saveNotificationPreferences,
 } from '../services/notificationPreferencesService.js'
+import { canChangeMemberRole, canInviteMembers, canRemoveMember } from '../services/permissionService.js'
 
 const roleColors = { owner: '#f59e0b', admin: '#3b82f6', member: '#22c55e', viewer: '#8b95a5' }
 
@@ -104,14 +105,24 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
   const [savingNotif, setSavingNotif] = useState(false)
   const [pendingAction, setPendingAction] = useState(null)
 
-  const canManage = workspaceRole === 'owner' || workspaceRole === 'admin'
   const isOwner = workspaceRole === 'owner'
+  const canInvite = canInviteMembers(workspaceRole)
+  const inviteRoleOptions = useMemo(() => (
+    isOwner ? ['member', 'viewer', 'admin'] : ['member', 'viewer']
+  ), [isOwner])
 
   useEffect(() => {
-    if (!canManage) return
+    if (!canInvite) return
     setLoadingInvites(true)
     fetchWorkspaceInvites().then(setInvites).catch(() => {}).finally(() => setLoadingInvites(false))
-  }, [activeWorkspaceId, canManage, fetchWorkspaceInvites])
+  }, [activeWorkspaceId, canInvite, fetchWorkspaceInvites])
+
+  useEffect(() => {
+    if (!inviteRoleOptions.includes(inviteRole)) {
+      setInviteRole(inviteRoleOptions[0])
+      setInviteLink('')
+    }
+  }, [inviteRole, inviteRoleOptions])
 
   useEffect(() => {
     setActiveTab(initialTab)
@@ -697,6 +708,10 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
                 <div className="ws-member-list">
                   {workspaceMembers.map((m) => {
                     const color = roleColor(m.role)
+                    const roleOptions = ['admin', 'member', 'viewer'].filter((role) => canChangeMemberRole(workspaceRole, role))
+                    const canChangeThisRole = canChangeMemberRole(workspaceRole, m.role)
+                    const canRemoveThisMember = canRemoveMember(workspaceRole, m.role, { isSelf: m.userId === userId })
+                    const canShowMemberActions = canChangeThisRole || canRemoveThisMember
                     return (
                       <div key={m.userId} className="ws-member-row interactive-row">
                         <div className="ws-member-avatar" style={{ background: `${color}22`, border: `1px solid ${color}55`, color }}>
@@ -706,16 +721,22 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
                           <div style={{ fontSize: 13.5, color: 'var(--text)', fontWeight: 750, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{getMemberLabel(m)}</div>
                           {m.email && m.displayName && <div style={{ fontSize: 11.5, color: 'var(--text-3)' }}>{m.email}</div>}
                         </div>
-                        {canManage && m.userId !== userId && m.role !== 'owner' ? (
+                        {canShowMemberActions ? (
                           <div className="ws-member-actions" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <select value={m.role} onChange={(e) => handleRoleChange(m.userId, e.target.value)} style={{ ...inputStyle, width: 90, padding: '6px 8px', fontSize: 12 }}>
-                              <option value="admin">admin</option>
-                              <option value="member">member</option>
-                              <option value="viewer">viewer</option>
-                            </select>
-                            <button className="btn danger" style={{ padding: '7px 10px' }} onClick={() => isMobile ? setPendingAction({ type: 'remove', member: m }) : handleRemove(m)}>
-                              <Icon name="trash" size={12} color="currentColor" strokeWidth={2} />
-                            </button>
+                            {canChangeThisRole ? (
+                              <select value={m.role} onChange={(e) => handleRoleChange(m.userId, e.target.value)} style={{ ...inputStyle, width: 90, padding: '6px 8px', fontSize: 12 }}>
+                                {roleOptions.map((role) => (
+                                  <option key={role} value={role}>{role}</option>
+                                ))}
+                              </select>
+                            ) : (
+                              <span className="ws-role-badge" style={{ border: `1px solid ${color}44`, color, background: `${color}18` }}>{roleCz(m.role)}</span>
+                            )}
+                            {canRemoveThisMember && (
+                              <button className="btn danger" style={{ padding: '7px 10px' }} onClick={() => isMobile ? setPendingAction({ type: 'remove', member: m }) : handleRemove(m)}>
+                                <Icon name="trash" size={12} color="currentColor" strokeWidth={2} />
+                              </button>
+                            )}
                           </div>
                         ) : (
                           <span className="ws-role-badge" style={{ border: `1px solid ${color}44`, color, background: `${color}18` }}>{roleCz(m.role)}</span>
@@ -726,10 +747,10 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
                 </div>
               </Section>
 
-              {canManage && (
+              {canInvite && (
                 <Section label="Pozvat člena" title="Pozvánka do workspace" description="Vygeneruj odkaz s rolí a pošli ho novému členovi." icon="user-plus">
                   <div className="chips" style={{ marginBottom: 12 }}>
-                    {['member', 'viewer', 'admin'].map((r) => (
+                    {inviteRoleOptions.map((r) => (
                       <button key={r} className={`chip ${inviteRole === r ? 'active' : ''}`} onClick={() => { setInviteRole(r); setInviteLink('') }}>
                         {r}
                       </button>

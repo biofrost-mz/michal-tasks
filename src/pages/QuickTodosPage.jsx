@@ -29,7 +29,7 @@ function openNativeDatePicker(input) {
 /* ─────────────────────────────────────────────
    QuickTodoCard — Atlas .tcard design with swipe support
 ───────────────────────────────────────────── */
-function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) {
+function QuickTodoCard({ todo, onArchive, onDelete, isMobile, canEdit, hintOffset = 0 }) {
   const { updateQuickTodo, restoreQuickTodo } = useApp();
   const toast = useToast();
   const [offsetX, setOffsetX] = useState(0);
@@ -56,6 +56,7 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
   }, []);
 
   const triggerArchive = useCallback(() => {
+    if (!canEdit) return;
     if (completingRef.current) return;
     completingRef.current = true;
     navigator.vibrate?.([20, 30, 60]);
@@ -102,10 +103,10 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
       archiveTimerRef.current = null;
       onArchive(todo.id, { silent: true });
     }, 180);
-  }, [onArchive, todo.id, toast, restoreQuickTodo]);
+  }, [canEdit, onArchive, todo.id, toast, restoreQuickTodo]);
 
   const onPointerDown = (e) => {
-    if (exiting) return;
+    if (exiting || !canEdit) return;
     if (e.button !== undefined && e.button !== 0) return;
     if (e.target.closest?.("button, input, textarea, select, a")) return;
     startXRef.current = e.clientX;
@@ -202,7 +203,7 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
   // Map quickTodo to a visual status — active items are "todo"
   const statusClass = "todo";
 
-  if (isEditing) {
+  if (isEditing && canEdit) {
     return (
       <div
         className="tcard todo editing"
@@ -331,6 +332,7 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
             className="btn primary"
             style={{ padding: "8px 20px", fontSize: "13px", fontWeight: 600, borderRadius: "8px", background: "var(--accent)", color: "var(--bg)", minWidth: "90px" }}
             onClick={() => {
+              if (!canEdit) return;
               const text = editText.trim();
               if (!text) return;
               const tags = editTags
@@ -383,6 +385,7 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
         onClick={() => {
           if (hasSwipedRef.current) return;
           if (Math.abs(offsetX) > 5) return;
+          if (!canEdit) return;
           setIsEditing(true);
         }}
       >
@@ -393,7 +396,7 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
             triggerConfettiBurst(e);
             triggerArchive();
           }}
-          title="Označit jako hotové"
+          title={canEdit ? "Označit jako hotové" : "Jen ke čtení"}
         />
         <div className="tcard-body">
           <div className="tcard-title">{todo.text}</div>
@@ -413,9 +416,9 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
         <div className="tcard-acts" onClick={(e) => e.stopPropagation()}>
           <div className="stepper">
             <button className="cur todo" title="Aktivní">Todo</button>
-            <button onClick={() => triggerArchive()} title="Hotovo">Done</button>
+            <button onClick={() => triggerArchive()} disabled={!canEdit} title={canEdit ? "Hotovo" : "Jen ke čtení"}>Done</button>
           </div>
-          {!isMobile && (
+          {!isMobile && canEdit && (
             <button
               className="icon-btn"
               onClick={() => onDelete(todo.id)}
@@ -434,7 +437,7 @@ function QuickTodoCard({ todo, onArchive, onDelete, isMobile, hintOffset = 0 }) 
 /* ─────────────────────────────────────────────
    ArchivedRow — done items in .tcard done style
 ───────────────────────────────────────────── */
-function ArchivedRow({ todo, onRestore, onDelete }) {
+function ArchivedRow({ todo, onRestore, onDelete, canEdit }) {
   const [hovered, setHovered] = useState(false);
   return (
     <div
@@ -453,17 +456,20 @@ function ArchivedRow({ todo, onRestore, onDelete }) {
         <button
           className="btn"
           onClick={() => onRestore(todo.id)}
+          disabled={!canEdit}
           style={{ padding: "4px 10px", fontSize: 11, opacity: hovered ? 1 : 0, transition: "opacity .15s" }}
         >
           Obnovit
         </button>
-        <button
-          className="icon-btn"
-          onClick={() => onDelete(todo.id)}
-          style={{ opacity: hovered ? 0.6 : 0, transition: "opacity .15s" }}
-        >
-          <Icon name="x" size={13} color="#ef4444" strokeWidth={2} />
-        </button>
+        {canEdit && (
+          <button
+            className="icon-btn"
+            onClick={() => onDelete(todo.id)}
+            style={{ opacity: hovered ? 0.6 : 0, transition: "opacity .15s" }}
+          >
+            <Icon name="x" size={13} color="#ef4444" strokeWidth={2} />
+          </button>
+        )}
       </div>
     </div>
   );
@@ -477,7 +483,7 @@ const SWIPE_HINT_KEY = "qt:swipe-hint-shown";
 const PRIORITY_ORDER = { high: 0, medium: 1, low: 2, "": 3, null: 3 };
 
 export default function QuickTodosPage() {
-  const { isMobile, quickTodos, addQuickTodo, archiveQuickTodo, restoreQuickTodo, deleteQuickTodo, clearArchivedQuickTodos, loaded } = useApp();
+  const { isMobile, quickTodos, addQuickTodo, archiveQuickTodo, restoreQuickTodo, deleteQuickTodo, clearArchivedQuickTodos, canEditContent, loaded } = useApp();
   const confirm = useConfirm();
   const [input, setInput] = useState("");
   const [expanded, setExpanded] = useState(false);
@@ -554,7 +560,7 @@ export default function QuickTodosPage() {
 
   const handleAdd = () => {
     const text = input.trim();
-    if (!text) return;
+    if (!text || !canEditContent) return;
     const tags = tagsRaw.split(",").map((s) => s.trim().replace(/^#/, "")).filter(Boolean);
     addQuickTodo(text, {
       priority: priority || null,
@@ -585,13 +591,14 @@ export default function QuickTodosPage() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); }}
-          placeholder="Co potřebuješ udělat nebo koupit…"
+          placeholder={canEditContent ? "Co potřebuješ udělat nebo koupit…" : "V tomto workspace máš rychlý seznam jen ke čtení"}
+          disabled={!canEditContent}
         />
         <span className="quickadd-kbd">Enter</span>
       </div>
 
       {/* Expanded extras — production feature, hidden behind toggle */}
-      {expanded && (
+      {expanded && canEditContent && (
         <div style={{
           background: "var(--surface)",
           border: `1px solid ${panelBorder}`,
@@ -646,14 +653,14 @@ export default function QuickTodosPage() {
           </div>
           <div className="row" style={{ justifyContent: "flex-end", gap: 6 }}>
             <button className="btn" onClick={() => setExpanded(false)}>Zrušit</button>
-            <button className="btn primary" onClick={handleAdd} disabled={!input.trim()}>
+            <button className="btn primary" onClick={handleAdd} disabled={!input.trim() || !canEditContent}>
               <Icon name="plus" size={13} color="currentColor" strokeWidth={2.5} /> Přidat
             </button>
           </div>
         </div>
       )}
 
-      {!expanded && (
+      {!expanded && canEditContent && (
         <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
           <button
             className={`chip ${hasExtras ? "active" : ""}`}
@@ -771,6 +778,7 @@ export default function QuickTodosPage() {
                 onArchive={archiveQuickTodo}
                 onDelete={deleteQuickTodo}
                 isMobile={isMobile}
+                canEdit={canEditContent}
                 hintOffset={idx === 0 && showSwipeHint ? hintOffset : 0}
               />
             </div>
@@ -797,7 +805,7 @@ export default function QuickTodosPage() {
                 {archived.length}
               </span>
             </button>
-            {archiveOpen && (
+            {archiveOpen && canEditContent && (
               <button
                 onClick={async () => {
                   const ok = await confirm(`Smazat všech ${archived.length} archivovaných položek?`);
@@ -813,7 +821,7 @@ export default function QuickTodosPage() {
           {archiveOpen && (
             <div className="tcards">
               {archived.map((todo) => (
-                <ArchivedRow key={todo.id} todo={todo} onRestore={restoreQuickTodo} onDelete={deleteQuickTodo} />
+                <ArchivedRow key={todo.id} todo={todo} onRestore={restoreQuickTodo} onDelete={deleteQuickTodo} canEdit={canEditContent} />
               ))}
             </div>
           )}
