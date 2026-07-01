@@ -317,7 +317,7 @@ function usePullToRefresh(enabled, onRefresh) {
 }
 
 function AppShell() {
-  const { dk, setDk, isMobile, page, setPage, taskDetail, cmdOpen, setCmdOpen, isSystemAdmin, loaded, tasks, setTaskDetail, refetchAll, popUndo, userId } = useApp();
+  const { dk, setDk, isMobile, page, setPage, taskDetail, cmdOpen, setCmdOpen, isSystemAdmin, loaded, tasks, setTaskDetail, refetchAll, popUndo, userId, canEditContent } = useApp();
 
   const handleSwipeLeft = useCallback(() => {
     if (!isMobile) return;
@@ -761,6 +761,22 @@ function AppShell() {
             {...edgeSwipeHandlers}
             style={isMobile ? { flex: 1, minWidth: 0, width: "100%", overflowY: "auto", position: "relative", paddingBottom: "var(--mobile-main-bottom-padding)", overscrollBehaviorY: "auto", WebkitOverflowScrolling: "touch" } : undefined}
           >
+            {!canEditContent && (
+              <div
+                role="status"
+                style={{
+                  display: "flex", alignItems: "center", gap: 8,
+                  margin: isMobile ? "8px 12px 0" : "12px 20px 0",
+                  padding: "8px 12px", borderRadius: 10,
+                  background: "var(--accent-soft, rgba(227,168,80,0.12))",
+                  border: "1px solid var(--border-h, rgba(227,168,80,0.3))",
+                  color: "var(--text-2, #94a3b8)", fontSize: 13, lineHeight: 1.35,
+                }}
+              >
+                <span aria-hidden="true">👁️</span>
+                <span>Máš roli <strong>viewer</strong> — obsah tohoto workspace je jen ke čtení.</span>
+              </div>
+            )}
             <PageTransition pageKey={page}>
               <Suspense fallback={<PageLoader />}>
                 {page === "dashboard" && <PageErrorBoundary label="Přehled"><DashboardPage /></PageErrorBoundary>}
@@ -803,7 +819,7 @@ function AppShell() {
             </Suspense>
           )}
         </div>
-        {isMobile && splashDone && !hideMobileFab && <MobileFAB />}
+        {isMobile && splashDone && !hideMobileFab && canEditContent && <MobileFAB />}
         {isMobile && splashDone && <MobileNav toggleDk={() => setDk(!dk)} />}
       </div>
     </>

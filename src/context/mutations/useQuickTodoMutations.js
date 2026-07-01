@@ -17,8 +17,10 @@ export function useQuickTodoMutations({
   supabase,
   reportError,
   toast,
+  guardContentEdit = () => true,
 }) {
   const addQuickTodo = useCallback((text, extras = {}) => {
+    if (!guardContentEdit()) return null;
     const qt = {
       id: uuid4(),
       text: (text || "").trim(),
@@ -42,9 +44,10 @@ export function useQuickTodoMutations({
       errorMessage: "Rychlý úkol se nepodařilo uložit",
     });
     return qt;
-  }, [userId, activeWorkspaceId, setQuickTodos, reportError, toast]);
+  }, [userId, activeWorkspaceId, setQuickTodos, reportError, toast, guardContentEdit]);
 
   const archiveQuickTodo = useCallback((id, options = {}) => {
+    if (!guardContentEdit()) return;
     const prevTodos = quickTodos;
     if (!options.silent) toast("Položka byla dokončena", "success");
     runOptimisticMutation({
@@ -54,9 +57,10 @@ export function useQuickTodoMutations({
       onError: reportError,
       errorMessage: "Rychlý úkol se nepodařilo archivovat",
     });
-  }, [quickTodos, setQuickTodos, reportError, toast]);
+  }, [quickTodos, setQuickTodos, reportError, toast, guardContentEdit]);
 
   const restoreQuickTodo = useCallback((id) => {
+    if (!guardContentEdit()) return;
     const prevTodos = quickTodos;
     toast("Položka byla obnovena", "success");
     runOptimisticMutation({
@@ -66,9 +70,10 @@ export function useQuickTodoMutations({
       onError: reportError,
       errorMessage: "Rychlý úkol se nepodařilo obnovit",
     });
-  }, [quickTodos, setQuickTodos, reportError, toast]);
+  }, [quickTodos, setQuickTodos, reportError, toast, guardContentEdit]);
 
   const deleteQuickTodo = useCallback((id) => {
+    if (!guardContentEdit()) return;
     const prevTodo = quickTodos.find((q) => q.id === id) ?? null;
     toast("Položka byla smazána", "success");
     runOptimisticMutation({
@@ -78,9 +83,10 @@ export function useQuickTodoMutations({
       onError: reportError,
       errorMessage: "Rychlý úkol se nepodařilo smazat",
     });
-  }, [quickTodos, setQuickTodos, reportError, toast]);
+  }, [quickTodos, setQuickTodos, reportError, toast, guardContentEdit]);
 
   const updateQuickTodo = useCallback((id, payload) => {
+    if (!guardContentEdit()) return;
     const prevTodos = quickTodos;
     toast("Změny uloženy", "success");
     runOptimisticMutation({
@@ -90,9 +96,10 @@ export function useQuickTodoMutations({
       onError: reportError,
       errorMessage: "Rychlý úkol se nepodařilo aktualizovat",
     });
-  }, [quickTodos, setQuickTodos, reportError, toast]);
+  }, [quickTodos, setQuickTodos, reportError, toast, guardContentEdit]);
 
   const clearArchivedQuickTodos = useCallback(() => {
+    if (!guardContentEdit()) return;
     const ids = quickTodos.filter((q) => q.done).map((q) => q.id);
     if (!ids.length) return;
     const prevTodos = quickTodos;
@@ -106,7 +113,7 @@ export function useQuickTodoMutations({
       onError: reportError,
       errorMessage: "Archivované úkoly se nepodařilo smazat",
     });
-  }, [quickTodos, setQuickTodos, supabase, reportError]);
+  }, [quickTodos, setQuickTodos, supabase, reportError, guardContentEdit]);
 
   return {
     addQuickTodo,

@@ -316,6 +316,25 @@ export function AppProvider({ children }) {
   const reportError = useCallback((msg) => setErrorQueue((prev) => [...prev, msg]), []);
   const clearErrors = useCallback(() => setErrorQueue([]), []);
 
+  // Role `viewer` = obsah jen ke čtení. Blokujeme jen když roli pozitivně známe
+  // a je to viewer; offline/demo (!userId) i zatím neznámá membership = povolit
+  // (server RLS je stejně skutečná hranice, tohle je UX vrstva). Zdroj pravdy
+  // je permissionService — viewer nemá editační práva na obsahu.
+  const myMembership = workspaceMembers.find((m) => m.userId === userId) || null;
+  const canEditContent = !userId || !myMembership || myMembership.role !== "viewer";
+  const canEditRef = useRef(true);
+  canEditRef.current = canEditContent;
+  const guardContentEdit = useCallback(() => {
+    if (canEditRef.current) return true;
+    toast("Máš roli viewer — obsah je jen ke čtení.", "error");
+    return false;
+  }, [toast]);
+
+  // Monotónní token pro všechna workspace-load načítání (initial load i switch).
+  // Každé nové načtení token zvýší; starší (pomalejší) odpověď se zahodí a
+  // nepřepíše novější stav — jinak by rychlé A→B→A přepínání ukázalo cizí data.
+  const wsLoadTokenRef = useRef(0);
+
   const switchingToWsRef = useRef(null);
   const setActiveWorkspaceId = useCallback(async (wsId) => {
     setActiveWorkspaceIdRaw(wsId);
@@ -490,8 +509,10 @@ export function AppProvider({ children }) {
     if (!userId) { setLoaded(true); return; }
 
     let cancelled = false;
+    const loadToken = ++wsLoadTokenRef.current;
+    const isStale = () => cancelled || loadToken !== wsLoadTokenRef.current;
     const timeout = setTimeout(() => {
-      if (!cancelled) setLoadError("Načítání trvá déle než obvykle. Data se stále načítají.");
+      if (!isStale()) setLoadError("Načítání trvá déle než obvykle. Data se stále načítají.");
     }, 10_000);
 
     (async () => {
@@ -507,7 +528,7 @@ export function AppProvider({ children }) {
           },
           { onConflict: "id", ignoreDuplicates: false }
         );
-        if (cancelled) return;
+        if (isStale()) return;
         const { data: profileRow, error: profileError } = await supabase
           .from("user_profiles")
           .select("*")
@@ -516,15 +537,15 @@ export function AppProvider({ children }) {
         if (profileError) console.warn("profile onboarding state:", profileError.message);
         const userOnboardedInDb = hasOwn(profileRow, "onboarded_at") && profileRow.onboarded_at;
         const userOnboardedLocally = localStorage.getItem(`mt3:onboarding_done:${userId}`);
-        if (!cancelled && (userOnboardedInDb || userOnboardedLocally)) {
+        if (!isStale() && (userOnboardedInDb || userOnboardedLocally)) {
           localStorage.setItem("mt3:onboarding_done", "1");
           window.dispatchEvent(new Event("mt3:onboarding_done"));
         }
-        if (cancelled) return;
+        if (isStale()) return;
         const personalWsId = await workspaceService.ensurePersonalWorkspace(userId);
-        if (cancelled) return;
+        if (isStale()) return;
         const wsList = await workspaceService.fetchWorkspaces(userId);
-        if (cancelled) return;
+        if (isStale()) return;
         setWorkspaces(wsList);
         const savedWsId = localStorage.getItem("lastWorkspaceId");
         const wsId = savedWsId && wsList.find((w) => w.id === savedWsId) ? savedWsId : personalWsId;
@@ -534,7 +555,7 @@ export function AppProvider({ children }) {
         setWorkspaceMembers(normalized);
         await workspaceService.seedIfEmpty(userId, wsId);
         const data = await dbFetchAll(userId, wsId);
-        if (cancelled) return;
+        if (isStale()) return;
         setLoadError(null);
         const loadedProjects = data.projects || [];
         const loadedTasks = data.tasks || [];
@@ -554,12 +575,12 @@ export function AppProvider({ children }) {
         setAttachments(data.attachments ?? []);
         setQuickTodos(data.quickTodos ?? []);
       } catch (e) {
-        if (cancelled) return;
+        if (isStale()) return;
         console.error("load error:", e);
         setLoadError(e?.message || "Nepodařilo se načíst data");
       } finally {
         clearTimeout(timeout);
-        if (!cancelled) setLoaded(true);
+        if (!isStale()) setLoaded(true);
       }
     })();
 
@@ -572,10 +593,35 @@ export function AppProvider({ children }) {
   // Realtime tasks sync
   useEffect(() => {
     if (!activeWorkspaceId || !loaded) return;
+
+    // Payload z tabulky `tasks` neobsahuje vazby z `task_tags`. U úkolů, které
+    // vidíme poprvé (INSERT nebo UPDATE úkolu, co ještě nemáme lokálně), by tak
+    // tagy zmizely. Dohydratujeme je best-effort samostatným dotazem.
+    const hydrateTaskTags = async (taskId) => {
+      try {
+        const rows = await taskService.fetchTaskTags([taskId]);
+        const tagIds = rows.map((r) => r.tag_id);
+        const patch = (list) => {
+          const current = list.find((x) => x.id === taskId);
+          if (!current) return list;
+          const same =
+            current.tagIds.length === tagIds.length &&
+            current.tagIds.every((id) => tagIds.includes(id));
+          return same ? list : list.map((x) => (x.id === taskId ? { ...x, tagIds } : x));
+        };
+        setTasks((prev) => patch(prev));
+        setDeletedTasks((prev) => patch(prev));
+      } catch {
+        // best-effort — tagy se doplní při příštím refetchi
+      }
+    };
+
     const channel = supabase
       .channel(`tasks-rt-${activeWorkspaceId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "tasks", filter: `workspace_id=eq.${activeWorkspaceId}` }, (payload) => {
         if (payload.eventType === "UPDATE") {
+          const wasKnown = tasksRef.current.some((t) => t.id === payload.new.id);
+          if (!wasKnown && payload.new.status !== "deleted") hydrateTaskTags(payload.new.id);
           const isDeleted = payload.new.status === "deleted";
           if (isDeleted) {
             setTasks((prev) => prev.filter((t) => t.id !== payload.new.id));
@@ -606,6 +652,7 @@ export function AppProvider({ children }) {
           } else {
             setTasks((prev) => prev.some((t) => t.id === payload.new.id) ? prev : [...prev, normalized]);
           }
+          hydrateTaskTags(payload.new.id);
         } else if (payload.eventType === "DELETE") {
           setTasks((prev) => prev.filter((t) => t.id !== payload.old.id));
           setDeletedTasks((prev) => prev.filter((t) => t.id !== payload.old.id));
@@ -622,6 +669,7 @@ export function AppProvider({ children }) {
 
   // CRUD — Projects
   const addProject = useCallback((p) => {
+    if (!guardContentEdit()) return null;
     const rawDesc = (p?.description || "").trim();
     const color = p?.color || null;
     const fullDesc = color ? `${rawDesc} [color:${color}]`.trim() : rawDesc;
@@ -648,9 +696,10 @@ export function AppProvider({ children }) {
       errorMessage: "Projekt se nepodařilo uložit",
     });
     return proj;
-  }, [userId, activeWorkspaceId, reportError]);
+  }, [userId, activeWorkspaceId, reportError, guardContentEdit]);
 
   const updateProject = useCallback((id, u) => {
+    if (!guardContentEdit()) return;
     const prevProject = projects.find((x) => x.id === id) ?? null;
     if (!prevProject) return;
     const nextColor = u.color !== undefined ? u.color : prevProject.color;
@@ -671,10 +720,11 @@ export function AppProvider({ children }) {
       onError: reportError,
       errorMessage: "Projekt se nepodařilo aktualizovat",
     });
-  }, [projects, reportError]);
+  }, [projects, reportError, guardContentEdit]);
 
   const deleteProject = useCallback(
     (id) => {
+      if (!guardContentEdit()) return;
       const target = projects.find((x) => x.id === id);
       if (!target) return;
       const updated = { ...target, status: "deleted", updatedAt: Date.now() };
@@ -698,11 +748,12 @@ export function AppProvider({ children }) {
         setSelProject(null);
       }
     },
-    [selProject, projects, reportError, setPage]
+    [selProject, projects, reportError, setPage, guardContentEdit]
   );
 
   // Přeuspořádání úkolů — přijme nové pole úkolů v požadovaném pořadí
   const reorderTasks = useCallback((orderedTasks) => {
+    if (!guardContentEdit()) return;
     const prevTasks = tasksRef.current;
     const updated = orderedTasks.map((tk, i) => ({ ...tk, position: (i + 1) * 1000 }));
     setTasks((prev) => {
@@ -718,9 +769,10 @@ export function AppProvider({ children }) {
         reportError("Pořadí úkolů se nepodařilo uložit");
       }
     })();
-  }, [reportError]);
+  }, [reportError, guardContentEdit]);
 
   const reorderProjects = useCallback((orderedProjects) => {
+    if (!guardContentEdit()) return;
     let prevProjects = null;
     const updated = orderedProjects.map((p, i) => ({ ...p, position: (i + 1) * 1000 }));
     setProjects((prev) => {
@@ -737,7 +789,7 @@ export function AppProvider({ children }) {
         reportError("Pořadí projektů se nepodařilo uložit");
       }
     })();
-  }, [reportError]);
+  }, [reportError, guardContentEdit]);
 
   // ── Undo stack ────────────────────────────────
   const undoStackRef = useRef([]);
@@ -759,6 +811,7 @@ export function AppProvider({ children }) {
 
   // CRUD — Tasks
   const addTask = useCallback((task) => {
+    if (!guardContentEdit()) return null;
     const tsk = {
       id: uuid4(),
       title: (task?.title || "").trim(),
@@ -805,10 +858,11 @@ export function AppProvider({ children }) {
       }));
     }
     return tsk;
-  }, [userId, activeWorkspaceId, reportError, toast, pushUndo]);
+  }, [userId, activeWorkspaceId, reportError, toast, pushUndo, guardContentEdit]);
 
   const updateTask = useCallback(
     (id, u, options = {}) => {
+      if (!guardContentEdit()) return;
       // Compute prev/next synchronně z ref — vyhne se stale closure a race condition
       const prevTask = tasksRef.current.find((x) => x.id === id) ?? null;
       if (!prevTask) return;
@@ -921,16 +975,16 @@ export function AppProvider({ children }) {
 
           if (rec === "daily") {
             const d = new Date(baseDate); d.setDate(d.getDate() + 1);
-            nextDue = d.toISOString().split("T")[0];
+            nextDue = localDateKey(d);
           } else if (rec === "weekly") {
             const d = new Date(baseDate); d.setDate(d.getDate() + 7);
-            nextDue = d.toISOString().split("T")[0];
+            nextDue = localDateKey(d);
           } else if (rec === "biweekly") {
             const d = new Date(baseDate); d.setDate(d.getDate() + 14);
-            nextDue = d.toISOString().split("T")[0];
+            nextDue = localDateKey(d);
           } else if (rec === "monthly") {
             const d = new Date(baseDate); d.setMonth(d.getMonth() + 1);
-            nextDue = d.toISOString().split("T")[0];
+            nextDue = localDateKey(d);
           }
 
           if (nextDue) {
@@ -978,11 +1032,12 @@ export function AppProvider({ children }) {
         }
       })();
     },
-    [userId, activeWorkspaceId, reportError, projects, workspaceMembers, toast]
+    [userId, activeWorkspaceId, reportError, projects, workspaceMembers, toast, guardContentEdit]
   );
 
   const deleteTask = useCallback(
     (id) => {
+      if (!guardContentEdit()) return;
       const target = tasksRef.current.find((x) => x.id === id) ?? null;
       if (!target) return;
       const updated = { ...target, status: "deleted", updatedAt: Date.now() };
@@ -1015,7 +1070,7 @@ export function AppProvider({ children }) {
       }));
       toast("Úkol přesunut do koše · Cmd+Z pro vrácení", "success");
     },
-    [taskDetail, reportError, toast, pushUndo]
+    [taskDetail, reportError, toast, pushUndo, guardContentEdit]
   );
 
   // CRUD — Tags (vyštěpeno do useTagMutations)
@@ -1027,10 +1082,12 @@ export function AppProvider({ children }) {
     userId,
     activeWorkspaceId,
     reportError,
+    guardContentEdit,
   });
 
   // CRUD — Notes
   const addNote = useCallback((opts = {}) => {
+    if (!guardContentEdit()) return null;
     const note = {
       id: uuid4(),
       title: opts.title || "",
@@ -1059,9 +1116,10 @@ export function AppProvider({ children }) {
       errorMessage: "Poznámku se nepodařilo uložit",
     });
     return note;
-  }, [userId, activeWorkspaceId, reportError]);
+  }, [userId, activeWorkspaceId, reportError, guardContentEdit]);
 
   const updateNote = useCallback((id, u) => {
+    if (!guardContentEdit()) return;
     const prevNote = notes.find((n) => n.id === id) ?? null;
     setNotes((prev) =>
       prev.map((n) => (n.id !== id ? n : { ...n, ...u, updatedAt: Date.now() }))
@@ -1085,9 +1143,10 @@ export function AppProvider({ children }) {
       onError: reportError,
       errorMessage: "Poznámku se nepodařilo aktualizovat",
     });
-  }, [notes, reportError]);
+  }, [notes, reportError, guardContentEdit]);
 
   const deleteNote = useCallback((id) => {
+    if (!guardContentEdit()) return;
     const target = notes.find((n) => n.id === id) ?? null;
     if (!target) return;
     const updated = { ...target, status: "deleted", updatedAt: Date.now() };
@@ -1106,9 +1165,10 @@ export function AppProvider({ children }) {
       onError: reportError,
       errorMessage: "Poznámku se nepodařilo přesunout do koše",
     });
-  }, [notes, reportError]);
+  }, [notes, reportError, guardContentEdit]);
 
   const restoreProject = useCallback((id) => {
+    if (!guardContentEdit()) return;
     const target = deletedProjects.find((x) => x.id === id);
     if (!target) return;
     const restored = { ...target, status: "active", updatedAt: Date.now() };
@@ -1127,9 +1187,10 @@ export function AppProvider({ children }) {
       onError: reportError,
       errorMessage: "Projekt se nepodařilo obnovit",
     });
-  }, [deletedProjects, reportError]);
+  }, [deletedProjects, reportError, guardContentEdit]);
 
   const restoreTask = useCallback((id) => {
+    if (!guardContentEdit()) return;
     const target = deletedTasks.find((x) => x.id === id);
     if (!target) return;
     const restored = { ...target, status: "todo", updatedAt: Date.now() };
@@ -1148,9 +1209,10 @@ export function AppProvider({ children }) {
       onError: reportError,
       errorMessage: "Úkol se nepodařilo obnovit",
     });
-  }, [deletedTasks, reportError]);
+  }, [deletedTasks, reportError, guardContentEdit]);
 
   const restoreNote = useCallback((id) => {
+    if (!guardContentEdit()) return;
     const target = deletedNotes.find((x) => x.id === id);
     if (!target) return;
     const restored = { ...target, status: "draft", updatedAt: Date.now() };
@@ -1169,9 +1231,10 @@ export function AppProvider({ children }) {
       onError: reportError,
       errorMessage: "Poznámku se nepodařilo obnovit",
     });
-  }, [deletedNotes, reportError]);
+  }, [deletedNotes, reportError, guardContentEdit]);
 
   const hardDeleteProject = useCallback((id) => {
+    if (!guardContentEdit()) return;
     const target = deletedProjects.find((x) => x.id === id);
     runOptimisticMutation({
       apply: () => setDeletedProjects((prev) => prev.filter((x) => x.id !== id)),
@@ -1180,9 +1243,10 @@ export function AppProvider({ children }) {
       onError: reportError,
       errorMessage: "Projekt se nepodařilo permanentně smazat",
     });
-  }, [deletedProjects, reportError]);
+  }, [deletedProjects, reportError, guardContentEdit]);
 
   const hardDeleteTask = useCallback((id) => {
+    if (!guardContentEdit()) return;
     const target = deletedTasks.find((x) => x.id === id);
     runOptimisticMutation({
       apply: () => setDeletedTasks((prev) => prev.filter((x) => x.id !== id)),
@@ -1191,9 +1255,10 @@ export function AppProvider({ children }) {
       onError: reportError,
       errorMessage: "Úkol se nepodařilo permanentně smazat",
     });
-  }, [deletedTasks, reportError]);
+  }, [deletedTasks, reportError, guardContentEdit]);
 
   const hardDeleteNote = useCallback((id) => {
+    if (!guardContentEdit()) return;
     const target = deletedNotes.find((x) => x.id === id);
     runOptimisticMutation({
       apply: () => setDeletedNotes((prev) => prev.filter((x) => x.id !== id)),
@@ -1202,10 +1267,11 @@ export function AppProvider({ children }) {
       onError: reportError,
       errorMessage: "Poznámku se nepodařilo permanentně smazat",
     });
-  }, [deletedNotes, reportError]);
+  }, [deletedNotes, reportError, guardContentEdit]);
 
   const uploadAttachment = useCallback(async (file, { taskId = null, projectId = null, noteId = null } = {}) => {
     if (!userId) throw new Error("Not logged in");
+    if (!guardContentEdit()) throw new Error("Viewer role — obsah je jen ke čtení.");
     const storagePath = await attachmentService.uploadFile(file, userId);
     const attId = (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
     const att = {
@@ -1222,7 +1288,7 @@ export function AppProvider({ children }) {
     const result = { ...att, createdAt: Date.now() };
     setAttachments((prev) => [result, ...prev]);
     return result;
-  }, [userId, activeWorkspaceId]);
+  }, [userId, activeWorkspaceId, guardContentEdit]);
 
   const deleteAttachment = useCallback(async (att) => {
     setAttachments((prev) => prev.filter((a) => a.id !== att.id));
@@ -1245,14 +1311,19 @@ export function AppProvider({ children }) {
     supabase,
     reportError,
     toast,
+    guardContentEdit,
   });
 
   const switchWorkspace = useCallback(async (wsId) => {
     if (wsId === activeWorkspaceId) return;
+    const loadToken = ++wsLoadTokenRef.current;
+    const isStale = () => loadToken !== wsLoadTokenRef.current;
     setLoaded(false);
     try {
       await setActiveWorkspaceId(wsId);
       const data = await dbFetchAll(userId, wsId);
+      // Pomalejší přepnutí zahodíme — jinak by přepsalo novější workspace.
+      if (isStale()) return;
       const loadedProjects = data.projects || [];
       const loadedTasks = data.tasks || [];
       const loadedNotes = data.notes || [];
@@ -1271,9 +1342,10 @@ export function AppProvider({ children }) {
       setAttachments(data.attachments ?? []);
       setQuickTodos(data.quickTodos ?? []);
     } catch (e) {
+      if (isStale()) return;
       console.error("switchWorkspace error:", e);
     } finally {
-      setLoaded(true);
+      if (!isStale()) setLoaded(true);
     }
   }, [userId, activeWorkspaceId, setActiveWorkspaceId]);
 
@@ -1480,6 +1552,7 @@ export function AppProvider({ children }) {
     activeWorkspaceId,
     workspaceMembers,
     workspaceRole: workspaceMembers.find((m) => m.userId === userId)?.role ?? "viewer",
+    canEditContent,
     switchWorkspace,
     createWorkspace,
     generateInviteLink,
@@ -1507,7 +1580,7 @@ export function AppProvider({ children }) {
   }), [t, dk, uiSettings, loaded, loadError, projects, deletedProjects, tasks, deletedTasks, tags,
     notes, deletedNotes, quickTodos, attachments, workspaces, activeWorkspaceId, workspaceMembers,
     page, selProject, taskDetail, search, dashFilter, tasksPageFilter, openNoteId, cmdOpen,
-    isMobile, errorQueue, userId, userEmail, isSystemAdmin, undoAvailable,
+    isMobile, errorQueue, userId, userEmail, isSystemAdmin, undoAvailable, canEditContent,
     setDk, updateUiSettings, setLoadError, setLoaded, updateProfileDisplayName, pushUndo, popUndo,
     addProject, updateProject, deleteProject, restoreProject, hardDeleteProject, reorderProjects,
     pushUndo, popUndo, undoAvailable,

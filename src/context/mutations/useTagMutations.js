@@ -13,8 +13,10 @@ export function useTagMutations({
   userId,
   activeWorkspaceId,
   reportError,
+  guardContentEdit = () => true,
 }) {
   const addTag = useCallback((tag) => {
+    if (!guardContentEdit()) return null;
     const now = Date.now();
     const tg = { id: uuid4(), name: (tag?.name || "").trim() || "tag", color: tag?.color || "#6366f1", createdAt: now, updatedAt: now };
     if (!userId) {
@@ -29,9 +31,10 @@ export function useTagMutations({
       errorMessage: "Tag se nepodařilo uložit",
     });
     return tg;
-  }, [userId, activeWorkspaceId, setTags, reportError]);
+  }, [userId, activeWorkspaceId, setTags, reportError, guardContentEdit]);
 
   const updateTag = useCallback((id, u) => {
+    if (!guardContentEdit()) return;
     const prevTag = tags.find((x) => x.id === id) ?? null;
     setTags((p) => p.map((x) => (x.id === id ? { ...x, ...u, updatedAt: Date.now() } : x)));
 
@@ -46,9 +49,10 @@ export function useTagMutations({
       onError: reportError,
       errorMessage: "Tag se nepodařilo aktualizovat",
     });
-  }, [tags, setTags, reportError]);
+  }, [tags, setTags, reportError, guardContentEdit]);
 
   const deleteTag = useCallback((id) => {
+    if (!guardContentEdit()) return;
     const prevTags = tags;
     const prevTasks = tasks;
     runOptimisticMutation({
@@ -61,7 +65,7 @@ export function useTagMutations({
       onError: reportError,
       errorMessage: "Tag se nepodařilo smazat",
     });
-  }, [tags, tasks, setTags, setTasks, reportError]);
+  }, [tags, tasks, setTags, setTasks, reportError, guardContentEdit]);
 
   return { addTag, updateTag, deleteTag };
 }

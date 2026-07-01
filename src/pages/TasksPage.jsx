@@ -148,6 +148,7 @@ export default function TasksPage() {
     tasksPageFilter,
     setTasksPageFilter,
     isMobile,
+    canEditContent,
   } = useApp();
 
   const [desktopCtx, setDesktopCtx] = useState(null); // { task, x, y }
@@ -448,9 +449,11 @@ export default function TasksPage() {
         )}
       </div>
 
-      <div style={{ marginBottom: 18 }}>
-        <QuickAdd />
-      </div>
+      {canEditContent && (
+        <div style={{ marginBottom: 18 }}>
+          <QuickAdd />
+        </div>
+      )}
 
       <div className="chips">
         {CHIP_STATUSES.map((k) => {

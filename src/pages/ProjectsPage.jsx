@@ -151,6 +151,7 @@ export function ProjectDetailPage() {
     deleteProject,
     addNote,
     openNote,
+    canEditContent,
   } = useApp();
 
   const toast = useToast();
@@ -371,9 +372,11 @@ export function ProjectDetailPage() {
         </div>
       ) : null}
 
-      <div style={{ marginBottom: 18 }}>
-        <QuickAdd defaultProjectId={project.id} />
-      </div>
+      {canEditContent && (
+        <div style={{ marginBottom: 18 }}>
+          <QuickAdd defaultProjectId={project.id} />
+        </div>
+      )}
 
       <div className="quickadd" style={{ borderColor: "var(--border-soft)", background: "var(--bg-2)" }}>
         <span className="quickadd-plus" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>

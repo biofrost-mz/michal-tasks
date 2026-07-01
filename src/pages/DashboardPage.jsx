@@ -434,6 +434,7 @@ export default function DashboardPage() {
     userId,
     workspaceMembers,
     activeWorkspaceId,
+    canEditContent,
   } = useApp();
 
   // Jméno přihlášeného uživatele pro pozdrav (ne natvrdo)
@@ -885,9 +886,11 @@ export default function DashboardPage() {
             </div>
           )}
 
-          <div className="dashboard-quickadd-host" style={{ marginBottom: 18 }}>
-            <QuickAdd />
-          </div>
+          {canEditContent && (
+            <div className="dashboard-quickadd-host" style={{ marginBottom: 18 }}>
+              <QuickAdd />
+            </div>
+          )}
 
           <div className="chips">
             {groupBy === "status" && (<>
