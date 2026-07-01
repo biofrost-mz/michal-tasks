@@ -263,7 +263,7 @@ export default function TasksPage() {
   const filtered = useMemo(() => {
     let list = baseFiltered;
 
-    if (statusFilter === "active") {
+    if (statusFilter === "all" || statusFilter === "active") {
       list = list.filter((t) => t.status !== "done");
     } else if (statusFilter !== "all") {
       const realStatus = CLASS_TO_STATUS[statusFilter] || statusFilter;

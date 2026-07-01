@@ -53,6 +53,7 @@ describe("errorLogsService", () => {
     expect(sanitized.lineno).toBe(12);
     expect(sanitized.colno).toBe(5);
     expect(sanitized.url).toBe("https://tasks.example.test/admin");
+    expect(sanitized.appVersion).toBe("2.1.0");
     expect(sanitized.metadata).toMatchObject({ source: "global_error_logger", module: "test" });
   });
 

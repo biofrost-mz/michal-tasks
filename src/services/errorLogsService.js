@@ -1,3 +1,5 @@
+import { APP_VERSION } from "../appMeta.js";
+
 const ERR_KEY = "mt3:system_errors";
 const REMOTE_ERROR_LOGGING_ENABLED =
   import.meta.env.PROD || import.meta.env.VITE_ENABLE_REMOTE_ERROR_LOGGING === "true";
@@ -28,7 +30,7 @@ export function sanitizeErrorLog(errorLog) {
     colno: Number.isFinite(Number(errorLog.colno)) ? Number(errorLog.colno) : null,
     stack: errorLog.stack ? String(errorLog.stack).slice(0, 6000) : null,
     url: currentUrl(),
-    appVersion: import.meta.env.VITE_APP_VERSION || null,
+    appVersion: import.meta.env.VITE_APP_VERSION || APP_VERSION,
     metadata: {
       source: "global_error_logger",
       ...(errorLog.metadata || {}),

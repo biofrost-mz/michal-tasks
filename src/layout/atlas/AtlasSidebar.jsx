@@ -4,6 +4,7 @@ import { useToast } from "../../components/Toast.jsx";
 import Icon from "../../components/Icon.jsx";
 import MZLogo from "../../components/MZLogo.jsx";
 import { projectColor } from "../../utils.js";
+import { APP_VERSION } from "../../appMeta.js";
 
 const NAV = [
   { id: "dashboard", label: "Přehled", icon: "home" },
@@ -218,7 +219,7 @@ export default function AtlasSidebar({ collapsed, setCollapsed }) {
         <MZLogo size={32} style={{ boxShadow: "0 0 16px var(--accent-glow)" }} />
         <div className="sb-brand-text">
           <div className="sb-brand-name">Zentero</div>
-          <div className="sb-brand-tag">personal OS · v2</div>
+          <div className="sb-brand-tag">personal OS · v{APP_VERSION}</div>
         </div>
       </div>
 

@@ -1,8 +1,8 @@
 import { APP_LANGUAGE } from "./locale.js";
 
 export const APP_NAME = "Michal Tasks";
-export const APP_VERSION = "1.0.0";
-export const APP_RELEASE_DATE = "2026-03-11";
+export const APP_VERSION = "2.1.0";
+export const APP_RELEASE_DATE = "2026-07-01";
 
 export const PAGE_TITLES = {
   dashboard: "Přehled",

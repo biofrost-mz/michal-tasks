@@ -1198,43 +1198,26 @@ export default function DashboardPage() {
                 </div>
               ))}
             </div>
-            {hoveredDay ? (
-              <div style={{
-                marginTop: 12,
-                padding: "8px 12px",
-                background: "rgba(255, 255, 255, 0.03)",
-                backdropFilter: "blur(8px)",
-    minHeight: 56,
-                borderRadius: 8,
-                border: "1px solid rgba(255, 255, 255, 0.08)",
-                fontSize: 12,
-                color: "var(--text-2)",
-                animation: "fadeIn 0.2s ease-out"
-              }}>
-                <div style={{ fontWeight: 600, color: "var(--text-1)", textTransform: "capitalize", marginBottom: 2 }}>
-                  {formatDate(hoveredDay.date, { weekday: 'long', day: 'numeric', month: 'long' })}
-                </div>
-                <div>
-                  {hoveredDay.count === 0 && "Žádné dokončené úkoly."}
-                  {hoveredDay.count === 1 && "🪄 1 dokončený úkol. Skvělý začátek!"}
-                  {hoveredDay.count >= 2 && hoveredDay.count <= 4 && `🔥 ${hoveredDay.count} dokončené úkoly. Výborné tempo!`}
-                  {hoveredDay.count >= 5 && `🚀 ${hoveredDay.count} dokončených úkolů. Neuvěřitelný výkon!`}
-                </div>
-              </div>
-            ) : (
-              <div style={{
-                marginTop: 12,
-                padding: "8px 12px",
-                background: "transparent",
-                border: "1px solid transparent",
-                fontSize: 12,
-                color: "var(--text-4)",
-                fontStyle: "italic",
-                textAlign: "center"
-              }}>
-                Přejeď myší nad čtverečky pro detaily aktivity
-              </div>
-            )}
+            <div className={`streak-detail ${hoveredDay ? "active" : ""}`}>
+              {hoveredDay ? (
+                <>
+                  <div className="streak-detail-title">
+                    {formatDate(hoveredDay.date, { weekday: 'long', day: 'numeric', month: 'long' })}
+                  </div>
+                  <div className="streak-detail-body">
+                    {hoveredDay.count === 0 && "Žádné dokončené úkoly."}
+                    {hoveredDay.count === 1 && "1 dokončený úkol. Skvělý začátek!"}
+                    {hoveredDay.count >= 2 && hoveredDay.count <= 4 && `${hoveredDay.count} dokončené úkoly. Výborné tempo!`}
+                    {hoveredDay.count >= 5 && `${hoveredDay.count} dokončených úkolů. Neuvěřitelný výkon!`}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="streak-detail-title muted">Aktivita podle dní</div>
+                  <div className="streak-detail-body muted">Přejeď myší nad čtverečky pro detaily aktivity.</div>
+                </>
+              )}
+            </div>
           </div>
 
           <div className="rail-card">

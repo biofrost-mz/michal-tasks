@@ -424,10 +424,9 @@ export default function AdminPage() {
             <KeyValue label="Verze" value={`${APP_VERSION} · ${APP_RELEASE_DATE}`} />
             <KeyValue label="Build režim" value={import.meta.env.MODE} />
           </Card>
-          <Card title="Cache & Safe reload" subtitle="Nouzové vyčištění PWA cache bez zásahu do dat v Supabase." icon="refresh-cw">
+          <Card title="PWA Safe reload" subtitle="Vymaže Cache Storage, odregistruje Service Worker a načte aktuální build bez zásahu do dat v Supabase." icon="refresh-cw">
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <SmallButton onClick={() => clearCachesAndReload()}>Vyčistit cache</SmallButton>
-              <SmallButton onClick={() => clearCachesAndReload()} tone="accent">Safe reload</SmallButton>
+              <SmallButton onClick={() => clearCachesAndReload()} tone="accent">Spustit Safe reload</SmallButton>
             </div>
           </Card>
           <Card title="Úložiště & data" subtitle="Lokální cache, poznámky a přílohy v aktuálním workspace." icon="hard-drive">
