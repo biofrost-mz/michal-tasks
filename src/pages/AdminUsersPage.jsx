@@ -269,7 +269,58 @@ export default function AdminUsersPage() {
   const totalTasks = users.reduce((s, u) => s + u.task_count, 0);
 
   return (
-    <div style={{ padding: "28px 24px", maxWidth: 1100, margin: "0 auto" }}>
+    <div className="admin-users-page" style={{ padding: "28px 24px", maxWidth: 1100, margin: "0 auto" }}>
+      <style>{`
+        .admin-users-page, .admin-users-page *{box-sizing:border-box;}
+        .admin-users-summary{display:flex;gap:10px;margin-bottom:22px;flex-wrap:wrap;}
+        .admin-users-refresh{margin-left:auto;}
+        .admin-users-table{background:var(--surface);border:1px solid var(--border-soft);border-radius:14px;overflow:hidden;min-width:0;}
+        .admin-users-grid{display:grid;grid-template-columns:minmax(180px,2fr) minmax(96px,1fr) minmax(96px,1fr) 60px 60px 80px 44px;gap:8px;align-items:center;}
+        .admin-users-header{padding:10px 16px;border-bottom:1px solid var(--border-soft);font-size:11px;font-weight:750;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em;}
+        .admin-users-row{padding:12px 16px;border-bottom:1px solid var(--border-soft);transition:opacity .15s;}
+        .admin-users-row:last-child{border-bottom:0;}
+        .admin-users-cell{min-width:0;}
+        .admin-users-count{text-align:center;font-weight:700;font-size:14px;color:var(--text);}
+        @media(max-width:760px){
+          .admin-users-page{padding:18px 12px 96px!important;max-width:none!important;}
+          .admin-users-summary{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;}
+          .admin-users-summary > div{min-width:0;}
+          .admin-users-refresh{margin-left:0!important;grid-column:1 / -1;}
+          .admin-users-refresh .btn{width:100%;justify-content:center;}
+          .admin-users-table{border-radius:12px;background:transparent;border:0;display:grid;gap:10px;overflow:visible;}
+          .admin-users-header{display:none;}
+          .admin-users-row{
+            display:grid!important;
+            grid-template-columns:minmax(0,1fr) auto;
+            gap:10px 12px;
+            padding:12px;
+            border:1px solid var(--border-soft)!important;
+            border-radius:12px;
+            background:var(--surface);
+          }
+          .admin-users-identity{grid-column:1 / -1;}
+          .admin-users-cell[data-label]{
+            display:flex;
+            min-width:0;
+            align-items:center;
+            justify-content:space-between;
+            gap:10px;
+            color:var(--text-2)!important;
+            font-size:12.5px!important;
+          }
+          .admin-users-cell[data-label]::before{
+            content:attr(data-label);
+            color:var(--text-3);
+            font-size:11px;
+            font-weight:750;
+            text-transform:uppercase;
+            letter-spacing:.04em;
+          }
+          .admin-users-count{text-align:right;font-size:13.5px;}
+          .admin-users-status{justify-content:flex-end!important;}
+          .admin-users-actions{justify-self:end;align-self:center;}
+        }
+      `}</style>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 8 }}>
         <button
@@ -287,7 +338,7 @@ export default function AdminUsersPage() {
       </div>
 
       {/* Summary chips */}
-      <div style={{ display: "flex", gap: 10, marginBottom: 22, flexWrap: "wrap" }}>
+      <div className="admin-users-summary">
         {[
           { label: "Celkem", value: users.length, icon: "users" },
           { label: "Aktivních", value: activeCount, icon: "check-circle", color: "var(--green)" },
@@ -305,7 +356,7 @@ export default function AdminUsersPage() {
           </div>
         ))}
 
-        <div style={{ marginLeft: "auto" }}>
+        <div className="admin-users-refresh">
           <button type="button" onClick={loadUsers} className="btn" style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <Icon name="refresh-cw" size={13} />
             Obnovit
@@ -329,14 +380,9 @@ export default function AdminUsersPage() {
       </div>
 
       {/* Table */}
-      <div style={{ background: "var(--surface)", border: "1px solid var(--border-soft)", borderRadius: 14, overflow: "hidden" }}>
+      <div className="admin-users-table">
         {/* Table header */}
-        <div style={{
-          display: "grid", gridTemplateColumns: "2fr 1fr 1fr 60px 60px 80px 44px",
-          padding: "10px 16px", borderBottom: "1px solid var(--border-soft)",
-          fontSize: 11, fontWeight: 750, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.04em",
-          gap: 8,
-        }}>
+        <div className="admin-users-grid admin-users-header">
           <span>Uživatel</span>
           <span>Registrace</span>
           <span>Naposledy aktivní</span>
@@ -358,19 +404,14 @@ export default function AdminUsersPage() {
           </div>
         )}
 
-        {!loading && filtered.map((user, i) => (
+        {!loading && filtered.map((user) => (
           <div
             key={user.id}
-            style={{
-              display: "grid", gridTemplateColumns: "2fr 1fr 1fr 60px 60px 80px 44px",
-              padding: "12px 16px", gap: 8, alignItems: "center",
-              borderBottom: i < filtered.length - 1 ? "1px solid var(--border-soft)" : "none",
-              opacity: actionPending?.startsWith(user.id) ? 0.5 : 1,
-              transition: "opacity 0.15s",
-            }}
+            className="admin-users-grid admin-users-row"
+            style={{ opacity: actionPending?.startsWith(user.id) ? 0.5 : 1 }}
           >
             {/* Identity */}
-            <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+            <div className="admin-users-identity" style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
               <Avatar name={user.display_name} email={user.email} />
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontWeight: 700, fontSize: 13.5, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -383,32 +424,34 @@ export default function AdminUsersPage() {
             </div>
 
             {/* Registered */}
-            <div style={{ fontSize: 12.5, color: "var(--text-2)" }}>
+            <div className="admin-users-cell" data-label="Registrace" style={{ fontSize: 12.5, color: "var(--text-2)" }}>
               {formatDate(user.created_at)}
             </div>
 
             {/* Last seen */}
-            <div style={{ fontSize: 12.5, color: "var(--text-2)" }} title={formatDate(user.last_seen_at ?? user.last_sign_in_at)}>
+            <div className="admin-users-cell" data-label="Aktivita" style={{ fontSize: 12.5, color: "var(--text-2)" }} title={formatDate(user.last_seen_at ?? user.last_sign_in_at)}>
               {timeAgo(user.last_seen_at ?? user.last_sign_in_at)}
             </div>
 
             {/* Task count */}
-            <div style={{ textAlign: "center", fontWeight: 700, fontSize: 14, color: "var(--text)" }}>
+            <div className="admin-users-cell admin-users-count" data-label="Úkoly">
               {user.task_count}
             </div>
 
             {/* Workspace count */}
-            <div style={{ textAlign: "center", fontWeight: 700, fontSize: 14, color: "var(--text)" }}>
+            <div className="admin-users-cell admin-users-count" data-label="WS">
               {user.workspace_count}
             </div>
 
             {/* Status */}
-            <div style={{ display: "flex", justifyContent: "center" }}>
+            <div className="admin-users-cell admin-users-status" data-label="Stav" style={{ display: "flex", justifyContent: "center" }}>
               <StatusChip banned={user.is_banned} />
             </div>
 
             {/* Actions */}
-            <ActionMenu user={user} onAction={handleAction} />
+            <div className="admin-users-actions">
+              <ActionMenu user={user} onAction={handleAction} />
+            </div>
           </div>
         ))}
       </div>

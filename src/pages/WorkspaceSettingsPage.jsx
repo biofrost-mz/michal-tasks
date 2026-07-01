@@ -495,7 +495,7 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
           }
           .ws-form-row{
             display:grid;
-            grid-template-columns:1fr auto;
+            grid-template-columns:minmax(0,1fr) auto;
             align-items:center;
             gap:8px;
           }
@@ -555,10 +555,14 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
             margin-top:6px;
           }
           .ws-member-row{align-items:flex-start;flex-wrap:wrap;padding:11px 10px;min-height:52px;}
+          .ws-member-row > div[style*="flex: 1"]{min-width:0!important;}
+          .ws-member-row > div[style*="flex: 1"] > div{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
           .ws-member-row select{width:100%!important;}
-          .ws-member-actions{display:grid!important;grid-template-columns:1fr auto;width:100%;gap:7px!important;margin-left:40px;}
-          .ws-invite-row{flex-wrap:wrap;}
-          .ws-invite-row .btn{width:auto;}
+          .ws-member-actions{display:grid!important;grid-template-columns:minmax(0,1fr) 42px;width:calc(100% - 40px);gap:7px!important;margin-left:40px;min-width:0;}
+          .ws-member-actions .btn{width:42px;padding-left:0!important;padding-right:0!important;}
+          .ws-invite-row{display:grid!important;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;}
+          .ws-invite-row span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+          .ws-invite-row .btn{grid-column:1 / -1;width:100%;min-height:38px;}
           .ws-card + .ws-card { margin-top: 10px; }
           .ws-section-label { margin-bottom: 8px; margin-top: 4px; }
         }
@@ -568,6 +572,7 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
           .ws-settings-email{max-width:135px;}
           .ws-form-row{grid-template-columns:1fr;}
           .ws-form-row .btn{width:100%;}
+          .ws-member-actions{width:100%;margin-left:0;}
         }
       `}</style>
 
