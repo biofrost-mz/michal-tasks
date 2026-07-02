@@ -116,9 +116,10 @@ function MenuItem({ icon, label, onClick, tone = "default" }) {
   );
 }
 
-function AddToWorkspaceModal({ user, onConfirm, onClose }) {
-  const [wsId, setWsId] = useState("");
+function AddToWorkspaceModal({ user, workspaces, onConfirm, onClose }) {
+  const [wsId, setWsId] = useState(workspaces[0]?.id || "");
   const [role, setRole] = useState("member");
+  const hasWorkspaces = workspaces.length > 0;
 
   return (
     <div style={{
@@ -137,18 +138,26 @@ function AddToWorkspaceModal({ user, onConfirm, onClose }) {
         </p>
 
         <label style={{ display: "block", marginBottom: 14 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-2)", marginBottom: 5 }}>Workspace ID</div>
-          <input
+          <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-2)", marginBottom: 5 }}>Workspace</div>
+          <select
             autoFocus
             value={wsId}
             onChange={(e) => setWsId(e.target.value)}
-            placeholder="uuid workspace"
+            disabled={!hasWorkspaces}
             style={{
               width: "100%", padding: "9px 12px", borderRadius: 9, fontSize: 13,
               background: "var(--surface-2)", border: "1px solid var(--border-soft)",
               color: "var(--text)", outline: "none", boxSizing: "border-box",
             }}
-          />
+          >
+            {hasWorkspaces ? workspaces.map((workspace) => (
+              <option key={workspace.id} value={workspace.id}>
+                {workspace.name} · {workspace.member_count} členů · {workspace.id.slice(0, 8)}
+              </option>
+            )) : (
+              <option value="">Žádné workspace nejsou dostupné</option>
+            )}
+          </select>
         </label>
 
         <label style={{ display: "block", marginBottom: 20 }}>
@@ -170,7 +179,7 @@ function AddToWorkspaceModal({ user, onConfirm, onClose }) {
 
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
           <button type="button" onClick={onClose} className="btn">Zrušit</button>
-          <button type="button" onClick={() => onConfirm(wsId.trim(), role)} className="btn primary" disabled={!wsId.trim()}>
+          <button type="button" onClick={() => onConfirm(wsId, role)} className="btn primary" disabled={!wsId}>
             Přidat
           </button>
         </div>
@@ -194,7 +203,7 @@ function DeleteConfirmModal({ user, onConfirm, onClose }) {
           <div>
             <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "var(--text)" }}>Smazat uživatele?</h3>
             <p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--text-3)", lineHeight: 1.5 }}>
-              Tato akce je nevratná. Smaže účet <strong style={{ color: "var(--text)" }}>{user.display_name || user.email}</strong> včetně všech dat.
+              Tato akce je nevratná. Smaže Auth účet <strong style={{ color: "var(--text)" }}>{user.display_name || user.email}</strong>; aplikační data se nemažou automaticky.
             </p>
           </div>
         </div>
@@ -213,6 +222,7 @@ export default function AdminUsersPage() {
   const { isSystemAdmin, setPage } = useApp();
   const toast = useToast();
   const [users, setUsers] = useState([]);
+  const [workspaces, setWorkspaces] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [wsModal, setWsModal] = useState(null);
@@ -234,6 +244,7 @@ export default function AdminUsersPage() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       setUsers(data.users ?? []);
+      setWorkspaces(data.workspaces ?? []);
     } catch (err) {
       toast("Nepodařilo se načíst uživatele: " + (err.message ?? err), "error");
     } finally {
@@ -472,6 +483,7 @@ export default function AdminUsersPage() {
       {wsModal && (
         <AddToWorkspaceModal
           user={wsModal}
+          workspaces={workspaces}
           onConfirm={(wsId, role) => {
             setWsModal(null);
             callAction("add_to_workspace", wsModal.id, { workspace_id: wsId, role });

@@ -49,11 +49,14 @@ Deno.serve(async (req) => {
 
     const userIds = authUsers.users.map((u) => u.id);
 
-    const [profilesRes, taskCountsRes, wsCountsRes] = await Promise.all([
+    const [profilesRes, taskCountsRes, wsCountsRes, workspacesRes] = await Promise.all([
       supabase.from("user_profiles").select("id, display_name, email, last_seen_at").in("id", userIds),
       supabase.from("tasks").select("created_by").in("created_by", userIds),
-      supabase.from("workspace_members").select("user_id").in("user_id", userIds),
+      supabase.from("workspace_members").select("user_id, workspace_id").in("user_id", userIds),
+      supabase.from("workspaces").select("id, name, created_at").order("name", { ascending: true }),
     ]);
+
+    if (workspacesRes.error) return cors({ error: workspacesRes.error.message }, 500);
 
     const profileMap = new Map((profilesRes.data ?? []).map((p) => [p.id, p]));
     const taskCounts = new Map<string, number>();
@@ -63,6 +66,11 @@ Deno.serve(async (req) => {
     const wsCounts = new Map<string, number>();
     for (const w of wsCountsRes.data ?? []) {
       wsCounts.set(w.user_id, (wsCounts.get(w.user_id) ?? 0) + 1);
+    }
+    const workspaceMemberCounts = new Map<string, number>();
+    for (const member of wsCountsRes.data ?? []) {
+      if (!member.workspace_id) continue;
+      workspaceMemberCounts.set(member.workspace_id, (workspaceMemberCounts.get(member.workspace_id) ?? 0) + 1);
     }
 
     const users = authUsers.users.map((u) => {
@@ -80,7 +88,14 @@ Deno.serve(async (req) => {
       };
     });
 
-    return cors({ users });
+    const workspaces = (workspacesRes.data ?? []).map((workspace) => ({
+      id: workspace.id,
+      name: workspace.name || "Bez názvu",
+      created_at: workspace.created_at,
+      member_count: workspaceMemberCounts.get(workspace.id) ?? 0,
+    }));
+
+    return cors({ users, workspaces });
   }
 
   // ── ACTIONS ──────────────────────────────────────────────────────────────
@@ -117,6 +132,13 @@ Deno.serve(async (req) => {
       const { workspace_id, role = "member" } = body;
       if (!workspace_id) return cors({ error: "Chybí ID workspace." }, 400);
       if (!ASSIGNABLE_WORKSPACE_ROLES.has(role)) return cors({ error: "Neplatná role workspace. Ownera je potřeba předat v nastavení workspace." }, 400);
+      const { data: workspace, error: workspaceError } = await supabase
+        .from("workspaces")
+        .select("id")
+        .eq("id", workspace_id)
+        .maybeSingle();
+      if (workspaceError) return cors({ error: workspaceError.message }, 500);
+      if (!workspace) return cors({ error: "Workspace s tímto ID neexistuje." }, 404);
       const { error } = await supabase.from("workspace_members").upsert(
         { user_id: targetId, workspace_id, role },
         { onConflict: "user_id,workspace_id" }
