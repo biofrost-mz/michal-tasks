@@ -45,21 +45,27 @@ describe("workspaceService collaboration writes", () => {
     mocks.uuid4.mockClear();
   });
 
-  it("přejmenuje workspace oříznutým názvem", async () => {
-    await renameWorkspace("ws-1", "  Tým Zentero  ");
+  it("přejmenuje workspace oříznutým názvem jen ownerovi", async () => {
+    await renameWorkspace("ws-1", "  Tým Zentero  ", "owner");
 
     expect(mocks.from).toHaveBeenCalledWith("workspaces");
     expect(mocks.query.update).toHaveBeenCalledWith({ name: "Tým Zentero" });
     expect(mocks.query.eq).toHaveBeenCalledWith("id", "ws-1");
   });
 
-  it("nepovolí prázdný název workspace", async () => {
-    await expect(renameWorkspace("ws-1", "   ")).rejects.toThrow("Název workspace nesmí být prázdný.");
+  it("nepovolí přejmenování workspace adminovi ani členovi", async () => {
+    await expect(renameWorkspace("ws-1", "Tým", "admin")).rejects.toThrow("Workspace může přejmenovat jen owner.");
+    await expect(renameWorkspace("ws-1", "Tým", "member")).rejects.toThrow("Workspace může přejmenovat jen owner.");
     expect(mocks.from).not.toHaveBeenCalled();
   });
 
-  it("uloží změnu role člena, ale nepovolí owner ani neznámou roli", async () => {
-    await updateMemberRole("ws-1", "user-2", "admin");
+  it("nepovolí prázdný název workspace", async () => {
+    await expect(renameWorkspace("ws-1", "   ", "owner")).rejects.toThrow("Název workspace nesmí být prázdný.");
+    expect(mocks.from).not.toHaveBeenCalled();
+  });
+
+  it("uloží změnu role člena podle oprávnění volajícího", async () => {
+    await updateMemberRole("ws-1", "user-2", "admin", "owner", "member");
 
     expect(mocks.from).toHaveBeenCalledWith("workspace_members");
     expect(mocks.query.update).toHaveBeenCalledWith({ role: "admin" });
@@ -68,6 +74,16 @@ describe("workspaceService collaboration writes", () => {
 
     await expect(updateMemberRole("ws-1", "user-2", "owner")).rejects.toThrow("Neplatná role člena.");
     await expect(updateMemberRole("ws-1", "user-2", "ghost")).rejects.toThrow("Neplatná role člena.");
+  });
+
+  it("nedovolí adminovi povýšit nebo měnit jiného admina", async () => {
+    await expect(updateMemberRole("ws-1", "user-2", "admin", "admin", "member")).rejects.toThrow(
+      "Na tuto změnu role nemáš oprávnění."
+    );
+    await expect(updateMemberRole("ws-1", "user-3", "viewer", "admin", "admin")).rejects.toThrow(
+      "Na tuto změnu role nemáš oprávnění."
+    );
+    expect(mocks.from).not.toHaveBeenCalled();
   });
 
   it("vytvoří workspace i owner členství jednou servisní funkcí", async () => {

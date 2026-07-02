@@ -1350,9 +1350,9 @@ export function AppProvider({ children }) {
 
   const renameWorkspace = useCallback(async (name) => {
     if (!activeWorkspaceId) return;
-    const trimmed = await workspaceService.renameWorkspace(activeWorkspaceId, name);
+    const trimmed = await workspaceService.renameWorkspace(activeWorkspaceId, name, myMembership?.role);
     setWorkspaces((prev) => prev.map((w) => w.id === activeWorkspaceId ? { ...w, name: trimmed } : w));
-  }, [activeWorkspaceId]);
+  }, [activeWorkspaceId, myMembership?.role]);
 
   const updateMemberRole = useCallback(async (memberUserId, newRole) => {
     if (!activeWorkspaceId) return;
@@ -1361,7 +1361,7 @@ export function AppProvider({ children }) {
     if (!targetMember || !canChangeMemberRole(currentRole, targetMember.role) || !canChangeMemberRole(currentRole, newRole)) {
       throw new Error("Na tuto změnu role nemáš oprávnění.");
     }
-    const role = await workspaceService.updateMemberRole(activeWorkspaceId, memberUserId, newRole);
+    const role = await workspaceService.updateMemberRole(activeWorkspaceId, memberUserId, newRole, currentRole, targetMember.role);
     setWorkspaceMembers((prev) => prev.map((m) => m.userId === memberUserId ? { ...m, role } : m));
   }, [activeWorkspaceId, myMembership?.role, workspaceMembers]);
 

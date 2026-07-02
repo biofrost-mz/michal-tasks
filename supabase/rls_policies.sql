@@ -76,7 +76,14 @@ CREATE POLICY "workspaces_select" ON workspaces FOR SELECT
 
 DROP POLICY IF EXISTS "workspaces_update" ON workspaces;
 CREATE POLICY "workspaces_update" ON workspaces FOR UPDATE
-  USING (id = ANY(public.user_admin_workspace_ids()));
+  USING (
+    id = ANY(public.user_owner_workspace_ids())
+    OR public.is_system_admin()
+  )
+  WITH CHECK (
+    id = ANY(public.user_owner_workspace_ids())
+    OR public.is_system_admin()
+  );
 
 -- ── workspace_members ──────────────────────────────────────────────────
 ALTER TABLE workspace_members ENABLE ROW LEVEL SECURITY;

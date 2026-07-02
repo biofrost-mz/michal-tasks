@@ -1,9 +1,9 @@
 import { supabase } from "../supabase.js";
+import { canChangeMemberRole, canEditWorkspace } from "./permissionService.js";
 import { uuid4 } from "../utils.js";
 
 const WORKSPACE_ROLES = new Set(["owner", "admin", "member", "viewer"]);
 const INVITE_ROLES = new Set(["admin", "member", "viewer"]);
-const MEMBER_WRITE_ROLES = new Set(["admin", "member", "viewer"]);
 
 function sanitizeWorkspaceName(name) {
   const trimmed = String(name ?? "").trim();
@@ -11,7 +11,7 @@ function sanitizeWorkspaceName(name) {
   return trimmed;
 }
 
-function normalizeWorkspaceRole(role) {
+function normalizeWorkspaceRoleLocal(role) {
   return WORKSPACE_ROLES.has(role) ? role : "viewer";
 }
 
@@ -21,7 +21,7 @@ function assertInviteRole(role) {
 }
 
 function assertMemberWriteRole(role) {
-  if (!MEMBER_WRITE_ROLES.has(role)) throw new Error("Neplatná role člena.");
+  if (!WORKSPACE_ROLES.has(role) || role === "owner") throw new Error("Neplatná role člena.");
   return role;
 }
 
@@ -79,15 +79,19 @@ export async function fetchMembers(wsId) {
   }));
 }
 
-export async function renameWorkspace(workspaceId, name) {
+export async function renameWorkspace(workspaceId, name, currentUserRole = "viewer") {
+  if (!canEditWorkspace(currentUserRole)) throw new Error("Workspace může přejmenovat jen owner.");
   const trimmed = sanitizeWorkspaceName(name);
   const { error } = await supabase.from("workspaces").update({ name: trimmed }).eq("id", workspaceId);
   if (error) throw error;
   return trimmed;
 }
 
-export async function updateMemberRole(workspaceId, memberUserId, role) {
+export async function updateMemberRole(workspaceId, memberUserId, role, currentUserRole = "viewer", currentTargetRole = "viewer") {
   const nextRole = assertMemberWriteRole(role);
+  if (!canChangeMemberRole(currentUserRole, currentTargetRole) || !canChangeMemberRole(currentUserRole, nextRole)) {
+    throw new Error("Na tuto změnu role nemáš oprávnění.");
+  }
   const { error } = await supabase.from("workspace_members")
     .update({ role: nextRole })
     .eq("workspace_id", workspaceId)
@@ -153,7 +157,7 @@ export async function generateWorkspaceInviteLink({
   origin,
 }) {
   const inviteRole = assertInviteRole(role);
-  const normalizedCurrentRole = normalizeWorkspaceRole(currentUserRole);
+  const normalizedCurrentRole = normalizeWorkspaceRoleLocal(currentUserRole);
   if (inviteRole === "admin" && normalizedCurrentRole !== "owner") {
     throw new Error("Admin pozvánky může vytvářet jen owner workspace.");
   }
