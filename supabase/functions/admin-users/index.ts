@@ -7,13 +7,19 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
+const ASSIGNABLE_WORKSPACE_ROLES = new Set(["admin", "member", "viewer"]);
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+};
+
 function cors(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
       "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Headers": "authorization, content-type",
+      ...CORS_HEADERS,
     },
   });
 }
@@ -28,10 +34,10 @@ async function assertAdmin(req: Request): Promise<string | null> {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, content-type", "Access-Control-Allow-Methods": "GET, POST, OPTIONS" } });
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS_HEADERS });
 
   const adminId = await assertAdmin(req);
-  if (!adminId) return cors({ error: "Forbidden" }, 403);
+  if (!adminId) return cors({ error: "Nemáš oprávnění ke správě uživatelů." }, 403);
 
   const url = new URL(req.url);
   const action = url.searchParams.get("action");
@@ -82,8 +88,8 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const effectiveAction = action || body.action;
     const targetId: string = body.user_id;
-    if (!targetId) return cors({ error: "user_id required" }, 400);
-    if (targetId === adminId) return cors({ error: "Cannot act on yourself" }, 400);
+    if (!targetId) return cors({ error: "Chybí ID uživatele." }, 400);
+    if (targetId === adminId) return cors({ error: "Tuto akci nemůžeš provést sám na sobě." }, 400);
 
     if (effectiveAction === "disable") {
       const { error } = await supabase.auth.admin.updateUserById(targetId, {
@@ -109,7 +115,8 @@ Deno.serve(async (req) => {
 
     if (effectiveAction === "add_to_workspace") {
       const { workspace_id, role = "member" } = body;
-      if (!workspace_id) return cors({ error: "workspace_id required" }, 400);
+      if (!workspace_id) return cors({ error: "Chybí ID workspace." }, 400);
+      if (!ASSIGNABLE_WORKSPACE_ROLES.has(role)) return cors({ error: "Neplatná role workspace. Ownera je potřeba předat v nastavení workspace." }, 400);
       const { error } = await supabase.from("workspace_members").upsert(
         { user_id: targetId, workspace_id, role },
         { onConflict: "user_id,workspace_id" }

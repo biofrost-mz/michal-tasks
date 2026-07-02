@@ -542,6 +542,13 @@ function UserRow({ member }) {
 }
 
 function TrashSection({ title, items, onRestore, onDelete }) {
+  const handleDelete = (item) => {
+    const itemLabel = item.title || item.name || "Bez názvu";
+    const confirmed = window.confirm(`Trvale smazat položku „${itemLabel}“? Tuto akci nepůjde vrátit.`);
+    if (!confirmed) return;
+    onDelete(item.id);
+  };
+
   return (
     <Card title={`${title} (${items.length})`}>
       {!items.length ? <div style={{ color: "var(--text-3)", fontSize: 13 }}>Žádné položky.</div> : (
@@ -551,7 +558,7 @@ function TrashSection({ title, items, onRestore, onDelete }) {
               <div className="admin-trash-title">{item.title || item.name || "Bez názvu"}</div>
               <div className="admin-trash-actions">
                 <SmallButton onClick={() => onRestore(item.id)}>Obnovit</SmallButton>
-                <SmallButton onClick={() => onDelete(item.id)} tone="danger">Smazat</SmallButton>
+                <SmallButton onClick={() => handleDelete(item)} tone="danger">Smazat</SmallButton>
               </div>
             </div>
           ))}

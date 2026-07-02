@@ -1,7 +1,7 @@
 import { APP_LANGUAGE } from "./locale.js";
 
 export const APP_NAME = "Michal Tasks";
-export const APP_VERSION = "2.1.1";
+export const APP_VERSION = "2.1.2";
 export const APP_RELEASE_DATE = "2026-07-02";
 
 export const PAGE_TITLES = {

@@ -4,6 +4,12 @@ import { useToast } from "../components/Toast.jsx";
 import Icon from "../components/Icon.jsx";
 import { supabase } from "../supabase.js";
 
+const ADMIN_ASSIGNABLE_WORKSPACE_ROLES = [
+  { value: "member", label: "Člen" },
+  { value: "viewer", label: "Pozorovatel" },
+  { value: "admin", label: "Admin" },
+];
+
 function formatDate(value) {
   if (!value) return "—";
   try {
@@ -127,7 +133,7 @@ function AddToWorkspaceModal({ user, onConfirm, onClose }) {
           Přidat do workspace
         </h3>
         <p style={{ margin: "0 0 18px", fontSize: 13, color: "var(--text-3)" }}>
-          {user.display_name || user.email}
+          {user.display_name || user.email} · owner roli je potřeba předat z nastavení workspace
         </p>
 
         <label style={{ display: "block", marginBottom: 14 }}>
@@ -156,9 +162,9 @@ function AddToWorkspaceModal({ user, onConfirm, onClose }) {
               color: "var(--text)", outline: "none",
             }}
           >
-            <option value="member">Člen</option>
-            <option value="admin">Admin</option>
-            <option value="owner">Vlastník</option>
+            {ADMIN_ASSIGNABLE_WORKSPACE_ROLES.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
           </select>
         </label>
 
@@ -226,9 +232,10 @@ export default function AdminUsersPage() {
         headers: { Authorization: `Bearer ${session?.access_token}` },
       });
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       setUsers(data.users ?? []);
     } catch (err) {
-      toast.error("Nepodařilo se načíst uživatele: " + (err.message ?? err));
+      toast("Nepodařilo se načíst uživatele: " + (err.message ?? err), "error");
     } finally {
       setLoading(false);
     }
@@ -238,15 +245,16 @@ export default function AdminUsersPage() {
     setActionPending(userId + action);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const { error } = await supabase.functions.invoke("admin-users", {
+      const { data, error } = await supabase.functions.invoke("admin-users", {
         headers: { Authorization: `Bearer ${session?.access_token}` },
         body: { action, user_id: userId, ...extra },
       });
       if (error) throw error;
-      toast.success("Hotovo");
+      if (data?.error) throw new Error(data.error);
+      toast("Hotovo", "success");
       await loadUsers();
     } catch (err) {
-      toast.error(err.message ?? String(err));
+      toast(err.message ?? String(err), "error");
     } finally {
       setActionPending(null);
     }
