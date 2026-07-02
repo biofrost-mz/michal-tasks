@@ -10,7 +10,7 @@ import React, {
 
 import { supabase } from "../supabase.js";
 import theme from "../theme.js";
-import { uuid4, parseYMD, useDebouncedEffect, setGlobalProjects } from "../utils.js";
+import { uuid4, useDebouncedEffect, setGlobalProjects } from "../utils.js";
 import { runOptimisticMutation } from "../utils/optimistic.js";
 import { useQuickTodoMutations } from "./mutations/useQuickTodoMutations.js";
 import { useTagMutations } from "./mutations/useTagMutations.js";
@@ -22,6 +22,7 @@ import * as workspaceService from "../services/workspaceService.js";
 import * as attachmentService from "../services/attachmentService.js";
 import { getFriendlyErrorMessage } from "../services/errorMessageService.js";
 import { canChangeMemberRole, canRemoveMember } from "../services/permissionService.js";
+import { getNextRecurrenceDueDate, shouldCreateRecurringTask } from "../services/recurrenceService.js";
 import { useToast } from "../components/Toast.jsx";
 import { STATUSES, PRIORITIES } from "../constants.js";
 
@@ -962,33 +963,8 @@ export function AppProvider({ children }) {
           if (!res.ok) return;
         }
 
-        const VALID_RECURRENCE = ["daily", "weekly", "biweekly", "monthly"];
-        if (u.status === "done" && prevTask?.status !== "done" && VALID_RECURRENCE.includes(nextTask.recurrence)) {
-          const rec = nextTask.recurrence;
-          let nextDue = null;
-          let baseDate = null;
-          if (nextTask.dueDate) {
-            const parsed = parseYMD(nextTask.dueDate);
-            if (parsed && !isNaN(parsed)) {
-              baseDate = new Date(parsed);
-            }
-          }
-          if (!baseDate) baseDate = new Date();
-
-          if (rec === "daily") {
-            const d = new Date(baseDate); d.setDate(d.getDate() + 1);
-            nextDue = localDateKey(d);
-          } else if (rec === "weekly") {
-            const d = new Date(baseDate); d.setDate(d.getDate() + 7);
-            nextDue = localDateKey(d);
-          } else if (rec === "biweekly") {
-            const d = new Date(baseDate); d.setDate(d.getDate() + 14);
-            nextDue = localDateKey(d);
-          } else if (rec === "monthly") {
-            const d = new Date(baseDate); d.setMonth(d.getMonth() + 1);
-            nextDue = localDateKey(d);
-          }
-
+        if (shouldCreateRecurringTask(prevTask, nextTask, u)) {
+          const nextDue = getNextRecurrenceDueDate(nextTask.recurrence, nextTask.dueDate);
           if (nextDue) {
             const newTask = {
               id: uuid4(),
