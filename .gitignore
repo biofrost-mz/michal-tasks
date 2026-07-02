@@ -17,8 +17,8 @@ memory/
 supabase/.temp/
 supabase/supabase/.temp/
 
-# dist se už neverzuje — build a publikaci řeší .github/workflows/deploy.yml
-# (GitHub Actions → Pages). Viz docs/HARDENING.md.
+# Nové buildy dist už nepřidávat ručně. Tracked dist zůstává do Pages cutoveru,
+# potom ho smažeme samostatným bezpečným commitem.
 
 .superpowers/
 .claude/

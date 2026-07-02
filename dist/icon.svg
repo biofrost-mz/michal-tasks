@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Background rich dark gradient -->
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0b0f19" />
+      <stop offset="40%" stop-color="#111827" />
+      <stop offset="100%" stop-color="#030712" />
+    </linearGradient>
+
+    <!-- Outer premium glow ring gradient -->
+    <linearGradient id="glow-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f59e0b" />
+      <stop offset="30%" stop-color="#e0a96d" />
+      <stop offset="70%" stop-color="#4f46e5" />
+      <stop offset="100%" stop-color="#3b82f6" />
+    </linearGradient>
+
+    <!-- Monogram text metallic gold/white gradient -->
+    <linearGradient id="text-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="50%" stop-color="#f8fafc" />
+      <stop offset="100%" stop-color="#cbd5e1" />
+    </linearGradient>
+
+    <!-- Drop shadow for depth -->
+    <filter id="drop-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="16" stdDeviation="20" flood-color="#000000" flood-opacity="0.6" />
+    </filter>
+
+    <filter id="glow-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="12" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- macOS-style squircle background -->
+  <rect width="512" height="512" rx="120" fill="url(#bg-grad)" />
+
+  <!-- Inner glowing interactive track border -->
+  <rect x="16" y="16" width="480" height="480" rx="104" fill="none" stroke="url(#glow-grad)" stroke-width="4" opacity="0.35" />
+
+  <!-- Subtle grid lines to feel like an OS architecture -->
+  <circle cx="256" cy="256" r="180" fill="none" stroke="#ffffff" stroke-width="1" opacity="0.03" />
+  <line x1="256" y1="50" x2="256" y2="462" stroke="#ffffff" stroke-width="1" opacity="0.02" />
+  <line x1="50" y1="256" x2="462" y2="256" stroke="#ffffff" stroke-width="1" opacity="0.02" />
+
+  <!-- Monogram Group with Shadow -->
+  <g filter="url(#drop-shadow)">
+    <!-- Main MZ branding -->
+    <text x="256" y="306" 
+          font-family="system-ui, -apple-system, 'SF Pro Display', 'Outfit', 'Inter', sans-serif" 
+          font-size="180" 
+          font-weight="900" 
+          fill="url(#text-grad)" 
+          text-anchor="middle" 
+          letter-spacing="-12"
+          style="text-transform: uppercase;">
+      MZ
+    </text>
+
+    <!-- Subtitle: Tasks with soft amber color -->
+    <text x="256" y="360" 
+          font-family="system-ui, -apple-system, 'SF Pro Display', 'Outfit', 'Inter', sans-serif" 
+          font-size="34" 
+          font-weight="800" 
+          fill="#f59e0b" 
+          text-anchor="middle" 
+          letter-spacing="14" 
+          opacity="0.95">
+      TASKS
+    </text>
+  </g>
+
+  <!-- Elegant accent dots representing completed/active tasks -->
+  <circle cx="160" cy="400" r="7" fill="#f59e0b" />
+  <circle cx="256" cy="400" r="7" fill="#10b981" />
+  <circle cx="352" cy="400" r="7" fill="#3b82f6" />
+</svg>
