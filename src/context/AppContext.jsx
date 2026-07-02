@@ -20,6 +20,7 @@ import * as projectService from "../services/projectService.js";
 import * as tagService from "../services/tagService.js";
 import * as workspaceService from "../services/workspaceService.js";
 import * as attachmentService from "../services/attachmentService.js";
+import { getFriendlyErrorMessage } from "../services/errorMessageService.js";
 import { canChangeMemberRole, canRemoveMember } from "../services/permissionService.js";
 import { useToast } from "../components/Toast.jsx";
 import { STATUSES, PRIORITIES } from "../constants.js";
@@ -314,7 +315,9 @@ export function AppProvider({ children }) {
 
   // Error queue for displaying DB errors as toasts
   const [errorQueue, setErrorQueue] = useState([]);
-  const reportError = useCallback((msg) => setErrorQueue((prev) => [...prev, msg]), []);
+  const reportError = useCallback((msg, error) => {
+    setErrorQueue((prev) => [...prev, error ? getFriendlyErrorMessage(error, msg) : msg]);
+  }, []);
   const clearErrors = useCallback(() => setErrorQueue([]), []);
 
   // Role `viewer` = obsah jen ke čtení. Po přihlášení povolujeme editaci až

@@ -11,6 +11,7 @@ import {
   fetchNotificationPreferences,
   saveNotificationPreferences,
 } from '../services/notificationPreferencesService.js'
+import { getFriendlyErrorMessage } from '../services/errorMessageService.js'
 import { canChangeMemberRole, canInviteMembers, canRemoveMember } from '../services/permissionService.js'
 
 const roleColors = { owner: '#f59e0b', admin: '#3b82f6', member: '#22c55e', viewer: '#8b95a5' }
@@ -149,8 +150,8 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
     setSavingNotif(true)
     try {
       await saveNotificationPreferences(userId, updated)
-    } catch {
-      toast("Nepodařilo se uložit nastavení", "error")
+    } catch (e) {
+      toast(getFriendlyErrorMessage(e, "Nepodařilo se uložit nastavení"), "error")
     } finally {
       setSavingNotif(false)
     }
@@ -163,7 +164,7 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
       await updateProfileDisplayName(displayName.trim())
       toast('Jméno uloženo', 'success')
     } catch (e) {
-      toast(e.message || 'Chyba', 'error')
+      toast(getFriendlyErrorMessage(e, 'Chyba'), 'error')
     } finally {
       setSavingProfile(false)
     }
@@ -173,7 +174,7 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
     const { error } = await supabase.auth.resetPasswordForEmail(userEmail, {
       redirectTo: `${window.location.origin}?reset=1`,
     })
-    if (error) { toast(error.message || 'Chyba', 'error'); return }
+    if (error) { toast(getFriendlyErrorMessage(error, 'Chyba'), 'error'); return }
     setResetSent(true)
     toast('Odkaz pro reset hesla odeslán na email', 'success')
   }
@@ -190,7 +191,7 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
       setEditingName(false)
       toast('Přejmenováno', 'success')
     } catch (e) {
-      toast(e.message || 'Chyba', 'error')
+      toast(getFriendlyErrorMessage(e, 'Chyba'), 'error')
     }
   }
 
@@ -199,7 +200,7 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
       await updateMemberRole(memberUserId, role)
       toast('Role aktualizována', 'success')
     } catch (e) {
-      toast(e.message || 'Chyba', 'error')
+      toast(getFriendlyErrorMessage(e, 'Chyba'), 'error')
     }
   }
 
@@ -209,7 +210,7 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
       await removeMember(member.userId)
       toast('Člen odebrán', 'success')
     } catch (e) {
-      toast(e.message || 'Chyba', 'error')
+      toast(getFriendlyErrorMessage(e, 'Chyba'), 'error')
     }
   }
 
@@ -220,7 +221,7 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
       setPage('dashboard')
       toast('Opustil jsi workspace', 'success')
     } catch (e) {
-      toast(e.message || 'Chyba', 'error')
+      toast(getFriendlyErrorMessage(e, 'Chyba'), 'error')
     }
   }
 
@@ -232,7 +233,7 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
       setInvites(updated)
       toast('Odkaz vygenerován', 'success')
     } catch (e) {
-      toast(e.message || 'Chyba', 'error')
+      toast(getFriendlyErrorMessage(e, 'Chyba'), 'error')
     }
   }
 
@@ -242,7 +243,7 @@ export default function WorkspaceSettingsPage({ initialTab = 'workspace' }) {
       setInvites((prev) => prev.filter((i) => i.id !== inviteId))
       toast('Pozvánka zrušena', 'success')
     } catch (e) {
-      toast(e.message || 'Chyba', 'error')
+      toast(getFriendlyErrorMessage(e, 'Chyba'), 'error')
     }
   }
 

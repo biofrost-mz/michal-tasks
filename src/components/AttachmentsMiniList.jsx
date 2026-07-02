@@ -4,6 +4,7 @@ import { useToast } from './Toast.jsx'
 import { useConfirm } from './Confirm.jsx'
 import Icon from './Icon.jsx'
 import { supabase } from '../supabase.js'
+import { getFriendlyErrorMessage } from '../services/errorMessageService.js'
 
 // Allowlist of safe MIME types — executable/scriptable formats are blocked.
 const ALLOWED_MIME = new Set([
@@ -90,7 +91,7 @@ export default function AttachmentsMiniList({ taskId, projectId }) {
       await uploadAttachment(file, { taskId: taskId ?? null, projectId: projectId ?? null });
       toast("Soubor nahrán", "success");
     } catch (e) {
-      toast(e.message || "Chyba při nahrávání", "error");
+      toast(getFriendlyErrorMessage(e, "Chyba při nahrávání"), "error");
     } finally {
       setUploading(false);
     }
@@ -102,7 +103,7 @@ export default function AttachmentsMiniList({ taskId, projectId }) {
       await deleteAttachment(att);
       toast("Smazáno", "success");
     } catch (e) {
-      toast(e.message || "Chyba při mazání", "error");
+      toast(getFriendlyErrorMessage(e, "Chyba při mazání"), "error");
     }
   };
 

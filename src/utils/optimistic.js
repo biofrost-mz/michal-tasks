@@ -13,6 +13,8 @@
 //   - rollback(): vrátí stav zpět, když persist selže
 // a sjednocené hlášení chyby (onError + errorMessage).
 
+import { appendFriendlyError } from "../services/errorMessageService.js";
+
 /**
  * Spustí optimistickou mutaci: nejdřív optimisticky upraví UI, pak se pokusí
  * zapsat do DB, a při chybě stav vrátí zpět a nahlásí ji na jednom místě.
@@ -53,7 +55,7 @@ export async function runOptimisticMutation({
     } catch {
       /* rollback selhal — původní chyba je důležitější, pokračujeme */
     }
-    onError?.(errorMessage, error);
+    onError?.(appendFriendlyError(errorMessage, error), error);
     return { ok: false, error };
   }
 }
