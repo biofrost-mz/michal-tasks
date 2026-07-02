@@ -17,10 +17,8 @@ memory/
 supabase/.temp/
 supabase/supabase/.temp/
 
-# This project has tracked dist files for web deployment. Keep the generated
-# app shell, assets, and service worker together to avoid stale hashed-asset 404s.
-!dist/
-!dist/**
+# dist se už neverzuje — build a publikaci řeší .github/workflows/deploy.yml
+# (GitHub Actions → Pages). Viz docs/HARDENING.md.
 
 .superpowers/
 .claude/
