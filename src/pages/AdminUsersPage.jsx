@@ -122,11 +122,11 @@ function AddToWorkspaceModal({ user, workspaces, onConfirm, onClose }) {
   const hasWorkspaces = workspaces.length > 0;
 
   return (
-    <div style={{
+    <div className="admin-users-modal-backdrop" style={{
       position: "fixed", inset: 0, zIndex: 1000,
       background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center",
     }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div style={{
+      <div className="admin-users-modal-panel" style={{
         background: "var(--surface)", borderRadius: 16, padding: 28, width: 380,
         border: "1px solid var(--border-soft)", boxShadow: "0 16px 48px rgba(0,0,0,0.3)",
       }}>
@@ -177,7 +177,7 @@ function AddToWorkspaceModal({ user, workspaces, onConfirm, onClose }) {
           </select>
         </label>
 
-        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+        <div className="admin-users-modal-actions" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
           <button type="button" onClick={onClose} className="btn">Zrušit</button>
           <button type="button" onClick={() => onConfirm(wsId, role)} className="btn primary" disabled={!wsId}>
             Přidat
@@ -190,11 +190,11 @@ function AddToWorkspaceModal({ user, workspaces, onConfirm, onClose }) {
 
 function DeleteConfirmModal({ user, onConfirm, onClose }) {
   return (
-    <div style={{
+    <div className="admin-users-modal-backdrop" style={{
       position: "fixed", inset: 0, zIndex: 1000,
       background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center",
     }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div style={{
+      <div className="admin-users-modal-panel" style={{
         background: "var(--surface)", borderRadius: 16, padding: 28, width: 360,
         border: "1px solid var(--border-soft)", boxShadow: "0 16px 48px rgba(0,0,0,0.3)",
       }}>
@@ -207,7 +207,7 @@ function DeleteConfirmModal({ user, onConfirm, onClose }) {
             </p>
           </div>
         </div>
-        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+        <div className="admin-users-modal-actions" style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
           <button type="button" onClick={onClose} className="btn">Zrušit</button>
           <button type="button" onClick={onConfirm} className="btn" style={{ background: "var(--red-soft)", color: "var(--red)", border: "1px solid var(--red-soft)" }}>
             Smazat
@@ -306,6 +306,11 @@ export default function AdminUsersPage() {
           .admin-users-summary > div{min-width:0;}
           .admin-users-refresh{margin-left:0!important;grid-column:1 / -1;}
           .admin-users-refresh .btn{width:100%;justify-content:center;}
+          .admin-users-modal-backdrop{padding:14px!important;align-items:flex-end!important;}
+          .admin-users-modal-panel{width:100%!important;max-width:420px!important;max-height:calc(100dvh - 28px);overflow:auto;padding:18px!important;border-radius:14px!important;}
+          .admin-users-modal-panel p{overflow-wrap:anywhere;}
+          .admin-users-modal-actions{display:grid!important;grid-template-columns:1fr 1fr;width:100%;}
+          .admin-users-modal-actions .btn{width:100%;min-width:0;}
           .admin-users-table{border-radius:12px;background:transparent;border:0;display:grid;gap:10px;overflow:visible;}
           .admin-users-header{display:none;}
           .admin-users-row{

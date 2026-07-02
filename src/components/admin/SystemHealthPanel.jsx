@@ -61,7 +61,7 @@ async function unregisterServiceWorkers() {
 function HealthRow({ title, value, status = "idle", detail }) {
   const meta = STATUS_META[status] || STATUS_META.idle;
   return (
-    <div style={{
+    <div className="system-health-row" style={{
       display: "grid",
       gridTemplateColumns: "minmax(120px, 1fr) auto",
       gap: 12,
@@ -75,8 +75,8 @@ function HealthRow({ title, value, status = "idle", detail }) {
         <div style={{ color: "var(--text)", fontSize: 13, fontWeight: 800 }}>{title}</div>
         {detail && <div style={{ color: "var(--text-3)", fontSize: 11.5, marginTop: 3, lineHeight: 1.35 }}>{detail}</div>}
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{ color: "var(--text-2)", fontSize: 12, fontFamily: "var(--mono)", fontWeight: 750 }}>{value}</span>
+      <div className="system-health-value" style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, minWidth: 0 }}>
+        <span style={{ color: "var(--text-2)", fontSize: 12, fontFamily: "var(--mono)", fontWeight: 750, minWidth: 0, overflowWrap: "anywhere", textAlign: "right" }}>{value}</span>
         <span style={{
           padding: "4px 8px",
           borderRadius: 999,
@@ -304,7 +304,7 @@ export default function SystemHealthPanel({ embedded = false }) {
   const overallMeta = STATUS_META[overallStatus];
 
   const content = (
-    <div style={{
+    <div className="system-health-panel" style={{
       borderRadius: embedded ? "var(--r-lg)" : 18,
       border: "1px solid var(--border-soft)",
       background: embedded ? "var(--surface)" : "color-mix(in srgb, var(--surface) 98%, transparent)",
@@ -313,6 +313,16 @@ export default function SystemHealthPanel({ embedded = false }) {
       WebkitBackdropFilter: embedded ? "none" : "blur(18px)",
       overflow: "hidden",
     }}>
+      <style>{`
+        .system-health-panel,.system-health-panel *{box-sizing:border-box;}
+        .system-health-actions{min-width:0;}
+        @media(max-width:560px){
+          .system-health-row{grid-template-columns:minmax(0,1fr)!important;align-items:stretch!important;}
+          .system-health-value{justify-content:space-between!important;width:100%;}
+          .system-health-actions{display:grid!important;grid-template-columns:1fr 1fr;width:100%;justify-content:stretch!important;}
+          .system-health-actions button{width:100%;min-width:0;white-space:normal;}
+        }
+      `}</style>
       <div style={{ padding: "16px 18px", borderBottom: "1px solid var(--border-soft)", display: "flex", justifyContent: "space-between", gap: 16 }}>
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
@@ -337,7 +347,7 @@ export default function SystemHealthPanel({ embedded = false }) {
         <div style={{ color: "var(--text-3)", fontSize: 11.5, fontFamily: "var(--mono)" }}>
           {lastCheckedAt ? `Poslední kontrola: ${formatDateTime(lastCheckedAt)}` : "Kontrola zatím neproběhla"}
         </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+        <div className="system-health-actions" style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
           <button type="button" onClick={() => runHealthCheck()} disabled={loading} style={smallButtonStyle}>
             {loading ? "Kontroluji…" : "Obnovit"}
           </button>

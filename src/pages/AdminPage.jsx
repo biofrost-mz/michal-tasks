@@ -60,16 +60,16 @@ async function clearCachesAndReload() {
 
 function Card({ title, subtitle, icon, children, action }) {
   return (
-    <div style={{ background: "var(--surface)", border: "1px solid var(--border-soft)", borderRadius: "var(--r-lg)", padding: 22 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start", marginBottom: children ? 16 : 0 }}>
-        <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+    <div style={{ background: "var(--surface)", border: "1px solid var(--border-soft)", borderRadius: "var(--r-lg)", padding: 22, minWidth: 0, maxWidth: "100%", overflow: "hidden" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start", marginBottom: children ? 16 : 0, minWidth: 0 }}>
+        <div style={{ display: "flex", gap: 10, alignItems: "flex-start", minWidth: 0 }}>
           {icon && <Icon name={icon} size={18} color="var(--accent)" />}
-          <div>
+          <div style={{ minWidth: 0 }}>
             <h3 style={{ margin: 0, color: "var(--text)", fontSize: 16, fontWeight: 800 }}>{title}</h3>
             {subtitle && <p style={{ margin: "5px 0 0", color: "var(--text-3)", fontSize: 12.5, lineHeight: 1.45 }}>{subtitle}</p>}
           </div>
         </div>
-        {action}
+        {action && <div style={{ flex: "0 1 auto", minWidth: 0 }}>{action}</div>}
       </div>
       {children}
     </div>
@@ -89,7 +89,7 @@ function SmallButton({ children, onClick, tone = "default", disabled = false }) 
   const color = tone === "danger" ? "var(--red)" : tone === "accent" ? "var(--accent)" : "var(--text-2)";
   const background = tone === "danger" ? "var(--red-soft)" : tone === "accent" ? "var(--accent-soft)" : "var(--bg-2)";
   return (
-    <button type="button" onClick={onClick} disabled={disabled} style={{ padding: "7px 10px", borderRadius: 9, border: "1px solid var(--border-soft)", background, color, fontSize: 12, fontWeight: 750, opacity: disabled ? 0.55 : 1 }}>
+    <button type="button" onClick={onClick} disabled={disabled} style={{ padding: "7px 10px", borderRadius: 9, border: "1px solid var(--border-soft)", background, color, fontSize: 12, fontWeight: 750, opacity: disabled ? 0.55 : 1, minWidth: 0, whiteSpace: "normal" }}>
       {children}
     </button>
   );
@@ -362,7 +362,8 @@ export default function AdminPage() {
           .admin-tabs{margin:0 -12px;padding:0 12px 10px;border-bottom:0;gap:7px;scroll-snap-type:x mandatory;}
           .admin-tab{padding:9px 11px;border:1px solid var(--border-soft);border-radius:999px;background:var(--surface);border-bottom:1px solid var(--border-soft);font-size:12px;scroll-snap-align:start;}
           .admin-tab.active{background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 48%,var(--border-soft));}
-          .admin-card-grid,.admin-diagnostics-grid,.admin-two-col{grid-template-columns:1fr!important;}
+          .admin-card-grid,.admin-diagnostics-grid,.admin-two-col{grid-template-columns:minmax(0,1fr)!important;}
+          .admin-page input,.admin-page select,.admin-page textarea{min-width:0;}
           .admin-trash-row{grid-template-columns:1fr;align-items:stretch;gap:10px;}
           .admin-trash-title{white-space:normal;overflow-wrap:anywhere;line-height:1.35;}
           .admin-trash-actions{min-width:0;width:100%;display:grid;grid-template-columns:1fr 1fr;}
