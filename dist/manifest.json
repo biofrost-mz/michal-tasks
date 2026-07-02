@@ -1,6 +1,7 @@
 {
   "name": "Zentero",
   "short_name": "Zentero",
+  "version": "2.1.1",
   "description": "Osobní plánovač úkolů a projektů s AI asistencí",
   "start_url": "/",
   "display": "standalone",

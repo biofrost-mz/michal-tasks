@@ -1182,7 +1182,7 @@ export default function DashboardPage() {
                 <div className="streak-meta-r"><span className="streak-meta-r-k">měsíc</span><span className="streak-meta-r-v">{Math.min(streak.current, 31)}</span></div>
               </div>
             </div>
-            <div className="streak-grid">
+            <div className="streak-grid" onMouseLeave={() => setHoveredDay(null)}>
               {streak.weeks.map((w, i) => (
                 <div key={i} className="streak-col">
                   {w.map((d, j) => (
@@ -1190,7 +1190,6 @@ export default function DashboardPage() {
                       key={j}
                       className={`streak-cell ${d.level ? `l${d.level}` : ""}`}
                       onMouseEnter={() => setHoveredDay(d)}
-                      onMouseLeave={() => setHoveredDay(null)}
                       style={{
                         cursor: "pointer",
                         transform: hoveredDay?.date?.getTime() === d.date?.getTime() ? "scale(1.2)" : "scale(1)",
