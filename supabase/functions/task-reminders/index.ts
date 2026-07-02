@@ -58,7 +58,7 @@ function prioChip(priority?: string): Chip | null {
 
 function toRow(t: Record<string, string>, projectMap: Record<string, string>, workspaceMap: Record<string, string>): TaskRow {
   const chips: Chip[] = [
-    { text: workspaceMap[t.workspace_id] ?? "Workspace", tone: "neutral" },
+    { text: `WS: ${workspaceMap[t.workspace_id] ?? "Workspace"}`, tone: "neutral" },
     { text: projectMap[t.project_id] ?? "Bez projektu", tone: "neutral" },
   ];
   if (t.due_date) chips.push({ text: `Termín: ${formatDate(t.due_date)}`, tone: "amber" });
@@ -175,10 +175,11 @@ Deno.serve(async (req) => {
   // Najdi úkoly s remind_at v uplynulé hodině (přeskočí dokončené)
   const { data: tasks, error } = await supabase
     .from("tasks")
-    .select("id, title, description, due_date, priority, project_id, workspace_id, created_by, assignee_user_id, remind_at")
+    .select("id, title, description, due_date, priority, project_id, workspace_id, created_by, assignee_user_id, remind_at, completed_at")
     .not("remind_at", "is", null)
     .neq("status", "done")
     .neq("status", "deleted")
+    .is("completed_at", null)
     .lte("remind_at", now.toISOString())
     .gte("remind_at", oneHourAgo.toISOString());
 

@@ -86,19 +86,19 @@ export function heroBlock(o: HeroOpts): string {
   const logo = o.logoUrl
     ? `<img src="${escHtml(o.logoUrl)}" width="34" height="34" alt="Zentero" style="display:block;width:34px;height:34px;border-radius:11px;border:0;outline:none;text-decoration:none">`
     : "Z";
-  return `<tr><td bgcolor="#4f46e5" style="border-radius:20px 20px 0 0;background:#4f46e5;background:linear-gradient(135deg,#2563eb 0%,#4f46e5 48%,#7c3aed 100%)">
+  return `<tr><td class="em-hero" bgcolor="#4f46e5" style="border-radius:20px 20px 0 0;background:#4f46e5;background:linear-gradient(135deg,#2563eb 0%,#4f46e5 48%,#7c3aed 100%)">
    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td class="em-hero-pad" style="padding:26px 30px 24px">
      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
        <td valign="middle"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-         <td valign="middle" style="width:34px;height:34px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.28);border-radius:11px;text-align:center;color:#ffffff;font-size:16px;font-weight:800;line-height:34px">${logo}</td>
-         <td valign="middle" style="padding-left:10px;color:#ffffff;font-size:15px;font-weight:800;letter-spacing:-.01em">Zentero</td>
+         <td valign="middle" class="em-hero-white" style="width:34px;height:34px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.28);border-radius:11px;text-align:center;color:#ffffff;font-size:16px;font-weight:800;line-height:34px">${logo}</td>
+         <td valign="middle" class="em-hero-white" style="padding-left:10px;color:#ffffff;font-size:15px;font-weight:800;letter-spacing:-.01em">Zentero</td>
        </tr></table></td>
-       <td align="right" valign="middle" style="color:#ffffff;font-size:12px;font-weight:700;white-space:nowrap"><span style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.24);border-radius:999px;padding:7px 12px">${escHtml(o.dateLabel)}</span></td>
+       <td align="right" valign="middle" class="em-hero-white" style="color:#ffffff;font-size:12px;font-weight:700;white-space:nowrap"><span style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.24);border-radius:999px;padding:7px 12px">${escHtml(o.dateLabel)}</span></td>
      </tr></table>
      <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-top:24px"><tr>
-       <td valign="middle" class="em-title" style="color:#ffffff;font-size:28px;line-height:1.12;font-weight:800;letter-spacing:-.025em">${escHtml(o.title)}</td>${badge}
+       <td valign="middle" class="em-title em-hero-white" style="color:#ffffff;font-size:28px;line-height:1.12;font-weight:800;letter-spacing:-.025em">${escHtml(o.title)}</td>${badge}
      </tr></table>
-     <div style="margin-top:9px;color:rgba(255,255,255,.86);font-size:14px;line-height:1.55;max-width:430px">${escHtml(o.subtitle)}</div>
+     <div class="em-hero-white" style="margin-top:9px;color:rgba(255,255,255,.86);font-size:14px;line-height:1.55;max-width:430px">${escHtml(o.subtitle)}</div>
      ${extra}
      ${stats}
    </td></tr></table>
@@ -271,6 +271,8 @@ export function emailShell(o: ShellOpts): string {
     .em-card, .em-soft, .em-bd { border-color:#2a3142 !important; }
     .em-strong { color:#f1f5f9 !important; }
     .em-muted { color:#9aa7b8 !important; }
+    .em-hero, .em-hero * { color:#ffffff !important; }
+    .em-hero-white { color:#ffffff !important; }
   }
 </style>
 </head>

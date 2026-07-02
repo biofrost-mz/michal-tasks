@@ -350,8 +350,8 @@ export default function AdminPage() {
         .admin-diagnostics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;}
         .admin-two-col{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(320px,.9fr);gap:18px;}
         .admin-trash-list{display:grid;gap:8px;min-width:0;}
-        .admin-trash-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;padding:12px;border:1px solid var(--border-soft);border-radius:12px;background:var(--bg-2);min-width:0;}
-        .admin-trash-title{color:var(--text);font-weight:750;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+        .admin-trash-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;padding:12px;border:1px solid var(--border-soft);border-radius:12px;background:var(--bg-2);min-width:0;max-width:100%;}
+        .admin-trash-title{color:var(--text);font-weight:750;min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
         .admin-trash-actions{display:flex;gap:8px;justify-content:flex-end;min-width:max-content;}
         @media(max-width:760px){
           .admin-page{padding:18px 12px 96px;}
@@ -366,7 +366,7 @@ export default function AdminPage() {
           .admin-trash-row{grid-template-columns:1fr;align-items:stretch;gap:10px;}
           .admin-trash-title{white-space:normal;overflow-wrap:anywhere;line-height:1.35;}
           .admin-trash-actions{min-width:0;width:100%;display:grid;grid-template-columns:1fr 1fr;}
-          .admin-trash-actions button{width:100%;}
+          .admin-trash-actions button{width:100%;min-width:0;padding-left:8px!important;padding-right:8px!important;white-space:normal;}
         }
       `}</style>
       <div style={{ marginBottom: 26 }}>

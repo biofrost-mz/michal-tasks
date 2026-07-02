@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { APP_RELEASE_DATE, APP_VERSION } from "../../appMeta.js";
 import { supabase } from "../../supabase.js";
+import { getFriendlyErrorMessage } from "../../services/errorMessageService.js";
 import { getErrorLogs } from "../../utils/errorLogger.js";
 import { useToast } from "../Toast.jsx";
 
@@ -127,7 +128,7 @@ export default function SystemHealthPanel({ embedded = false }) {
         detail: waiting ? "Service Worker je aktivní; nová verze je připravená a aktivuje se po zavření aplikace." : "PWA Service Worker je aktivní.",
       };
     } catch (error) {
-      return { status: "error", value: "Chyba", detail: error.message };
+      return { status: "error", value: "Chyba", detail: getFriendlyErrorMessage(error, "Service Worker se nepodařilo zkontrolovat.") };
     }
   }, []);
 
@@ -147,7 +148,7 @@ export default function SystemHealthPanel({ embedded = false }) {
         detail: latency < 600 ? "Databáze odpovídá rychle." : "Databáze odpovídá, ale pomaleji než obvykle.",
       };
     } catch (error) {
-      return { status: "error", latency: null, detail: error.message };
+      return { status: "error", latency: null, detail: getFriendlyErrorMessage(error, "Databázové spojení selhalo.") };
     }
   }, []);
 
@@ -185,8 +186,8 @@ export default function SystemHealthPanel({ embedded = false }) {
         checkDb(),
         checkPwa(),
         checkRemoteErrorCounts().catch((error) => ({
-          remoteErrors24h: { status: "error", value: "—", detail: error.message },
-          remoteErrors7d: { status: "error", value: "—", detail: error.message },
+          remoteErrors24h: { status: "error", value: "—", detail: getFriendlyErrorMessage(error, "Produkční logy se nepodařilo načíst.") },
+          remoteErrors7d: { status: "error", value: "—", detail: getFriendlyErrorMessage(error, "Produkční logy se nepodařilo načíst.") },
         })),
       ]);
 
@@ -206,7 +207,7 @@ export default function SystemHealthPanel({ embedded = false }) {
       if (!silent) toast("Health check dokončen", "success");
     } catch (error) {
       console.warn("System health check failed:", error);
-      if (!silent) toast("Health check selhal: " + error.message, "error");
+      if (!silent) toast("Health check selhal: " + getFriendlyErrorMessage(error, "Neznámá chyba"), "error");
     } finally {
       setLoading(false);
     }
@@ -254,9 +255,9 @@ export default function SystemHealthPanel({ embedded = false }) {
     } catch (error) {
       setHealth((current) => ({
         ...current,
-        ai: { status: "error", latency: null, detail: error.message },
+        ai: { status: "error", latency: null, detail: getFriendlyErrorMessage(error, "AI test selhal.") },
       }));
-      toast("AI test selhal: " + error.message, "error");
+      toast("AI test selhal: " + getFriendlyErrorMessage(error, "Neznámá chyba"), "error");
     } finally {
       setTestingAi(false);
     }
@@ -283,7 +284,7 @@ export default function SystemHealthPanel({ embedded = false }) {
       }, safeMode ? 350 : 650);
     } catch (error) {
       console.warn("Cache reset failed:", error);
-      toast(`${label} selhal: ${error.message}`, "error");
+      toast(`${label} selhal: ${getFriendlyErrorMessage(error, "Neznámá chyba")}`, "error");
     } finally {
       setResetting(false);
     }

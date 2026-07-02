@@ -69,7 +69,7 @@ function toRow(
 ): TaskRow {
   const accent = kind === "overdue" ? "#ef4444" : kind === "today" ? "#f59e0b" : "#22c55e";
   const chips: Chip[] = [
-    { text: workspaceMap[t.workspace_id] ?? "Workspace", tone: "neutral" },
+    { text: `WS: ${workspaceMap[t.workspace_id] ?? "Workspace"}`, tone: "neutral" },
     { text: projectMap[t.project_id] ?? "Bez projektu", tone: "neutral" },
   ];
   if (kind === "overdue") {
@@ -250,9 +250,10 @@ Deno.serve(async (req) => {
   // Fetch relevant tasks (all users, not done, due today or earlier or tomorrow)
   const { data: tasks, error } = await supabase
     .from("tasks")
-    .select("id, title, description, due_date, priority, project_id, workspace_id, status, created_by, assignee_user_id")
+    .select("id, title, description, due_date, priority, project_id, workspace_id, status, completed_at, created_by, assignee_user_id")
     .neq("status", "done")
     .neq("status", "deleted")
+    .is("completed_at", null)
     .not("due_date", "is", null)
     .not("created_by", "is", null)
     .lte("due_date", tomorrowStr)
