@@ -1,18 +1,18 @@
-# Deploy — build v CI + publikace na GitHub Pages, dist mimo git.
+# Ruční preview deploy na GitHub Pages.
 #
-# Předpoklady (nastav JEDNOU v repo Settings, jinak deploy selže / shodí doménu):
+# Produkce běží přes Vercel a DNS záznam tasks.zichmichal.cz se nemění.
+# Tenhle workflow slouží jen jako ručně spustitelný sanity check buildu.
+#
+# Předpoklady pro ruční Pages preview:
 #   1. Settings → Secrets and variables → Actions → New repository secret:
 #        VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY
 #   2. Settings → Pages → Source = "GitHub Actions"
-#   3. Custom doména tasks.zichmichal.cz drží public/CNAME (kopíruje se do dist).
 #
-# První nasazení lze spustit ručně (workflow_dispatch) a ověřit ještě před mergem.
+# Custom domain tasks.zichmichal.cz nepřidávat na GitHub Pages, dokud produkce běží na Vercelu.
 
-name: Deploy
+name: Pages Preview
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -20,7 +20,7 @@ permissions:
   pages: write
   id-token: write
 
-# Nepřerušovat běžící deploy novým pushnutím — ať se web nezasekne v půlce.
+# Nepřerušovat běžící ruční preview novým spuštěním.
 concurrency:
   group: pages
   cancel-in-progress: false
