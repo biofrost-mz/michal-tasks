@@ -596,6 +596,7 @@ export default function AuthGate({ children }) {
                       type={showPw ? "text" : "password"}
                       placeholder="••••••••"
                       value={newPassword}
+                      name="new-password" autoComplete="new-password"
                       onChange={e => setNewPassword(e.target.value)}
                       required
                       style={{ ...inputFieldStyle, paddingRight: "44px" }}
@@ -847,6 +848,7 @@ export default function AuthGate({ children }) {
                         type="email"
                         placeholder="jmeno@domena.cz"
                         value={email}
+                        name="email" autoComplete="email"
                         onChange={e => setEmail(e.target.value)}
                         required
                         style={inputFieldStyle}
@@ -917,6 +919,7 @@ export default function AuthGate({ children }) {
                         type="text"
                         placeholder="Michal Zich"
                         value={fullName}
+                        name="name" autoComplete="name"
                         onChange={e => setFullName(e.target.value)}
                         required
                         style={inputFieldStyle}
@@ -941,6 +944,7 @@ export default function AuthGate({ children }) {
                       type="email"
                       placeholder="jmeno@domena.cz"
                       value={email}
+                      name="email" autoComplete="email"
                       onChange={e => setEmail(e.target.value)}
                       required
                       style={inputFieldStyle}
@@ -978,6 +982,7 @@ export default function AuthGate({ children }) {
                         type={showPw ? "text" : "password"}
                         placeholder="••••••••"
                         value={password}
+                        name="password" autoComplete={signMode === "signup" ? "new-password" : "current-password"}
                         onChange={e => setPassword(e.target.value)}
                         required
                         style={{ ...inputFieldStyle, paddingRight: "44px" }}
@@ -1022,6 +1027,7 @@ export default function AuthGate({ children }) {
                           type={showPw ? "text" : "password"}
                           placeholder="••••••••"
                           value={passwordConfirm}
+                          name="confirm-password" autoComplete="new-password"
                           onChange={e => setPasswordConfirm(e.target.value)}
                           required
                           style={inputFieldStyle}
