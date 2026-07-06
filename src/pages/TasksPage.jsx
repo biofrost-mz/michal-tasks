@@ -83,6 +83,7 @@ function statusLabel(statusClass) {
 function InlineEditInput({ taskId, value, onChange, onCommit, onCancel, style }) {
   return (
     <input
+      name="task-title-inline" autoComplete="off"
       autoFocus
       className="detail-input"
       value={value}

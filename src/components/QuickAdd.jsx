@@ -437,6 +437,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
         </div>
 
         <input
+          name="quick-add-task" autoComplete="off"
           ref={inputRef}
           value={val}
           onChange={(e) => setVal(e.target.value.slice(0, 200))}
@@ -625,6 +626,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
                           </button>
 
                           <input
+                            name="suggested-task-title" autoComplete="off"
                             value={t.title}
                             onChange={(e) => updateSuggestedTask(t.id, { title: e.target.value.slice(0, 200) })}
                             disabled={!t.selected}
@@ -648,6 +650,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
                           <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingLeft: 30, animation: "fadeIn .15s ease-out" }}>
                             {/* Description */}
                             <textarea
+                              name="suggested-task-description" autoComplete="off"
                               value={t.description}
                               onChange={(e) => updateSuggestedTask(t.id, { description: e.target.value })}
                               placeholder="Popis úkolu (volitelný)"
@@ -850,6 +853,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
                 {/* Task Title Input */}
                 <div style={{ display: "flex", flexDirection: "column" }}>
                   <input
+                    name="task-title" autoComplete="off"
                     autoFocus={!isMobile}
                     value={modalTitle}
                     onChange={(e) => setModalTitle(e.target.value)}
@@ -918,6 +922,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
                       </SectionLabel>
 
                       <textarea
+                        name="ai-task-input" autoComplete="off"
                         value={aiInputText}
                         onChange={(e) => setAiInputText(e.target.value)}
                         placeholder="Napiš např.: Do zítra musím naprogramovat novou komponentu pro web, dej to do projektu Web a označ jako vysoká priorita..."
@@ -1036,6 +1041,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
                   </div>
                   {(description || description === " ") && (
                     <textarea
+                      name="task-description" autoComplete="off"
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                       placeholder="Zadej podrobnosti k úkolu..."
@@ -1209,6 +1215,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
                         }}
                       >
                         <input
+                          name="new-project-name" autoComplete="off"
                           autoFocus
                           placeholder="Název nového projektu…"
                           value={newProjName}
@@ -1386,6 +1393,7 @@ export default function QuickAdd({ defaultProjectId = null }) {
                         }}
                       >
                         <input
+                          name="new-tag-name" autoComplete="off"
                           autoFocus
                           placeholder="Název nového tagu…"
                           value={newTagName}
