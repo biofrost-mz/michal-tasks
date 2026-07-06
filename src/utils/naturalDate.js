@@ -58,7 +58,10 @@ const DAYS_CS = ["Ne", "Po", "Út", "St", "Čt", "Pá", "So"];
 export function naturalDateLabel(dateKey) {
   if (!dateKey) return "";
   const today = startOfToday();
-  const d = new Date(dateKey + "T12:00:00");
+  // Local midnight of the target day, aby rozdíl vůči dnešní půlnoci vyšel na
+  // celé dny. Dřív bylo poledne ("T12:00:00") → rozdíl 0.5 dne a Math.round(0.5)=1
+  // posunul všechny popisky o den (dnešek se zobrazoval jako „zítra").
+  const d = new Date(dateKey + "T00:00:00");
   const diff = Math.round((d - today) / 86400000);
   if (diff === 0) return "dnes";
   if (diff === 1) return "zítra";
