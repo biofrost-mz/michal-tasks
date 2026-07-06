@@ -88,10 +88,12 @@ export function renderMarkdown(md) {
   let listType = "ul";
 
   const escHtml = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  // Escapování pro hodnotu HTML atributu (navíc uvozovky) — brání vylomení z
-  // atributu (`alt`, `href`, `src`). Sanitizace DOMPurify běží až potom; tohle
-  // je obrana u zdroje, aby se korektnost nespoléhala jen na ni.
-  const escAttr = (s) => escHtml(String(s)).replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  // Vstup do processInline je už HTML-escapovaný na úrovni řádku (escHtml(raw)),
+  // takže <>& jsou entity. Pro hodnotu atributu (alt/href/src) proto stačí
+  // doescapovat jen uvozovky — to je vektor vylomení z atributu, který escHtml
+  // neřeší. Znovu escapovat <>& by dvojitě zakódovalo & (rozbité query stringy
+  // v URL a doslovné "&amp;" ve výstupu). Sanitizace DOMPurify běží až potom.
+  const escAttr = (s) => String(s).replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 
   const safeUrl = (url) => {
     try {
@@ -106,7 +108,7 @@ export function renderMarkdown(md) {
     // code blocks first to avoid processing their internals
     s = s.replace(/`([^`]+)`/g, '<code style="background:#1e293b22;padding:1px 5px;border-radius:4px;font-family:monospace;font-size:0.9em">$1</code>');
     s = s.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_, alt, url) => `<img src="${escAttr(safeUrl(url))}" alt="${escAttr(alt)}" style="max-width:100%;border-radius:8px;margin:6px 0;display:block">`);
-    s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, url) => `<a href="${escAttr(safeUrl(url))}" target="_blank" rel="noopener noreferrer" style="color:#3b82f6;text-decoration:underline">${escHtml(text)}</a>`);
+    s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, url) => `<a href="${escAttr(safeUrl(url))}" target="_blank" rel="noopener noreferrer" style="color:#3b82f6;text-decoration:underline">${text}</a>`);
     s = s.replace(/\*\*\*([^*]+)\*\*\*/g, '<strong><em>$1</em></strong>');
     s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
     s = s.replace(/\*([^*]+)\*/g, '<em>$1</em>');
