@@ -117,6 +117,7 @@ export function WorkspaceSwitcher() {
             {creating ? (
               <div style={{ padding: "6px 8px", display: "flex", gap: 6 }}>
                 <input
+                  name="new-workspace-name" autoComplete="off"
                   autoFocus
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
@@ -166,7 +167,7 @@ export function WorkspaceSwitcher() {
               <>
                 <div style={{ fontSize: 12, color: "var(--text-2)", marginBottom: 6 }}>Zkopíruj a pošli odkaz:</div>
                 <div style={{ display: "flex", gap: 6 }}>
-                  <input readOnly value={inviteLink} style={{ flex: 1, padding: "7px 10px", borderRadius: 7, border: "1px solid var(--border)", background: "var(--input)", color: "var(--text)", fontSize: 12 }} onClick={(e) => e.target.select()} />
+                  <input name="invite-link" readOnly value={inviteLink} style={{ flex: 1, padding: "7px 10px", borderRadius: 7, border: "1px solid var(--border)", background: "var(--input)", color: "var(--text)", fontSize: 12 }} onClick={(e) => e.target.select()} />
                   <button onClick={() => { navigator.clipboard.writeText(inviteLink); toast("Zkopírováno", "success"); }} style={{ padding: "7px 12px", borderRadius: 7, border: "none", background: "var(--accent)", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                     Kopírovat
                   </button>
@@ -503,6 +504,7 @@ export default function Sidebar({ toggleDk }) {
         >
           <Icon name="search" size={13} color="var(--text-3)" strokeWidth={2} style={{ flexShrink: 0 }} />
           <input
+            name="sidebar-search" autoComplete="off"
             ref={searchRef}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
