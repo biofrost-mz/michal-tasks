@@ -256,7 +256,10 @@ Vrať výsledek jako JSON objekt s touto strukturou:
             "content-type": "application/json",
           },
           body: JSON.stringify({
-            model: "claude-3-5-sonnet-20241022",
+            // claude-3-5-sonnet-20241022 byl vyřazen; aktuální Sonnet s vypnutým přemýšlením
+            // (between_tools bez nástrojů = odpověď jen jako text, stejně jako dřív).
+            model: "claude-sonnet-5-5",
+            thinking: { type: "between_tools" },
             max_tokens: 1500,
             system: claudeSystem,
             messages: [{ role: "user", content: claudePrompt }],
@@ -274,9 +277,9 @@ Vrať výsledek jako JSON objekt s touto strukturou:
         }
 
         const claudeData = await claudeResp.json();
-        rawText = claudeData.content?.[0]?.text?.trim() ?? "";
+        rawText = claudeData.content?.find((block: { type?: string }) => block?.type === "text")?.text?.trim() ?? "";
         success = true;
-        selectedModel = "Claude 3.5 Sonnet";
+        selectedModel = "Claude Sonnet 5.5";
         console.log("ai-project-planner: Anthropic Claude úspěšně vrátil záložní odpověď.");
       } catch (claudeError: any) {
         console.error("ai-project-planner: Claude API výjimka:", claudeError);

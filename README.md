@@ -14,17 +14,27 @@ Další skripty:
 ```bash
 npm run build
 npm run lint
+npm test            # Vitest (jsdom)
 npm run preview
 ```
 
 ## Proměnné prostředí
 
-V `*.local` souboru je potřeba mít:
+Zkopíruj `.env.example` do `.env.local` a vyplň minimálně:
 
 ```bash
 VITE_SUPABASE_URL=...
 VITE_SUPABASE_ANON_KEY=...
 ```
+
+Tajné klíče edge funkcí (service role, Resend, Gemini, Anthropic, VAPID) se nastavují přes `supabase secrets set`.
+
+## Nasazení
+
+- **Produkce:** Vercel → `tasks.zichmichal.cz` (bezpečnostní hlavičky a CSP v `vercel.json`).
+- **GitHub Actions:** `ci.yml` (lint, testy, build + Deno type-check edge funkcí), `deploy.yml` (jen ruční preview na GitHub Pages).
+- **Supabase:** migrace v `supabase/migrations/`, starší jednorázové SQL v `supabase/*.sql`, edge funkce v `supabase/functions/`.
+- Složka `dist/` je v gitu jen historicky (plánovaný přechod na Pages se neuskutečnil) – viz `docs/STAV-A-UKLID-2026-10.md`.
 
 ## Struktura projektu
 
@@ -60,4 +70,13 @@ To je funkční a rychlé na vývoj, ale pro větší refaktory dává smysl roz
 - rozdělit `AppContext` na menší hooky nebo feature providery
 - oddělit Supabase dotazy do vlastních modulů
 - postupně přesunout opakující se UI patterny z inline stylů do sdílenější vrstvy
-- přidat základní smoke testy pro klíčové flows
+- rozšířit testy (dnes 16 souborů / 106 testů ve Vitestu) o klíčové UI flows
+
+## Další dokumentace
+
+- [`docs/STAV-A-UKLID-2026-10.md`](docs/STAV-A-UKLID-2026-10.md) – aktuální stav, rizika, úkoly
+- [`ANALYZA.md`](ANALYZA.md) – funkční analýza aplikace (květen 2026)
+- [`docs/HARDENING.md`](docs/HARDENING.md), [`docs/ADMIN_NOTES.md`](docs/ADMIN_NOTES.md), [`docs/ai-roadmap.md`](docs/ai-roadmap.md)
+- [`supabase/auth_security_checklist.md`](supabase/auth_security_checklist.md), [`supabase/auth_email_templates.md`](supabase/auth_email_templates.md)
+- `redesign_micha_tasks/` – návrhy redesignu (Atlas, Cortex), `Webova stranka/` – prezentační web, `email-mockups/` – návrhy e-mailů
+- `docs/archiv/` – starší návrhy (auth redesign preview, plán e-mailů a demo webu)

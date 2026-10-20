@@ -281,7 +281,10 @@ Buď maximálně konkrétní — uváděj skutečné názvy úkolů z mého sezn
             "content-type": "application/json",
           },
           body: JSON.stringify({
-            model: "claude-3-5-sonnet-20241022",
+            // claude-3-5-sonnet-20241022 byl vyřazen; aktuální Sonnet s vypnutým přemýšlením
+            // (between_tools bez nástrojů = odpověď jen jako text, stejně jako dřív).
+            model: "claude-sonnet-5-5",
+            thinking: { type: "between_tools" },
             max_tokens: 1024,
             system: systemPrompt,
             messages: [{ role: "user", content: userPrompt }],
@@ -299,9 +302,9 @@ Buď maximálně konkrétní — uváděj skutečné názvy úkolů z mého sezn
         }
 
         const claudeData = await claudeRes.json();
-        plan = claudeData.content?.[0]?.text ?? "";
+        plan = claudeData.content?.find((block: { type?: string }) => block?.type === "text")?.text ?? "";
         success = true;
-        selectedModel = "Claude 3.5 Sonnet";
+        selectedModel = "Claude Sonnet 5.5";
         console.log("ai-daily-plan: Anthropic Claude úspěšně vrátil záložní odpověď.");
       } catch (claudeError: any) {
         console.error("ai-daily-plan: Claude API výjimka:", claudeError);
