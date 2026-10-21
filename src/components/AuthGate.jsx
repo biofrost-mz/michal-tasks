@@ -5,36 +5,27 @@ import Icon from './Icon.jsx'
 import MZLogo from './MZLogo.jsx'
 import { supabase } from '../supabase.js'
 import { SectionLabel } from "./ui/index.js";
+import { version as APP_VERSION } from "../../package.json";
 
-/* Decorative mock card shown in the brand panel */
-function MockTaskCard() {
-  const [tasks, setTasks] = React.useState([
-    { done: true,  text: "Zkontrolovat pull requesty",  priority: "#22c55e" },
-    { done: true,  text: "Schůzka s týmem (10:00)",     priority: "#f59e0b" },
-    { done: false, text: "Dokončit design přihlášení",  priority: "#ef4444" },
-    { done: false, text: "Code review — notes linking", priority: "#e3a850" },
-  ]);
-
-  const handleToggle = (index) => {
-    setTasks(prev => prev.map((t, idx) => idx === index ? { ...t, done: !t.done } : t));
-  };
-
+/* Brand panel showcase: the single most important task, chosen by AI.
+   Shows the value ("we sort your day") instead of a generic checklist. */
+function FocusCard() {
   return (
-    <div 
+    <div
       style={{
-        background: "rgba(255, 255, 255, 0.03)", 
+        background: "rgba(255, 255, 255, 0.03)",
         border: "1.5px solid rgba(251, 191, 36, 0.2)",
-        borderRadius: 14, 
-        padding: "14px 16px", 
+        borderRadius: 16,
+        padding: "18px 20px",
         marginTop: 36,
-        transition: "all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
+        transition: "all 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
         boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
       }}
       onMouseEnter={e => {
-        e.currentTarget.style.borderColor = "rgba(251, 191, 36, 0.55)";
-        e.currentTarget.style.transform = "translateY(-4px) scale(1.02)";
+        e.currentTarget.style.borderColor = "rgba(251, 191, 36, 0.5)";
+        e.currentTarget.style.transform = "translateY(-4px)";
         e.currentTarget.style.background = "rgba(255, 255, 255, 0.05)";
-        e.currentTarget.style.boxShadow = "0 15px 40px rgba(251, 191, 36, 0.1)";
+        e.currentTarget.style.boxShadow = "0 18px 44px rgba(251, 191, 36, 0.1)";
       }}
       onMouseLeave={e => {
         e.currentTarget.style.borderColor = "rgba(251, 191, 36, 0.2)";
@@ -43,74 +34,53 @@ function MockTaskCard() {
         e.currentTarget.style.boxShadow = "0 10px 30px rgba(0,0,0,0.5)";
       }}
     >
-      <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 10 }}>
-        Dnešní plán · AI
+      <style>{`@keyframes zenteroPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.55)}}`}</style>
+
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 16 }}>
+        <span style={{ color: "#fbbf24", fontSize: 13 }}>✦</span>
+        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".14em", color: "#94a3b8", textTransform: "uppercase" }}>
+          Plán na dnes · AI
+        </span>
       </div>
-      {tasks.map((item, i) => (
-        <div 
-          key={i} 
-          onClick={() => handleToggle(i)}
-          style={{ 
-            display: "flex", 
-            alignItems: "center", 
-            gap: 10, 
-            padding: "8px 0", 
-            borderBottom: i < 3 ? "1px solid rgba(255,255,255,0.05)" : "none",
-            cursor: "pointer",
-            transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
-            borderRadius: "6px",
-            userSelect: "none",
-          }}
-          onMouseEnter={e => {
-            e.currentTarget.style.background = "rgba(255, 255, 255, 0.02)";
-            e.currentTarget.style.paddingLeft = "6px";
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.background = "transparent";
-            e.currentTarget.style.paddingLeft = "0px";
-          }}
-        >
-          <div style={{
-            width: 16, height: 16, borderRadius: 5, flexShrink: 0,
-            background: item.done ? item.priority + "25" : "transparent",
-            border: `2px solid ${item.done ? item.priority : "rgba(255,255,255,0.2)"}`,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
-          }}>
-            <span style={{
-              fontSize: 9,
-              color: item.priority,
-              fontWeight: 900,
-              transform: `scale(${item.done ? 1 : 0})`,
-              opacity: item.done ? 1 : 0,
-              transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease",
-            }}>✓</span>
-          </div>
-          <div style={{ width: 5, height: 5, borderRadius: "50%", background: item.priority, flexShrink: 0 }} />
-          <span style={{
-            position: "relative",
-            fontSize: 12.5,
-            color: item.done ? "#64748b" : "#cbd5e1",
-            transition: "color 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
-            flex: 1,
-            userSelect: "none",
-          }}>
-            {item.text}
-            <span style={{
-              position: "absolute",
-              left: 0,
-              right: 0,
-              top: "50%",
-              height: "1px",
-              background: "currentColor",
-              transform: `scaleX(${item.done ? 1 : 0})`,
-              transformOrigin: "left",
-              transition: "transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
-              opacity: 0.6,
-            }} />
-          </span>
-        </div>
-      ))}
+
+      {/* The one thing that matters now */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+        <div style={{
+          width: 22, height: 22, borderRadius: "50%", flexShrink: 0,
+          border: "2px solid #fbbf24",
+          boxShadow: "0 0 0 4px rgba(251, 191, 36, 0.08)",
+        }} />
+        <span style={{ fontSize: 16.5, color: "#f1f5f9", fontWeight: 500 }}>
+          Dokončit design přihlášení
+        </span>
+      </div>
+
+      {/* Why AI put it first */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", paddingLeft: 34 }}>
+        <span style={{
+          display: "inline-flex", alignItems: "center", gap: 6,
+          background: "rgba(251, 191, 36, 0.14)", color: "#fcd34d",
+          fontSize: 11.5, fontWeight: 600, padding: "4px 10px", borderRadius: 999,
+        }}>
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#fbbf24", animation: "zenteroPulse 1.8s ease-in-out infinite" }} />
+          Priorita dne · do 17:00
+        </span>
+        <span style={{ fontSize: 11.5, color: "#64748b" }}>AI to zařadila před 3 další úkoly</span>
+      </div>
+
+      {/* What the AI queued next */}
+      <div style={{
+        marginTop: 16, paddingTop: 12,
+        borderTop: "1px solid rgba(255,255,255,0.06)",
+        display: "flex", alignItems: "center", gap: 8,
+        fontSize: 12, color: "#64748b",
+      }}>
+        <span style={{ color: "#475569" }}>Pak:</span>
+        <span>Code review — notes linking</span>
+        <span style={{ color: "#334155" }}>•</span>
+        <span>Sync s týmem 15:00</span>
+      </div>
     </div>
   );
 }
@@ -123,6 +93,11 @@ const FEATURES = [
 ];
 
 const RESEND_COOLDOWN_SECONDS = 45;
+
+// Info links shown in the footer. Empty for now (no live URLs yet) — the links
+// row is hidden while this is empty. Add entries once the pages exist, e.g.
+// { label: "Podmínky", href: "https://…" }, { label: "Soukromí", href: "https://…" }.
+const FOOTER_LINKS = [];
 
 function normalizeEmail(value) {
   return value.trim().toLowerCase();
@@ -210,19 +185,25 @@ export default function AuthGate({ children }) {
   useEffect(() => {
     if (isMobile) return;
     let rafId = null;
-    let nextCoords = { x: 50, y: 50 };
+    const target = { x: 50, y: 50 };
+    const current = { x: 50, y: 50 };
     const handleMouseMove = (e) => {
-      nextCoords = {
-        x: (e.clientX / window.innerWidth) * 100,
-        y: (e.clientY / window.innerHeight) * 100,
-      };
-      if (rafId !== null) return;
-      rafId = window.requestAnimationFrame(() => {
-        rafId = null;
-        setMouseCoords(nextCoords);
-      });
+      target.x = (e.clientX / window.innerWidth) * 100;
+      target.y = (e.clientY / window.innerHeight) * 100;
+    };
+    // Light trails the cursor with an eased lerp instead of snapping to it.
+    const tick = () => {
+      const dx = target.x - current.x;
+      const dy = target.y - current.y;
+      if (Math.abs(dx) > 0.05 || Math.abs(dy) > 0.05) {
+        current.x += dx * 0.07;
+        current.y += dy * 0.07;
+        setMouseCoords({ x: current.x, y: current.y });
+      }
+      rafId = window.requestAnimationFrame(tick);
     };
     window.addEventListener("mousemove", handleMouseMove);
+    rafId = window.requestAnimationFrame(tick);
     return () => {
       window.removeEventListener("mousemove", handleMouseMove);
       if (rafId !== null) window.cancelAnimationFrame(rafId);
@@ -432,7 +413,7 @@ export default function AuthGate({ children }) {
       boxSizing: "border-box",
       padding: isMobile ? "24px 16px calc(24px + env(safe-area-inset-bottom))" : "40px 32px",
     }}>
-      {/* Interactive Aurora Mouse Glow Background with parralax depth */}
+      {/* Interactive mouse glow — softer, smaller, calmer than before */}
       <div style={{
         position: "absolute",
         top: 0,
@@ -440,31 +421,27 @@ export default function AuthGate({ children }) {
         right: 0,
         bottom: 0,
         background: `
-          radial-gradient(circle 850px at ${mouseCoords.x}% ${mouseCoords.y}%, rgba(251, 191, 36, 0.42) 0%, rgba(249, 115, 22, 0.24) 30%, rgba(139, 92, 246, 0.12) 60%, rgba(0, 0, 0, 0) 100%),
-          radial-gradient(circle 900px at ${100 - mouseCoords.x}% ${100 - mouseCoords.y}%, rgba(168, 85, 247, 0.24) 0%, rgba(236, 72, 153, 0.10) 40%, rgba(0, 0, 0, 0) 100%),
-          radial-gradient(circle 800px at 100% 0%, rgba(251, 191, 36, 0.08) 0%, rgba(0, 0, 0, 0) 80%),
-          radial-gradient(circle 800px at 0% 100%, rgba(139, 92, 246, 0.08) 0%, rgba(0, 0, 0, 0) 80%),
-          #030303
+          radial-gradient(circle 540px at ${mouseCoords.x}% ${mouseCoords.y}%, rgba(251, 191, 36, 0.17) 0%, rgba(249, 115, 22, 0.09) 34%, rgba(139, 92, 246, 0.05) 62%, rgba(0, 0, 0, 0) 100%),
+          radial-gradient(circle 720px at 100% 0%, rgba(168, 85, 247, 0.07) 0%, rgba(0, 0, 0, 0) 72%),
+          radial-gradient(circle 720px at 0% 100%, rgba(139, 92, 246, 0.06) 0%, rgba(0, 0, 0, 0) 72%),
+          #050505
         `,
         zIndex: 0,
         pointerEvents: "none",
-        transition: "background 0.1s ease-out",
       }} />
 
-      {/* Grid Pattern Overlay - Golden and localized */}
+      {/* Fine film grain — replaces the old dot grid, reads as texture not pattern */}
       <div style={{
         position: "absolute",
         top: 0,
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundImage: "radial-gradient(rgba(251, 191, 36, 0.38) 1.5px, transparent 1.5px)",
-        backgroundSize: "28px 24px",
-        opacity: 1.0,
+        backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
+        opacity: 0.035,
+        mixBlendMode: "overlay",
         zIndex: 0,
         pointerEvents: "none",
-        maskImage: "radial-gradient(ellipse at 50% 50%, black 50%, transparent 100%)",
-        WebkitMaskImage: "radial-gradient(ellipse at 50% 50%, black 50%, transparent 100%)",
       }} />
 
       <div style={{
@@ -527,7 +504,7 @@ export default function AuthGate({ children }) {
               letterSpacing: "-1.5px",
               margin: "0 0 20px",
             }}>
-              Vraťte svému dni <span style={{ color: "#fbbf24", background: "linear-gradient(135deg, #fbbf24 0%, #d97706 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>řád.</span>
+              Den, ve kterém<br />máte <span style={{ color: "#fbbf24", background: "linear-gradient(135deg, #fbbf24 0%, #d97706 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>jasno.</span>
             </h1>
 
             {/* Description */}
@@ -536,9 +513,9 @@ export default function AuthGate({ children }) {
               fontSize: "15.5px",
               lineHeight: "1.65",
               margin: 0,
-              maxWidth: "420px",
+              maxWidth: "430px",
             }}>
-              Zentero není jen úkolovník. Je to váš digitální mozek, který automatizuje chaos a nechává vám prostor na to podstatné.
+              Zentero je AI plánovač, který za vás srovná úkoly, poznámky i kalendář. Vy řešíte jen to, co je právě na řadě.
             </p>
           </div>
 
@@ -547,19 +524,19 @@ export default function AuthGate({ children }) {
             <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
               <div style={{ color: "#fbbf24", fontSize: "16px", marginTop: "1px" }}>✦</div>
               <p style={{ fontSize: "13.5px", color: "#d1d5db", margin: 0, lineHeight: "1.5" }}>
-                <strong>AI Prioritizace:</strong> Zentero ví, co hoří a co počká.
+                <strong>AI přehled —</strong> pozná, co je teď důležité a co počká.
               </p>
             </div>
             <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
               <div style={{ color: "#fbbf24", fontSize: "16px", marginTop: "1px" }}>✦</div>
               <p style={{ fontSize: "13.5px", color: "#d1d5db", margin: 0, lineHeight: "1.5" }}>
-                <strong>Vše na jednom místě:</strong> Kalendář, poznámky i soubory.
+                <strong>Vše pohromadě —</strong> úkoly, kalendář, poznámky i soubory.
               </p>
             </div>
           </div>
 
-          {/* Decorative Mock Task Card (only on desktop) */}
-          {!isMobile && <MockTaskCard />}
+          {/* AI focus card (only on desktop) */}
+          {!isMobile && <FocusCard />}
         </div>
 
         {/* RIGHT COLUMN: Glass login card */}
@@ -683,10 +660,10 @@ export default function AuthGate({ children }) {
             <>
               {/* Header text inside card */}
               <h2 style={{ fontSize: "24px", fontWeight: "700", margin: "0 0 6px", color: "#ffffff" }}>
-                {signMode === "signup" ? "✨ Vytvořit účet zdarma" : "👋 Vítejte zpět"}
+                {signMode === "signup" ? "✨ Založit Zentero zdarma" : "👋 Vítejte zpět"}
               </h2>
               <p style={{ fontSize: "13.5px", color: "#9ca3af", margin: "0 0 28px" }}>
-                {signMode === "signup" ? "Začněte pracovat chytřeji ještě dnes." : "Pokračujte tam, kde jste včera skončili."}
+                {signMode === "signup" ? "Za pár vteřin máte vlastní AI workspace." : "Pokračujte tam, kde jste přestali."}
               </p>
 
               {/* Two-way Auth Mode Switcher */}
@@ -1117,34 +1094,54 @@ export default function AuthGate({ children }) {
       </main>
       </div>
 
-      {/* Footer section - smaller, single-line, borderless, no arrow */}
+      {/* Footer: info links + meta (copyright · version · author) */}
       <footer style={{
         width: "100%",
         maxWidth: "1024px",
         marginTop: isMobile ? "24px" : "40px",
         display: "flex",
-        justifyContent: "center",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: "12px",
         zIndex: 1,
       }}>
-        <a
-          href="https://zichmichal.cz"
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            textDecoration: "none",
-            transition: "opacity 0.2s ease",
-            fontSize: "12px",
-            color: "#6b7280",
-          }}
-          onMouseEnter={e => e.currentTarget.style.opacity = "0.7"}
-          onMouseLeave={e => e.currentTarget.style.opacity = "1"}
-        >
-          <MZLogo size={18} />
-          <span style={{ fontWeight: "500" }}>Vytvořil Michal Zich · zichmichal.cz</span>
-        </a>
+        {/* Info links (hidden until FOOTER_LINKS has entries) */}
+        {FOOTER_LINKS.length > 0 && (
+          <div style={{ display: "flex", alignItems: "center", gap: "18px", flexWrap: "wrap", justifyContent: "center" }}>
+            {FOOTER_LINKS.map(({ label, href }) => (
+              <a
+                key={label}
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ fontSize: "12.5px", color: "#8b8f98", textDecoration: "none", transition: "color 0.2s ease" }}
+                onMouseEnter={e => e.currentTarget.style.color = "#fbbf24"}
+                onMouseLeave={e => e.currentTarget.style.color = "#8b8f98"}
+              >
+                {label}
+              </a>
+            ))}
+          </div>
+        )}
+
+        {/* Meta row */}
+        <div style={{ display: "flex", alignItems: "center", gap: "9px", flexWrap: "wrap", justifyContent: "center", fontSize: "12px", color: "#5b6070" }}>
+          <a
+            href="https://zichmichal.cz"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ display: "flex", alignItems: "center", gap: "7px", textDecoration: "none", color: "inherit", transition: "opacity 0.2s ease" }}
+            onMouseEnter={e => e.currentTarget.style.opacity = "0.7"}
+            onMouseLeave={e => e.currentTarget.style.opacity = "1"}
+          >
+            <MZLogo size={16} />
+            <span style={{ fontWeight: "500" }}>Michal Zich</span>
+          </a>
+          <span style={{ color: "#3a3e48" }}>·</span>
+          <span>© {new Date().getFullYear()} Zentero</span>
+          <span style={{ color: "#3a3e48" }}>·</span>
+          <span>v{APP_VERSION}</span>
+        </div>
       </footer>
     </div>
   );
