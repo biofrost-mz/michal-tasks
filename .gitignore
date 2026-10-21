@@ -13,6 +13,7 @@ dist-ssr
 *.local
 .env
 .env.*
+!.env.example
 memory/
 supabase/.temp/
 supabase/supabase/.temp/
@@ -33,3 +34,7 @@ supabase/supabase/.temp/
 *.njsproj
 *.sln
 *.sw?
+
+# Lokální pracovní soubory a balíčky
+scratch/
+*.zip

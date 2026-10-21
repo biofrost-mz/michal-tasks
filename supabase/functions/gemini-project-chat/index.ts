@@ -269,7 +269,10 @@ Pravidla pro diagnostiku projektu a vedení konverzace:
             "content-type": "application/json",
           },
           body: JSON.stringify({
-            model: "claude-3-5-sonnet-20241022",
+            // claude-3-5-sonnet-20241022 byl vyřazen; aktuální Sonnet s vypnutým přemýšlením
+            // (between_tools bez nástrojů = odpověď jen jako text, stejně jako dřív).
+            model: "claude-sonnet-5-5",
+            thinking: { type: "between_tools" },
             max_tokens: 1024,
             system: systemContext,
             messages: claudeHistory,
@@ -287,9 +290,9 @@ Pravidla pro diagnostiku projektu a vedení konverzace:
         }
 
         const claudeData = await claudeRes.json();
-        reply = claudeData.content?.[0]?.text ?? "";
+        reply = claudeData.content?.find((block: { type?: string }) => block?.type === "text")?.text ?? "";
         success = true;
-        selectedModel = "Claude 3.5 Sonnet";
+        selectedModel = "Claude Sonnet 5.5";
         console.log("gemini-project-chat: Anthropic Claude úspěšně vrátil záložní odpověď.");
       } catch (claudeError: any) {
         console.error("gemini-project-chat: Claude API výjimka:", claudeError);

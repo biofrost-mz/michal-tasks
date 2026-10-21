@@ -319,7 +319,9 @@ Vrať POUZE JSON objekt s následující strukturou (nic jiného, žádné markd
             "content-type": "application/json",
           },
           body: JSON.stringify({
-            model: "claude-3-5-haiku-20241022",
+            // claude-3-5-haiku-20241022 byl vyřazen; aktuální Haiku bez přemýšlení (jako dřív).
+            model: "claude-haiku-5-5",
+            thinking: { type: "disabled" },
             max_tokens: 1024,
             system: SYSTEM,
             messages: [{ role: "user", content: aiPrompt }],
@@ -337,11 +339,11 @@ Vrať POUZE JSON objekt s následující strukturou (nic jiného, žádné markd
         }
 
         const data = await resp.json();
-        const claudeText = data.content?.[0]?.text?.trim() ?? "";
+        const claudeText = data.content?.find((block: { type?: string }) => block?.type === "text")?.text?.trim() ?? "";
         if (claudeText) {
           raw = claudeText;
           success = true;
-          selectedModel = "Claude 3.5 Haiku";
+          selectedModel = "Claude Haiku 5.5";
           console.log("ai-task-assist: Anthropic Claude úspěšně vrátil záložní odpověď.");
         } else {
           console.warn("ai-task-assist: Claude vrátil prázdnou odpověď.");
